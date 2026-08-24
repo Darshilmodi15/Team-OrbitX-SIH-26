@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import LandingPage from './components/LandingPage';
 import LanguageSelectorModal from './components/LanguageSelectorModal';
 import AuthModal from './components/AuthModal';
 import LocationPermissionModal from './components/LocationPermissionModal';
+import CurrentMarineStatusCard from './components/CurrentMarineStatusCard';
+import ForecastHorizonTimeline from './components/ForecastHorizonTimeline';
+import TerminologyExplainerModal from './components/TerminologyExplainerModal';
+import MobileBottomNav, { type MobileTab } from './components/MobileBottomNav';
 import { TopHeader } from './components/TopHeader';
 import { ControlBar } from './components/ControlBar';
 import { GisLayersPanel, type GisLayerState } from './components/GisLayersPanel';
@@ -11,7 +15,7 @@ import ChatPanel from './components/ChatPanel';
 import { FishAnalyticsModal } from './components/FishAnalyticsModal';
 import { AgentTraceModal } from './components/AgentTraceModal';
 import { Footer } from './components/Footer';
-import { queryORCA } from './services/api';
+import { queryORCA, fetchMarineConditions, fetchMarineRisk } from './services/api';
 import {
   INDIAN_PORTS,
   MOCK_PFZ_ZONES,
@@ -65,16 +69,18 @@ export interface MessageItem {
 export default function App() {
   // App Navigation Flow Stage
   const [appStage, setAppStage] = useState<'landing' | 'dashboard'>('landing');
+  const [mobileTab, setMobileTab] = useState<MobileTab>('status');
 
-  // Modals for Onboarding
+  // Modals for Onboarding & Reference
   const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [isTerminologyModalOpen, setIsTerminologyModalOpen] = useState(false);
 
   // User Authentication State
   const [currentUser, setCurrentUser] = useState<any | null>(null);
 
-  // Operational State
+  // Operational Location & Telemetry
   const [selectedPort, setSelectedPort] = useState<Port>(INDIAN_PORTS[0]); // Mumbai Sassoon Dock
   const [userLocation, setUserLocation] = useState<LocationCoords>({
     lat: INDIAN_PORTS[0].lat,
@@ -147,6 +153,48 @@ export default function App() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Synchronize Live Telemetry whenever location changes
+  useEffect(() => {
+    let isMounted = true;
+
+    async function refreshTelemetry() {
+      try {
+        const [condData, riskData] = await Promise.all([
+          fetchMarineConditions(userLocation.lat, userLocation.lon, currentDate).catch(() => null),
+          fetchMarineRisk(userLocation.lat, userLocation.lon, currentDate).catch(() => null),
+        ]);
+
+        if (isMounted) {
+          if (condData) {
+            setWeather((prev) => ({
+              ...prev,
+              wave_height_m: condData.wave_height_m || prev.wave_height_m,
+              wind_speed_kmh: condData.wind_speed_kmh || prev.wind_speed_kmh,
+              wind_direction_deg: condData.wind_direction_deg || prev.wind_direction_deg,
+              wind_direction_cardinal: condData.wind_direction_cardinal || prev.wind_direction_cardinal,
+              forecast: condData.forecast || prev.forecast,
+              temperature_c: condData.temperature_c || prev.temperature_c,
+              sst_c: condData.sea_surface_temperature_c || prev.sst_c,
+              swell_period_s: condData.wave_period_s || prev.swell_period_s,
+              visibility_km: condData.visibility_km || prev.visibility_km,
+              source: condData.source || prev.source,
+            }));
+          }
+          if (riskData && riskData.risk_level) {
+            setRiskLevel(riskData.risk_level as any);
+          }
+        }
+      } catch (err) {
+        console.warn('Telemetry refresh fallback:', err);
+      }
+    }
+
+    refreshTelemetry();
+    return () => {
+      isMounted = false;
+    };
+  }, [userLocation, currentDate]);
+
   // Onboarding Handlers
   const handleStartOnboarding = () => {
     setIsLanguageModalOpen(true);
@@ -187,7 +235,7 @@ export default function App() {
       mr: '🌐 **भाषा बदलली आहे**: मराठी (Marathi). ऑर्का मरीन एआय आता तुम्हाला मराठीत सागरी हवामान, लाटांची स्थिती आणि मासेमारी क्षेत्राची माहिती देईल.',
       ta: '🌐 **மொழி மாற்றப்பட்டது**: தமிழ் (Tamil). ஆர்கா மரைன் ஏஐ இப்போது கடல் வானிலை, அலை உயரம் மற்றும் மீன்பிடி மண்டல தகவல்களை தமிழில் வழங்கும்.',
       ml: '🌐 **ഭാഷ മാറ്റി**: മലയാളം (Malayalam). ഓർക്ക മറൈൻ എഐ ഇനി കടൽ കാലാവസ്ഥയും സുരക്ഷാ മുന്നറിയിപ്പുകളും മലയാളത്തിൽ ലഭ്യമാക്കും.',
-      te: '🌐 **భాష మార్చబడింది**: తెలుగు (Telugu). ఓర్కా మెరైన్ ఏআই ఇప్పుడు సముద్ర వాతావరణం మరియు చేపల వేట మండల సమాచారాన్ని తెలుగులో అందిస్తుంది.',
+      te: '🌐 **భాష మార్చబడింది**: తెలుగు (Telugu). ఓర్కా మెరైన్ ఏఐ ఇప్పుడు సముద్ర వాతావరణం మరియు చేపల వేట మండల సమాచారాన్ని తెలుగులో అందిస్తుంది.',
       bn: '🌐 **ভাষা পরিবর্তিত হয়েছে**: বাংলা (Bengali). ওর্কা মেরিন এআই এখন বাংলায় সামুদ্রিক আবহাওয়া ও নিরাপত্তা তথ্য প্রদান করবে।',
       en: '🌐 **Language switched**: English. ORCA Marine AI will now provide marine weather, wave safety, and fishing zone intelligence in English.',
     };
@@ -230,7 +278,6 @@ export default function App() {
 
     const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // Add user message to thread
     const userMsg: MessageItem = {
       id: `user-${Date.now()}`,
       sender: 'user',
@@ -249,12 +296,10 @@ export default function App() {
         language: currentLang,
       });
 
-      // Update active PFZ markers on map if returned
       if (response.nearest_pfz && Array.isArray(response.nearest_pfz) && response.nearest_pfz.length > 0) {
         setPfzZones(response.nearest_pfz);
       }
 
-      // Update weather state if returned
       if (response.weather) {
         setWeather({
           wave_height_m: response.weather.wave_height_m || weather.wave_height_m,
@@ -271,12 +316,10 @@ export default function App() {
         });
       }
 
-      // Update risk state
       if (response.risk_level) {
         setRiskLevel(response.risk_level as any);
       }
 
-      // Append assistant response to chat thread
       const assistantMsg: MessageItem = {
         id: `assistant-${Date.now()}`,
         sender: 'assistant',
@@ -321,7 +364,7 @@ export default function App() {
         />
       ) : (
         /* Mobile-First Operational Safety & Marine Intelligence Dashboard */
-        <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-100 font-sans text-slate-800">
+        <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 font-sans text-slate-100">
           {/* Top Bar with Branding, Health Status & Persona Badge */}
           <TopHeader
             vesselLat={userLocation.lat}
@@ -350,32 +393,109 @@ export default function App() {
             currentLang={currentLang}
           />
 
-          {/* Main 2-Column Split: Tactical Map (Left) + Chat / Telemetry (Right) */}
-          <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative min-h-0 bg-slate-950">
-            {/* Tactical Nautical Map */}
-            <div className="w-full md:w-[60%] lg:w-[63%] xl:w-[65%] h-[50vh] md:h-full relative flex flex-col min-h-0">
+          {/* Main Body: Responsive Desktop Grid & Mobile Tab Switching */}
+          <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative min-h-0 bg-slate-950 pb-14 md:pb-0">
+            {/* Desktop Left (60%): Tactical Map */}
+            <div className={`w-full md:w-[60%] lg:w-[63%] xl:w-[65%] h-full relative flex-col min-h-0 ${
+              mobileTab === 'map' ? 'flex' : 'hidden md:flex'
+            }`}>
               <MarineMap
                 userLocation={userLocation}
                 pfzZones={gisLayers.pfz ? pfzZones : []}
               />
             </div>
 
-            {/* Conversational & Telemetry Panel */}
-            <div className="w-full md:w-[40%] lg:w-[37%] xl:w-[35%] h-[50vh] md:h-full flex flex-col min-h-0 bg-white border-t md:border-t-0 md:border-l border-slate-200 shadow-lg z-10">
-              <ChatPanel
-                messages={messages}
-                onSendMessage={handleSendMessage}
-                isLoading={isLoading}
-                error={error}
-                currentLang={currentLang}
-                onClearError={() => setError(null)}
-              />
+            {/* Desktop Right (40%) / Mobile Status & Chat */}
+            <div className={`w-full md:w-[40%] lg:w-[37%] xl:w-[35%] h-full flex flex-col min-h-0 bg-slate-900 border-t md:border-t-0 md:border-l border-slate-800 shadow-xl z-10 overflow-y-auto ${
+              mobileTab === 'map' ? 'hidden md:flex' : 'flex'
+            }`}>
+              {/* Mobile Tab Conditionals */}
+              {mobileTab === 'status' && (
+                <div className="p-3.5 sm:p-4 space-y-3.5 overflow-y-auto">
+                  <CurrentMarineStatusCard
+                    weather={weather}
+                    riskLevel={riskLevel}
+                    coastalRegion={selectedPort.state}
+                    distanceToCoastKm={4.8}
+                    onOpenTerminology={() => setIsTerminologyModalOpen(true)}
+                    currentLang={currentLang}
+                  />
+
+                  <ForecastHorizonTimeline
+                    userLocation={userLocation}
+                    baseWeather={weather}
+                    currentLang={currentLang}
+                  />
+
+                  {/* Ask ORCA Quick Prompt Section on Mobile */}
+                  <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 text-xs">
+                    <div className="font-bold text-slate-200 mb-2 flex items-center justify-between">
+                      <span>💬 Ask ORCA Safety AI</span>
+                      <button
+                        onClick={() => setMobileTab('chat')}
+                        className="text-teal-400 font-mono text-[11px] hover:underline cursor-pointer"
+                      >
+                        Open Full Chat →
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mb-3">
+                      Ask questions in Gujarati, Hindi, Marathi, Tamil, Telugu, Malayalam, or English.
+                    </p>
+                    <button
+                      onClick={() => setMobileTab('chat')}
+                      className="w-full py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs transition active:scale-95 cursor-pointer text-center"
+                    >
+                      Open AI Maritime Assistant
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Chat View */}
+              {(mobileTab === 'chat' || window.innerWidth >= 768) && mobileTab !== 'status' && (
+                <div className="flex-1 flex flex-col min-h-0 bg-white">
+                  <ChatPanel
+                    messages={messages}
+                    onSendMessage={handleSendMessage}
+                    isLoading={isLoading}
+                    error={error}
+                    currentLang={currentLang}
+                    onClearError={() => setError(null)}
+                  />
+                </div>
+              )}
+
+              {/* Desktop Dual Mode (Always Show Chat on Desktop) */}
+              <div className="hidden md:flex flex-1 flex-col min-h-0 bg-white">
+                <ChatPanel
+                  messages={messages}
+                  onSendMessage={handleSendMessage}
+                  isLoading={isLoading}
+                  error={error}
+                  currentLang={currentLang}
+                  onClearError={() => setError(null)}
+                />
+              </div>
             </div>
           </main>
 
-          {/* Status Footer */}
-          <Footer
-            currentLang={currentLang}
+          {/* Desktop Status Footer */}
+          <div className="hidden md:block">
+            <Footer currentLang={currentLang} />
+          </div>
+
+          {/* Mobile Bottom Navigation Bar */}
+          <MobileBottomNav
+            activeTab={mobileTab}
+            onTabChange={(tab) => {
+              if (tab === 'ecology') {
+                setIsEcologyModalOpen(true);
+              } else if (tab === 'emergency') {
+                setIsReasoningModalOpen(true);
+              } else {
+                setMobileTab(tab);
+              }
+            }}
           />
 
           {/* Modals */}
@@ -388,6 +508,12 @@ export default function App() {
           <AgentTraceModal
             isOpen={isReasoningModalOpen}
             onClose={() => setIsReasoningModalOpen(false)}
+            currentLang={currentLang}
+          />
+
+          <TerminologyExplainerModal
+            isOpen={isTerminologyModalOpen}
+            onClose={() => setIsTerminologyModalOpen(false)}
             currentLang={currentLang}
           />
         </div>

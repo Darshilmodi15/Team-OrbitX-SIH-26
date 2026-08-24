@@ -145,6 +145,37 @@ export async function updateUserLocation(lat: number, lon: number, accuracy_m?: 
 }
 
 /* ==========================================================================
+   Marine Weather, Risk & Forecast Telemetry APIs
+   ========================================================================== */
+
+export async function fetchMarineConditions(lat: number, lon: number, date?: string) {
+  const qDate = date ? `&date=${date}` : '';
+  const response = await fetch(`${API_BASE_URL}/api/marine/conditions?lat=${lat}&lon=${lon}${qDate}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch marine conditions');
+  }
+  return await response.json();
+}
+
+export async function fetchMarineRisk(lat: number, lon: number, date?: string) {
+  const qDate = date ? `&date=${date}` : '';
+  const response = await fetch(`${API_BASE_URL}/api/marine/risk?lat=${lat}&lon=${lon}${qDate}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch marine risk');
+  }
+  return await response.json();
+}
+
+export async function fetchMarineForecast(lat: number, lon: number, date?: string) {
+  const qDate = date ? `&date=${date}` : '';
+  const response = await fetch(`${API_BASE_URL}/api/marine/forecast?lat=${lat}&lon=${lon}${qDate}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch marine forecast');
+  }
+  return await response.json();
+}
+
+/* ==========================================================================
    Marine Boundaries & GIS APIs
    ========================================================================== */
 
