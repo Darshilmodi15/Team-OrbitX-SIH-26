@@ -1,7 +1,7 @@
 import React from 'react';
 import { INDIAN_PORTS, REGIONAL_LANGUAGES, TRANSLATIONS } from '../data/maritimeData';
 import type { Port, WeatherMetrics } from '../data/maritimeData';
-import { Compass, Globe, ShieldAlert, ShieldCheck, Waves, Wind, ExternalLink } from 'lucide-react';
+import { Compass, Globe, ShieldAlert, ShieldCheck, Waves, Wind, ExternalLink, Activity } from 'lucide-react';
 
 interface TelemetryBarProps {
   vesselLat: number;
@@ -31,84 +31,90 @@ export const TelemetryBar: React.FC<TelemetryBarProps> = ({
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
 
   const riskBadgeStyles = {
-    safe: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-glow-emerald',
-    caution: 'bg-amber-500/20 text-amber-300 border-amber-500/50',
-    unsafe: 'bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-glow-rose animate-pulse',
+    safe: 'bg-emerald-50 text-emerald-800 border-emerald-300 ring-1 ring-emerald-500/20',
+    caution: 'bg-amber-50 text-amber-800 border-amber-300 ring-1 ring-amber-500/20',
+    unsafe: 'bg-rose-50 text-rose-800 border-rose-300 ring-1 ring-rose-500/20 animate-pulse',
   }[riskLevel];
 
   const riskLabel = {
-    safe: t.safeHeading || 'SAFE TO VENTURE',
+    safe: t.safeHeading || 'SAFE FOR NAVIGATION',
     caution: t.cautionHeading || 'CAUTION ADVISED',
     unsafe: t.dangerHeading || 'SEVERE HAZARD',
   }[riskLevel];
 
   return (
-    <header className="w-full glass-panel border-b border-cyan-500/20 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 z-30">
-      {/* Brand & Project Identity */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-xl shadow-lg border border-cyan-300/40">
+    <header className="w-full bg-white border-b border-slate-200/90 shadow-sm px-5 py-3 flex flex-wrap items-center justify-between gap-4 z-30 transition-colors">
+      {/* Brand & Project Title */}
+      <div className="flex items-center gap-3.5">
+        <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center text-xl shadow-md shadow-teal-700/15 ring-2 ring-teal-600/20">
           🌊
         </div>
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-base md:text-lg font-bold font-display text-white tracking-wide">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-base md:text-lg font-bold font-display text-slate-900 tracking-tight">
               {t.appTitle || 'ORCA Marine AI'}
             </h1>
-            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 border border-teal-200">
               SIH 2026 • OrbitX
             </span>
           </div>
-          <p className="text-[11px] text-slate-400 hidden sm:block">
-            {t.tagline || 'Autonomous Marine Intelligence & Decision Support'}
+          <p className="text-[11px] text-slate-500 font-medium hidden sm:block">
+            {t.tagline || 'Autonomous Ocean Intelligence & Decision Support'}
           </p>
         </div>
       </div>
 
-      {/* Live Telemetry Meters */}
-      <div className="flex items-center flex-wrap gap-2 md:gap-4 text-xs font-mono">
-        {/* Vessel GPS */}
-        <div className="glass-card px-3 py-1.5 flex items-center gap-2 border border-slate-700/60">
-          <Compass className="w-3.5 h-3.5 text-cyan-400 animate-spin" style={{ animationDuration: '10s' }} />
-          <div className="text-[11px]">
-            <span className="text-slate-400 block text-[9px] uppercase tracking-wider">GPS Coordinates</span>
-            <span className="text-cyan-300 font-bold">
+      {/* Center Individual Status / Telemetry Cards */}
+      <div className="flex items-center flex-wrap gap-3 font-sans">
+        {/* GPS Coordinates Card */}
+        <div className="bg-slate-50/80 hover:bg-slate-50 border border-slate-200/80 px-3.5 py-1.5 rounded-xl flex items-center gap-2.5 transition shadow-xs">
+          <div className="w-7 h-7 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center">
+            <Compass className="w-4 h-4 text-teal-600" />
+          </div>
+          <div>
+            <span className="text-slate-400 block text-[9px] uppercase font-bold tracking-wider">Vessel GPS</span>
+            <span className="text-slate-800 font-mono text-xs font-semibold">
               {vesselLat.toFixed(4)}°N, {vesselLon.toFixed(4)}°E
             </span>
           </div>
         </div>
 
-        {/* Marine Wave Gauge */}
-        <div className="glass-card px-3 py-1.5 flex items-center gap-2 border border-slate-700/60">
-          <Waves className="w-3.5 h-3.5 text-blue-400" />
+        {/* Wave Height Card */}
+        <div className="bg-slate-50/80 hover:bg-slate-50 border border-slate-200/80 px-3.5 py-1.5 rounded-xl flex items-center gap-2.5 transition shadow-xs">
+          <div className="w-7 h-7 rounded-lg bg-sky-50 text-sky-700 flex items-center justify-center">
+            <Waves className="w-4 h-4 text-sky-600" />
+          </div>
           <div>
-            <span className="text-slate-400 block text-[9px] uppercase tracking-wider">Wave Height</span>
-            <span className={`font-bold ${weather.wave_height_m > 2.0 ? 'text-rose-400' : 'text-blue-300'}`}>
-              {weather.wave_height_m}m (Swell {weather.swell_period_s}s)
+            <span className="text-slate-400 block text-[9px] uppercase font-bold tracking-wider">Wave Height</span>
+            <span className={`text-xs font-semibold ${weather.wave_height_m > 2.0 ? 'text-rose-600' : 'text-slate-800'}`}>
+              {weather.wave_height_m}m <span className="text-slate-400 font-normal text-[11px]">({weather.swell_period_s}s swell)</span>
             </span>
           </div>
         </div>
 
-        {/* Wind Speed */}
-        <div className="glass-card px-3 py-1.5 hidden lg:flex items-center gap-2 border border-slate-700/60">
-          <Wind className="w-3.5 h-3.5 text-teal-400" />
+        {/* Wind Speed Card */}
+        <div className="bg-slate-50/80 hover:bg-slate-50 border border-slate-200/80 px-3.5 py-1.5 rounded-xl hidden lg:flex items-center gap-2.5 transition shadow-xs">
+          <div className="w-7 h-7 rounded-lg bg-cyan-50 text-cyan-700 flex items-center justify-center">
+            <Wind className="w-4 h-4 text-cyan-600" />
+          </div>
           <div>
-            <span className="text-slate-400 block text-[9px] uppercase tracking-wider">Wind Speed</span>
-            <span className="text-teal-300 font-bold">
-              {weather.wind_speed_kmh} km/h (245° WSW)
+            <span className="text-slate-400 block text-[9px] uppercase font-bold tracking-wider">Wind Speed</span>
+            <span className="text-slate-800 text-xs font-semibold">
+              {weather.wind_speed_kmh} km/h <span className="text-slate-400 font-normal text-[11px]">(245° WSW)</span>
             </span>
           </div>
         </div>
 
-        {/* Operational Safety Status Badge */}
-        <div className={`px-3 py-1 rounded-full border text-xs font-bold flex items-center gap-1.5 ${riskBadgeStyles}`}>
-          {riskLevel === 'safe' ? <ShieldCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
-          <span>{riskLabel}</span>
+        {/* Operational Risk Status Badge Card */}
+        <div className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-2 shadow-xs ${riskBadgeStyles}`}>
+          {riskLevel === 'safe' ? <ShieldCheck className="w-4 h-4 text-emerald-600" /> : <ShieldAlert className="w-4 h-4 text-rose-600" />}
+          <span className="tracking-wide">{riskLabel}</span>
         </div>
       </div>
 
-      {/* Actions & Configuration Controls */}
-      <div className="flex items-center gap-2">
-        {/* Coastal Port Selector */}
+      {/* Right Controls & Navigation Bar (Proper 12-18px gaps) */}
+      <div className="flex items-center flex-wrap gap-3">
+        {/* Coastal Location Selector */}
         <div className="relative">
           <select
             value={selectedPort.id}
@@ -116,62 +122,66 @@ export const TelemetryBar: React.FC<TelemetryBarProps> = ({
               const port = INDIAN_PORTS.find((p) => p.id === e.target.value);
               if (port) onSelectPort(port);
             }}
-            className="bg-navy-900 text-cyan-300 text-xs rounded-lg px-2.5 py-1.5 border border-cyan-500/30 focus:outline-none focus:border-cyan-400 cursor-pointer"
+            aria-label="Select Coastal Base"
+            className="h-9 bg-white text-slate-700 text-xs font-medium rounded-xl pl-3 pr-8 border border-slate-300 hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 shadow-xs cursor-pointer appearance-none transition"
           >
             {INDIAN_PORTS.map((port) => (
-              <option key={port.id} value={port.id} className="bg-navy-950 text-slate-200">
+              <option key={port.id} value={port.id}>
                 📍 {port.name} ({port.state})
               </option>
             ))}
           </select>
+          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs">▼</span>
         </div>
 
         {/* Indian Regional Language Switcher */}
         <div className="relative flex items-center">
-          <Globe className="w-3.5 h-3.5 text-cyan-400 absolute left-2 pointer-events-none" />
+          <Globe className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none" />
           <select
             value={currentLang}
             onChange={(e) => onSelectLang(e.target.value)}
-            className="bg-navy-900 text-slate-200 text-xs rounded-lg pl-7 pr-2 py-1.5 border border-cyan-500/30 focus:outline-none focus:border-cyan-400 cursor-pointer"
+            aria-label="Select Language"
+            className="h-9 bg-white text-slate-700 text-xs font-medium rounded-xl pl-8 pr-7 border border-slate-300 hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 shadow-xs cursor-pointer appearance-none transition"
           >
             {REGIONAL_LANGUAGES.map((lang) => (
-              <option key={lang.code} value={lang.code} className="bg-navy-950 text-slate-200">
+              <option key={lang.code} value={lang.code}>
                 {lang.native} ({lang.name})
               </option>
             ))}
           </select>
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs">▼</span>
         </div>
 
-        {/* Swagger OpenAPI Docs Link */}
+        {/* Swagger API Link */}
         <a
           href="http://localhost:8000/docs"
           target="_blank"
           rel="noopener noreferrer"
-          title="Interactive Swagger & OpenAPI API Documentation"
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-400/50 text-indigo-300 text-xs font-bold transition shadow-glow-indigo"
+          title="OpenAPI & Swagger Documentation"
+          className="h-9 flex items-center gap-1.5 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900 text-xs font-semibold shadow-xs transition"
         >
-          <span>⚡</span>
+          <span className="text-sm">⚡</span>
           <span className="hidden sm:inline">Swagger API</span>
-          <ExternalLink className="w-3 h-3 text-indigo-400" />
+          <ExternalLink className="w-3 h-3 text-slate-400" />
         </a>
 
-        {/* Ecological Analysis button */}
+        {/* Historical Fish Trend Analytics Button */}
         <button
           onClick={onOpenEcology}
           title="Analyze Historical Fish Catch Decline"
-          className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-500/40 text-emerald-300 text-xs font-semibold transition"
+          className="h-9 flex items-center gap-1.5 px-3.5 rounded-xl bg-teal-50 hover:bg-teal-100/80 border border-teal-200 text-teal-800 text-xs font-semibold shadow-xs transition"
         >
-          <span>📊</span>
+          <Activity className="w-3.5 h-3.5 text-teal-600" />
           <span className="hidden xl:inline">Fish Trend Analytics</span>
         </button>
 
-        {/* Explainable AI Trace button */}
+        {/* Explainable AI Trace Button */}
         <button
           onClick={onOpenReasoning}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/50 text-cyan-300 text-xs font-bold transition shadow-glow-cyan"
+          className="h-9 flex items-center gap-1.5 px-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-xs hover:shadow-md transition shadow-teal-700/20"
         >
           <span>🧠</span>
-          <span className="hidden sm:inline">Agent Trace</span>
+          <span>Agent Trace</span>
         </button>
       </div>
     </header>

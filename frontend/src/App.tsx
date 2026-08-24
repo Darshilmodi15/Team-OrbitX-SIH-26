@@ -131,8 +131,8 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-navy-950 flex flex-col font-sans select-none">
-      {/* Top Telemetry & Controls Bar */}
+    <div className="relative w-screen h-screen overflow-hidden bg-slate-50 flex flex-col font-sans text-slate-800">
+      {/* Top Header / Telemetry Bar */}
       <TelemetryBar
         vesselLat={vesselLat}
         vesselLon={vesselLon}
@@ -146,9 +146,28 @@ export const App: React.FC = () => {
         onOpenEcology={() => setIsEcologyOpen(true)}
       />
 
-      {/* Main Tactical Operations Center */}
-      <main className="relative flex-1 w-full h-full overflow-hidden">
-        {/* Interactive Tactical GIS Map */}
+      {/* Main 3-Column Operations Layout */}
+      <main className="relative flex-1 w-full p-3.5 md:p-4 flex flex-col lg:flex-row gap-3.5 md:gap-4 overflow-hidden">
+        {/* Left Column: GIS Satellite Layers (270–290px) */}
+        <MapControls
+          showSST={showSST}
+          setShowSST={setShowSST}
+          showChlorophyll={showChlorophyll}
+          setShowChlorophyll={setShowChlorophyll}
+          showWaves={showWaves}
+          setShowWaves={setShowWaves}
+          showWind={showWind}
+          setShowWind={setShowWind}
+          showGeofence={showGeofence}
+          setShowGeofence={setShowGeofence}
+          showPFZ={showPFZ}
+          setShowPFZ={setShowPFZ}
+          showRoute={showRoute}
+          setShowRoute={setShowRoute}
+          currentLang={currentLang}
+        />
+
+        {/* Center Column: Interactive GIS Map (Flexible / Largest Area) */}
         <MaritimeMap
           vesselLat={vesselLat}
           vesselLon={vesselLon}
@@ -171,36 +190,29 @@ export const App: React.FC = () => {
           isGeofenceAlert={isGeofenceAlert}
         />
 
-        {/* GIS Satellite Layer Toggles */}
-        <MapControls
-          showSST={showSST}
-          setShowSST={setShowSST}
-          showChlorophyll={showChlorophyll}
-          setShowChlorophyll={setShowChlorophyll}
-          showWaves={showWaves}
-          setShowWaves={setShowWaves}
-          showWind={showWind}
-          setShowWind={setShowWind}
-          showGeofence={showGeofence}
-          setShowGeofence={setShowGeofence}
-          showPFZ={showPFZ}
-          setShowPFZ={setShowPFZ}
-          showRoute={showRoute}
-          setShowRoute={setShowRoute}
+        {/* Right Column: Dedicated ORCA AI Assistant Chatbot (390–420px) */}
+        <ConversationalDrawer
+          messages={messages}
+          onSendMessage={(text) => handleUserQuery(text)}
+          isLoading={isLoading}
           currentLang={currentLang}
+          onOpenReasoning={() => setIsReasoningOpen(true)}
         />
-
-        {/* Conversational Decision-Support Drawer (Floating Bottom-Right) */}
-        <div className="absolute bottom-4 right-4 z-20">
-          <ConversationalDrawer
-            messages={messages}
-            onSendMessage={(text) => handleUserQuery(text)}
-            isLoading={isLoading}
-            currentLang={currentLang}
-            onOpenReasoning={() => setIsReasoningOpen(true)}
-          />
-        </div>
       </main>
+
+      {/* Subtle Minimal Footer */}
+      <footer className="w-full bg-white border-t border-slate-200/80 px-5 py-2 flex flex-wrap items-center justify-between text-[11px] text-slate-500 font-sans z-20">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-slate-700">ORCA Marine AI</span>
+          <span>•</span>
+          <span>Team OrbitX</span>
+          <span>•</span>
+          <span className="text-teal-700 font-medium">Smart India Hackathon 2026</span>
+        </div>
+        <div className="text-slate-400 hidden sm:block">
+          Safer Seas • Smarter Decisions • Stronger Communities
+        </div>
+      </footer>
 
       {/* Multi-Agent Reasoning Trace Modal */}
       <AgentReasoningModal

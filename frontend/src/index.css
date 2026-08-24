@@ -6,33 +6,35 @@
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
-  --bg-darkest: #030712;
-  --bg-deep: #060e1f;
-  --bg-panel: rgba(10, 20, 42, 0.78);
-  --bg-panel-hover: rgba(16, 32, 66, 0.85);
-  --bg-card: rgba(15, 29, 58, 0.65);
+  --bg-app: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-subtle: #f1f5f9;
+  --bg-card: #ffffff;
   
-  --border-subtle: rgba(0, 240, 255, 0.15);
-  --border-active: rgba(0, 240, 255, 0.45);
-  --border-warning: rgba(245, 158, 11, 0.4);
-  --border-danger: rgba(239, 68, 68, 0.5);
+  --border-light: #e2e8f0;
+  --border-subtle: #cbd5e1;
+  --border-accent: #0d9488;
 
-  --cyan-400: #22d3ee;
-  --cyan-500: #06b6d4;
-  --cyan-glow: #00f0ff;
-  --emerald-400: #34d399;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --text-subtle: #94a3b8;
+
+  --teal-50: #f0fdfa;
+  --teal-100: #ccfbf1;
+  --teal-500: #14b8a6;
+  --teal-600: #0d9488;
+  --teal-700: #0f766e;
+  
+  --blue-50: #f0f9ff;
+  --blue-500: #0ea5e9;
+  --blue-600: #0284c7;
+
   --emerald-500: #10b981;
-  --amber-400: #fbbf24;
   --amber-500: #f59e0b;
-  --rose-400: #f87171;
   --rose-500: #ef4444;
-  --blue-400: #60a5fa;
-  --blue-500: #3b82f6;
 
-  --shadow-glow-cyan: 0 0 20px rgba(0, 240, 255, 0.25);
-  --shadow-glow-emerald: 0 0 20px rgba(16, 185, 129, 0.25);
-  --shadow-glow-rose: 0 0 25px rgba(239, 68, 68, 0.35);
-  --shadow-panel: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-elevation: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
 }
 
 * {
@@ -43,8 +45,8 @@
 
 body {
   font-family: var(--font-body);
-  background-color: var(--bg-darkest);
-  color: #e2e8f0;
+  background-color: var(--bg-app);
+  color: var(--text-main);
   overflow: hidden;
   height: 100vh;
   width: 100vw;
@@ -52,67 +54,47 @@ body {
 
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(4, 11, 24, 0.8);
+  background: #f1f5f9;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 240, 255, 0.25);
+  background: #cbd5e1;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 240, 255, 0.5);
+  background: #94a3b8;
 }
 
-/* Glassmorphic Utilities */
-.glass-panel {
-  background: var(--bg-panel);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-panel);
+/* Light Card Utilities */
+.light-card {
+  background: #ffffff;
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-card);
 }
 
-.glass-panel-hover {
-  transition: all 0.25s ease-in-out;
+.light-card-hover {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.glass-panel-hover:hover {
-  background: var(--bg-panel-hover);
-  border-color: var(--border-active);
-  box-shadow: var(--shadow-glow-cyan);
-}
-
-.glass-card {
-  background: var(--bg-card);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+.light-card-hover:hover {
+  border-color: #cbd5e1;
+  box-shadow: var(--shadow-elevation);
 }
 
-.glow-cyan {
-  box-shadow: var(--shadow-glow-cyan);
-}
-.glow-emerald {
-  box-shadow: var(--shadow-glow-emerald);
-}
-.glow-rose {
-  box-shadow: var(--shadow-glow-rose);
-}
-
-/* Pulse radar ring */
+/* Pulse radar ring for vessel */
 @keyframes radar-pulse {
   0% {
-    transform: scale(0.95);
+    transform: scale(0.9);
     opacity: 0.9;
   }
   50% {
-    transform: scale(1.4);
+    transform: scale(1.35);
     opacity: 0.3;
   }
   100% {
-    transform: scale(1.8);
+    transform: scale(1.7);
     opacity: 0;
   }
 }
@@ -121,57 +103,55 @@ body {
   animation: radar-pulse 2.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
 }
 
-@keyframes beacon-glow {
-  0%, 100% { opacity: 1; filter: drop-shadow(0 0 6px #00f0ff); }
-  50% { opacity: 0.6; filter: drop-shadow(0 0 2px #00f0ff); }
-}
-
-.beacon-pulse {
-  animation: beacon-glow 1.8s ease-in-out infinite;
-}
-
-/* Leaflet Map Overrides */
+/* Leaflet Map Overrides for Light Theme */
 .leaflet-container {
-  background: #040915 !important;
+  background: #e2e8f0 !important;
   font-family: var(--font-body);
   width: 100%;
   height: 100%;
+  border-radius: inherit;
 }
 
 .leaflet-popup-content-wrapper {
-  background: rgba(8, 17, 36, 0.94) !important;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  color: #f1f5f9 !important;
-  border: 1px solid rgba(0, 240, 255, 0.35);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), 0 0 15px rgba(0, 240, 255, 0.2);
-  border-radius: 12px !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border-radius: 14px !important;
   padding: 4px;
 }
 
 .leaflet-popup-tip {
-  background: rgba(8, 17, 36, 0.94) !important;
-  border: 1px solid rgba(0, 240, 255, 0.35);
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0;
+}
+
+.leaflet-control-zoom {
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+  border-radius: 8px !important;
+  overflow: hidden;
 }
 
 .leaflet-control-zoom a {
-  background-color: rgba(10, 20, 42, 0.85) !important;
-  color: #00f0ff !important;
-  border: 1px solid rgba(0, 240, 255, 0.25) !important;
-  backdrop-filter: blur(8px);
+  background-color: #ffffff !important;
+  color: #0f766e !important;
+  border-bottom: 1px solid #e2e8f0 !important;
 }
 .leaflet-control-zoom a:hover {
-  background-color: rgba(16, 32, 66, 0.95) !important;
-  color: #ffffff !important;
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
 }
 
 .leaflet-control-attribution {
-  background: rgba(4, 9, 21, 0.7) !important;
+  background: rgba(255, 255, 255, 0.85) !important;
   color: #64748b !important;
   font-size: 10px !important;
+  backdrop-filter: blur(4px);
+  border-top-left-radius: 6px;
 }
 .leaflet-control-attribution a {
-  color: #00f0ff !important;
+  color: #0f766e !important;
 }
 
 /* Typography shortcuts */
