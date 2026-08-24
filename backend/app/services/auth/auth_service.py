@@ -207,6 +207,10 @@ class AuthService:
             return None
         return self._to_profile(user_data)
 
+    def list_all_users(self) -> List[UserProfile]:
+        """Returns all registered users as public profiles."""
+        return [self._to_profile(u) for u in self._users.values()]
+
     def update_profile(
         self,
         user_id: str,
@@ -214,6 +218,7 @@ class AuthService:
         preferred_language: Optional[str] = None,
         location_permission_status: Optional[str] = None,
         location_sharing_enabled: Optional[bool] = None,
+        role: Optional[UserRole] = None,
     ) -> Optional[UserProfile]:
         """Updates user profile properties."""
         user_data = self._users.get(user_id)
@@ -228,6 +233,8 @@ class AuthService:
             user_data["location_permission_status"] = location_permission_status
         if location_sharing_enabled is not None:
             user_data["location_sharing_enabled"] = location_sharing_enabled
+        if role is not None:
+            user_data["role"] = role
 
         return self._to_profile(user_data)
 

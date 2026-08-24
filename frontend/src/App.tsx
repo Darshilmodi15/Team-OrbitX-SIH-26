@@ -9,6 +9,7 @@ import TerminologyExplainerModal from './components/TerminologyExplainerModal';
 import NotificationCenterModal, { type NotificationItem } from './components/NotificationCenterModal';
 import EmergencySOSModal from './components/EmergencySOSModal';
 import GovernmentPortalModal from './components/GovernmentPortalModal';
+import SuperAdminModal from './components/SuperAdminModal';
 import MobileBottomNav, { type MobileTab } from './components/MobileBottomNav';
 import { TopHeader } from './components/TopHeader';
 import { ControlBar } from './components/ControlBar';
@@ -89,6 +90,7 @@ export default function App() {
   const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
   const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
   const [isGovPortalOpen, setIsGovPortalOpen] = useState(false);
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
 
   // User Authentication State
   const [currentUser, setCurrentUser] = useState<any | null>(null);
@@ -433,6 +435,7 @@ export default function App() {
             currentUser={currentUser}
             unreadAlertsCount={unreadAlertsCount}
             onOpenNotifications={() => setIsNotificationsModalOpen(true)}
+            onOpenAdmin={() => setIsAdminModalOpen(true)}
             onReturnHome={() => setAppStage('landing')}
           />
 
@@ -617,6 +620,13 @@ export default function App() {
             isOpen={isGovPortalOpen}
             onClose={() => setIsGovPortalOpen(false)}
             currentUser={currentUser}
+            currentLang={currentLang}
+          />
+
+          <SuperAdminModal
+            isOpen={isAdminModalOpen}
+            onClose={() => setIsAdminModalOpen(false)}
+            userLocation={userLocation}
             currentLang={currentLang}
           />
         </div>

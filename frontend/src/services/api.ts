@@ -426,6 +426,48 @@ export async function fetchGovernmentDocuments() {
   return await response.json();
 }
 
+/* ==========================================================================
+   Super Admin & Historical Marine Comparison APIs
+   ========================================================================== */
+
+export async function fetchSystemHealth() {
+  const response = await fetch(`${API_BASE_URL}/api/admin/system-health`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch system health');
+  }
+  return await response.json();
+}
+
+export async function fetchAdminUsers() {
+  const response = await fetch(`${API_BASE_URL}/api/admin/users`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch user list');
+  }
+  return await response.json();
+}
+
+export async function updateUserRole(userId: string, role: string) {
+  const response = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/role`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role }),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to update user role');
+  }
+  return await response.json();
+}
+
+export async function fetchHistoricalComparison(lat: number, lon: number, periodHours: number = 24) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/marine/historical-comparison?lat=${lat}&lon=${lon}&period_hours=${periodHours}`
+  );
+  if (!response.ok) {
+    throw new Error('Failed to fetch historical marine comparison');
+  }
+  return await response.json();
+}
+
 export default {
   queryORCA,
   registerUser,
@@ -453,4 +495,8 @@ export default {
   fetchGovernmentAnnouncementDetails,
   publishGovernmentAnnouncement,
   fetchGovernmentDocuments,
+  fetchSystemHealth,
+  fetchAdminUsers,
+  updateUserRole,
+  fetchHistoricalComparison,
 };

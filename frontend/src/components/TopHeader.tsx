@@ -12,6 +12,7 @@ interface TopHeaderProps {
   currentUser?: any | null;
   unreadAlertsCount?: number;
   onOpenNotifications?: () => void;
+  onOpenAdmin?: () => void;
   onReturnHome?: () => void;
 }
 
@@ -36,6 +37,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   currentUser,
   unreadAlertsCount = 0,
   onOpenNotifications,
+  onOpenAdmin,
   onReturnHome,
 }) => {
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
@@ -177,6 +179,17 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
                 {unreadAlertsCount}
               </span>
             )}
+          </button>
+        )}
+
+        {/* Super Admin Console Button */}
+        {onOpenAdmin && (
+          <button
+            onClick={onOpenAdmin}
+            title="Open Super Admin Telemetry & Fleet Console"
+            className="p-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 hover:text-purple-900 transition cursor-pointer"
+          >
+            <ShieldAlert className="w-4 h-4" />
           </button>
         )}
       </div>
