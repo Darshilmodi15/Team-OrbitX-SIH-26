@@ -1,0 +1,84 @@
+[
+  {
+    "id": "imbl_india_pakistan",
+    "name": "India-Pakistan International Maritime Boundary Line (IMBL)",
+    "type": "IMBL",
+    "geometry_type": "LineString",
+    "threshold_nm": 15.0,
+    "severity": "WARNING",
+    "description": "International Maritime Boundary Line between India and Pakistan in the Arabian Sea / Sir Creek sector. Crossing triggers immediate apprehension risk by foreign coast guard.",
+    "coordinates": [
+      [68.1667, 23.5000],
+      [68.0000, 23.2500],
+      [67.8000, 23.0000],
+      [67.5000, 22.5000],
+      [67.0000, 21.5000],
+      [66.5000, 20.5000]
+    ]
+  },
+  {
+    "id": "imbl_india_srilanka",
+    "name": "India-Sri Lanka International Maritime Boundary Line (IMBL)",
+    "type": "IMBL",
+    "geometry_type": "LineString",
+    "threshold_nm": 10.0,
+    "severity": "WARNING",
+    "description": "Maritime Boundary Line between India and Sri Lanka in Palk Strait and Gulf of Mannar. Strict naval monitoring zone.",
+    "coordinates": [
+      [79.0750, 9.1000],
+      [79.2500, 9.3500],
+      [79.5333, 9.6833],
+      [79.8500, 10.0833],
+      [80.0500, 10.4500],
+      [80.3333, 10.8333]
+    ]
+  },
+  {
+    "id": "mpa_gulf_of_mannar",
+    "name": "Gulf of Mannar Marine National Park",
+    "type": "MPA",
+    "geometry_type": "Polygon",
+    "threshold_nm": 5.0,
+    "severity": "CRITICAL",
+    "description": "Protected Marine Sanctuary and Biosphere Reserve in Tamil Nadu. Commercial mechanized trawling and purse-seining are strictly prohibited by law.",
+    "coordinates": [
+      [78.5000, 8.8000],
+      [79.3000, 8.8000],
+      [79.3000, 9.3000],
+      [78.5000, 9.3000],
+      [78.5000, 8.8000]
+    ]
+  },
+  {
+    "id": "mpa_malvan_sanctuary",
+    "name": "Malvan Marine Sanctuary (Sindhudurg)",
+    "type": "MPA",
+    "geometry_type": "Polygon",
+    "threshold_nm": 4.0,
+    "severity": "CRITICAL",
+    "description": "Coastal Marine Protected Area in southern Maharashtra protecting coral reefs and marine flora. Commercial fishing strictly regulated.",
+    "coordinates": [
+      [73.4000, 15.9800],
+      [73.5200, 15.9800],
+      [73.5200, 16.0800],
+      [73.4000, 16.0800],
+      [73.4000, 15.9800]
+    ]
+  },
+  {
+    "id": "mpa_gahirmatha",
+    "name": "Gahirmatha Marine Sanctuary (Odisha)",
+    "type": "MPA",
+    "geometry_type": "Polygon",
+    "threshold_nm": 6.0,
+    "severity": "CRITICAL",
+    "description": "Mass nesting sanctuary for endangered Olive Ridley Sea Turtles. Seasonal fishing prohibition zone enforced by Indian Coast Guard.",
+    "coordinates": [
+      [86.7500, 20.6000],
+      [87.1500, 20.6000],
+      [87.1500, 20.9000],
+      [86.7500, 20.9000],
+      [86.7500, 20.6000]
+    ]
+  }
+]

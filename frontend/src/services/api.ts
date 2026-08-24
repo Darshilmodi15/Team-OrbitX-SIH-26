@@ -1,21 +1,19 @@
 /**
  * ORCA Marine AI - Backend API Service Layer
- * Interfaces directly with FastAPI endpoints (/query, /api/marine-boundaries, /api/chat).
+ * Interfaces directly with FastAPI endpoints (/query, /api/marine-boundaries, /api/chat, /api/geofences).
  */
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-/**
- * Sends an operational marine query to ORCA backend.
- * 
- * @param {Object} payload
- * @param {Object} payload.location - Vessel GPS coordinates { lat: number, lon: number }
- * @param {string} payload.date - Date in 'YYYY-MM-DD' format
- * @param {string} payload.question - User question or operational prompt
- * @param {string} [payload.language] - Language code ('en', 'gu', 'hi', etc.)
- * @returns {Promise<Object>} Backend QueryResponse
- */
-export async function queryORCA(payload) {
+export interface QueryPayload {
+  location: { lat: number; lon: number };
+  date: string;
+  question: string;
+  language?: string;
+  session_id?: string;
+}
+
+export async function queryORCA(payload: QueryPayload) {
   try {
     const response = await fetch(`${API_BASE_URL}/query`, {
       method: 'POST',
@@ -39,21 +37,15 @@ export async function queryORCA(payload) {
     }
 
     return await response.json();
-  } catch (error) {
-    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+  } catch (error: any) {
+    if (error.name === 'TypeError' && error.message?.includes('fetch')) {
       throw new Error('Unable to reach ORCA backend. Please ensure the backend server is running at ' + API_BASE_URL);
     }
     throw error;
   }
 }
 
-/**
- * Fetches real Exclusive Economic Zone (EEZ) GeoJSON from Marine Regions WFS via backend service.
- * 
- * @param {number} [mrgid=8480] - Marine Regions Geographic Identifier (8480: India)
- * @returns {Promise<Object|null>} GeoJSON FeatureCollection
- */
-export async function fetchMarineBoundariesEEZ(mrgid = 8480) {
+export async function fetchMarineBoundariesEEZ(mrgid: number = 8480): Promise<any | null> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/marine-boundaries/eez?mrgid=${mrgid}`);
     if (response.ok) {
@@ -65,15 +57,7 @@ export async function fetchMarineBoundariesEEZ(mrgid = 8480) {
   return null;
 }
 
-/**
- * Evaluates vessel GPS location against Marine Regions EEZ boundaries.
- * 
- * @param {number} lat - Latitude
- * @param {number} lon - Longitude
- * @param {number} [mrgid=8480] - Target MRGID
- * @returns {Promise<Object|null>} Geofence status and boundary distance
- */
-export async function checkMarineBoundary(lat, lon, mrgid = 8480) {
+export async function checkMarineBoundary(lat: number, lon: number, mrgid: number = 8480): Promise<any | null> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/marine-boundaries/check?lat=${lat}&lon=${lon}&mrgid=${mrgid}`);
     if (response.ok) {
@@ -85,8 +69,22 @@ export async function checkMarineBoundary(lat, lon, mrgid = 8480) {
   return null;
 }
 
+export async function fetchGeofences(lat?: number, lon?: number): Promise<any | null> {
+  try {
+    const query = lat !== undefined && lon !== undefined ? `?lat=${lat}&lon=${lon}` : '';
+    const response = await fetch(`${API_BASE_URL}/api/geofences${query}`);
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch (err) {
+    console.warn('Could not fetch geofences:', err);
+  }
+  return null;
+}
+
 export default {
   queryORCA,
   fetchMarineBoundariesEEZ,
   checkMarineBoundary,
+  fetchGeofences,
 };
