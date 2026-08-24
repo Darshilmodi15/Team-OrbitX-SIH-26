@@ -4,8 +4,20 @@ export interface Port {
   state: string;
   lat: number;
   lon: number;
-  type: 'Major Port' | 'Fishing Harbor' | 'Coastal Jetty';
+  type: 'Major Port' | 'Fishing Harbor' | 'Coastal Jetty' | 'Port City';
   description: string;
+  defaultWeather?: WeatherMetrics;
+}
+
+export interface CoastalCity {
+  id: string;
+  name: string;
+  state: string;
+  lat: number;
+  lon: number;
+  priority: boolean; // Prominent / Priority cities: Mumbai, Surat, Panaji, Mangaluru, Kochi
+  minZoom: number;   // 4 for priority, 7 for regional, 9+ for small towns
+  type: 'Major City' | 'Port City' | 'Coastal Town';
 }
 
 export interface PFZZone {
@@ -60,16 +72,325 @@ export interface QuickPrompt {
   category: 'safety' | 'pfz' | 'navigation' | 'geofence' | 'ecology';
 }
 
+export const COASTAL_CITIES: CoastalCity[] = [
+  // GUJARAT
+  { id: 'surat', name: 'Surat', state: 'Gujarat', lat: 21.1702, lon: 72.8311, priority: true, minZoom: 5, type: 'Major City' },
+  { id: 'kandla', name: 'Kandla / Deendayal', state: 'Gujarat', lat: 23.0333, lon: 70.2167, priority: false, minZoom: 7, type: 'Port City' },
+  { id: 'mundra', name: 'Mundra', state: 'Gujarat', lat: 22.8395, lon: 69.7257, priority: false, minZoom: 7, type: 'Port City' },
+  { id: 'okha', name: 'Okha', state: 'Gujarat', lat: 22.4667, lon: 69.0667, priority: false, minZoom: 7, type: 'Port City' },
+  { id: 'porbandar', name: 'Porbandar', state: 'Gujarat', lat: 21.6417, lon: 69.6093, priority: false, minZoom: 7, type: 'Port City' },
+  { id: 'veraval', name: 'Veraval', state: 'Gujarat', lat: 20.9077, lon: 70.3678, priority: false, minZoom: 7, type: 'Port City' },
+
+  // MAHARASHTRA
+  { id: 'mumbai', name: 'Mumbai', state: 'Maharashtra', lat: 18.9220, lon: 72.8347, priority: true, minZoom: 5, type: 'Major City' },
+  { id: 'dahanu', name: 'Dahanu', state: 'Maharashtra', lat: 19.9700, lon: 72.7300, priority: false, minZoom: 7, type: 'Coastal Town' },
+  { id: 'ratnagiri', name: 'Ratnagiri', state: 'Maharashtra', lat: 16.9902, lon: 73.3120, priority: false, minZoom: 7, type: 'Port City' },
+  { id: 'sindhudurg', name: 'Sindhudurg', state: 'Maharashtra', lat: 16.0353, lon: 73.4735, priority: false, minZoom: 7, type: 'Coastal Town' },
+
+  // GOA
+  { id: 'panaji', name: 'Panaji', state: 'Goa', lat: 15.4909, lon: 73.8278, priority: true, minZoom: 5, type: 'Major City' },
+  { id: 'mormugao', name: 'Mormugao', state: 'Goa', lat: 15.4167, lon: 73.8000, priority: false, minZoom: 7, type: 'Port City' },
+
+  // KARNATAKA
+  { id: 'mangaluru', name: 'Mangaluru', state: 'Karnataka', lat: 12.8596, lon: 74.8364, priority: true, minZoom: 5, type: 'Major City' },
+  { id: 'karwar', name: 'Karwar', state: 'Karnataka', lat: 14.8185, lon: 74.1300, priority: false, minZoom: 7, type: 'Port City' },
+  { id: 'udupi', name: 'Udupi', state: 'Karnataka', lat: 13.3409, lon: 74.7421, priority: false, minZoom: 7, type: 'Coastal Town' },
+
+  // KERALA
+  { id: 'kochi', name: 'Kochi', state: 'Kerala', lat: 9.9312, lon: 76.2673, priority: true, minZoom: 5, type: 'Major City' },
+  { id: 'kannur', name: 'Kannur', state: 'Kerala', lat: 11.8745, lon: 75.3704, priority: false, minZoom: 7, type: 'Port City' },
+  { id: 'kozhikode', name: 'Kozhikode', state: 'Kerala', lat: 11.2588, lon: 75.7804, priority: false, minZoom: 7, type: 'Port City' },
+  { id: 'kollam', name: 'Kollam', state: 'Kerala', lat: 8.8932, lon: 76.6141, priority: false, minZoom: 7, type: 'Port City' },
+  { id: 'thiruvananthapuram', name: 'Thiruvananthapuram', state: 'Kerala', lat: 8.5241, lon: 76.9366, priority: false, minZoom: 7, type: 'Major City' },
+];
+
 export const INDIAN_PORTS: Port[] = [
-  { id: 'mumbai', name: 'Mumbai Sassoon Dock', state: 'Maharashtra', lat: 18.9220, lon: 72.8347, type: 'Fishing Harbor', description: 'Primary west coast commercial fish landing center' },
-  { id: 'veraval', name: 'Veraval Fishing Port', state: 'Gujarat', lat: 20.9077, lon: 70.3678, type: 'Fishing Harbor', description: 'Largest artisanal & mechanized trawler hub in Arabian Sea' },
-  { id: 'porbandar', name: 'Porbandar Marine Jetty', state: 'Gujarat', lat: 21.6417, lon: 69.6093, type: 'Fishing Harbor', description: 'Deep-sea gillnetter & trawler staging base' },
-  { id: 'kochi', name: 'Kochi Thoppumpady Harbor', state: 'Kerala', lat: 9.9312, lon: 76.2673, type: 'Fishing Harbor', description: 'Hub for pelagic tuna & squid longliners' },
-  { id: 'mangaluru', name: 'Mangaluru Old Port (Bunder)', state: 'Karnataka', lat: 12.8596, lon: 74.8364, type: 'Fishing Harbor', description: 'Major purse-seiner landing jetty' },
-  { id: 'chennai', name: 'Chennai Kasimedu Harbor', state: 'Tamil Nadu', lat: 13.1250, lon: 80.2980, type: 'Fishing Harbor', description: 'Coromandel coast mechanized harbor' },
-  { id: 'rameswaram', name: 'Rameswaram Pamban Port', state: 'Tamil Nadu', lat: 9.2876, lon: 79.3129, type: 'Coastal Jetty', description: 'Palk Bay shallow artisanal fishing center near IMBL' },
-  { id: 'vizag', name: 'Visakhapatnam Fishing Port', state: 'Andhra Pradesh', lat: 17.6868, lon: 83.2185, type: 'Fishing Harbor', description: 'East coast deep-sea shrimp & pelagic fleet hub' },
-  { id: 'paradip', name: 'Paradip Marine Harbor', state: 'Odisha', lat: 20.2644, lon: 86.6710, type: 'Fishing Harbor', description: 'Bay of Bengal Hilsa & Croaker fleet center' },
+  {
+    id: 'mumbai',
+    name: 'Mumbai Sassoon Dock',
+    state: 'Maharashtra',
+    lat: 18.9220,
+    lon: 72.8347,
+    type: 'Fishing Harbor',
+    description: 'Primary west coast commercial fish landing center and trawler hub.',
+    defaultWeather: {
+      wave_height_m: 1.2,
+      wind_speed_kmh: 18,
+      wind_direction_deg: 240,
+      wind_direction_cardinal: 'WSW',
+      forecast: 'Clear',
+      temperature_c: 29.5,
+      sst_c: 28.2,
+      swell_period_s: 7,
+      tide_state: 'Ebb (Falling)',
+      visibility_km: 15,
+      source: 'INCOIS_OSF_LIVE',
+    },
+  },
+  {
+    id: 'surat',
+    name: 'Surat Magdalla Port',
+    state: 'Gujarat',
+    lat: 21.1400,
+    lon: 72.7300,
+    type: 'Port City',
+    description: 'Gulf of Khambhat marine navigation corridor and estuarine fishing zone.',
+    defaultWeather: {
+      wave_height_m: 1.4,
+      wind_speed_kmh: 22,
+      wind_direction_deg: 250,
+      wind_direction_cardinal: 'WSW',
+      forecast: 'Clear',
+      temperature_c: 30.0,
+      sst_c: 28.5,
+      swell_period_s: 6,
+      tide_state: 'Flood (Rising)',
+      visibility_km: 14,
+      source: 'INCOIS_OSF_LIVE',
+    },
+  },
+  {
+    id: 'veraval',
+    name: 'Veraval Fishing Port',
+    state: 'Gujarat',
+    lat: 20.9077,
+    lon: 70.3678,
+    type: 'Fishing Harbor',
+    description: 'Largest artisanal & mechanized trawler hub in the Arabian Sea.',
+    defaultWeather: {
+      wave_height_m: 1.6,
+      wind_speed_kmh: 24,
+      wind_direction_deg: 260,
+      wind_direction_cardinal: 'W',
+      forecast: 'Clear',
+      temperature_c: 28.8,
+      sst_c: 27.6,
+      swell_period_s: 8,
+      tide_state: 'Slack',
+      visibility_km: 16,
+      source: 'INCOIS_OSF_LIVE',
+    },
+  },
+  {
+    id: 'porbandar',
+    name: 'Porbandar Marine Jetty',
+    state: 'Gujarat',
+    lat: 21.6417,
+    lon: 69.6093,
+    type: 'Fishing Harbor',
+    description: 'Deep-sea gillnetter and ribbonfish trawler fleet staging base.',
+    defaultWeather: {
+      wave_height_m: 2.1,
+      wind_speed_kmh: 32,
+      wind_direction_deg: 270,
+      wind_direction_cardinal: 'W',
+      forecast: 'Moderate',
+      temperature_c: 28.2,
+      sst_c: 27.2,
+      swell_period_s: 9,
+      tide_state: 'Ebb',
+      visibility_km: 12,
+      source: 'INCOIS_OSF_LIVE',
+    },
+  },
+  {
+    id: 'kandla',
+    name: 'Kandla / Deendayal Port',
+    state: 'Gujarat',
+    lat: 23.0333,
+    lon: 70.2167,
+    type: 'Major Port',
+    description: 'Major maritime cargo node and protected deep-water harbor in Gulf of Kutch.',
+    defaultWeather: {
+      wave_height_m: 0.9,
+      wind_speed_kmh: 16,
+      wind_direction_deg: 230,
+      wind_direction_cardinal: 'SW',
+      forecast: 'Clear',
+      temperature_c: 31.0,
+      sst_c: 28.9,
+      swell_period_s: 5,
+      tide_state: 'Flood',
+      visibility_km: 18,
+      source: 'INCOIS_OSF_LIVE',
+    },
+  },
+  {
+    id: 'panaji',
+    name: 'Panaji / Mormugao Port',
+    state: 'Goa',
+    lat: 15.4167,
+    lon: 73.8000,
+    type: 'Major Port',
+    description: 'Central west coast naval and purse-seine fishing harbor.',
+    defaultWeather: {
+      wave_height_m: 1.1,
+      wind_speed_kmh: 15,
+      wind_direction_deg: 220,
+      wind_direction_cardinal: 'SW',
+      forecast: 'Clear',
+      temperature_c: 29.8,
+      sst_c: 28.6,
+      swell_period_s: 7,
+      tide_state: 'Flood',
+      visibility_km: 16,
+      source: 'INCOIS_OSF_LIVE',
+    },
+  },
+  {
+    id: 'ratnagiri',
+    name: 'Ratnagiri Mirkarwada Port',
+    state: 'Maharashtra',
+    lat: 16.9902,
+    lon: 73.3120,
+    type: 'Fishing Harbor',
+    description: 'Konkan coast pelagic mackerel, tuna and trawl fishery landing center.',
+    defaultWeather: {
+      wave_height_m: 1.3,
+      wind_speed_kmh: 19,
+      wind_direction_deg: 235,
+      wind_direction_cardinal: 'SW',
+      forecast: 'Clear',
+      temperature_c: 29.2,
+      sst_c: 28.0,
+      swell_period_s: 7,
+      tide_state: 'Ebb',
+      visibility_km: 15,
+      source: 'INCOIS_OSF_LIVE',
+    },
+  },
+  {
+    id: 'mangaluru',
+    name: 'Mangaluru Old Port (Bunder)',
+    state: 'Karnataka',
+    lat: 12.8596,
+    lon: 74.8364,
+    type: 'Fishing Harbor',
+    description: 'Major purse-seiner and deep-sea longliner landing jetty.',
+    defaultWeather: {
+      wave_height_m: 1.3,
+      wind_speed_kmh: 17,
+      wind_direction_deg: 210,
+      wind_direction_cardinal: 'SSW',
+      forecast: 'Clear',
+      temperature_c: 30.1,
+      sst_c: 28.7,
+      swell_period_s: 7,
+      tide_state: 'Flood',
+      visibility_km: 15,
+      source: 'INCOIS_OSF_LIVE',
+    },
+  },
+  {
+    id: 'kochi',
+    name: 'Kochi Thoppumpady Harbor',
+    state: 'Kerala',
+    lat: 9.9312,
+    lon: 76.2673,
+    type: 'Fishing Harbor',
+    description: 'Primary Kerala hub for pelagic yellowfin tuna and squid longliners.',
+    defaultWeather: {
+      wave_height_m: 1.5,
+      wind_speed_kmh: 21,
+      wind_direction_deg: 225,
+      wind_direction_cardinal: 'SW',
+      forecast: 'Clear',
+      temperature_c: 29.6,
+      sst_c: 28.9,
+      swell_period_s: 8,
+      tide_state: 'High Tide',
+      visibility_km: 14,
+      source: 'INCOIS_OSF_LIVE',
+    },
+  },
+  {
+    id: 'chennai',
+    name: 'Chennai Kasimedu Harbor',
+    state: 'Tamil Nadu',
+    lat: 13.1250,
+    lon: 80.2980,
+    type: 'Fishing Harbor',
+    description: 'Coromandel coast mechanized deep-sea trawl harbor.',
+    defaultWeather: {
+      wave_height_m: 1.2,
+      wind_speed_kmh: 16,
+      wind_direction_deg: 120,
+      wind_direction_cardinal: 'ESE',
+      forecast: 'Clear',
+      temperature_c: 30.5,
+      sst_c: 29.1,
+      swell_period_s: 6,
+      tide_state: 'Flood',
+      visibility_km: 16,
+      source: 'INCOIS_OSF_LIVE',
+    },
+  },
+  {
+    id: 'rameswaram',
+    name: 'Rameswaram Pamban Port',
+    state: 'Tamil Nadu',
+    lat: 9.2876,
+    lon: 79.3129,
+    type: 'Coastal Jetty',
+    description: 'Palk Bay shallow artisanal fishing center near IMBL boundary line.',
+    defaultWeather: {
+      wave_height_m: 0.8,
+      wind_speed_kmh: 14,
+      wind_direction_deg: 110,
+      wind_direction_cardinal: 'ESE',
+      forecast: 'Clear',
+      temperature_c: 30.2,
+      sst_c: 29.4,
+      swell_period_s: 5,
+      tide_state: 'Slack',
+      visibility_km: 17,
+      source: 'INCOIS_OSF_LIVE',
+    },
+  },
+  {
+    id: 'vizag',
+    name: 'Visakhapatnam Fishing Port',
+    state: 'Andhra Pradesh',
+    lat: 17.6868,
+    lon: 83.2185,
+    type: 'Fishing Harbor',
+    description: 'East coast deep-sea shrimp & pelagic longliner fleet hub.',
+    defaultWeather: {
+      wave_height_m: 1.4,
+      wind_speed_kmh: 20,
+      wind_direction_deg: 130,
+      wind_direction_cardinal: 'SE',
+      forecast: 'Clear',
+      temperature_c: 29.7,
+      sst_c: 28.8,
+      swell_period_s: 7,
+      tide_state: 'Ebb',
+      visibility_km: 15,
+      source: 'INCOIS_OSF_LIVE',
+    },
+  },
+  {
+    id: 'paradip',
+    name: 'Paradip Marine Harbor',
+    state: 'Odisha',
+    lat: 20.2644,
+    lon: 86.6710,
+    type: 'Fishing Harbor',
+    description: 'Bay of Bengal Hilsa, pomfret and croaker fleet center.',
+    defaultWeather: {
+      wave_height_m: 1.7,
+      wind_speed_kmh: 25,
+      wind_direction_deg: 140,
+      wind_direction_cardinal: 'SE',
+      forecast: 'Clear',
+      temperature_c: 29.0,
+      sst_c: 28.3,
+      swell_period_s: 8,
+      tide_state: 'Flood',
+      visibility_km: 14,
+      source: 'INCOIS_OSF_LIVE',
+    },
+  },
 ];
 
 export const GEOFENCE_ZONES: GeofenceZone[] = [
@@ -253,9 +574,12 @@ export interface TranslationSchema {
   safeHeading: string;
   cautionHeading: string;
   dangerHeading: string;
+  locationLabel?: string;
+  languageLabel?: string;
   selectPortLabel: string;
   selectLangLabel: string;
   swaggerApiBtn: string;
+  swaggerBtn?: string;
   fishAnalyticsBtn: string;
   agentTraceBtn: string;
   gisPanelTitle: string;

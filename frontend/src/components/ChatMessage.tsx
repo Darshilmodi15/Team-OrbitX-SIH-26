@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Volume2, Square, Copy, Check, ShieldCheck } from 'lucide-react';
 import EvidencePanel from './EvidencePanel';
 import type { MessageItem } from '../App';
 
@@ -9,7 +10,14 @@ interface ChatMessageProps {
 
 export default function ChatMessage({ message, currentLang = 'en' }: ChatMessageProps) {
   const [isPlayingVoice, setIsPlayingVoice] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const isUser = message.sender === 'user';
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(message.text);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
 
   const handleSpeak = (text: string) => {
     if (!('speechSynthesis' in window)) return;
@@ -24,7 +32,7 @@ export default function ChatMessage({ message, currentLang = 'en' }: ChatMessage
     const cleanText = text
       .replace(/[#*_`]/g, '')
       .replace(/\n+/g, '. ')
-      .slice(0, 350);
+      .slice(0, 400);
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.rate = 0.95;
@@ -58,56 +66,73 @@ export default function ChatMessage({ message, currentLang = 'en' }: ChatMessage
 
   if (isUser) {
     return (
-      <div className="flex justify-end items-start gap-2.5 mb-4 group animate-fadeIn">
-        <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-gradient-to-r from-cyan-600 to-blue-700 text-white p-3.5 shadow-lg border border-cyan-400/30">
-          <div className="flex items-center justify-between gap-3 mb-1 text-[11px] text-cyan-100 font-mono">
+      <div className="flex justify-end items-start gap-2 mb-3">
+        <div className="max-w-[85%] rounded-2xl rounded-tr-xs bg-gradient-to-r from-[#0F766E] to-[#0284C7] text-white p-3.5 shadow-xs">
+          <div className="flex items-center justify-between gap-3 mb-1 text-[11px] text-teal-100 font-mono">
             <span className="font-bold flex items-center gap-1">
               <span>👤</span> Vessel Master
             </span>
-            <span className="text-[10px] text-cyan-200/75">{message.timestamp}</span>
+            <span className="text-[10px] text-teal-200/80">{message.timestamp}</span>
           </div>
-          <p className="text-sm leading-relaxed text-slate-50 font-sans whitespace-pre-wrap">{message.text}</p>
+          <p className="text-xs leading-relaxed text-white font-sans whitespace-pre-wrap font-medium">
+            {message.text}
+          </p>
         </div>
-        <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-700 border border-cyan-400/50 flex items-center justify-center text-xs shrink-0 shadow-md">
+        <div className="w-7 h-7 rounded-xl bg-teal-100 border border-teal-200 flex items-center justify-center text-teal-800 text-xs shrink-0 font-bold">
           ⚓
         </div>
       </div>
     );
   }
 
-  // Assistant message formatting
+  // Assistant message formatting (Clean white card)
   return (
-    <div className="flex justify-start items-start gap-2.5 mb-4 group animate-fadeIn">
-      <div className="w-8 h-8 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-blue-600/40 border border-cyan-400/50 flex items-center justify-center text-sm shrink-0 shadow-[0_0_12px_rgba(34,211,238,0.3)]">
+    <div className="flex justify-start items-start gap-2 mb-3">
+      <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-base shrink-0 shadow-2xs">
         🌊
       </div>
 
-      <div className="max-w-[92%] flex-1 rounded-2xl rounded-tl-sm bg-slate-900/85 backdrop-blur-xl text-slate-100 p-4 shadow-xl border border-slate-800 hover:border-cyan-500/30 transition-all">
-        <div className="flex items-center justify-between gap-3 mb-2.5 pb-2 border-b border-slate-800 text-[11px] font-mono">
+      <div className="max-w-[92%] flex-1 rounded-2xl rounded-tl-xs bg-white border border-slate-200 text-slate-800 p-3.5 shadow-xs">
+        <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-100 text-xs font-mono">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-cyan-300 tracking-wide text-xs">ORCA Marine AI</span>
-            <span className="px-1.5 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-500/30 text-[9px] font-semibold">
-              EVIDENCE VERIFIED
+            <span className="font-black text-[#0F766E] tracking-tight text-xs font-display">
+              ORCA Marine AI
+            </span>
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold">
+              <ShieldCheck className="w-2.5 h-2.5" />
+              VERIFIED
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            {/* Listen / Voice button */}
             <button
               onClick={() => handleSpeak(message.text)}
-              title={isPlayingVoice ? 'Stop Voice' : 'Listen in Regional Language'}
-              className={`p-1 rounded-md text-xs transition cursor-pointer ${
+              title={isPlayingVoice ? 'Stop Audio' : 'Listen in regional voice'}
+              className={`p-1 rounded-md text-[11px] font-sans flex items-center gap-1 transition cursor-pointer ${
                 isPlayingVoice
-                  ? 'bg-rose-500/20 text-rose-300 animate-pulse'
-                  : 'bg-slate-800 text-slate-300 hover:text-cyan-300 hover:bg-slate-700'
+                  ? 'bg-rose-100 text-rose-700 font-bold animate-pulse'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
               }`}
             >
-              {isPlayingVoice ? '⏹️ Stop' : '🔊 Voice'}
+              {isPlayingVoice ? <Square className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+              <span className="text-[10px] hidden sm:inline">{isPlayingVoice ? 'Stop' : 'Listen'}</span>
             </button>
+
+            {/* Copy button */}
+            <button
+              onClick={handleCopy}
+              title="Copy response"
+              className="p-1 rounded-md text-[11px] font-sans flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-600 transition cursor-pointer"
+            >
+              {isCopied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+            </button>
+
             <span className="text-slate-400 text-[10px]">{message.timestamp}</span>
           </div>
         </div>
 
-        {/* Message body with Markdown line breaks */}
-        <div className="text-sm leading-relaxed text-slate-200 whitespace-pre-wrap font-sans">
+        {/* Message body */}
+        <div className="text-xs leading-relaxed text-slate-800 whitespace-pre-wrap font-sans">
           {message.text}
         </div>
 
@@ -123,3 +148,4 @@ export default function ChatMessage({ message, currentLang = 'en' }: ChatMessage
     </div>
   );
 }
+
