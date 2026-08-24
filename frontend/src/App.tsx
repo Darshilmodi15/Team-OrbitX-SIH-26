@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Header from './components/Header';
 import ChatPanel from './components/ChatPanel';
 import MarineMap from './components/MarineMap';
@@ -69,6 +69,25 @@ export default function App() {
   const [pfzZones, setPfzZones] = useState<PFZEvidenceItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Auto-load PFZ zones on startup so map markers appear immediately
+  useEffect(() => {
+    const loadInitialPFZ = async () => {
+      try {
+        const response = (await queryORCA({
+          location: { lat: 18.9220, lon: 72.8347 },
+          date: new Date().toISOString().split('T')[0],
+          question: 'Where are the nearest potential fishing zones near Mumbai?',
+        })) as BackendQueryResponse;
+        if (response.nearest_pfz && Array.isArray(response.nearest_pfz) && response.nearest_pfz.length > 0) {
+          setPfzZones(response.nearest_pfz);
+        }
+      } catch {
+        // Silent startup — won't show error if backend is warming up
+      }
+    };
+    loadInitialPFZ();
+  }, []);
 
   const handleSelectPort = (coords: LocationCoords) => {
     setUserLocation(coords);
