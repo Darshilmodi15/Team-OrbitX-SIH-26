@@ -6,7 +6,7 @@
 
 ## 🌟 Key Features
 
-- **🧠 Intent Classification Agent**: Powered by Anthropic Claude (`claude-sonnet-4-6`), queries are classified into domain intents (`safety_check`, `nearest_pfz`, `weather_conditions`, `general`) with automatic geographic location hint extraction.
+- **🧠 Intent Classification Agent**: Powered by Google Gemini (`gemini-2.5-flash`) or Anthropic Claude (`claude-sonnet-4-6`), queries are classified into domain intents (`safety_check`, `nearest_pfz`, `weather_conditions`, `general`) with automatic geographic location hint extraction.
 - **🛡️ Marine Safety Risk Assessment Agent**: Evaluates complex marine conditions (wave heights, wind speeds, squall/storm risks) into clear risk tiers (`SAFE`, `CAUTION`, `UNSAFE`) with operational guidance.
 - **🐟 Potential Fishing Zones (PFZ) Advisory**: Identifies thermal fronts, chlorophyll blooms, shelf breaks, and upwelling regions with distance calculations, depth estimates, and dominant target species.
 - **🔍 Full Reasoning Trace & Source Attribution**: Every advisory response includes an end-to-end reasoning trace and attribution of all services and agents consulted.
@@ -19,7 +19,7 @@
 ```mermaid
 flowchart TD
     A[User Operational Query] --> B[FastAPI Endpoint: /query]
-    B --> C[Intent Classification Agent<br/>Anthropic Claude: claude-sonnet-4-6]
+    B --> C[Intent Classification Agent<br/>Google Gemini / Anthropic Claude]
     C --> D[Retrieve Marine Weather Data<br/>Wave Height, Wind Speed, Forecast]
     D --> E[Risk Assessment Agent<br/>Evaluates Navigation & Fishing Safety]
     E --> F[Potential Fishing Zones Service<br/>Identifies Nearest High-Yield Zones]
@@ -35,13 +35,14 @@ flowchart TD
 ORCA/
 ├── README.md                           # Project documentation
 ├── backend/
+│   ├── .env                            # Environment variables (API keys)
 │   ├── requirements.txt                # Python dependencies
 │   └── app/
 │       ├── __init__.py
 │       ├── main.py                     # FastAPI application & /query pipeline
 │       ├── agents/
 │       │   ├── __init__.py
-│       │   ├── intent_agent.py         # Claude-powered intent parser
+│       │   ├── intent_agent.py         # Gemini / Claude intent parser
 │       │   └── risk_agent.py           # Marine safety risk evaluation agent
 │       └── data/
 │           ├── __init__.py
@@ -57,7 +58,7 @@ ORCA/
 ### Prerequisites
 
 - Python 3.10+
-- Anthropic API Key (optional for fallback mode, required for live Claude intent parsing)
+- Gemini API Key (Free tier from [Google AI Studio](https://aistudio.google.com/app/apikey)) or Anthropic API Key
 
 ### 1. Clone & Setup Environment
 
@@ -74,13 +75,17 @@ pip install -r requirements.txt
 
 ### 2. Environment Configuration
 
-Create a `.env` file in `backend/` (or set environment variables):
+Create a `.env` file in `backend/`:
 
 ```bash
-ANTHROPIC_API_KEY="your-anthropic-api-key-here"
+# Using Google Gemini API (Free Tier)
+echo "GEMINI_API_KEY=your_gemini_api_key_here" > .env
+
+# Alternatively, using Anthropic API
+# echo "ANTHROPIC_API_KEY=your_anthropic_api_key_here" > .env
 ```
 
-> **Note:** If `ANTHROPIC_API_KEY` is not provided, the intent agent automatically falls back to built-in heuristic pattern matching to ensure zero downtime.
+> **Note:** If no API key is provided, the intent agent automatically falls back to built-in heuristic pattern matching to ensure zero downtime.
 
 ### 3. Run the Backend Server
 
@@ -89,6 +94,18 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 The API will be available at `http://localhost:8000`. Interactive Swagger API docs are accessible at `http://localhost:8000/docs`.
+
+### 4. Test with cURL
+
+```bash
+curl -X POST "http://localhost:8000/query" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "location": {"lat": 18.9220, "lon": 72.8347},
+    "date": "2026-08-24",
+    "question": "Is it safe to fish near Mumbai today, and where are the closest fishing spots?"
+  }'
+```
 
 ---
 
