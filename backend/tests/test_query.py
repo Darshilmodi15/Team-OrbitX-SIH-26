@@ -33,7 +33,7 @@ class TestQueryEndpoint(unittest.TestCase):
         
         self.assertIn("planner", data["sources_used"])
         self.assertIn("intent_agent", data["sources_used"])
-        self.assertIn("mock_marine_weather", data["sources_used"])
+        self.assertTrue(any(s in data["sources_used"] for s in ["INCOIS_OSF_WW3", "mock_marine_weather"]))
         self.assertIn("risk_assessment_agent", data["sources_used"])
         self.assertNotIn("incois_derived_pfz_dataset", data["sources_used"])
         self.assertNotIn("geospatial_agent", data["sources_used"])
@@ -67,7 +67,7 @@ class TestQueryEndpoint(unittest.TestCase):
         data = response.json()
 
         self.assertIn("planner", data["sources_used"])
-        self.assertIn("mock_marine_weather", data["sources_used"])
+        self.assertTrue(any(s in data["sources_used"] for s in ["INCOIS_OSF_WW3", "mock_marine_weather"]))
         self.assertNotIn("incois_derived_pfz_dataset", data["sources_used"])
         self.assertNotIn("risk_assessment_agent", data["sources_used"])
 
@@ -82,7 +82,7 @@ class TestQueryEndpoint(unittest.TestCase):
         data = response.json()
 
         self.assertIn("planner", data["sources_used"])
-        self.assertIn("mock_marine_weather", data["sources_used"])
+        self.assertTrue(any(s in data["sources_used"] for s in ["INCOIS_OSF_WW3", "mock_marine_weather"]))
         self.assertIn("risk_assessment_agent", data["sources_used"])
         self.assertIn("incois_derived_pfz_dataset", data["sources_used"])
         self.assertIn("geospatial_agent", data["sources_used"])

@@ -36,15 +36,22 @@ export interface GeofenceZone {
 export interface WeatherMetrics {
   wave_height_m: number;
   wind_speed_kmh: number;
-  wind_direction_deg: number;
-  forecast: 'clear' | 'rainy' | 'stormy' | 'squall';
-  temperature_c: number;
-  sst_c: number;
-  swell_period_s: number;
-  tide_state: 'High Tide (+1.8m)' | 'Low Tide (+0.3m)' | 'Slack Tide';
-  visibility_km: number;
-  cyclone_warning: boolean;
+  wind_direction_deg?: number;
+  wind_direction_cardinal?: string;
+  wind_speed_ms?: number;
+  forecast: string;
+  temperature_c?: number;
+  sst_c?: number;
+  swell_period_s?: number;
+  tide_state?: string;
+  visibility_km?: number;
+  cyclone_warning?: boolean;
   cyclone_name?: string;
+  forecast_time?: string;
+  retrieval_time?: string;
+  cache_status?: string;
+  source?: string;
+  is_mock?: boolean;
 }
 
 export interface QuickPrompt {

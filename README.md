@@ -4,12 +4,12 @@
 
 ---
 
-## 🌟 Key Features
-
-- **🧠 Intent Classification Agent**: Powered by Google Gemini (`gemini-2.5-flash`) or Anthropic Claude (`claude-sonnet-4-6`), queries are classified into domain intents (`safety_check`, `nearest_pfz`, `weather_conditions`, `general`) with automatic geographic location hint extraction.
+- **🌊 Real INCOIS Ocean State Forecast (OSF)**: Authoritative operational Significant Wave Height ($HS$ in metres), Wind Speed ($m/s$ and $km/h$), and Wind Direction ($16$-point cardinal & meteorological degrees) retrieved programmatically via official INCOIS NetCDF Subset Service (NCSS) / THREDDS catalog.
+- **⚡ Low-Bandwidth Coastal Geospatial Cache**: Compact query payloads (~130–160 bytes) with 0.05° (~5.5 km) spatial grid normalization allowing nearby vessels to reuse forecasts with sub-millisecond retrieval latencies.
 - **🛡️ Marine Safety Risk Assessment Agent**: Evaluates complex marine conditions (wave heights, wind speeds, squall/storm risks) into clear risk tiers (`SAFE`, `CAUTION`, `UNSAFE`) with operational guidance.
 - **🐟 Potential Fishing Zones (PFZ) Advisory**: Identifies thermal fronts, chlorophyll blooms, shelf breaks, and upwelling regions with distance calculations, depth estimates, and dominant target species.
-- **🔍 Full Reasoning Trace & Source Attribution**: Every advisory response includes an end-to-end reasoning trace and attribution of all services and agents consulted.
+- **🌐 Bhashini Multilingual Layer**: End-to-end voice and text intelligence supporting 10+ Indian coastal languages (Hindi, Gujarati, Marathi, Tamil, Telugu, Malayalam, Bengali, Odia, etc.).
+- **🔍 Full Reasoning Trace & Source Attribution**: Every advisory response includes an end-to-end reasoning trace and attribution of all services and agents consulted (`is_mock=False` for INCOIS).
 - **⚡ High-Performance FastAPI Backend**: RESTful API with automated OpenAPI docs, CORS support, and Pydantic data validation.
 
 ---

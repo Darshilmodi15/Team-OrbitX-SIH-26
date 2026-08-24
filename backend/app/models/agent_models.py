@@ -5,12 +5,22 @@ from pydantic import BaseModel, Field
 
 class WeatherEvidence(BaseModel):
     """Structured marine meteorological evidence returned by the Weather Agent."""
-    forecast: str = Field(..., description="Forecast condition string ('clear', 'rainy', 'stormy')")
+    forecast: str = Field(..., description="Forecast condition string ('clear', 'rainy', 'stormy', etc.)")
     wave_height_m: float = Field(..., description="Significant wave height in meters")
     wind_speed_kmh: float = Field(..., description="Sustained wind speed in km/h")
+    wind_speed_ms: Optional[float] = Field(default=None, description="Wind speed in meters per second")
+    wind_direction_deg: Optional[float] = Field(default=None, description="Wind direction in degrees (0-360)")
+    wind_direction_cardinal: Optional[str] = Field(default=None, description="Wind direction cardinal compass (e.g. 'WSW')")
     temperature_c: Optional[float] = Field(default=None, description="Sea surface or ambient temperature in Celsius")
     visibility_km: Optional[float] = Field(default=None, description="Visibility in kilometers")
-    source: str = Field(..., description="Data provenance (e.g. 'mock_marine_weather', 'INCOIS_OON')")
+    forecast_time: Optional[str] = Field(default=None, description="Source forecast / observation timestamp")
+    retrieval_time: Optional[str] = Field(default=None, description="Data retrieval timestamp")
+    cache_status: Optional[str] = Field(default=None, description="Cache status ('live', 'cached', 'stale', 'unavailable')")
+    grid_lat: Optional[float] = Field(default=None, description="Resolved marine grid latitude")
+    grid_lon: Optional[float] = Field(default=None, description="Resolved marine grid longitude")
+    resolution_method: Optional[str] = Field(default=None, description="Grid resolution method ('exact', 'nearest_marine_cell')")
+    data_age_sec: Optional[int] = Field(default=None, description="Age of cached data in seconds")
+    source: str = Field(..., description="Data provenance (e.g. 'INCOIS_OSF_WW3', 'mock_marine_weather')")
     is_mock: bool = Field(default=True, description="Flag indicating if the evidence is synthetic/mock")
 
 

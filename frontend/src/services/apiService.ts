@@ -301,16 +301,40 @@ export async function askMarineAI(
         agentSteps[0].detail = `Detected: ${data.language_name || data.language} (${data.language}). Processed English query: "${data.english_query || question}" -> Response translated back to user.`;
       }
 
+      const mergedWeather: WeatherMetrics = data.weather
+        ? { ...weather, ...data.weather }
+        : weather;
+
+      const normalizedPfz: PFZZone[] = data.nearest_pfz && data.nearest_pfz.length > 0
+        ? data.nearest_pfz.map((raw: any, index: number) => ({
+            id: raw.id || `pfz-${index}`,
+            name: raw.name || `PFZ Zone ${index + 1}`,
+            lat: Number(raw.lat ?? raw.latitude ?? lat),
+            lon: Number(raw.lon ?? raw.longitude ?? lon),
+            depth_m: raw.depth_m ?? 35,
+            sst_c: raw.sst_c ?? 28.2,
+            chlorophyll_mg_m3: raw.chlorophyll_mg_m3 ?? 2.1,
+            dominant_species: raw.dominant_species || (Array.isArray(raw.species) ? raw.species.join(', ') : 'Pelagic Fish'),
+            confidence: raw.confidence ?? 92,
+            yield_level: raw.yield_level || 'High',
+            recommended_gear: raw.recommended_gear || 'Gillnet / Hook & Line',
+            distance_km: raw.distance_km ?? calculateDistanceKm(lat, lon, Number(raw.lat ?? raw.latitude ?? lat), Number(raw.lon ?? raw.longitude ?? lon)),
+          }))
+        : sortedPfz;
+
+      const currentTargetPfz = normalizedPfz[0] || targetPfz;
+      const currentRoute = generateSafeRoute(lat, lon, currentTargetPfz.lat, currentTargetPfz.lon, mergedWeather.wave_height_m > 1.5);
+
       return {
         answer: data.answer,
         reasoning: data.reasoning || [],
         sources_used: data.sources_used || [],
         risk_level: (data.risk_level as 'safe' | 'caution' | 'unsafe') || riskLevel,
-        weather: data.weather || weather,
-        nearest_pfz: data.nearest_pfz && data.nearest_pfz.length > 0 ? data.nearest_pfz : sortedPfz,
+        weather: mergedWeather,
+        nearest_pfz: normalizedPfz,
         geofence_breach: geofenceCheck.inDanger,
         geofence_warning: geofenceCheck.warning,
-        recommended_route: safeRoute,
+        recommended_route: currentRoute,
         agent_steps: agentSteps,
         language: data.language,
         language_name: data.language_name,
@@ -318,8 +342,8 @@ export async function askMarineAI(
         english_query: data.english_query,
       };
     }
-  } catch {
-    // Graceful fallback to client-side multi-agent engine
+  } catch (err) {
+    console.warn('Backend query error, using client-side fallback:', err);
   }
 
 

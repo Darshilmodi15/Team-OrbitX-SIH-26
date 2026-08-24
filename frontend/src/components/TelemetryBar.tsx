@@ -78,23 +78,23 @@ export const TelemetryBar: React.FC<TelemetryBarProps> = ({
         </div>
 
         {/* Marine Wave Gauge */}
-        <div className="glass-card px-3 py-1.5 flex items-center gap-2 border border-slate-700/60">
+        <div className="glass-card px-3 py-1.5 flex items-center gap-2 border border-slate-700/60" title={weather.source ? `Source: ${weather.source} (${weather.cache_status || 'Live'})` : 'Ocean State Forecast'}>
           <Waves className="w-3.5 h-3.5 text-blue-400" />
           <div>
-            <span className="text-slate-400 block text-[9px] uppercase tracking-wider">Wave Height</span>
+            <span className="text-slate-400 block text-[9px] uppercase tracking-wider">Sig. Wave Height</span>
             <span className={`font-bold ${weather.wave_height_m > 2.0 ? 'text-rose-400' : 'text-blue-300'}`}>
-              {weather.wave_height_m}m (Swell {weather.swell_period_s}s)
+              {weather.wave_height_m.toFixed(2)}m {weather.cache_status === 'stale' ? '(Stale)' : ''}
             </span>
           </div>
         </div>
 
-        {/* Wind Speed */}
-        <div className="glass-card px-3 py-1.5 hidden lg:flex items-center gap-2 border border-slate-700/60">
+        {/* Wind Speed & Direction */}
+        <div className="glass-card px-3 py-1.5 hidden lg:flex items-center gap-2 border border-slate-700/60" title={weather.source ? `Source: ${weather.source}` : 'Wind Vector'}>
           <Wind className="w-3.5 h-3.5 text-teal-400" />
           <div>
-            <span className="text-slate-400 block text-[9px] uppercase tracking-wider">Wind Speed</span>
+            <span className="text-slate-400 block text-[9px] uppercase tracking-wider">Wind Speed & Dir</span>
             <span className="text-teal-300 font-bold">
-              {weather.wind_speed_kmh} km/h (245° WSW)
+              {weather.wind_speed_ms !== undefined ? `${weather.wind_speed_ms.toFixed(1)} m/s` : `${weather.wind_speed_kmh} km/h`} ({weather.wind_direction_cardinal || `${weather.wind_direction_deg ?? 0}°`})
             </span>
           </div>
         </div>

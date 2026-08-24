@@ -28,7 +28,10 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
         return {"intent": "safety_check", "location_hint": None}
     elif any(k in q_lower for k in ["pfz", "fishing zone", "fish zone", "nearest fish", "catch fish", "tuna", "mackerel"]):
         return {"intent": "nearest_pfz", "location_hint": None}
-    elif any(k in q_lower for k in ["weather", "wind", "wave", "forecast", "temp", "rain", "storm", "sea condition"]):
+    elif any(k in q_lower for k in [
+        "weather", "wind", "winds", "wave", "waves", "wave height", "wind speed", "wind direction",
+        "forecast", "temp", "temperature", "rain", "storm", "sea condition", "swell", "sea state"
+    ]):
         return {"intent": "weather_conditions", "location_hint": None}
     return {"intent": "general", "location_hint": None}
 
