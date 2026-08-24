@@ -2,12 +2,14 @@ import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { GEOFENCE_ZONES } from '../data/maritimeData';
 import type { PFZZone } from '../data/maritimeData';
+import type { IncoisPFZZone } from '../services/apiService';
 
 interface MapProps {
   vesselLat: number;
   vesselLon: number;
   onVesselMove: (lat: number, lon: number) => void;
   pfzZones: PFZZone[];
+  incoisPfzZones?: IncoisPFZZone[];
   selectedPfz: PFZZone | null;
   onSelectPfz: (zone: PFZZone) => void;
   showSST: boolean;
@@ -26,6 +28,7 @@ export const MaritimeMap: React.FC<MapProps> = ({
   vesselLon,
   onVesselMove,
   pfzZones,
+  incoisPfzZones,
   selectedPfz,
   onSelectPfz,
   showSST,
@@ -223,6 +226,51 @@ export const MaritimeMap: React.FC<MapProps> = ({
 
     // 5. Potential Fishing Zones (PFZs) Markers
     if (showPFZ) {
+      // 5a. Render Real INCOIS PFZ Markers
+      if (incoisPfzZones && incoisPfzZones.length > 0) {
+        incoisPfzZones.forEach((zone) => {
+          const incoisIcon = L.divIcon({
+            className: 'incois-pfz-marker',
+            html: `
+              <div class="cursor-pointer transition-transform hover:scale-125" title="INCOIS PFZ: ${zone.landing_centre}">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 border-2 border-white shadow-xl flex items-center justify-center text-xs ring-2 ring-teal-400/60">
+                  🎯
+                </div>
+              </div>
+            `,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+          });
+
+          const marker = L.marker([zone.latitude, zone.longitude], { icon: incoisIcon }).addTo(group);
+
+          marker.bindPopup(`
+            <div class="p-2 space-y-1.5 text-slate-100 min-w-[220px]">
+              <div class="flex items-center justify-between border-b border-teal-500/40 pb-1">
+                <h4 class="font-bold text-teal-300 text-sm flex items-center gap-1">
+                  🐟 Potential Fishing Zone
+                </h4>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-200 font-bold tracking-wider">${zone.id.toUpperCase()}</span>
+              </div>
+              <div class="text-xs space-y-1 text-slate-300">
+                <p><strong class="text-slate-100">Landing centre:</strong> <span class="text-teal-200 font-medium">${zone.landing_centre}</span></p>
+                <p><strong class="text-slate-100">Direction:</strong> <span class="text-white font-medium">${zone.direction}</span></p>
+                <p><strong class="text-slate-100">Bearing:</strong> <span class="text-white font-medium">${zone.bearing_deg}°</span></p>
+                <p><strong class="text-slate-100">Distance range:</strong> <span class="text-cyan-300 font-medium">${zone.distance_km.min} - ${zone.distance_km.max} km</span></p>
+                <p><strong class="text-slate-100">Depth range:</strong> <span class="text-cyan-300 font-medium">${zone.depth_m.min} - ${zone.depth_m.max} m</span></p>
+                <p><strong class="text-slate-100">Latitude:</strong> <span class="text-slate-300">${zone.latitude.toFixed(4)}° N</span></p>
+                <p><strong class="text-slate-100">Longitude:</strong> <span class="text-slate-300">${zone.longitude.toFixed(4)}° E</span></p>
+              </div>
+              <div class="pt-1.5 border-t border-slate-700/60 flex items-center justify-between text-[11px]">
+                <span class="text-teal-400 font-semibold">Source: INCOIS</span>
+                <span class="text-[10px] text-slate-400">Official Advisory</span>
+              </div>
+            </div>
+          `);
+        });
+      }
+
+      // 5b. Render Existing/Selected PFZ zones
       pfzZones.forEach((zone) => {
         const isSelected = selectedPfz?.id === zone.id;
         const pfzIcon = L.divIcon({
@@ -285,7 +333,9 @@ export const MaritimeMap: React.FC<MapProps> = ({
     showPFZ,
     showRoute,
     pfzZones,
+    incoisPfzZones,
     selectedPfz,
+    onSelectPfz,
     routeWaypoints,
     vesselLat,
     vesselLon,

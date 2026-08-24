@@ -23,7 +23,42 @@ export interface QueryApiResponse {
   agent_steps: AgentStep[];
 }
 
-const BACKEND_URL = 'http://localhost:8000';
+export interface IncoisPFZZone {
+  id: string;
+  landing_centre: string;
+  direction: string;
+  bearing_deg: number;
+  distance_km: {
+    min: number;
+    max: number;
+  };
+  depth_m: {
+    min: number;
+    max: number;
+  };
+  latitude: number;
+  longitude: number;
+}
+
+export interface IncoisPFZResponse {
+  source: string;
+  region: string;
+  pfz_zones: IncoisPFZZone[];
+}
+
+const BACKEND_URL = 'http://127.0.0.1:8000';
+
+export async function fetchIncoisPFZ(): Promise<IncoisPFZResponse | null> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/pfz`);
+    if (res.ok) {
+      return (await res.json()) as IncoisPFZResponse;
+    }
+  } catch (err) {
+    console.warn('Backend INCOIS PFZ API unavailable, skipping live PFZ load:', err);
+  }
+  return null;
+}
 
 export function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Earth radius in km

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { INDIAN_PORTS, MOCK_PFZ_ZONES } from './data/maritimeData';
 import type { Port, PFZZone, WeatherMetrics } from './data/maritimeData';
-import { askMarineAI, getSimulatedWeather } from './services/apiService';
-import type { AgentStep } from './services/apiService';
+import { askMarineAI, fetchIncoisPFZ, getSimulatedWeather } from './services/apiService';
+import type { AgentStep, IncoisPFZZone } from './services/apiService';
 import { TelemetryBar } from './components/TelemetryBar';
 import { MapControls } from './components/MapControls';
 import { MaritimeMap } from './components/MaritimeMap';
@@ -31,6 +31,7 @@ export const App: React.FC = () => {
   const [weather, setWeather] = useState<WeatherMetrics>(getSimulatedWeather(INDIAN_PORTS[0].lat, INDIAN_PORTS[0].lon));
   const [riskLevel, setRiskLevel] = useState<'safe' | 'caution' | 'unsafe'>('safe');
   const [pfzZones, setPfzZones] = useState<PFZZone[]>(MOCK_PFZ_ZONES);
+  const [incoisPfzZones, setIncoisPfzZones] = useState<IncoisPFZZone[]>([]);
   const [selectedPfz, setSelectedPfz] = useState<PFZZone | null>(MOCK_PFZ_ZONES[0]);
   const [routeWaypoints, setRouteWaypoints] = useState<[number, number][] | undefined>(undefined);
   const [isGeofenceAlert, setIsGeofenceAlert] = useState<boolean>(false);
@@ -46,9 +47,18 @@ export const App: React.FC = () => {
   const [isReasoningOpen, setIsReasoningOpen] = useState<boolean>(false);
   const [isEcologyOpen, setIsEcologyOpen] = useState<boolean>(false);
 
-  // Initial welcome query on startup
+  // Initial welcome query and INCOIS PFZ data fetch on startup
   useEffect(() => {
     handleUserQuery("Is it safe to fish near Mumbai today, and where are the closest fishing spots?");
+    
+    // Gracefully load official INCOIS PFZ advisory dataset from backend
+    fetchIncoisPFZ().then((data) => {
+      if (data?.pfz_zones && data.pfz_zones.length > 0) {
+        setIncoisPfzZones(data.pfz_zones);
+      }
+    }).catch((err) => {
+      console.warn('Could not load INCOIS PFZ layer:', err);
+    });
   }, []);
 
   // Handle port selection change
@@ -141,6 +151,7 @@ export const App: React.FC = () => {
           vesselLon={vesselLon}
           onVesselMove={handleVesselMove}
           pfzZones={pfzZones}
+          incoisPfzZones={incoisPfzZones}
           selectedPfz={selectedPfz}
           onSelectPfz={(zone) => {
             setSelectedPfz(zone);
