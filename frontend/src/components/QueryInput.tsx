@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Send, Mic } from 'lucide-react';
 import { TRANSLATIONS } from '../data/maritimeData';
 import { getQuickPrompts } from '../data/quickPrompts';
 import { Sparkles, Mic, ArrowRight } from 'lucide-react';
@@ -14,18 +15,16 @@ export default function QueryInput({ onSendMessage, isLoading, currentLang = 'en
   const [isListening, setIsListening] = useState(false);
 
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
+<<<<<<< HEAD
   const quickPrompts = getQuickPrompts(currentLang);
+=======
+>>>>>>> e8bf8c9d1355fa57659125424ea05e5574ea5102
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
     onSendMessage(input.trim());
     setInput('');
-  };
-
-  const handleQuickPrompt = (query: string) => {
-    if (isLoading) return;
-    onSendMessage(query);
   };
 
   const handleVoiceInput = () => {
@@ -45,6 +44,9 @@ export default function QueryInput({ onSendMessage, isLoading, currentLang = 'en
         ml: 'ml-IN',
         te: 'te-IN',
         bn: 'bn-IN',
+        kn: 'kn-IN',
+        or: 'or-IN',
+        pa: 'pa-IN',
         en: 'en-IN',
       };
       recognition.lang = langCodes[currentLang] || 'en-IN';
@@ -75,6 +77,7 @@ export default function QueryInput({ onSendMessage, isLoading, currentLang = 'en
     }
   };
 
+<<<<<<< HEAD
   const placeholderText = currentLang === 'gu'
     ? 'દરિયાઈ હવામાન, માછીમારી ઝોન (PFZ) અથવા સુરક્ષા વિશે પૂછો...'
     : currentLang === 'hi'
@@ -121,6 +124,14 @@ export default function QueryInput({ onSendMessage, isLoading, currentLang = 'en
 
       {/* Floating Input Capsule */}
       <form onSubmit={handleSubmit} className="flex items-center gap-2.5 relative">
+=======
+  const placeholderText = t.askPlaceholder || 'Ask ORCA anything about the sea...';
+
+  return (
+    <div className="p-3 bg-white border-t border-slate-200 shrink-0">
+      {/* Input Form */}
+      <form onSubmit={handleSubmit} className="flex items-center gap-2 relative">
+>>>>>>> e8bf8c9d1355fa57659125424ea05e5574ea5102
         <div className="relative flex-1 flex items-center">
           <input
             type="text"
@@ -128,7 +139,11 @@ export default function QueryInput({ onSendMessage, isLoading, currentLang = 'en
             onChange={(e) => setInput(e.target.value)}
             placeholder={placeholderText}
             disabled={isLoading}
+<<<<<<< HEAD
             className="w-full bg-slate-900/95 border border-slate-700/90 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/25 rounded-2xl pl-4 pr-11 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none transition-all font-sans disabled:opacity-50 shadow-inner"
+=======
+            className="w-full h-11 bg-slate-50 border border-slate-200 focus:border-[#0F766E] focus:ring-2 focus:ring-[#0F766E]/20 rounded-xl pl-3.5 pr-10 text-xs text-slate-900 placeholder-slate-400 focus:outline-none transition-all font-sans disabled:opacity-50"
+>>>>>>> e8bf8c9d1355fa57659125424ea05e5574ea5102
           />
 
           {/* Voice Input Button */}
@@ -136,8 +151,10 @@ export default function QueryInput({ onSendMessage, isLoading, currentLang = 'en
             type="button"
             onClick={handleVoiceInput}
             title={isListening ? t.listening || 'Listening...' : t.askVoice || 'Click to Speak'}
-            className={`absolute right-3 p-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
-              isListening ? 'text-rose-400 bg-rose-950/60 animate-pulse' : 'text-slate-400 hover:text-cyan-300'
+            className={`absolute right-2.5 p-1 rounded-lg text-xs transition cursor-pointer ${
+              isListening
+                ? 'text-rose-600 bg-rose-100 animate-pulse'
+                : 'text-slate-400 hover:text-teal-700 hover:bg-slate-200'
             }`}
           >
             <Mic className="w-4 h-4" />
@@ -148,9 +165,10 @@ export default function QueryInput({ onSendMessage, isLoading, currentLang = 'en
         <button
           type="submit"
           disabled={!input.trim() || isLoading}
-          className="px-5 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-sm shadow-[0_0_20px_rgba(6,182,212,0.4)] hover:shadow-[0_0_25px_rgba(6,182,212,0.6)] transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 cursor-pointer active:scale-95"
+          className="h-11 px-4 rounded-xl bg-[#0F766E] hover:bg-teal-800 text-white font-bold text-xs shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 cursor-pointer active:scale-95"
         >
           {isLoading ? (
+<<<<<<< HEAD
             <>
               <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
               <span className="hidden sm:inline">Analyzing</span>
@@ -159,6 +177,13 @@ export default function QueryInput({ onSendMessage, isLoading, currentLang = 'en
             <>
               <span>Send</span>
               <ArrowRight className="w-4 h-4" />
+=======
+            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+          ) : (
+            <>
+              <span className="hidden sm:inline">Send</span>
+              <Send className="w-3.5 h-3.5" />
+>>>>>>> e8bf8c9d1355fa57659125424ea05e5574ea5102
             </>
           )}
         </button>
@@ -166,3 +191,4 @@ export default function QueryInput({ onSendMessage, isLoading, currentLang = 'en
     </div>
   );
 }
+

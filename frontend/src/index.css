@@ -6,31 +6,20 @@
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
-  --bg-darkest: #020617;
-  --bg-deep: #030a1c;
-  --bg-panel: rgba(10, 19, 39, 0.75);
-  --bg-panel-hover: rgba(15, 28, 56, 0.85);
-  --bg-card: rgba(13, 24, 48, 0.65);
-  
-  --border-subtle: rgba(34, 211, 238, 0.15);
-  --border-active: rgba(34, 211, 238, 0.45);
-  --border-glass: rgba(255, 255, 255, 0.08);
+  --bg-main: #F7F9FC;
+  --bg-card: #FFFFFF;
+  --text-primary: #0F172A;
+  --text-secondary: #64748B;
+  --marine-teal: #0F766E;
+  --ocean-blue: #0284C7;
+  --success: #10B981;
+  --warning: #F59E0B;
+  --danger: #EF4444;
 
-  --cyan-400: #22d3ee;
-  --cyan-500: #06b6d4;
-  --emerald-400: #34d399;
-  --emerald-500: #10b981;
-  --amber-400: #fbbf24;
-  --amber-500: #f59e0b;
-  --rose-400: #fb7185;
-  --rose-500: #f43f5e;
-  --blue-400: #60a5fa;
-  --blue-500: #3b82f6;
-
-  --shadow-glow-cyan: 0 0 25px rgba(34, 211, 238, 0.25);
-  --shadow-glow-emerald: 0 0 25px rgba(52, 211, 153, 0.25);
-  --shadow-glow-rose: 0 0 25px rgba(251, 113, 133, 0.3);
-  --shadow-glass: 0 12px 36px 0 rgba(0, 0, 0, 0.5);
+  --border-card: #E2E8F0;
+  --shadow-soft: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.05);
+  --shadow-card: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+  --shadow-float: 0 10px 25px -3px rgba(15, 23, 42, 0.1), 0 4px 6px -4px rgba(15, 23, 42, 0.05);
 }
 
 * {
@@ -41,65 +30,40 @@
 
 body {
   font-family: var(--font-body);
-  background-color: var(--bg-darkest);
-  background-image: 
-    radial-gradient(circle at 10% 20%, rgba(6, 182, 212, 0.07) 0%, transparent 45%),
-    radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.06) 0%, transparent 45%),
-    radial-gradient(circle at 50% 50%, rgba(14, 165, 233, 0.03) 0%, transparent 60%);
-  color: #f1f5f9;
+  background-color: #F7F9FC;
+  color: #0F172A;
   overflow: hidden;
   height: 100vh;
   width: 100vw;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Custom Tactical Scrollbars */
+/* Custom Clean Scrollbars */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(2, 6, 23, 0.6);
+  background: #F1F5F9;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(34, 211, 238, 0.2);
-  border-radius: 4px;
+  background: #CBD5E1;
+  border-radius: 6px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(34, 211, 238, 0.45);
+  background: #94A3B8;
 }
 
-/* Glassmorphism & Visual Styles */
-.glass-panel {
-  background: var(--bg-panel);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border-glass);
-  box-shadow: var(--shadow-glass);
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-.glass-card {
-  background: var(--bg-card);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border-glass);
-  border-radius: 14px;
-  transition: all 0.2s ease-in-out;
-}
-
-.glass-card:hover {
-  border-color: rgba(34, 211, 238, 0.3);
-  background: rgba(18, 32, 64, 0.75);
-}
-
-.glow-cyan {
-  box-shadow: var(--shadow-glow-cyan);
-}
-.glow-emerald {
-  box-shadow: var(--shadow-glow-emerald);
-}
-
-/* Pulse Animations for Tactical Radar */
+/* Pulse Animations for Vessel Beacon */
 @keyframes radar-pulse-glow {
   0% {
     transform: scale(0.9);
@@ -116,68 +80,100 @@ body {
 }
 
 .pulse-beacon {
-  animation: radar-pulse-glow 2.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
+  animation: radar-pulse-glow 2.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
 }
 
 /* Leaflet Container & Popup Styling */
 .leaflet-container {
-  background: #091326 !important;
+  background: #0f172a !important;
   font-family: var(--font-body);
   width: 100% !important;
   height: 100% !important;
 }
 
 .leaflet-popup-content-wrapper {
-  background: rgba(8, 17, 36, 0.94) !important;
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  color: #f1f5f9 !important;
-  border: 1px solid rgba(34, 211, 238, 0.35) !important;
-  box-shadow: 0 16px 32px -4px rgba(0, 0, 0, 0.75), 0 0 20px rgba(34, 211, 238, 0.25) !important;
+  background: #FFFFFF !important;
+  color: #0F172A !important;
+  border: 1px solid #E2E8F0 !important;
+  box-shadow: 0 10px 25px -3px rgba(15, 23, 42, 0.15), 0 4px 6px -4px rgba(15, 23, 42, 0.1) !important;
   border-radius: 14px !important;
-  padding: 4px !important;
+  padding: 2px !important;
 }
 
 .leaflet-popup-tip {
-  background: rgba(8, 17, 36, 0.94) !important;
-  border: 1px solid rgba(34, 211, 238, 0.35) !important;
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+}
+
+.leaflet-control-zoom {
+  border: 1px solid #E2E8F0 !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08) !important;
+  border-radius: 10px !important;
+  overflow: hidden;
 }
 
 .leaflet-control-zoom a {
-  background-color: rgba(10, 20, 42, 0.85) !important;
-  color: #22d3ee !important;
-  border: 1px solid rgba(34, 211, 238, 0.25) !important;
-  backdrop-filter: blur(12px);
-  border-radius: 8px !important;
-  margin-bottom: 4px !important;
+  background-color: #FFFFFF !important;
+  color: #0F766E !important;
+  font-weight: bold !important;
 }
 .leaflet-control-zoom a:hover {
-  background-color: rgba(16, 32, 66, 0.95) !important;
-  color: #ffffff !important;
-  border-color: #22d3ee !important;
+  background-color: #F8FAFC !important;
+  color: #0284C7 !important;
 }
 
 .leaflet-control-attribution {
-  background: rgba(2, 6, 23, 0.8) !important;
-  color: #64748b !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+  color: #64748B !important;
   font-size: 10px !important;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(6px);
   border-top-left-radius: 8px;
   padding: 2px 8px !important;
+  box-shadow: 0 0 4px rgba(0,0,0,0.05);
 }
 .leaflet-control-attribution a {
-  color: #22d3ee !important;
+  color: #0F766E !important;
   text-decoration: none;
 }
 .leaflet-control-attribution a:hover {
   text-decoration: underline;
 }
 
-/* Custom Marker Styling */
+/* Custom Marker & City Halo Styling */
 .custom-user-marker,
-.custom-pfz-marker {
+.custom-pfz-marker,
+.custom-city-marker {
   background: transparent;
   border: none;
+}
+
+.city-halo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(15, 118, 110, 0.35);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255,255,255,0.7);
+  padding: 2px 7px;
+  border-radius: 9999px;
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.city-halo-badge.priority-city {
+  background: rgba(15, 118, 110, 0.95);
+  color: #FFFFFF;
+  border: 1.5px solid #FFFFFF;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35), 0 0 12px rgba(15, 118, 110, 0.5);
+  font-weight: 800;
+}
+
+.city-halo-badge:hover {
+  transform: translateY(-1px) scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .font-display {
