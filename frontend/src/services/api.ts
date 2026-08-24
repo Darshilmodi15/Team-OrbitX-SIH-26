@@ -376,6 +376,56 @@ export async function fetchActiveSOS() {
   return await response.json();
 }
 
+/* ==========================================================================
+   Government Announcements & Policy Documents APIs
+   ========================================================================== */
+
+export async function fetchGovernmentAnnouncements(
+  state?: string,
+  category?: string,
+  urgentOnly?: boolean
+) {
+  const params = new URLSearchParams();
+  if (state) params.append('state', state);
+  if (category) params.append('category', category);
+  if (urgentOnly) params.append('urgent_only', 'true');
+
+  const query = params.toString() ? `?${params.toString()}` : '';
+  const response = await fetch(`${API_BASE_URL}/api/government/announcements${query}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch government announcements');
+  }
+  return await response.json();
+}
+
+export async function fetchGovernmentAnnouncementDetails(id: string) {
+  const response = await fetch(`${API_BASE_URL}/api/government/announcements/${id}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch announcement details');
+  }
+  return await response.json();
+}
+
+export async function publishGovernmentAnnouncement(payload: any) {
+  const response = await fetch(`${API_BASE_URL}/api/government/announcements`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to publish announcement');
+  }
+  return await response.json();
+}
+
+export async function fetchGovernmentDocuments() {
+  const response = await fetch(`${API_BASE_URL}/api/government/documents`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch government policy documents');
+  }
+  return await response.json();
+}
+
 export default {
   queryORCA,
   registerUser,
@@ -399,4 +449,8 @@ export default {
   fetchEmergencyContacts,
   broadcastSOS,
   fetchActiveSOS,
+  fetchGovernmentAnnouncements,
+  fetchGovernmentAnnouncementDetails,
+  publishGovernmentAnnouncement,
+  fetchGovernmentDocuments,
 };

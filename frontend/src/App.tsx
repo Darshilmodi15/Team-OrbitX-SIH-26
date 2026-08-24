@@ -8,6 +8,7 @@ import ForecastHorizonTimeline from './components/ForecastHorizonTimeline';
 import TerminologyExplainerModal from './components/TerminologyExplainerModal';
 import NotificationCenterModal, { type NotificationItem } from './components/NotificationCenterModal';
 import EmergencySOSModal from './components/EmergencySOSModal';
+import GovernmentPortalModal from './components/GovernmentPortalModal';
 import MobileBottomNav, { type MobileTab } from './components/MobileBottomNav';
 import { TopHeader } from './components/TopHeader';
 import { ControlBar } from './components/ControlBar';
@@ -87,6 +88,7 @@ export default function App() {
   const [isTerminologyModalOpen, setIsTerminologyModalOpen] = useState(false);
   const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
   const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
+  const [isGovPortalOpen, setIsGovPortalOpen] = useState(false);
 
   // User Authentication State
   const [currentUser, setCurrentUser] = useState<any | null>(null);
@@ -442,6 +444,7 @@ export default function App() {
             onSelectLang={handleSelectLang}
             onOpenReasoning={() => setIsReasoningModalOpen(true)}
             onOpenEcology={() => setIsEcologyModalOpen(true)}
+            onOpenGovPortal={() => setIsGovPortalOpen(true)}
           />
 
           {/* GIS Layer Toggles */}
@@ -607,6 +610,13 @@ export default function App() {
             isOpen={isEmergencyModalOpen}
             onClose={() => setIsEmergencyModalOpen(false)}
             userLocation={userLocation}
+            currentLang={currentLang}
+          />
+
+          <GovernmentPortalModal
+            isOpen={isGovPortalOpen}
+            onClose={() => setIsGovPortalOpen(false)}
+            currentUser={currentUser}
             currentLang={currentLang}
           />
         </div>
