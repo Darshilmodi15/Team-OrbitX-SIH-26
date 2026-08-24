@@ -19,12 +19,17 @@
 ```mermaid
 flowchart TD
     A[User Operational Query] --> B[FastAPI Endpoint: /query]
-    B --> C[Intent Classification Agent<br/>Google Gemini / Anthropic Claude]
-    C --> D[Retrieve Marine Weather Data<br/>Wave Height, Wind Speed, Forecast]
-    D --> E[Risk Assessment Agent<br/>Evaluates Navigation & Fishing Safety]
-    E --> F[Potential Fishing Zones Service<br/>Identifies Nearest High-Yield Zones]
-    F --> G[Synthesize Operational Advisory<br/>Actionable Verdict + PFZ Coordinates + Reasoning Trace]
-    G --> H[API Response: QueryResponse]
+    B --> C[Intent Classification Agent<br/>Gemini / Claude / Heuristic Fallback]
+    C --> D[Deterministic Planner / Orchestrator<br/>Generates Structured ExecutionPlan]
+    D --> E{Execute Planned Tasks}
+    E -->|weather_agent| F[Marine Weather Provider]
+    E -->|risk_agent| G[Risk Assessment Agent]
+    E -->|pfz_agent & geospatial_agent| H[PFZ Provider & Distance Engine]
+    F --> I[Evidence Layer]
+    G --> I
+    H --> I
+    I --> J[Response Synthesizer<br/>Actionable Verdict + PFZ Coordinates + Reasoning Trace + Plan]
+    J --> K[API Response: QueryResponse]
 ```
 
 ---
@@ -34,25 +39,35 @@ flowchart TD
 ```
 ORCA/
 ├── README.md                           # Project documentation
+├── data/
+│   └── pfz/
+│       └── pfz_maharashtra.json        # INCOIS-derived PFZ dataset
 ├── backend/
 │   ├── requirements.txt                # Python dependencies
-│   └── app/
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py                     # FastAPI application & /query orchestrator
+│   │   ├── agents/
+│   │   │   ├── __init__.py
+│   │   │   ├── intent_agent.py         # Intent parsing agent
+│   │   │   └── risk_agent.py           # Marine safety risk evaluation agent
+│   │   ├── data/
+│   │   │   ├── __init__.py             # Provider exports
+│   │   │   ├── weather/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── base.py             # Abstract WeatherProvider interface
+│   │   │   │   └── mock.py             # MockWeatherProvider implementation
+│   │   │   └── pfz/
+│   │   │       ├── __init__.py
+│   │   │       ├── base.py             # Abstract PFZProvider interface
+│   │   │       └── mock.py             # MockPFZProvider implementation
+│   │   └── services/
+│   │       ├── __init__.py
+│   │       └── planner.py              # Deterministic multi-agent Planner
+│   └── tests/
 │       ├── __init__.py
-│       ├── main.py                     # FastAPI application & /query pipeline
-│       ├── agents/
-│       │   ├── __init__.py
-│       │   ├── intent_agent.py         # Intent parsing agent
-│       │   └── risk_agent.py           # Marine safety risk evaluation agent
-│       └── data/
-│           ├── __init__.py             # Provider exports
-│           ├── weather/
-│           │   ├── __init__.py
-│           │   ├── base.py             # Abstract WeatherProvider interface
-│           │   └── mock.py             # MockWeatherProvider implementation
-│           └── pfz/
-│               ├── __init__.py
-│               ├── base.py             # Abstract PFZProvider interface
-│               └── mock.py             # MockPFZProvider implementation
+│       ├── test_planner.py             # Planner unit tests (6 rules)
+│       └── test_query.py               # End-to-end /query integration tests
 └── frontend/                           # Client interface directory
 ```
 
