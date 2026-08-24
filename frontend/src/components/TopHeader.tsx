@@ -4,19 +4,35 @@ import type { WeatherMetrics } from '../data/maritimeData';
 import { TRANSLATIONS } from '../data/maritimeData';
 
 interface TopHeaderProps {
-  vesselLat: number;
-  vesselLon: number;
-  weather: WeatherMetrics;
+  vesselLat?: number;
+  vesselLon?: number;
+  weather?: WeatherMetrics;
   riskLevel: 'safe' | 'caution' | 'unsafe';
   currentLang: string;
+  currentUser?: any | null;
+  onReturnHome?: () => void;
 }
 
 export const TopHeader: React.FC<TopHeaderProps> = ({
-  vesselLat,
-  vesselLon,
-  weather,
+  vesselLat = 18.9220,
+  vesselLon = 72.8347,
+  weather = {
+    wave_height_m: 1.2,
+    wind_speed_kmh: 18,
+    wind_direction_deg: 240,
+    wind_direction_cardinal: 'WSW',
+    forecast: 'Clear',
+    temperature_c: 29.5,
+    sst_c: 28.2,
+    swell_period_s: 7,
+    tide_state: 'Ebb',
+    visibility_km: 15,
+    source: 'INCOIS_OSF_LIVE',
+  },
   riskLevel,
   currentLang,
+  currentUser,
+  onReturnHome,
 }) => {
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
 
@@ -53,10 +69,14 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
     <header className="w-full bg-white border-b border-slate-200 px-4 sm:px-6 py-3 shadow-xs flex flex-wrap items-center justify-between gap-4 select-none shrink-0 z-30">
       {/* Brand Section */}
       <div className="flex items-center gap-3.5 min-w-[280px]">
-        {/* Logo Emblem */}
-        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#0F766E] to-[#0284C7] flex items-center justify-center text-white text-2xl shadow-sm border border-teal-500/20 shrink-0">
+        {/* Logo Emblem / Home Button */}
+        <button
+          onClick={onReturnHome}
+          title="Return to ORCA Landing Page"
+          className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#0F766E] to-[#0284C7] flex items-center justify-center text-white text-2xl shadow-sm border border-teal-500/20 shrink-0 hover:scale-105 transition cursor-pointer"
+        >
           🌊
-        </div>
+        </button>
         <div>
           <div className="flex items-center gap-2.5 flex-wrap">
             <h1 className="text-lg sm:text-xl font-black font-display text-slate-900 tracking-tight">
@@ -65,6 +85,12 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-teal-50 text-teal-700 border border-teal-200/80 tracking-wide uppercase font-mono">
               {t.sihBadge || 'SIH 2026 • ORBITX'}
             </span>
+            {currentUser && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 font-mono">
+                <span>👤</span>
+                <span>{currentUser.role || 'USER'}</span>
+              </span>
+            )}
           </div>
           <p className="text-xs text-slate-500 font-medium tracking-normal mt-0.5">
             {t.tagline || 'Autonomous Marine Intelligence & Decision Support'}

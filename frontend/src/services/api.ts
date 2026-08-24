@@ -2,6 +2,8 @@
  * ORCA Marine AI - Backend API Service Layer
  * Interfaces directly with FastAPI endpoints:
  * - /query & /api/chat
+ * - /api/auth/* & /api/user/*
+ * - /api/location/*
  * - /api/marine/* (conditions, risk, forecast)
  * - /api/marine-boundaries/* (eez, check)
  * - /api/geofences
@@ -50,6 +52,102 @@ export async function queryORCA(payload: QueryPayload) {
   }
 }
 
+/* ==========================================================================
+   Authentication & User Management APIs
+   ========================================================================== */
+
+export async function registerUser(payload: {
+  name: string;
+  email?: string;
+  mobile_number?: string;
+  password?: string;
+  preferred_language?: string;
+  role?: string;
+}) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Registration failed');
+  }
+  return await response.json();
+}
+
+export async function loginUser(email_or_phone: string, password: string) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email_or_phone, password }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Login failed');
+  }
+  return await response.json();
+}
+
+export async function getUserProfile(token?: string) {
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const response = await fetch(`${API_BASE_URL}/api/user/profile`, { headers });
+  if (!response.ok) {
+    throw new Error('Failed to retrieve user profile');
+  }
+  return await response.json();
+}
+
+export async function updateUserProfile(payload: any, token: string) {
+  const response = await fetch(`${API_BASE_URL}/api/user/profile`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to update profile');
+  }
+  return await response.json();
+}
+
+/* ==========================================================================
+   Location & Coastal Validation APIs
+   ========================================================================== */
+
+export async function validateLocation(lat: number, lon: number, accuracy_m?: number) {
+  const response = await fetch(`${API_BASE_URL}/api/location/validate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lat, lon, accuracy_m }),
+  });
+  if (!response.ok) {
+    throw new Error('Location validation failed');
+  }
+  return await response.json();
+}
+
+export async function updateUserLocation(lat: number, lon: number, accuracy_m?: number, token?: string) {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const response = await fetch(`${API_BASE_URL}/api/location/update`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ lat, lon, accuracy_m }),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to update location');
+  }
+  return await response.json();
+}
+
+/* ==========================================================================
+   Marine Boundaries & GIS APIs
+   ========================================================================== */
+
 export async function fetchMarineBoundariesEEZ(mrgid: number = 8480): Promise<any | null> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/marine-boundaries/eez?mrgid=${mrgid}`);
@@ -87,9 +185,10 @@ export async function fetchGeofences(lat?: number, lon?: number): Promise<any | 
   return null;
 }
 
-/**
- * Transcribes audio blob using Sarvam Saaras v3 STT.
- */
+/* ==========================================================================
+   Sarvam AI Voice & Speech APIs
+   ========================================================================== */
+
 export async function transcribeVoiceAudio(audioBlob: Blob, language: string = 'auto'): Promise<{
   transcript: string;
   language: string;
@@ -112,9 +211,6 @@ export async function transcribeVoiceAudio(audioBlob: Blob, language: string = '
   return await response.json();
 }
 
-/**
- * Synthesizes text to voice using Sarvam Bulbul v3 neural voices.
- */
 export async function synthesizeVoiceAudio(
   text: string,
   language: string = 'en',
@@ -146,6 +242,12 @@ export async function synthesizeVoiceAudio(
 
 export default {
   queryORCA,
+  registerUser,
+  loginUser,
+  getUserProfile,
+  updateUserProfile,
+  validateLocation,
+  updateUserLocation,
   fetchMarineBoundariesEEZ,
   checkMarineBoundary,
   fetchGeofences,

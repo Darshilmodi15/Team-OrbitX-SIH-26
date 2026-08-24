@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { Send, Mic, MicOff, Sparkles } from 'lucide-react';
+import { Send, Mic, MicOff } from 'lucide-react';
 import { TRANSLATIONS } from '../data/maritimeData';
-import { getQuickPrompts } from '../data/quickPrompts';
 import { transcribeVoiceAudio } from '../services/api';
 
 interface QueryInputProps {
@@ -19,18 +18,12 @@ export default function QueryInput({ onSendMessage, isLoading, currentLang = 'en
   const audioChunksRef = useRef<Blob[]>([]);
 
   const t = (TRANSLATIONS[currentLang] || TRANSLATIONS.en) as any;
-  const quickPrompts = getQuickPrompts(currentLang);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
     onSendMessage(input.trim());
     setInput('');
-  };
-
-  const handleQuickPrompt = (query: string) => {
-    if (isLoading) return;
-    onSendMessage(query);
   };
 
   const startRecording = async () => {
@@ -59,7 +52,7 @@ export default function QueryInput({ onSendMessage, isLoading, currentLang = 'en
         } finally {
           setIsTranscribing(false);
           setIsRecording(false);
-          stream.getTracks().forEach((t) => t.stop());
+          stream.getTracks().forEach((trk) => trk.stop());
         }
       };
 
@@ -68,7 +61,6 @@ export default function QueryInput({ onSendMessage, isLoading, currentLang = 'en
       setIsRecording(true);
     } catch (err) {
       console.warn('Microphone permission denied or not supported:', err);
-      // Fallback to Web Speech Recognition API
       handleBrowserSpeechFallback();
     }
   };
@@ -127,53 +119,25 @@ export default function QueryInput({ onSendMessage, isLoading, currentLang = 'en
 
   const placeholderText =
     currentLang === 'gu'
-      ? 'દરિયાઈ હવામાન, માછીમારી ઝોન (PFZ) અથવા સુરક્ષા વિશે પૂછો...'
+      ? 'દરિયાઈ હવામાન, PFZ માછીમારી ઝોન અથવા સુરક્ષા વિશે પૂછો...'
       : currentLang === 'hi'
-      ? 'समुद्री मौसम, मत्स्य क्षेत्र (PFZ) या सुरक्षा के बारे में पूछें...'
+      ? 'समुद्री मौसम, PFZ मत्स्य क्षेत्र या सुरक्षा के बारे में पूछें...'
       : currentLang === 'mr'
-      ? 'सागरी हवामान, मासेमारी क्षेत्र (PFZ) किंवा सुरक्षेबद्दल विचारा...'
+      ? 'सागरी हवामान, PFZ मासेमारी क्षेत्र किंवा सुरक्षेबद्दल विचारा...'
       : currentLang === 'ta'
-      ? 'கடல் வானிலை, மீன்பிடி மண்டலம் (PFZ) அல்லது பாதுகாப்பு பற்றி கேளுங்கள்...'
+      ? 'கடல் வானிலை, PFZ மீன்பிடி மண்டலம் பற்றி கேளுங்கள்...'
       : currentLang === 'ml'
-      ? 'കാലാവസ്ഥ, മത്സ്യബന്ധന മേഖല (PFZ), സുരക്ഷ എന്നിവയെക്കുറിച്ച് ചോദിക്കുക...'
-      : t.askPlaceholder || 'Ask ORCA about marine weather, safety risks, or Potential Fishing Zones...';
+      ? 'കാലാവസ്ഥ, PFZ മത്സ്യബന്ധന മേഖല എന്നിവ ചോദിക്കുക...'
+      : t.askPlaceholder || 'Ask ORCA anything about the sea...';
 
   return (
-    <div className="p-3.5 sm:p-4 bg-white border-t border-slate-200 shrink-0 transition-all font-sans">
-      {/* Quick Prompts Row */}
-      <div className="mb-2.5">
-        <div className="flex items-center justify-between gap-2 mb-1.5">
-          <div className="flex items-center gap-1.5 text-teal-800 font-semibold text-xs">
-            <Sparkles className="w-3.5 h-3.5 text-teal-700 animate-pulse" />
-            <span>{t.quickInquiries || 'QUICK INQUIRIES'}</span>
-          </div>
-          <span className="text-[10px] text-slate-600">Sarvam AI Speech & NMT Active</span>
-        </div>
-
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
-          {quickPrompts.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              disabled={isLoading}
-              onClick={() => handleQuickPrompt(p.query)}
-              title={p.query}
-              className="text-xs px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-teal-50 border border-slate-200 hover:border-teal-300 text-slate-700 hover:text-teal-900 transition-all duration-150 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed shrink-0 flex items-center gap-1.5 cursor-pointer shadow-2xs font-medium"
-            >
-              <span>{p.icon}</span>
-              <span>{p.label}</span>
-              <span className="text-[10px] text-teal-600">→</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Voice Status Pill */}
+    <div className="p-3 bg-white border-t border-slate-200 shrink-0 font-sans">
+      {/* Voice Status Indicator Pill */}
       {isRecording && (
         <div className="mb-2 px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between animate-pulse">
           <span className="flex items-center gap-2 font-medium">
             <span className="w-2 h-2 rounded-full bg-rose-600 inline-block animate-ping"></span>
-            <span>Recording Indian Regional Audio (Sarvam Saaras v3)... Click mic to finish.</span>
+            <span>Recording Indian Regional Audio (Sarvam AI)... Click mic to finish.</span>
           </span>
           <span className="text-[10px] font-mono font-bold uppercase">{currentLang}</span>
         </div>
@@ -182,11 +146,11 @@ export default function QueryInput({ onSendMessage, isLoading, currentLang = 'en
       {isTranscribing && (
         <div className="mb-2 px-3 py-1.5 rounded-lg bg-teal-50 border border-teal-200 text-teal-800 text-xs flex items-center gap-2">
           <span className="w-3.5 h-3.5 border-2 border-teal-600 border-t-transparent rounded-full animate-spin"></span>
-          <span>Transcribing dialect speech via Sarvam AI...</span>
+          <span>Transcribing regional voice speech...</span>
         </div>
       )}
 
-      {/* Input Form */}
+      {/* Input Form Bar */}
       <form onSubmit={handleSubmit} className="flex items-center gap-2 relative">
         <div className="relative flex-1 flex items-center">
           <input
@@ -195,19 +159,19 @@ export default function QueryInput({ onSendMessage, isLoading, currentLang = 'en
             onChange={(e) => setInput(e.target.value)}
             placeholder={placeholderText}
             disabled={isLoading || isTranscribing}
-            className="w-full h-11 bg-slate-50 border border-slate-300 focus:border-teal-700 focus:ring-2 focus:ring-teal-700/20 rounded-xl pl-3.5 pr-11 text-xs text-slate-900 placeholder-slate-600 focus:outline-none transition-all font-sans disabled:opacity-50"
+            className="w-full h-10 bg-slate-50 border border-slate-300 focus:border-teal-600 focus:bg-white focus:ring-2 focus:ring-teal-600/20 rounded-xl pl-3.5 pr-10 text-xs text-slate-900 placeholder-slate-400 focus:outline-none transition-all font-sans disabled:opacity-50"
           />
 
-          {/* Sarvam AI Voice Input Button */}
+          {/* Regional Voice STT Button */}
           <button
             type="button"
             onClick={toggleVoice}
             disabled={isLoading || isTranscribing}
-            title={isRecording ? 'Stop Recording' : 'Speak in Regional Language (Sarvam AI Saaras)'}
+            title={isRecording ? 'Stop Recording' : 'Speak in Regional Language (Sarvam AI)'}
             className={`absolute right-2 p-1.5 rounded-lg text-xs transition cursor-pointer ${
               isRecording
-                ? 'text-rose-600 bg-rose-100 hover:bg-rose-200 shadow-[0_0_10px_rgba(225,29,72,0.4)]'
-                : 'text-slate-500 hover:text-teal-800 hover:bg-slate-200'
+                ? 'text-rose-600 bg-rose-100 hover:bg-rose-200 shadow-xs'
+                : 'text-slate-400 hover:text-teal-700 hover:bg-slate-200/60'
             }`}
           >
             {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
@@ -218,14 +182,14 @@ export default function QueryInput({ onSendMessage, isLoading, currentLang = 'en
         <button
           type="submit"
           disabled={!input.trim() || isLoading || isTranscribing}
-          className="h-11 px-4 rounded-xl bg-teal-800 hover:bg-teal-900 text-white font-bold text-xs shadow-2xs hover:shadow-md transition-all flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 cursor-pointer active:scale-95"
+          className="h-10 px-4 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs shadow-2xs hover:shadow-xs transition-all flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 cursor-pointer active:scale-95"
         >
           {isLoading ? (
             <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
           ) : (
             <>
-              <span className="hidden sm:inline">Send</span>
-              <Send className="w-3.5 h-3.5" />
+              <span>Send</span>
+              <Send className="w-3 h-3" />
             </>
           )}
         </button>

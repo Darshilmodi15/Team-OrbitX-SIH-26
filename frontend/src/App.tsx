@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import LandingPage from './components/LandingPage';
+import LanguageSelectorModal from './components/LanguageSelectorModal';
+import AuthModal from './components/AuthModal';
+import LocationPermissionModal from './components/LocationPermissionModal';
 import { TopHeader } from './components/TopHeader';
 import { ControlBar } from './components/ControlBar';
 import { GisLayersPanel, type GisLayerState } from './components/GisLayersPanel';
@@ -59,6 +63,18 @@ export interface MessageItem {
 }
 
 export default function App() {
+  // App Navigation Flow Stage
+  const [appStage, setAppStage] = useState<'landing' | 'dashboard'>('landing');
+
+  // Modals for Onboarding
+  const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+
+  // User Authentication State
+  const [currentUser, setCurrentUser] = useState<any | null>(null);
+
+  // Operational State
   const [selectedPort, setSelectedPort] = useState<Port>(INDIAN_PORTS[0]); // Mumbai Sassoon Dock
   const [userLocation, setUserLocation] = useState<LocationCoords>({
     lat: INDIAN_PORTS[0].lat,
@@ -90,7 +106,7 @@ export default function App() {
 
   const [riskLevel, setRiskLevel] = useState<'safe' | 'caution' | 'unsafe'>('safe');
 
-  // GIS Layer Switches State (Default all on)
+  // GIS Layer Switches State
   const [gisLayers, setGisLayers] = useState<GisLayerState>({
     pfz: true,
     geofence: true,
@@ -123,13 +139,42 @@ export default function App() {
     {
       id: 'init-greeting',
       sender: 'assistant',
-      text: '🌊 **Welcome aboard ORCA Marine AI Autonomous Operations Console.**\n\nI provide real-time maritime intelligence, navigational safety assessments, and INCOIS-derived Potential Fishing Zone (PFZ) advisories.\n\nUse the quick actions below or ask about sea conditions, wind & wave risks, or optimal fishing locations in English, Gujarati (ગુજરાતી), Hindi (हिन्दी), Marathi (मराठी), Tamil (தமிழ்), Telugu (తెలుగు), or Malayalam (മലയാളം).',
+      text: '🌊 **Welcome to ORCA Marine AI Coastal Safety Console.**\n\nI provide real-time maritime intelligence, navigational safety assessments, and INCOIS-derived Potential Fishing Zone (PFZ) advisories.\n\nUse voice input or ask about sea conditions, wind & wave risks, or boundary geofences in Gujarati (ગુજરાતી), Hindi (हिन्दी), Marathi (मराठी), Tamil (தமிழ்), Telugu (తెలుగు), Malayalam (മലയാളം), or English.',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Onboarding Handlers
+  const handleStartOnboarding = () => {
+    setIsLanguageModalOpen(true);
+  };
+
+  const handleLanguageContinue = () => {
+    setIsLanguageModalOpen(false);
+    setIsAuthModalOpen(true);
+  };
+
+  const handleAuthSuccess = (userProfile: any) => {
+    setCurrentUser(userProfile);
+    if (userProfile.preferred_language) {
+      setCurrentLang(userProfile.preferred_language);
+    }
+    setIsAuthModalOpen(false);
+    setIsLocationModalOpen(true);
+  };
+
+  const handleLocationApproved = (loc: LocationCoords) => {
+    setUserLocation(loc);
+    setIsLocationModalOpen(false);
+    setAppStage('dashboard');
+  };
+
+  const handleDirectDemo = () => {
+    setAppStage('dashboard');
+  };
 
   // Handle Global Language Switching
   const handleSelectLang = (lang: string) => {
@@ -138,135 +183,102 @@ export default function App() {
 
     const langGreetings: Record<string, string> = {
       gu: '🌐 **ભાષા બદલાઈ ગઈ છે**: ગુજરાતી (Gujarati). ઓર્કા મરીન એઆઇ હવે તમને ગુજરાતીમાં દરિયાઈ હવામાન, મોજાં, સુરક્ષા અને માછીમારી વિસ્તાર (PFZ) ની માહિતી આપશે.',
-      hi: '🌐 **भाषा परिवर्तित**: हिन्दी (Hindi). ऑर्का समुद्री एआई अब आपको हिन्दी में समुद्री मौसम, लहरों, सुरक्षा और मत्स्य क्षेत्र (PFZ) की जानकारी प्रदान करेगा।',
-      mr: '🌐 **भाषा बदलली**: मराठी (Marathi). ऑर्का सागरी एઆઇ आता तुम्हाला मराठीमध्ये सागरी हवामान, लाटा, सुरक्षा आणि मासेमारी क्षेत्राची माहिती देईल.',
-      ta: '🌐 **மொழி மாற்றப்பட்டது**: தமிழ் (Tamil). ஆர்கா கடல்சார் AI இப்போது உங்களுக்கு தமிழில் கடல் வானிலை, அலைகள் மற்றும் மீன்பிடி மண்டல தகவல்களை வழங்கும்.',
-      te: '🌐 **భాష మార్చబడింది**: తెలుగు (Telugu). ఓర్కా మెరైన్ AI ఇప్పుడు మీకు తెలుగులో సముద్ర వాతావరణం, అలలు మరియు చేపల వేట ప్రాంతాల సమాచారం అందిస్తుంది.',
-      ml: '🌐 **ഭാഷ മാറ്റി**: മലയാളം (Malayalam). ഓർക്ക മറൈൻ AI ഇപ്പോൾ നിങ്ങൾക്ക് മലയാളത്തിൽ സമുദ്ര കാലാവസ്ഥ, തിരമാലകൾ, സുരക്ഷ വിവരങ്ങൾ നൽകും.',
-      bn: '🌐 **ভাষা পরিবর্তিত**: বাংলা (Bengali). অরকা সামুদ্রিক এআই আপনাকে বাংলায় আবহাওয়া এবং মাছ ধরার অঞ্চলের তথ্য দেবে।',
-      kn: '🌐 **ಭಾಷೆ ಬದಲಾಯಿಸಲಾಗಿದೆ**: ಕನ್ನಡ (Kannada). ಆರ್ಕಾ ಸಾಗರ AI ಕನ್ನಡದಲ್ಲಿ ಹವಾಮಾನ ಮತ್ತು ಮೀನುಗಾರಿಕೆ ವಲಯದ ಮಾಹಿತಿ ನೀಡುತ್ತದೆ.',
-      or: '🌐 **ଭାଷା ପରିବର୍ତ୍ତିତ**: ଓଡ଼ିଆ (Odia). ଓର୍କା ସାମୁଦ୍ରିକ AI ଓଡ଼ିଆରେ ପାଣିପାଗ ଏବଂ ମାଛ ଧରିବା କ୍ଷେତ୍ରର ସୂଚନା ପ୍ରଦାନ କରିବ।',
-      pa: '🌐 **ਭਾਸ਼ਾ ਬਦਲ ਗਈ ਹੈ**: ਪੰਜਾਬੀ (Punjabi). ਓਰਕਾ ਸਮੁੰਦਰੀ ਏਆਈ ਪੰਜਾਬੀ ਵਿੱਚ ਜਾਣਕਾਰੀ ਦੇਵੇਗਾ।',
-      en: '🌐 **Language Switched**: English. ORCA Marine AI is ready for operational maritime intelligence queries.',
+      hi: '🌐 **भाषा बदल दी गई है**: हिन्दी (Hindi). ओर्का मरीन एआई अब आपको हिन्दी में समुद्री मौसम, लहरों की स्थिति, सुरक्षा और मत्स्य क्षेत्रों (PFZ) की जानकारी प्रदान करेगा।',
+      mr: '🌐 **भाषा बदलली आहे**: मराठी (Marathi). ऑर्का मरीन एआय आता तुम्हाला मराठीत सागरी हवामान, लाटांची स्थिती आणि मासेमारी क्षेत्राची माहिती देईल.',
+      ta: '🌐 **மொழி மாற்றப்பட்டது**: தமிழ் (Tamil). ஆர்கா மரைன் ஏஐ இப்போது கடல் வானிலை, அலை உயரம் மற்றும் மீன்பிடி மண்டல தகவல்களை தமிழில் வழங்கும்.',
+      ml: '🌐 **ഭാഷ മാറ്റി**: മലയാളം (Malayalam). ഓർക്ക മറൈൻ എഐ ഇനി കടൽ കാലാവസ്ഥയും സുരക്ഷാ മുന്നറിയിപ്പുകളും മലയാളത്തിൽ ലഭ്യമാക്കും.',
+      te: '🌐 **భాష మార్చబడింది**: తెలుగు (Telugu). ఓర్కా మెరైన్ ఏআই ఇప్పుడు సముద్ర వాతావరణం మరియు చేపల వేట మండల సమాచారాన్ని తెలుగులో అందిస్తుంది.',
+      bn: '🌐 **ভাষা পরিবর্তিত হয়েছে**: বাংলা (Bengali). ওর্কা মেরিন এআই এখন বাংলায় সামুদ্রিক আবহাওয়া ও নিরাপত্তা তথ্য প্রদান করবে।',
+      en: '🌐 **Language switched**: English. ORCA Marine AI will now provide marine weather, wave safety, and fishing zone intelligence in English.',
     };
-
-    const text = langGreetings[lang] || `🌐 **Language Switched**: ${lang.toUpperCase()}`;
 
     setMessages((prev) => [
       ...prev,
       {
-        id: `lang-${Date.now()}`,
+        id: `lang-change-${Date.now()}`,
         sender: 'assistant',
-        text,
+        text: langGreetings[lang] || langGreetings.en,
         timestamp: timeNow,
       },
     ]);
   };
 
-  // Handle Coastal Port Selection
+  // Handle User Selecting a Standard Coastal Port
   const handleSelectPort = (port: Port) => {
     setSelectedPort(port);
     setUserLocation({ lat: port.lat, lon: port.lon });
 
     if (port.defaultWeather) {
       setWeather(port.defaultWeather);
-      const isUnsafe = port.defaultWeather.wave_height_m > 2.5 || port.defaultWeather.wind_speed_kmh > 50;
-      const isCaution = !isUnsafe && (port.defaultWeather.wave_height_m > 1.5 || port.defaultWeather.wind_speed_kmh > 35);
-      setRiskLevel(isUnsafe ? 'unsafe' : isCaution ? 'caution' : 'safe');
     }
 
     const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setMessages((prev) => [
       ...prev,
       {
-        id: `port-${Date.now()}`,
+        id: `port-change-${Date.now()}`,
         sender: 'assistant',
-        text: `⚓ **Vessel Station Set to ${port.name} (${port.state})**\nCoordinates: \`${port.lat.toFixed(4)}°N, ${port.lon.toFixed(4)}°E\`\nTactical GIS radar and PFZ proximity algorithms synchronized for this sector.`,
+        text: `⚓ **Vessel Port Changed**: Location updated to **${port.name} (${port.state})** at \`${port.lat.toFixed(4)}°N, ${port.lon.toFixed(4)}°E\`.\n\nLive marine radar and INCOIS telemetry re-centered for this coastal sector.`,
         timestamp: timeNow,
       },
     ]);
   };
 
-  // Handle Relocating Vessel on Sea (Map Click or Drag)
-  const handleRelocateVessel = (coords: LocationCoords) => {
-    setUserLocation(coords);
-  };
+  // Main Handler for Chat/Query Submission
+  const handleSendMessage = async (questionText: string) => {
+    if (!questionText.trim() || isLoading) return;
 
-  // Handle GIS Layer Toggling
-  const handleToggleLayer = (layerKey: keyof GisLayerState) => {
-    setGisLayers((prev) => ({
-      ...prev,
-      [layerKey]: !prev[layerKey],
-    }));
-  };
-
-  // Handle Sending a Question to ORCA Backend
-  const handleSendMessage = async (question: string) => {
     const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // Append user message
+    // Add user message to thread
     const userMsg: MessageItem = {
       id: `user-${Date.now()}`,
       sender: 'user',
-      text: question,
+      text: questionText,
       timestamp: timeNow,
     };
-
     setMessages((prev) => [...prev, userMsg]);
     setIsLoading(true);
     setError(null);
 
-    // If query asks for PFZ or route, automatically turn on appropriate GIS layers
-    const qLower = question.toLowerCase();
-    if (qLower.includes('pfz') || qLower.includes('fish') || qLower.includes('ઝોન') || qLower.includes('मत्स्य')) {
-      setGisLayers((prev) => ({ ...prev, pfz: true }));
-    }
-    if (qLower.includes('route') || qLower.includes('मार्ग') || qLower.includes('માર્ગ')) {
-      setGisLayers((prev) => ({ ...prev, route: true }));
-    }
-    if (qLower.includes('imbl') || qLower.includes('border') || qLower.includes('સરહદ') || qLower.includes('सीमा')) {
-      setGisLayers((prev) => ({ ...prev, geofence: true }));
-    }
-
     try {
-      const payload: any = {
-        location: {
-          lat: userLocation.lat,
-          lon: userLocation.lon,
-        },
+      const response = await queryORCA({
+        location: userLocation,
         date: currentDate,
-        question: question,
+        question: questionText,
         language: currentLang,
-      };
+      });
 
-      const response = (await queryORCA(payload)) as BackendQueryResponse;
-
-      // Update active PFZ zones on map if returned
+      // Update active PFZ markers on map if returned
       if (response.nearest_pfz && Array.isArray(response.nearest_pfz) && response.nearest_pfz.length > 0) {
         setPfzZones(response.nearest_pfz);
       }
 
-      // Update weather telemetry if returned from backend
+      // Update weather state if returned
       if (response.weather) {
-        setWeather((prev) => ({
-          ...prev,
-          wave_height_m: response.weather.wave_height_m ?? prev.wave_height_m,
-          wind_speed_kmh: response.weather.wind_speed_kmh ?? prev.wind_speed_kmh,
-          forecast: response.weather.forecast ?? prev.forecast,
-          temperature_c: response.weather.temperature_c ?? prev.temperature_c,
-          visibility_km: response.weather.visibility_km ?? prev.visibility_km,
+        setWeather({
+          wave_height_m: response.weather.wave_height_m || weather.wave_height_m,
+          wind_speed_kmh: response.weather.wind_speed_kmh || weather.wind_speed_kmh,
+          wind_direction_deg: response.weather.wind_direction_deg || weather.wind_direction_deg,
+          wind_direction_cardinal: response.weather.wind_direction_cardinal || weather.wind_direction_cardinal,
+          forecast: response.weather.forecast || weather.forecast,
+          temperature_c: response.weather.temperature_c || weather.temperature_c,
+          sst_c: response.weather.sea_surface_temperature_c || weather.sst_c,
+          swell_period_s: response.weather.wave_period_s || weather.swell_period_s,
+          tide_state: 'Ebb',
+          visibility_km: response.weather.visibility_km || weather.visibility_km,
           source: response.weather.source || 'INCOIS_OSF_LIVE',
-        }));
+        });
       }
 
-      // Update risk level if evaluated
-      if (response.risk_level === 'unsafe' || response.risk_level === 'caution' || response.risk_level === 'safe') {
-        setRiskLevel(response.risk_level);
+      // Update risk state
+      if (response.risk_level) {
+        setRiskLevel(response.risk_level as any);
       }
 
-      // Append assistant response
+      // Append assistant response to chat thread
       const assistantMsg: MessageItem = {
-        id: `orca-${Date.now()}`,
+        id: `assistant-${Date.now()}`,
         sender: 'assistant',
         text: response.answer,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -279,102 +291,128 @@ export default function App() {
 
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err: any) {
-      const errorMessage = err?.message || 'Unable to reach ORCA backend. Please try again.';
-      setError(errorMessage);
+      console.error('Error querying ORCA backend:', err);
+      const errMsg = err?.message || 'Failed to connect to ORCA backend. Please ensure the backend is running.';
+      setError(errMsg);
 
-      const errorAssistantMsg: MessageItem = {
-        id: `err-${Date.now()}`,
-        sender: 'assistant',
-        text: `⚠️ **Connection Note**: ${errorMessage}\n\nPlease ensure the FastAPI backend is running at \`http://localhost:8000\`.`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-
-      setMessages((prev) => [...prev, errorAssistantMsg]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `error-${Date.now()}`,
+          sender: 'assistant',
+          text: `⚠️ **Connection Error**: ${errMsg}\n\nPlease check that the ORCA backend server is active at \`http://localhost:8000\`.`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#F7F9FC] text-slate-900 overflow-hidden font-sans select-none">
-      {/* 1. TOP HEADER (Brand & Telemetry Status Cards) */}
-      <TopHeader
-        vesselLat={userLocation.lat}
-        vesselLon={userLocation.lon}
-        weather={weather}
-        riskLevel={riskLevel}
-        currentLang={currentLang}
-      />
+    <>
+      {/* Onboarding & Navigation Flow */}
+      {appStage === 'landing' ? (
+        <LandingPage
+          onGetStarted={handleStartOnboarding}
+          onExploreDemo={handleDirectDemo}
+          onSelectLanguage={() => setIsLanguageModalOpen(true)}
+          currentLang={currentLang}
+        />
+      ) : (
+        /* Mobile-First Operational Safety & Marine Intelligence Dashboard */
+        <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-100 font-sans text-slate-800">
+          {/* Top Bar with Branding, Health Status & Persona Badge */}
+          <TopHeader
+            vesselLat={userLocation.lat}
+            vesselLon={userLocation.lon}
+            weather={weather}
+            riskLevel={riskLevel}
+            currentLang={currentLang}
+            currentUser={currentUser}
+            onReturnHome={() => setAppStage('landing')}
+          />
 
-      {/* 2. CONTROL BAR (Location & Language Dropdowns + Action Buttons) */}
-      <ControlBar
-        selectedPort={selectedPort}
-        onSelectPort={handleSelectPort}
-        currentLang={currentLang}
-        onSelectLang={handleSelectLang}
-        onOpenReasoning={() => setIsReasoningModalOpen(true)}
-        onOpenEcology={() => setIsEcologyModalOpen(true)}
-      />
+          {/* Control Bar: Location, Language, Modals */}
+          <ControlBar
+            selectedPort={selectedPort}
+            onSelectPort={handleSelectPort}
+            currentLang={currentLang}
+            onSelectLang={handleSelectLang}
+            onOpenReasoning={() => setIsReasoningModalOpen(true)}
+            onOpenEcology={() => setIsEcologyModalOpen(true)}
+          />
 
-      {/* 3. MAIN CONTENT: 3 SEPARATE COLUMNS (Never overlay chatbot on map) */}
-      <main className="flex-1 flex flex-row p-2.5 gap-2.5 overflow-hidden min-h-0 relative bg-[#F7F9FC]">
-        {/* LEFT COLUMN: GIS SATELLITE LAYERS (250-270px) */}
-        <aside className="w-[250px] xl:w-[270px] shrink-0 h-full overflow-hidden flex flex-col">
+          {/* GIS Layer Toggles */}
           <GisLayersPanel
             layers={gisLayers}
-            onToggleLayer={handleToggleLayer}
+            onToggleLayer={(k) => setGisLayers((prev) => ({ ...prev, [k]: !prev[k] }))}
             currentLang={currentLang}
           />
-        </aside>
 
-        {/* CENTER COLUMN: CENTRAL SATELLITE MAP (flex: 1) */}
-        <section className="flex-1 h-full min-w-0 relative overflow-hidden flex flex-col rounded-2xl border border-slate-200 shadow-sm bg-[#d4e4f7]">
-          <MarineMap
-            userLocation={userLocation}
-            pfzZones={pfzZones}
-            layers={gisLayers}
-            onRelocateVessel={handleRelocateVessel}
-          />
-        </section>
+          {/* Main 2-Column Split: Tactical Map (Left) + Chat / Telemetry (Right) */}
+          <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative min-h-0 bg-slate-950">
+            {/* Tactical Nautical Map */}
+            <div className="w-full md:w-[60%] lg:w-[63%] xl:w-[65%] h-[50vh] md:h-full relative flex flex-col min-h-0">
+              <MarineMap
+                userLocation={userLocation}
+                pfzZones={gisLayers.pfz ? pfzZones : []}
+              />
+            </div>
 
-        {/* RIGHT COLUMN: ORCA CHATBOT (380-420px) */}
-        <aside className="w-[380px] xl:w-[420px] shrink-0 h-full overflow-hidden flex flex-col">
-          <ChatPanel
-            messages={messages}
-            isLoading={isLoading}
-            error={error}
+            {/* Conversational & Telemetry Panel */}
+            <div className="w-full md:w-[40%] lg:w-[37%] xl:w-[35%] h-[50vh] md:h-full flex flex-col min-h-0 bg-white border-t md:border-t-0 md:border-l border-slate-200 shadow-lg z-10">
+              <ChatPanel
+                messages={messages}
+                onSendMessage={handleSendMessage}
+                isLoading={isLoading}
+                error={error}
+                currentLang={currentLang}
+                onClearError={() => setError(null)}
+              />
+            </div>
+          </main>
+
+          {/* Status Footer */}
+          <Footer
             currentLang={currentLang}
-            onSendMessage={handleSendMessage}
-            onClearError={() => setError(null)}
-            onResetChat={() =>
-              setMessages([
-                {
-                  id: `reset-${Date.now()}`,
-                  sender: 'assistant',
-                  text: '🌊 **Conversation Reset**. ORCA Marine AI is standing by for your questions.',
-                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                },
-              ])
-            }
           />
-        </aside>
-      </main>
 
-      {/* 4. FOOTER */}
-      <Footer currentLang={currentLang} />
+          {/* Modals */}
+          <FishAnalyticsModal
+            isOpen={isEcologyModalOpen}
+            onClose={() => setIsEcologyModalOpen(false)}
+            currentLang={currentLang}
+          />
 
-      {/* 5. MODALS */}
-      <FishAnalyticsModal
-        isOpen={isEcologyModalOpen}
-        onClose={() => setIsEcologyModalOpen(false)}
+          <AgentTraceModal
+            isOpen={isReasoningModalOpen}
+            onClose={() => setIsReasoningModalOpen(false)}
+            currentLang={currentLang}
+          />
+        </div>
+      )}
+
+      {/* Onboarding Modals */}
+      <LanguageSelectorModal
+        isOpen={isLanguageModalOpen}
+        currentLang={currentLang}
+        onSelectLang={(code) => setCurrentLang(code)}
+        onContinue={handleLanguageContinue}
+      />
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onAuthSuccess={handleAuthSuccess}
+        onClose={() => setIsAuthModalOpen(false)}
         currentLang={currentLang}
       />
 
-      <AgentTraceModal
-        isOpen={isReasoningModalOpen}
-        onClose={() => setIsReasoningModalOpen(false)}
+      <LocationPermissionModal
+        isOpen={isLocationModalOpen}
+        onLocationApproved={handleLocationApproved}
         currentLang={currentLang}
       />
-    </div>
+    </>
   );
 }

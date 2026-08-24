@@ -28,6 +28,8 @@ from app.models.agent_models import (
     RiskEvidence,
     WeatherEvidence,
 )
+from app.routers.auth import router as auth_router, user_router
+from app.routers.location import router as location_router
 from app.routers.marine_boundaries import router as boundaries_router
 from app.routers.pfz import router as pfz_router
 from app.routers.voice import router as voice_router
@@ -42,8 +44,8 @@ geofence_provider: GeofenceProvider = SpatialGeofenceProvider()
 
 app = FastAPI(
     title="ORCA Marine AI Backend",
-    description="Autonomous Maritime Intelligence, Multi-Agent Decision Support, Risk Matrix, Sarvam AI & Bhashini Multilingual Layer, and Spatial Geofencing.",
-    version="1.3.0",
+    description="Autonomous Maritime Intelligence, Multi-Agent Decision Support, Risk Matrix, Sarvam AI Multilingual Layer, and Coastal Safety Platform.",
+    version="1.4.0",
 )
 
 # Enable CORS for frontend applications
@@ -56,6 +58,9 @@ app.add_middleware(
 )
 
 # Include API routers
+app.include_router(auth_router)
+app.include_router(user_router)
+app.include_router(location_router)
 app.include_router(pfz_router)
 app.include_router(boundaries_router)
 app.include_router(voice_router)
