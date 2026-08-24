@@ -23,8 +23,8 @@ export const ControlBar: React.FC<ControlBarProps> = ({
   const t = (TRANSLATIONS[currentLang] || TRANSLATIONS.en) as any;
 
   return (
-    <div className="w-full bg-white border-b border-slate-200 px-6 py-2.5 flex flex-wrap items-center justify-between gap-4 text-xs font-sans z-20 shadow-2xs">
-      {/* LEFT GROUP: Location & Language Selectors (Independent space & min widths) */}
+    <div className="w-full bg-white border-b border-slate-200 px-6 py-2.5 flex flex-wrap items-center justify-between gap-4 text-xs font-sans z-20 shadow-xs">
+      {/* LEFT GROUP: Location & Language Selectors */}
       <div className="flex items-center flex-wrap gap-4 min-w-0">
         {/* Location Dropdown Group */}
         <div className="flex items-center gap-2.5 min-w-[280px]">
@@ -40,7 +40,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
                 if (port) onSelectPort(port);
               }}
               aria-label="Select Port Location"
-              className="w-full h-9 bg-white text-slate-800 text-xs font-medium rounded-xl pl-9 pr-8 border border-slate-300 hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 shadow-2xs cursor-pointer appearance-none transition whitespace-nowrap"
+              className="w-full h-9 bg-white text-slate-800 text-xs font-medium rounded-xl pl-9 pr-8 border border-slate-300 hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 shadow-xs cursor-pointer appearance-none transition whitespace-nowrap"
             >
               {INDIAN_PORTS.map((port) => (
                 <option key={port.id} value={port.id}>
@@ -63,7 +63,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
               value={currentLang}
               onChange={(e) => onSelectLang(e.target.value)}
               aria-label="Select Global Language"
-              className="w-full h-9 bg-white text-slate-800 text-xs font-medium rounded-xl pl-9 pr-8 border border-slate-300 hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 shadow-2xs cursor-pointer appearance-none transition whitespace-nowrap"
+              className="w-full h-9 bg-white text-slate-800 text-xs font-medium rounded-xl pl-9 pr-8 border border-slate-300 hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 shadow-xs cursor-pointer appearance-none transition whitespace-nowrap"
             >
               {REGIONAL_LANGUAGES.map((lang) => (
                 <option key={lang.code} value={lang.code}>
@@ -78,34 +78,30 @@ export const ControlBar: React.FC<ControlBarProps> = ({
 
       {/* RIGHT GROUP: Swagger API, Fish Trend Analytics, Agent Trace Buttons */}
       <div className="flex items-center flex-wrap gap-3">
-        {/* Swagger API Button (min 110px) */}
+        {/* Swagger API Button */}
         <a
           href="http://localhost:8000/docs"
           target="_blank"
           rel="noopener noreferrer"
           title="OpenAPI & Swagger Documentation"
-          className="min-w-[110px] h-9 inline-flex items-center justify-center gap-1.5 px-3.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 text-slate-700 hover:text-slate-900 text-xs font-semibold shadow-2xs whitespace-nowrap transition"
+          className="min-w-[110px] h-9 inline-flex items-center justify-center gap-1.5 px-3.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 text-slate-700 hover:text-slate-900 text-xs font-semibold shadow-xs whitespace-nowrap transition"
         >
           <span className="text-sm">⚡</span>
-<<<<<<< HEAD
-          <span>{t.swaggerApiBtn || 'Swagger API'}</span>
-=======
           <span>{t.swaggerBtn || t.swaggerApiBtn || 'Swagger API'}</span>
->>>>>>> 2c901e8298007759847dff231f5ec0d85b4cd9b6
           <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
         </a>
 
-        {/* Fish Trend Analytics Button (min 150px) */}
+        {/* Fish Trend Analytics Button */}
         <button
           onClick={onOpenEcology}
           title="Analyze Historical Fish Catch Decline"
-          className="min-w-[150px] h-9 inline-flex items-center justify-center gap-1.5 px-3.5 rounded-xl bg-teal-50 hover:bg-teal-100/80 border border-teal-200 text-teal-800 text-xs font-semibold shadow-2xs whitespace-nowrap transition cursor-pointer"
+          className="min-w-[150px] h-9 inline-flex items-center justify-center gap-1.5 px-3.5 rounded-xl bg-teal-50 hover:bg-teal-100/80 border border-teal-200 text-teal-800 text-xs font-semibold shadow-xs whitespace-nowrap transition cursor-pointer"
         >
           <Activity className="w-3.5 h-3.5 text-teal-700 shrink-0" />
           <span>{t.fishAnalyticsBtn || 'Fish Trend Analytics'}</span>
         </button>
 
-        {/* Agent Trace Button (min 120px) */}
+        {/* Agent Trace Button */}
         <button
           onClick={onOpenReasoning}
           title="Inspect Multi-Agent Execution Trace"
@@ -118,4 +114,3 @@ export const ControlBar: React.FC<ControlBarProps> = ({
     </div>
   );
 };
-

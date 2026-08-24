@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import ChatMessage from './ChatMessage';
 import QueryInput from './QueryInput';
+import QuickPromptsGrid from './QuickPromptsGrid';
 import type { MessageItem } from '../App';
 
 interface ChatPanelProps {
@@ -48,7 +49,17 @@ export default function ChatPanel({
       {/* Messages Scroll Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.map((msg, index) => (
-          <ChatMessage key={msg.id || index} message={msg} currentLang={currentLang} />
+          <div key={msg.id || index}>
+            <ChatMessage message={msg} currentLang={currentLang} />
+            {/* Show prominent quick ask grid right after greeting when conversation starts */}
+            {index === 0 && messages.length <= 2 && (
+              <QuickPromptsGrid
+                currentLang={currentLang}
+                onSelectPrompt={onSendMessage}
+                isLoading={isLoading}
+              />
+            )}
+          </div>
         ))}
 
         {/* Loading State Animation */}
