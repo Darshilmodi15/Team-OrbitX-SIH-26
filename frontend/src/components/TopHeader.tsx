@@ -1,5 +1,5 @@
 import React from 'react';
-import { Compass, Waves, Wind, ShieldCheck, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { Compass, Waves, Wind, ShieldCheck, ShieldAlert, AlertTriangle, Bell } from 'lucide-react';
 import type { WeatherMetrics } from '../data/maritimeData';
 import { TRANSLATIONS } from '../data/maritimeData';
 
@@ -10,6 +10,8 @@ interface TopHeaderProps {
   riskLevel: 'safe' | 'caution' | 'unsafe';
   currentLang: string;
   currentUser?: any | null;
+  unreadAlertsCount?: number;
+  onOpenNotifications?: () => void;
   onReturnHome?: () => void;
 }
 
@@ -32,6 +34,8 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   riskLevel,
   currentLang,
   currentUser,
+  unreadAlertsCount = 0,
+  onOpenNotifications,
   onReturnHome,
 }) => {
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
@@ -159,6 +163,22 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             </span>
           </div>
         </div>
+
+        {/* Notifications Bell Action */}
+        {onOpenNotifications && (
+          <button
+            onClick={onOpenNotifications}
+            title="Open Coastal Safety Alerts & Advisories"
+            className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 hover:text-teal-700 transition relative cursor-pointer"
+          >
+            <Bell className="w-4 h-4" />
+            {unreadAlertsCount > 0 && (
+              <span className="absolute -top-1 -right-1 px-1.5 py-0.2 bg-rose-600 text-white rounded-full text-[9px] font-mono font-bold animate-pulse">
+                {unreadAlertsCount}
+              </span>
+            )}
+          </button>
+        )}
       </div>
     </header>
   );

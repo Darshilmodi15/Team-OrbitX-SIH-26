@@ -271,6 +271,69 @@ export async function synthesizeVoiceAudio(
   return await response.json();
 }
 
+/* ==========================================================================
+   Safety Notifications & Alerts APIs
+   ========================================================================== */
+
+export async function fetchNotifications(userId?: string, token?: string) {
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const query = userId ? `?user_id=${userId}` : '';
+  const response = await fetch(`${API_BASE_URL}/api/notifications${query}`, { headers });
+  if (!response.ok) {
+    throw new Error('Failed to fetch notifications');
+  }
+  return await response.json();
+}
+
+export async function markNotificationAsRead(notificationId: string) {
+  const response = await fetch(`${API_BASE_URL}/api/notifications/${notificationId}/read`, {
+    method: 'PATCH',
+  });
+  if (!response.ok) {
+    throw new Error('Failed to mark notification as read');
+  }
+  return await response.json();
+}
+
+export async function markAllNotificationsAsRead(userId?: string, token?: string) {
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const query = userId ? `?user_id=${userId}` : '';
+  const response = await fetch(`${API_BASE_URL}/api/notifications/read-all${query}`, {
+    method: 'POST',
+    headers,
+  });
+  if (!response.ok) {
+    throw new Error('Failed to mark all notifications as read');
+  }
+  return await response.json();
+}
+
+export async function checkLocationSafetyAlerts(
+  lat: number,
+  lon: number,
+  previousLat?: number,
+  previousLon?: number,
+  userId?: string
+) {
+  const response = await fetch(`${API_BASE_URL}/api/notifications/check`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      lat,
+      lon,
+      previous_lat: previousLat,
+      previous_lon: previousLon,
+      user_id: userId || 'anonymous_session',
+    }),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to check location safety alerts');
+  }
+  return await response.json();
+}
+
 export default {
   queryORCA,
   registerUser,
@@ -279,9 +342,16 @@ export default {
   updateUserProfile,
   validateLocation,
   updateUserLocation,
+  fetchMarineConditions,
+  fetchMarineRisk,
+  fetchMarineForecast,
   fetchMarineBoundariesEEZ,
   checkMarineBoundary,
   fetchGeofences,
   transcribeVoiceAudio,
   synthesizeVoiceAudio,
+  fetchNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  checkLocationSafetyAlerts,
 };

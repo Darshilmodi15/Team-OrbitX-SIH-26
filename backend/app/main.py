@@ -57,10 +57,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from app.routers.notifications import router as notifications_router
+
 # Include API routers
 app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(location_router)
+app.include_router(notifications_router)
 app.include_router(pfz_router)
 app.include_router(boundaries_router)
 app.include_router(voice_router)

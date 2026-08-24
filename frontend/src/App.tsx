@@ -6,6 +6,7 @@ import LocationPermissionModal from './components/LocationPermissionModal';
 import CurrentMarineStatusCard from './components/CurrentMarineStatusCard';
 import ForecastHorizonTimeline from './components/ForecastHorizonTimeline';
 import TerminologyExplainerModal from './components/TerminologyExplainerModal';
+import NotificationCenterModal, { type NotificationItem } from './components/NotificationCenterModal';
 import MobileBottomNav, { type MobileTab } from './components/MobileBottomNav';
 import { TopHeader } from './components/TopHeader';
 import { ControlBar } from './components/ControlBar';
@@ -15,7 +16,14 @@ import ChatPanel from './components/ChatPanel';
 import { FishAnalyticsModal } from './components/FishAnalyticsModal';
 import { AgentTraceModal } from './components/AgentTraceModal';
 import { Footer } from './components/Footer';
-import { queryORCA, fetchMarineConditions, fetchMarineRisk } from './services/api';
+import {
+  queryORCA,
+  fetchMarineConditions,
+  fetchMarineRisk,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  checkLocationSafetyAlerts,
+} from './services/api';
 import {
   INDIAN_PORTS,
   MOCK_PFZ_ZONES,
@@ -71,11 +79,12 @@ export default function App() {
   const [appStage, setAppStage] = useState<'landing' | 'dashboard'>('landing');
   const [mobileTab, setMobileTab] = useState<MobileTab>('status');
 
-  // Modals for Onboarding & Reference
+  // Modals for Onboarding, Notifications & Reference
   const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isTerminologyModalOpen, setIsTerminologyModalOpen] = useState(false);
+  const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
 
   // User Authentication State
   const [currentUser, setCurrentUser] = useState<any | null>(null);
@@ -92,6 +101,11 @@ export default function App() {
   );
 
   const [currentLang, setCurrentLang] = useState<string>('en');
+
+  // Notifications State
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadAlertsCount, setUnreadAlertsCount] = useState<number>(0);
+  const [activeCriticalToast, setActiveCriticalToast] = useState<NotificationItem | null>(null);
 
   // Baseline / Live Telemetry Weather & Safety
   const [weather, setWeather] = useState<WeatherMetrics>(
@@ -153,15 +167,16 @@ export default function App() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Synchronize Live Telemetry whenever location changes
+  // Synchronize Live Telemetry & Check Location Safety Alerts
   useEffect(() => {
     let isMounted = true;
 
-    async function refreshTelemetry() {
+    async function refreshTelemetryAndAlerts() {
       try {
-        const [condData, riskData] = await Promise.all([
+        const [condData, riskData, alertsData] = await Promise.all([
           fetchMarineConditions(userLocation.lat, userLocation.lon, currentDate).catch(() => null),
           fetchMarineRisk(userLocation.lat, userLocation.lon, currentDate).catch(() => null),
+          checkLocationSafetyAlerts(userLocation.lat, userLocation.lon, undefined, undefined, currentUser?.id).catch(() => null),
         ]);
 
         if (isMounted) {
@@ -183,17 +198,56 @@ export default function App() {
           if (riskData && riskData.risk_level) {
             setRiskLevel(riskData.risk_level as any);
           }
+          if (alertsData && alertsData.notifications) {
+            setNotifications(alertsData.notifications);
+            setUnreadAlertsCount(alertsData.unread_count || 0);
+
+            // Pop up critical toast if critical alert exists
+            const criticalAlert = alertsData.notifications.find(
+              (n: any) => (n.severity === 'CRITICAL' || n.severity === 'HIGH') && !n.is_read
+            );
+            if (criticalAlert) {
+              setActiveCriticalToast(criticalAlert);
+            }
+          }
         }
       } catch (err) {
-        console.warn('Telemetry refresh fallback:', err);
+        console.warn('Telemetry/alerts refresh fallback:', err);
       }
     }
 
-    refreshTelemetry();
+    refreshTelemetryAndAlerts();
     return () => {
       isMounted = false;
     };
-  }, [userLocation, currentDate]);
+  }, [userLocation, currentDate, currentUser]);
+
+  // Handle Notifications
+  const handleMarkRead = async (id: string) => {
+    try {
+      await markNotificationAsRead(id);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+      );
+      setUnreadAlertsCount((c) => Math.max(0, c - 1));
+      if (activeCriticalToast?.id === id) {
+        setActiveCriticalToast(null);
+      }
+    } catch (err) {
+      console.warn('Mark read error:', err);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllNotificationsAsRead(currentUser?.id);
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      setUnreadAlertsCount(0);
+      setActiveCriticalToast(null);
+    } catch (err) {
+      console.warn('Mark all read error:', err);
+    }
+  };
 
   // Onboarding Handlers
   const handleStartOnboarding = () => {
@@ -373,6 +427,8 @@ export default function App() {
             riskLevel={riskLevel}
             currentLang={currentLang}
             currentUser={currentUser}
+            unreadAlertsCount={unreadAlertsCount}
+            onOpenNotifications={() => setIsNotificationsModalOpen(true)}
             onReturnHome={() => setAppStage('landing')}
           />
 
@@ -392,6 +448,22 @@ export default function App() {
             onToggleLayer={(k) => setGisLayers((prev) => ({ ...prev, [k]: !prev[k] }))}
             currentLang={currentLang}
           />
+
+          {/* Floating Critical Toast Alert */}
+          {activeCriticalToast && (
+            <div className="z-30 px-4 py-2 bg-rose-950/90 border-b border-rose-500/50 flex items-center justify-between text-xs text-rose-200 animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping shrink-0"></span>
+                <span><strong>{activeCriticalToast.title}:</strong> {activeCriticalToast.message}</span>
+              </div>
+              <button
+                onClick={() => handleMarkRead(activeCriticalToast.id)}
+                className="ml-3 px-2 py-0.5 rounded-lg bg-rose-900/80 hover:bg-rose-800 text-white font-mono text-[10px] shrink-0 cursor-pointer"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
 
           {/* Main Body: Responsive Desktop Grid & Mobile Tab Switching */}
           <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative min-h-0 bg-slate-950 pb-14 md:pb-0">
@@ -487,11 +559,12 @@ export default function App() {
           {/* Mobile Bottom Navigation Bar */}
           <MobileBottomNav
             activeTab={mobileTab}
+            unreadCount={unreadAlertsCount}
             onTabChange={(tab) => {
               if (tab === 'ecology') {
                 setIsEcologyModalOpen(true);
               } else if (tab === 'emergency') {
-                setIsReasoningModalOpen(true);
+                setIsNotificationsModalOpen(true);
               } else {
                 setMobileTab(tab);
               }
@@ -514,6 +587,16 @@ export default function App() {
           <TerminologyExplainerModal
             isOpen={isTerminologyModalOpen}
             onClose={() => setIsTerminologyModalOpen(false)}
+            currentLang={currentLang}
+          />
+
+          <NotificationCenterModal
+            isOpen={isNotificationsModalOpen}
+            onClose={() => setIsNotificationsModalOpen(false)}
+            notifications={notifications}
+            unreadCount={unreadAlertsCount}
+            onMarkRead={handleMarkRead}
+            onMarkAllRead={handleMarkAllRead}
             currentLang={currentLang}
           />
         </div>
