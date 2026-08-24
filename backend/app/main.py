@@ -472,7 +472,7 @@ def _process_orca_query(
         "reasoning": reasoning,
         "sources_used": sources_used,
         "plan": plan,
-        "risk_level": risk_evidence.level if risk_evidence else ("unsafe" if weather_evidence and weather_evidence.wave_height_m > 2.5 else "safe"),
+        "risk_level": risk_evidence.level if risk_evidence else None,
         "weather": weather_evidence.model_dump() if weather_evidence else None,
         "nearest_pfz": [z.model_dump() for z in pfz_evidence_list] if pfz_evidence_list else None,
     }
