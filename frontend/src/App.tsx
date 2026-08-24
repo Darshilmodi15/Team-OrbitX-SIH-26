@@ -117,7 +117,10 @@ export const App: React.FC = () => {
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         riskLevel: response.risk_level,
         reasoningCount: response.reasoning.length,
+        language: response.language,
+        languageName: response.language_name,
       };
+
 
       setMessages((prev) => [...prev, orcaMsg]);
     } catch (err) {

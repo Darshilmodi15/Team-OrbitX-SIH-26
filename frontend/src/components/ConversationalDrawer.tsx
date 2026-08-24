@@ -10,6 +10,8 @@ export interface ChatMessage {
   timestamp: string;
   riskLevel?: 'safe' | 'caution' | 'unsafe';
   reasoningCount?: number;
+  language?: string;
+  languageName?: string;
 }
 
 interface ConversationalDrawerProps {
@@ -50,7 +52,7 @@ export const ConversationalDrawer: React.FC<ConversationalDrawerProps> = ({
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = false;
-      recognition.lang = currentLang === 'en' ? 'en-IN' : `${currentLang}-IN`;
+      recognition.lang = currentLang === 'en' || currentLang === 'auto' ? 'en-IN' : `${currentLang}-IN`;
 
       recognition.onstart = () => setIsListening(true);
       recognition.onend = () => setIsListening(false);
@@ -88,13 +90,14 @@ export const ConversationalDrawer: React.FC<ConversationalDrawerProps> = ({
     setInputText('');
   };
 
-  const handleSpeak = (msgId: string, text: string) => {
+  const handleSpeak = (msgId: string, text: string, msgLang?: string) => {
     if (speakingId === msgId) {
       window.speechSynthesis.cancel();
       setSpeakingId(null);
     } else {
       setSpeakingId(msgId);
-      speakText(text, currentLang);
+      const voiceLang = msgLang && msgLang !== 'auto' ? msgLang : (currentLang !== 'auto' ? currentLang : 'en');
+      speakText(text, voiceLang);
     }
   };
 
@@ -123,7 +126,7 @@ export const ConversationalDrawer: React.FC<ConversationalDrawerProps> = ({
           </div>
           <div>
             <h3 className="text-sm font-bold font-display text-white">ORCA Marine Intelligence</h3>
-            <p className="text-[10px] text-slate-400 font-mono">Agentic Decision Support Engine</p>
+            <p className="text-[10px] text-slate-400 font-mono">Bhashini Multilingual Decision Support</p>
           </div>
         </div>
 
@@ -167,7 +170,7 @@ export const ConversationalDrawer: React.FC<ConversationalDrawerProps> = ({
                 <div>
                   <p className="font-bold text-slate-200 text-sm">Ask anything about marine conditions</p>
                   <p className="text-[11px] mt-1">
-                    Check safety risks, locate nearest Potential Fishing Zones (PFZ), review IMBL boundary alerts, or request weather-safe routes.
+                    Ask in Gujarati, Hindi, Tamil, Telugu, Marathi, or English. ORCA automatically detects your language and provides safety advisories.
                   </p>
                 </div>
               </div>
@@ -187,6 +190,11 @@ export const ConversationalDrawer: React.FC<ConversationalDrawerProps> = ({
                       <>
                         <Bot className="w-3 h-3 text-cyan-400" />
                         <span className="font-bold text-cyan-300">ORCA Multi-Agent Synthesis</span>
+                        {msg.languageName && (
+                          <span className="px-1.5 py-0.2 rounded bg-cyan-900/60 border border-cyan-400/40 text-[9px] text-cyan-300 font-mono">
+                            🌐 {msg.languageName}
+                          </span>
+                        )}
                       </>
                     )}
                     <span>• {msg.timestamp}</span>
@@ -208,7 +216,7 @@ export const ConversationalDrawer: React.FC<ConversationalDrawerProps> = ({
                       <div className="mt-3 pt-2 border-t border-slate-700/60 flex items-center justify-between text-[11px]">
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => handleSpeak(msg.id, msg.text)}
+                            onClick={() => handleSpeak(msg.id, msg.text, msg.language)}
                             className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition"
                             title="Listen to audio advisory"
                           >
@@ -237,6 +245,7 @@ export const ConversationalDrawer: React.FC<ConversationalDrawerProps> = ({
                 </div>
               ))
             )}
+
 
             {/* Loading Indicator */}
             {isLoading && (

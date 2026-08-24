@@ -62,22 +62,27 @@ def parse_intent(question: str) -> Dict[str, Any]:
         try:
             from google import genai
             client = genai.Client(api_key=gemini_key)
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=question,
-                config={"system_instruction": SYSTEM_PROMPT},
-            )
-            raw_text = _clean_json_text(response.text)
-            data = json.loads(raw_text)
-            intent = data.get("intent", "general")
-            if intent not in VALID_INTENTS:
-                intent = "general"
-            return {
-                "intent": intent,
-                "location_hint": data.get("location_hint") or None,
-            }
+            for model_name in ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"]:
+                try:
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=question,
+                        config={"system_instruction": SYSTEM_PROMPT},
+                    )
+                    raw_text = _clean_json_text(response.text)
+                    data = json.loads(raw_text)
+                    intent = data.get("intent", "general")
+                    if intent not in VALID_INTENTS:
+                        intent = "general"
+                    return {
+                        "intent": intent,
+                        "location_hint": data.get("location_hint") or None,
+                    }
+                except Exception:
+                    continue
         except Exception:
             pass
+
 
     # 2. Try Anthropic API if ANTHROPIC_API_KEY is available
     if anthropic_key:

@@ -221,15 +221,20 @@ export const QUICK_PROMPTS: QuickPrompt[] = [
 ];
 
 export const REGIONAL_LANGUAGES = [
+  { code: 'auto', name: 'Auto Detect (Bhashini AI)', native: '🌐 Auto Detect' },
   { code: 'en', name: 'English', native: 'English' },
-  { code: 'hi', name: 'Hindi', native: 'हिन्दी' },
   { code: 'gu', name: 'Gujarati', native: 'ગુજરાતી' },
+  { code: 'hi', name: 'Hindi', native: 'हिन्दी' },
+  { code: 'mr', name: 'Marathi', native: 'मराठी' },
   { code: 'ta', name: 'Tamil', native: 'தமிழ்' },
   { code: 'te', name: 'Telugu', native: 'తెలుగు' },
   { code: 'ml', name: 'Malayalam', native: 'മലയാളം' },
-  { code: 'mr', name: 'Marathi', native: 'मराठी' },
   { code: 'bn', name: 'Bengali', native: 'বাংলা' },
+  { code: 'kn', name: 'Kannada', native: 'ಕನ್ನಡ' },
+  { code: 'or', name: 'Odia', native: 'ଓଡ଼ିଆ' },
+  { code: 'pa', name: 'Punjabi', native: 'ਪੰਜਾਬੀ' },
 ];
+
 
 export const TRANSLATIONS: Record<string, Record<string, string>> = {
   en: {

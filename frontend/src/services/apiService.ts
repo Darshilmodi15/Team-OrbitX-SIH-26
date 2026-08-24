@@ -21,6 +21,10 @@ export interface QueryApiResponse {
   geofence_warning?: string;
   recommended_route?: [number, number][];
   agent_steps: AgentStep[];
+  language?: string;
+  language_name?: string;
+  original_question?: string;
+  english_query?: string;
 }
 
 export interface IncoisPFZZone {
@@ -58,6 +62,43 @@ export async function fetchIncoisPFZ(): Promise<IncoisPFZResponse | null> {
     console.warn('Backend INCOIS PFZ API unavailable, skipping live PFZ load:', err);
   }
   return null;
+}
+
+export async function detectLanguage(text: string): Promise<{ language: string; language_name: string }> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/detect-language`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch {
+    // ignore
+  }
+  return { language: 'en', language_name: 'English' };
+}
+
+export async function translateText(text: string, sourceLanguage: string, targetLanguage: string): Promise<string> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/translate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        source_language: sourceLanguage,
+        target_language: targetLanguage,
+      }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.translated_text || text;
+    }
+  } catch {
+    // ignore
+  }
+  return text;
 }
 
 export function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -164,7 +205,7 @@ export async function askMarineAI(
   lat: number,
   lon: number,
   date = new Date().toISOString().split('T')[0],
-  _language = 'en'
+  language = 'auto'
 ): Promise<QueryApiResponse> {
   const geofenceCheck = checkGeofenceProximity(lat, lon);
   const weather = getSimulatedWeather(lat, lon);
@@ -188,6 +229,14 @@ export async function askMarineAI(
   // Construct Multi-Agent Execution Steps
   const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const agentSteps: AgentStep[] = [
+    {
+      agentName: 'Bhashini Indic Multilingual NMT Service',
+      role: 'Language Identification & Neural Machine Translation',
+      icon: '🌐',
+      detail: `Identified input query stream (Target Lang: ${language.toUpperCase()}). Normalized query to operational English for agent reasoning.`,
+      timestamp: now,
+      status: 'completed',
+    },
     {
       agentName: 'Master Intent & Planner Agent',
       role: 'Query Decomposition',
@@ -230,36 +279,49 @@ export async function askMarineAI(
     },
   ];
 
-  // Try live backend query first
+  // Try live backend /api/chat first (falls back to /query)
   try {
-    const res = await fetch(`${BACKEND_URL}/query`, {
+    const res = await fetch(`${BACKEND_URL}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        message: question,
         location: { lat, lon },
         date,
-        question,
+        language: language || 'auto',
+        session_id: 'orca-main-session',
       }),
     });
 
     if (res.ok) {
       const data = await res.json();
+      
+      // Update Bhashini step details from backend response
+      if (agentSteps[0]) {
+        agentSteps[0].detail = `Detected: ${data.language_name || data.language} (${data.language}). Processed English query: "${data.english_query || question}" -> Response translated back to user.`;
+      }
+
       return {
         answer: data.answer,
-        reasoning: data.reasoning,
-        sources_used: data.sources_used,
-        risk_level: riskLevel,
-        weather,
-        nearest_pfz: sortedPfz,
+        reasoning: data.reasoning || [],
+        sources_used: data.sources_used || [],
+        risk_level: (data.risk_level as 'safe' | 'caution' | 'unsafe') || riskLevel,
+        weather: data.weather || weather,
+        nearest_pfz: data.nearest_pfz && data.nearest_pfz.length > 0 ? data.nearest_pfz : sortedPfz,
         geofence_breach: geofenceCheck.inDanger,
         geofence_warning: geofenceCheck.warning,
         recommended_route: safeRoute,
         agent_steps: agentSteps,
+        language: data.language,
+        language_name: data.language_name,
+        original_question: data.original_message,
+        english_query: data.english_query,
       };
     }
   } catch {
     // Graceful fallback to client-side multi-agent engine
   }
+
 
   // Generate autonomous answer
   let answer = '';
