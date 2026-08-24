@@ -39,6 +39,10 @@ export default function AgentTrace({ plan, reasoning, sourcesUsed }: AgentTraceP
         return { label: 'PFZ Agent', color: 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40', icon: '🐟' };
       case 'geospatial_agent':
         return { label: 'Geospatial Agent', color: 'bg-indigo-950/80 text-indigo-300 border-indigo-500/40', icon: '📐' };
+      case 'geofence_agent':
+        return { label: 'Geofence Agent', color: 'bg-rose-950/80 text-rose-300 border-rose-500/40', icon: '🛑' };
+      case 'geofence_spatial_engine':
+        return { label: 'Spatial Engine', color: 'bg-rose-950/80 text-rose-300 border-rose-500/40', icon: '🗺️' };
       default:
         return { label: agent, color: 'bg-slate-800 text-slate-300 border-slate-700', icon: '🤖' };
     }

@@ -1,10 +1,90 @@
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, GeoJSON, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, Polygon, GeoJSON, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import PFZMarker from './PFZMarker';
 import type { LocationCoords, PFZEvidenceItem } from '../App';
-import { fetchMarineBoundariesEEZ, checkMarineBoundary } from '../services/api';
+import { fetchMarineBoundariesEEZ, checkMarineBoundary } from '../services/boundariesApi';
+
+export interface GeofenceZoneData {
+  id: string;
+  name: string;
+  type: string;
+  geometry_type: string;
+  threshold_nm: number;
+  severity: string;
+  description: string;
+  coordinates: number[][];
+}
+
+const DEFAULT_GEOFENCES: GeofenceZoneData[] = [
+  {
+    id: 'imbl_india_pakistan',
+    name: 'India-Pakistan Maritime Boundary (IMBL)',
+    type: 'IMBL',
+    geometry_type: 'LineString',
+    threshold_nm: 15.0,
+    severity: 'WARNING',
+    description: 'International boundary between India and Pakistan in Sir Creek / Arabian Sea.',
+    coordinates: [
+      [68.1667, 23.5000],
+      [68.0000, 23.2500],
+      [67.8000, 23.0000],
+      [67.5000, 22.5000],
+      [67.0000, 21.5000],
+      [66.5000, 20.5000],
+    ],
+  },
+  {
+    id: 'imbl_india_srilanka',
+    name: 'India-Sri Lanka Maritime Boundary (IMBL)',
+    type: 'IMBL',
+    geometry_type: 'LineString',
+    threshold_nm: 10.0,
+    severity: 'WARNING',
+    description: 'Maritime boundary in Palk Strait and Gulf of Mannar. Naval monitoring active.',
+    coordinates: [
+      [79.0750, 9.1000],
+      [79.2500, 9.3500],
+      [79.5333, 9.6833],
+      [79.8500, 10.0833],
+      [80.0500, 10.4500],
+      [80.3333, 10.8333],
+    ],
+  },
+  {
+    id: 'mpa_gulf_of_mannar',
+    name: 'Gulf of Mannar Marine National Park',
+    type: 'MPA',
+    geometry_type: 'Polygon',
+    threshold_nm: 5.0,
+    severity: 'CRITICAL',
+    description: 'Protected Marine Sanctuary and Biosphere Reserve. Commercial trawling strictly prohibited.',
+    coordinates: [
+      [78.5000, 8.8000],
+      [79.3000, 8.8000],
+      [79.3000, 9.3000],
+      [78.5000, 9.3000],
+      [78.5000, 8.8000],
+    ],
+  },
+  {
+    id: 'mpa_malvan_sanctuary',
+    name: 'Malvan Marine Sanctuary (Sindhudurg)',
+    type: 'MPA',
+    geometry_type: 'Polygon',
+    threshold_nm: 4.0,
+    severity: 'CRITICAL',
+    description: 'Coastal Marine Protected Area protecting coral reefs in southern Maharashtra.',
+    coordinates: [
+      [73.4000, 15.9800],
+      [73.5200, 15.9800],
+      [73.5200, 16.0800],
+      [73.4000, 16.0800],
+      [73.4000, 15.9800],
+    ],
+  },
+];
 
 /**
  * Creates custom glowing tactical icon for user's vessel location.
@@ -27,28 +107,15 @@ const createUserIcon = () => {
   });
 };
 
-/**
- * Helper component that forces Leaflet to invalidate container size
- * and re-render tiles smoothly on mount and window resize.
- */
 function MapResizer() {
   const map = useMap();
 
   useEffect(() => {
     if (!map) return;
+    const timer1 = setTimeout(() => map.invalidateSize(), 100);
+    const timer2 = setTimeout(() => map.invalidateSize(), 400);
 
-    const timer1 = setTimeout(() => {
-      map.invalidateSize();
-    }, 100);
-
-    const timer2 = setTimeout(() => {
-      map.invalidateSize();
-    }, 400);
-
-    const handleResize = () => {
-      map.invalidateSize();
-    };
-
+    const handleResize = () => map.invalidateSize();
     window.addEventListener('resize', handleResize);
 
     return () => {
@@ -66,15 +133,11 @@ interface MapBoundsUpdaterProps {
   pfzZones: PFZEvidenceItem[];
 }
 
-/**
- * Helper component that dynamically bounds or centers map to include active markers.
- */
 function MapBoundsUpdater({ center, pfzZones }: MapBoundsUpdaterProps) {
   const map = useMap();
 
   useEffect(() => {
     if (!map) return;
-
     if (pfzZones && pfzZones.length > 0) {
       const bounds = L.latLngBounds([[center.lat, center.lon]]);
       pfzZones.forEach((z) => {
@@ -94,10 +157,12 @@ function MapBoundsUpdater({ center, pfzZones }: MapBoundsUpdaterProps) {
 export interface MarineMapProps {
   userLocation: LocationCoords;
   pfzZones: PFZEvidenceItem[];
+  geofenceEvidence?: any;
 }
 
-export default function MarineMap({ userLocation, pfzZones = [] }: MarineMapProps) {
+export default function MarineMap({ userLocation, pfzZones = [], geofenceEvidence }: MarineMapProps) {
   const userIcon = createUserIcon();
+  const [geofences, setGeofences] = useState<GeofenceZoneData[]>(DEFAULT_GEOFENCES);
   const [eezGeoJson, setEezGeoJson] = useState<any>(null);
   const [showEEZ, setShowEEZ] = useState<boolean>(true);
   const [boundaryCheck, setBoundaryCheck] = useState<any>(null);
@@ -128,6 +193,17 @@ export default function MarineMap({ userLocation, pfzZones = [] }: MarineMapProp
     };
   }, [userLocation.lat, userLocation.lon]);
 
+  useEffect(() => {
+    fetch('http://localhost:8000/api/geofences')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.geofences && Array.isArray(data.geofences) && data.geofences.length > 0) {
+          setGeofences(data.geofences);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="relative w-full h-full min-h-0 flex-1 overflow-hidden bg-[#020617]">
       <MapContainer
@@ -138,7 +214,6 @@ export default function MarineMap({ userLocation, pfzZones = [] }: MarineMapProp
         style={{ height: '100%', width: '100%' }}
         className="w-full h-full z-0"
       >
-        {/* High-Resolution Ocean / Voyager Tiles */}
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a> | Marine Regions (VLIZ)'
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
@@ -190,7 +265,7 @@ export default function MarineMap({ userLocation, pfzZones = [] }: MarineMapProp
           />
         )}
 
-        {/* User Vessel Location Marker */}
+        {/* Vessel Position Marker */}
         <Marker position={[userLocation.lat, userLocation.lon]} icon={userIcon}>
           <Popup className="orca-user-popup">
             <div className="p-2 min-w-[220px] text-xs font-sans">
@@ -200,12 +275,8 @@ export default function MarineMap({ userLocation, pfzZones = [] }: MarineMapProp
               </div>
               <div className="text-[11px] text-slate-200 font-mono space-y-1">
                 <div className="flex justify-between bg-slate-900/60 px-2 py-1 rounded">
-                  <span className="text-slate-400">Latitude:</span>
-                  <span>{userLocation.lat.toFixed(4)}°N</span>
-                </div>
-                <div className="flex justify-between bg-slate-900/60 px-2 py-1 rounded">
-                  <span className="text-slate-400">Longitude:</span>
-                  <span>{userLocation.lon.toFixed(4)}°E</span>
+                  <span className="text-slate-400">Position:</span>
+                  <span>{userLocation.lat.toFixed(4)}°N, {userLocation.lon.toFixed(4)}°E</span>
                 </div>
                 {boundaryCheck && (
                   <div className="flex justify-between bg-slate-900/60 px-2 py-1 rounded text-cyan-300">
@@ -222,28 +293,87 @@ export default function MarineMap({ userLocation, pfzZones = [] }: MarineMapProp
           </Popup>
         </Marker>
 
-        {/* Dynamically Render PFZ Evidence Markers from Backend */}
+        {/* INCOIS PFZ Evidence Markers */}
         {pfzZones.map((zone, idx) => (
           <PFZMarker key={zone.id || `${zone.latitude}-${zone.longitude}-${idx}`} zone={zone} />
         ))}
+
+        {/* Geofence Maritime Boundaries (IMBL & MPAs) */}
+        {geofences.map((gf) => {
+          if (gf.geometry_type === 'Polygon') {
+            const positions: [number, number][] = gf.coordinates.map((c) => [c[1], c[0]]);
+            return (
+              <Polygon
+                key={gf.id}
+                positions={positions}
+                pathOptions={{
+                  color: '#fbbf24',
+                  fillColor: '#f59e0b',
+                  fillOpacity: 0.2,
+                  weight: 2,
+                  dashArray: '6, 6',
+                }}
+              >
+                <Popup>
+                  <div className="p-2 text-xs font-sans">
+                    <div className="font-bold text-amber-400 text-sm flex items-center gap-1.5 border-b border-slate-700 pb-1 mb-1.5">
+                      <span>🛡️</span>
+                      <span>{gf.name}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 mb-1">{gf.description}</p>
+                    <div className="text-[10px] font-mono text-amber-300 font-bold">
+                      PROTECTED SANCTUARY • NO TRAWLING
+                    </div>
+                  </div>
+                </Popup>
+              </Polygon>
+            );
+          } else {
+            const positions: [number, number][] = gf.coordinates.map((c) => [c[1], c[0]]);
+            return (
+              <Polyline
+                key={gf.id}
+                positions={positions}
+                pathOptions={{
+                  color: '#f43f5e',
+                  weight: 3,
+                  dashArray: '8, 8',
+                }}
+              >
+                <Popup>
+                  <div className="p-2 text-xs font-sans">
+                    <div className="font-bold text-rose-400 text-sm flex items-center gap-1.5 border-b border-slate-700 pb-1 mb-1.5">
+                      <span>🛑</span>
+                      <span>{gf.name}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 mb-1">{gf.description}</p>
+                    <div className="text-[10px] font-mono text-rose-300 font-bold">
+                      INTERNATIONAL MARITIME BORDER LINE
+                    </div>
+                  </div>
+                </Popup>
+              </Polyline>
+            );
+          }
+        })}
       </MapContainer>
 
       {/* Floating Tactical Map Overlay / Legend */}
-      <div className="absolute top-4 right-4 z-[1000] bg-slate-950/85 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-3.5 shadow-2xl text-xs font-mono max-w-[280px]">
+      <div className="absolute top-4 right-4 z-[1000] bg-slate-950/85 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-3.5 shadow-2xl text-xs font-mono max-w-[290px]">
         <div className="text-slate-200 font-bold text-[11px] mb-2.5 flex items-center justify-between gap-3 border-b border-slate-800 pb-2">
           <span className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-[#22d3ee] shadow-[0_0_8px_#22d3ee]"></span>
             <span className="tracking-wider">TACTICAL GIS RADAR</span>
           </span>
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800/90 text-cyan-300 border border-cyan-500/30">
-            {pfzZones.length} PFZ Layer{pfzZones.length === 1 ? '' : 's'}
+            {pfzZones.length} PFZ • {geofences.length} Borders
           </span>
         </div>
 
-        <div className="space-y-2 text-[11px]">
+        <div className="space-y-1.5 text-[11px]">
           <div className="flex items-center gap-2.5 text-slate-300">
             <span className="w-3.5 h-3.5 rounded-full bg-[#22d3ee] shadow-[0_0_8px_#22d3ee] inline-block shrink-0"></span>
-            <span>Vessel Position ({userLocation.lat.toFixed(2)}°, {userLocation.lon.toFixed(2)}°)</span>
+            <span>Vessel Station ({userLocation.lat.toFixed(2)}°, {userLocation.lon.toFixed(2)}°)</span>
           </div>
 
           <div className="flex items-center gap-2.5 text-slate-300">
@@ -269,6 +399,16 @@ export default function MarineMap({ userLocation, pfzZones = [] }: MarineMapProp
             </button>
           </div>
 
+          <div className="flex items-center gap-2.5 text-slate-300">
+            <span className="w-3.5 h-1 bg-[#f43f5e] inline-block shrink-0"></span>
+            <span>International Border (IMBL)</span>
+          </div>
+
+          <div className="flex items-center gap-2.5 text-slate-300">
+            <span className="w-3.5 h-3 bg-amber-500/40 border border-amber-400 inline-block shrink-0 rounded-xs"></span>
+            <span>Protected Sanctuaries (MPA)</span>
+          </div>
+
           {/* Dynamic Boundary Proximity Status */}
           {boundaryCheck && (
             <div className="pt-1.5 border-t border-slate-800/80 text-[10px]">
@@ -285,6 +425,13 @@ export default function MarineMap({ userLocation, pfzZones = [] }: MarineMapProp
             </div>
           )}
         </div>
+
+        {geofenceEvidence?.active_alerts && geofenceEvidence.active_alerts.length > 0 && (
+          <div className="mt-2.5 pt-2 border-t border-rose-900/60 text-rose-300 font-bold text-[10px] flex items-center gap-1.5 animate-pulse">
+            <span>🚨</span>
+            <span>{geofenceEvidence.active_alerts.length} Active Boundary Warning!</span>
+          </div>
+        )}
       </div>
     </div>
   );
