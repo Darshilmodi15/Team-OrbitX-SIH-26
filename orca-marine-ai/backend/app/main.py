@@ -80,7 +80,7 @@ def handle_query(request: QueryRequest) -> QueryResponse:
         f"Parsed query for location ({lat:.4f}, {lon:.4f}) on date '{date}'. Question: '{question}'."
     )
 
-    # Step 2: Retrieve mock weather
+    # Step 3: Retrieve mock weather
     weather_data = get_weather(lat=lat, lon=lon, date=date)
     sources_used.append("mock_weather_service")
     wave_h = weather_data["wave_height_m"]
@@ -90,7 +90,7 @@ def handle_query(request: QueryRequest) -> QueryResponse:
         f"Retrieved marine weather data: forecast='{forecast}', wave_height={wave_h}m, wind_speed={wind_spd} km/h."
     )
 
-    # Step 3: Run risk assessment agent
+    # Step 4: Run risk assessment agent
     risk_assessment = assess_risk(weather_data)
     sources_used.append("risk_assessment_agent")
     risk_level = risk_assessment["level"]
@@ -99,7 +99,7 @@ def handle_query(request: QueryRequest) -> QueryResponse:
         f"Assessed marine risk level as '{risk_level.upper()}': {risk_reason}"
     )
 
-    # Step 4: Retrieve potential fishing zones (PFZ)
+    # Step 5: Retrieve potential fishing zones (PFZ)
     pfz_zones = get_pfz_zones(lat=lat, lon=lon)
     sources_used.append("mock_pfz_service")
     nearest_zones_desc = ", ".join(
@@ -109,7 +109,7 @@ def handle_query(request: QueryRequest) -> QueryResponse:
         f"Identified {len(pfz_zones)} Potential Fishing Zones (PFZ). Nearest: {nearest_zones_desc}."
     )
 
-    # Step 5: Formulate final answer based on safety risk & query context
+    # Step 6: Formulate final answer based on safety risk & query context
     if risk_level == "unsafe":
         safety_summary = f"⚠️ Sea conditions are UNSAFE ({forecast}, wave height {wave_h}m, wind speed {wind_spd} km/h). {risk_reason}"
     elif risk_level == "caution":
