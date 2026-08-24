@@ -123,7 +123,7 @@ def handle_query(request: QueryRequest) -> QueryResponse:
     # 3a. Weather conditions
     if needs_weather:
         weather_data = weather_provider.get_weather(lat=lat, lon=lon, date=date)
-        sources_used.append("mock_weather_service")
+        sources_used.append("mock_marine_weather")
         executed_tasks.append("weather_agent:get_marine_conditions")
         wave_h = weather_data.get("wave_height_m", 0.0)
         wind_spd = weather_data.get("wind_speed_kmh", 0.0)
@@ -138,7 +138,7 @@ def handle_query(request: QueryRequest) -> QueryResponse:
     if needs_risk:
         if weather_data is None:
             weather_data = weather_provider.get_weather(lat=lat, lon=lon, date=date)
-            sources_used.append("mock_weather_service")
+            sources_used.append("mock_marine_weather")
         risk_assessment = assess_risk(weather_data)
         sources_used.append("risk_assessment_agent")
         executed_tasks.append("risk_agent:assess_risk")
@@ -153,7 +153,7 @@ def handle_query(request: QueryRequest) -> QueryResponse:
     # 3c. Potential fishing zones & geospatial calculation
     if needs_pfz:
         pfz_zones = pfz_provider.get_pfz_zones(lat=lat, lon=lon)
-        sources_used.append("mock_pfz_service")
+        sources_used.append("incois_derived_pfz_dataset")
         executed_tasks.append("pfz_agent:find_nearest_zones")
 
         if needs_geospatial:

@@ -33,8 +33,10 @@ class TestQueryEndpoint(unittest.TestCase):
         
         self.assertIn("planner", data["sources_used"])
         self.assertIn("intent_agent", data["sources_used"])
-        self.assertIn("mock_weather_service", data["sources_used"])
+        self.assertIn("mock_marine_weather", data["sources_used"])
         self.assertIn("risk_assessment_agent", data["sources_used"])
+        self.assertNotIn("incois_derived_pfz_dataset", data["sources_used"])
+        self.assertNotIn("geospatial_agent", data["sources_used"])
         self.assertIsInstance(data["plan"]["tasks"], list)
 
     def test_query_nearest_pfz(self):
@@ -48,8 +50,10 @@ class TestQueryEndpoint(unittest.TestCase):
         data = response.json()
         
         self.assertIn("planner", data["sources_used"])
-        self.assertIn("mock_pfz_service", data["sources_used"])
+        self.assertIn("incois_derived_pfz_dataset", data["sources_used"])
         self.assertIn("geospatial_agent", data["sources_used"])
+        self.assertNotIn("mock_marine_weather", data["sources_used"])
+        self.assertNotIn("risk_assessment_agent", data["sources_used"])
         self.assertIn("Nearby Potential Fishing Zones", data["answer"])
 
     def test_query_weather_conditions(self):
@@ -63,7 +67,9 @@ class TestQueryEndpoint(unittest.TestCase):
         data = response.json()
 
         self.assertIn("planner", data["sources_used"])
-        self.assertIn("mock_weather_service", data["sources_used"])
+        self.assertIn("mock_marine_weather", data["sources_used"])
+        self.assertNotIn("incois_derived_pfz_dataset", data["sources_used"])
+        self.assertNotIn("risk_assessment_agent", data["sources_used"])
 
     def test_query_safety_check_with_pfz(self):
         payload = {
@@ -76,9 +82,9 @@ class TestQueryEndpoint(unittest.TestCase):
         data = response.json()
 
         self.assertIn("planner", data["sources_used"])
-        self.assertIn("mock_weather_service", data["sources_used"])
+        self.assertIn("mock_marine_weather", data["sources_used"])
         self.assertIn("risk_assessment_agent", data["sources_used"])
-        self.assertIn("mock_pfz_service", data["sources_used"])
+        self.assertIn("incois_derived_pfz_dataset", data["sources_used"])
         self.assertIn("geospatial_agent", data["sources_used"])
 
     def test_query_general(self):
