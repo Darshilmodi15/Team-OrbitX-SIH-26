@@ -1,5 +1,12 @@
 """Agents module for marine intelligence."""
 from app.agents.intent_agent import parse_intent
+from app.agents.pfz_agent import get_pfz_zones_evidence
 from app.agents.risk_agent import assess_risk
+from app.agents.weather_agent import get_marine_weather
 
-__all__ = ["assess_risk", "parse_intent"]
+__all__ = [
+    "assess_risk",
+    "get_marine_weather",
+    "get_pfz_zones_evidence",
+    "parse_intent",
+]
