@@ -245,7 +245,7 @@ export async function transcribeVoiceAudio(audioBlob: Blob, language: string = '
 export async function synthesizeVoiceAudio(
   text: string,
   language: string = 'en',
-  speaker: string = 'meera'
+  speaker: string = 'kavya'
 ): Promise<{
   audio_base64: string | null;
   audio_format: string;

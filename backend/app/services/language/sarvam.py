@@ -57,15 +57,15 @@ REVERSE_SARVAM_LANG_MAP: Dict[str, str] = {
 }
 
 DEFAULT_SPEAKERS: Dict[str, str] = {
-    "gu-IN": "meera",
-    "hi-IN": "meera",
-    "mr-IN": "meera",
-    "ta-IN": "meera",
-    "te-IN": "meera",
-    "ml-IN": "meera",
-    "bn-IN": "meera",
-    "kn-IN": "meera",
-    "en-IN": "meera",
+    "gu-IN": "kavya",
+    "hi-IN": "kavya",
+    "mr-IN": "kavya",
+    "ta-IN": "kavya",
+    "te-IN": "kavya",
+    "ml-IN": "kavya",
+    "bn-IN": "kavya",
+    "kn-IN": "kavya",
+    "en-IN": "anushka",
 }
 
 
@@ -307,9 +307,7 @@ class SarvamLanguageProvider(LanguageProvider):
             "inputs": [clean_text],
             "target_language_code": sarvam_lang,
             "speaker": chosen_speaker,
-            "pitch": 0.0,
             "pace": 1.0,
-            "loudness": 1.5,
             "speech_sample_rate": 22050,
             "enable_preprocessing": True,
             "model": "bulbul:v3",

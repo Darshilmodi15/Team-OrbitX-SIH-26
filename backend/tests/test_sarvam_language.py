@@ -116,14 +116,14 @@ class TestVoiceEndpoints(unittest.TestCase):
     def test_voice_speak_endpoint(self):
         """Validates POST /api/voice/speak endpoint."""
         payload = {
-            "text": "Caution advised: wave heights are 1.8m near Mumbai.",
+            "text": "Weather is calm in Arabian sea.",
             "language": "en",
-            "speaker": "meera",
+            "speaker": "kavya",
         }
         res = self.client.post("/api/voice/speak", json=payload)
         self.assertEqual(res.status_code, 200)
         data = res.json()
-        self.assertEqual(data["speaker"], "meera")
+        self.assertEqual(data["speaker"], "kavya")
         self.assertEqual(data["language_code"], "en-IN")
 
     def test_voice_transcribe_base64_endpoint(self):

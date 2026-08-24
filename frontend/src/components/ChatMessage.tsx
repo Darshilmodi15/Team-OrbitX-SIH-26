@@ -43,7 +43,7 @@ export default function ChatMessage({ message, currentLang = 'en' }: ChatMessage
 
     try {
       // 1. Try Sarvam AI Bulbul v3 Neural Voice Synthesis
-      const synthRes = await synthesizeVoiceAudio(text, currentLang || 'en', 'meera');
+      const synthRes = await synthesizeVoiceAudio(text, currentLang || 'en', 'kavya');
       if (synthRes && synthRes.audio_base64) {
         const audioSrc = `data:audio/wav;base64,${synthRes.audio_base64}`;
         const audio = new Audio(audioSrc);
