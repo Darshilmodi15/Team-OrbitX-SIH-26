@@ -2,7 +2,6 @@
 import json
 import os
 from typing import Any, Dict, Optional
-import anthropic
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -16,14 +15,14 @@ Classify the user's question into one of the following intent types:
 
 Extract any mentioned location as "location_hint" or null if no location is mentioned.
 
-Respond ONLY with JSON in the form:
+Respond ONLY with valid JSON in the form:
 {"intent": "<type>", "location_hint": "<any location mentioned or null>"}"""
 
 VALID_INTENTS = {"safety_check", "nearest_pfz", "weather_conditions", "general"}
 
 
 def _fallback_intent(question: str) -> Dict[str, Any]:
-    """Heuristic fallback for intent classification if API is unavailable."""
+    """Heuristic fallback for intent classification if API key is not provided or call fails."""
     q_lower = question.lower()
     if any(k in q_lower for k in ["safe", "safety", "risk", "danger", "hazard", "can i sail", "can i fish", "ok to go"]):
         return {"intent": "safety_check", "location_hint": None}
@@ -34,58 +33,78 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
     return {"intent": "general", "location_hint": None}
 
 
+def _clean_json_text(raw_text: str) -> str:
+    raw_text = raw_text.strip()
+    if raw_text.startswith("```json"):
+        raw_text = raw_text[len("```json"):].strip()
+    if raw_text.startswith("```"):
+        raw_text = raw_text[len("```"):].strip()
+    if raw_text.endswith("```"):
+        raw_text = raw_text[:-3].strip()
+    return raw_text
+
+
 def parse_intent(question: str) -> Dict[str, Any]:
     """
-    Classifies the user's question into an intent type using the Anthropic API.
+    Classifies the user's question into an intent type using Gemini or Anthropic API.
     
     Intent types:
     - 'safety_check'
     - 'nearest_pfz'
     - 'weather_conditions'
     - 'general'
-    
-    Returns a dictionary with 'intent' and 'location_hint'.
     """
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        return _fallback_intent(question)
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
 
-    try:
-        client = anthropic.Anthropic(api_key=api_key)
-        response = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=256,
-            system=SYSTEM_PROMPT,
-            messages=[
-                {"role": "user", "content": question}
-            ],
-        )
+    # 1. Try Gemini API if GEMINI_API_KEY is available
+    if gemini_key:
+        try:
+            from google import genai
+            client = genai.Client(api_key=gemini_key)
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=question,
+                config={"system_instruction": SYSTEM_PROMPT},
+            )
+            raw_text = _clean_json_text(response.text)
+            data = json.loads(raw_text)
+            intent = data.get("intent", "general")
+            if intent not in VALID_INTENTS:
+                intent = "general"
+            return {
+                "intent": intent,
+                "location_hint": data.get("location_hint") or None,
+            }
+        except Exception:
+            pass
 
-        content_text = ""
-        for block in response.content:
-            if hasattr(block, "text"):
-                content_text += block.text
-            elif isinstance(block, dict) and "text" in block:
-                content_text += block["text"]
-            elif isinstance(block, str):
-                content_text += block
+    # 2. Try Anthropic API if ANTHROPIC_API_KEY is available
+    if anthropic_key:
+        try:
+            import anthropic
+            client = anthropic.Anthropic(api_key=anthropic_key)
+            response = client.messages.create(
+                model="claude-sonnet-4-6",
+                max_tokens=256,
+                system=SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": question}],
+            )
+            content_text = "".join(
+                block.text if hasattr(block, "text") else str(block)
+                for block in response.content
+            )
+            raw_text = _clean_json_text(content_text)
+            data = json.loads(raw_text)
+            intent = data.get("intent", "general")
+            if intent not in VALID_INTENTS:
+                intent = "general"
+            return {
+                "intent": intent,
+                "location_hint": data.get("location_hint") or None,
+            }
+        except Exception:
+            pass
 
-        raw_text = content_text.strip()
-        if raw_text.startswith("```json"):
-            raw_text = raw_text[len("```json"):].strip()
-        if raw_text.startswith("```"):
-            raw_text = raw_text[len("```"):].strip()
-        if raw_text.endswith("```"):
-            raw_text = raw_text[:-3].strip()
-
-        data = json.loads(raw_text)
-        intent = data.get("intent", "general")
-        if intent not in VALID_INTENTS:
-            intent = "general"
-        location_hint = data.get("location_hint")
-        return {
-            "intent": intent,
-            "location_hint": location_hint if location_hint else None,
-        }
-    except Exception:
-        return _fallback_intent(question)
+    # 3. Heuristic fallback
+    return _fallback_intent(question)
