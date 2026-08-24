@@ -1,7 +1,7 @@
 import React from 'react';
 import { INDIAN_PORTS, REGIONAL_LANGUAGES, TRANSLATIONS } from '../data/maritimeData';
 import type { Port, WeatherMetrics } from '../data/maritimeData';
-import { Compass, Globe, ShieldAlert, ShieldCheck, Waves, Wind } from 'lucide-react';
+import { Compass, Globe, ShieldAlert, ShieldCheck, Waves, Wind, ExternalLink } from 'lucide-react';
 
 interface TelemetryBarProps {
   vesselLat: number;
@@ -141,6 +141,19 @@ export const TelemetryBar: React.FC<TelemetryBarProps> = ({
             ))}
           </select>
         </div>
+
+        {/* Swagger OpenAPI Docs Link */}
+        <a
+          href="http://localhost:8000/docs"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Interactive Swagger & OpenAPI API Documentation"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-400/50 text-indigo-300 text-xs font-bold transition shadow-glow-indigo"
+        >
+          <span>⚡</span>
+          <span className="hidden sm:inline">Swagger API</span>
+          <ExternalLink className="w-3 h-3 text-indigo-400" />
+        </a>
 
         {/* Ecological Analysis button */}
         <button
