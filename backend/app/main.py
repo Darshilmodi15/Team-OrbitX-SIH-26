@@ -6,8 +6,14 @@ from pydantic import BaseModel, Field
 
 from app.agents.intent_agent import parse_intent
 from app.agents.risk_agent import assess_risk
-from app.data.mock_pfz import get_pfz_zones
-from app.data.mock_weather import get_weather
+from app.data.pfz.base import PFZProvider
+from app.data.pfz.mock import MockPFZProvider
+from app.data.weather.base import WeatherProvider
+from app.data.weather.mock import MockWeatherProvider
+
+# Initialize data providers (can be swapped with real INCOIS/marine dataset providers)
+weather_provider: WeatherProvider = MockWeatherProvider()
+pfz_provider: PFZProvider = MockPFZProvider()
 
 app = FastAPI(
     title="ORCA Marine AI Backend",
@@ -80,8 +86,8 @@ def handle_query(request: QueryRequest) -> QueryResponse:
         f"Parsed query for location ({lat:.4f}, {lon:.4f}) on date '{date}'. Question: '{question}'."
     )
 
-    # Step 3: Retrieve mock weather
-    weather_data = get_weather(lat=lat, lon=lon, date=date)
+    # Step 3: Retrieve marine weather data
+    weather_data = weather_provider.get_weather(lat=lat, lon=lon, date=date)
     sources_used.append("mock_weather_service")
     wave_h = weather_data["wave_height_m"]
     wind_spd = weather_data["wind_speed_kmh"]
@@ -100,7 +106,7 @@ def handle_query(request: QueryRequest) -> QueryResponse:
     )
 
     # Step 5: Retrieve potential fishing zones (PFZ)
-    pfz_zones = get_pfz_zones(lat=lat, lon=lon)
+    pfz_zones = pfz_provider.get_pfz_zones(lat=lat, lon=lon)
     sources_used.append("mock_pfz_service")
     nearest_zones_desc = ", ".join(
         [f"{z['name']} ({z['distance_km']} km away, {z['dominant_species']})" for z in pfz_zones[:2]]

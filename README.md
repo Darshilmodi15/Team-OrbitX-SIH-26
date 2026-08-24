@@ -35,19 +35,24 @@ flowchart TD
 ORCA/
 ├── README.md                           # Project documentation
 ├── backend/
-│   ├── .env                            # Environment variables (API keys)
 │   ├── requirements.txt                # Python dependencies
 │   └── app/
 │       ├── __init__.py
 │       ├── main.py                     # FastAPI application & /query pipeline
 │       ├── agents/
 │       │   ├── __init__.py
-│       │   ├── intent_agent.py         # Gemini / Claude intent parser
+│       │   ├── intent_agent.py         # Intent parsing agent
 │       │   └── risk_agent.py           # Marine safety risk evaluation agent
 │       └── data/
-│           ├── __init__.py
-│           ├── mock_weather.py         # Marine weather data provider
-│           └── mock_pfz.py             # Potential Fishing Zone data provider
+│           ├── __init__.py             # Provider exports
+│           ├── weather/
+│           │   ├── __init__.py
+│           │   ├── base.py             # Abstract WeatherProvider interface
+│           │   └── mock.py             # MockWeatherProvider implementation
+│           └── pfz/
+│               ├── __init__.py
+│               ├── base.py             # Abstract PFZProvider interface
+│               └── mock.py             # MockPFZProvider implementation
 └── frontend/                           # Client interface directory
 ```
 

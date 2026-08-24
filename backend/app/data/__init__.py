@@ -1,5 +1,12 @@
-"""Mock data providers for marine conditions and fishing zones."""
-from app.data.mock_weather import get_weather
-from app.data.mock_pfz import get_pfz_zones
+"""Data providers for marine weather conditions and potential fishing zones."""
+from app.data.weather.base import WeatherProvider
+from app.data.weather.mock import MockWeatherProvider
+from app.data.pfz.base import PFZProvider
+from app.data.pfz.mock import MockPFZProvider
 
-__all__ = ["get_weather", "get_pfz_zones"]
+__all__ = [
+    "WeatherProvider",
+    "MockWeatherProvider",
+    "PFZProvider",
+    "MockPFZProvider",
+]
