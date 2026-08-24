@@ -69,6 +69,9 @@ class QueryResponse(BaseModel):
     language_name: Optional[str] = Field(default="English", description="Human readable language name")
     original_question: Optional[str] = Field(default=None, description="Original query prior to translation")
     english_question: Optional[str] = Field(default=None, description="English query processed by agents")
+    risk_level: Optional[str] = Field(default=None, description="Evaluated safety risk level ('safe', 'caution', 'unsafe')")
+    weather: Optional[WeatherEvidence] = Field(default=None, description="Structured meteorological evidence")
+    nearest_pfz: Optional[List[PFZEvidence]] = Field(default=None, description="Structured PFZ evidence items")
 
 
 class ChatRequest(BaseModel):
@@ -498,6 +501,9 @@ def handle_query(request: QueryRequest) -> QueryResponse:
         language_name=result["language_name"],
         original_question=result["original_message"],
         english_question=result["english_query"],
+        risk_level=result.get("risk_level"),
+        weather=result.get("weather"),
+        nearest_pfz=result.get("nearest_pfz"),
     )
 
 
