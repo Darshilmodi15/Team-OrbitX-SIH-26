@@ -40,7 +40,6 @@ def _asks_for_weather(question: str) -> bool:
     return any(kw in q for kw in keywords)
 
 
-<<<<<<< HEAD
 def _asks_for_boundary(question: str) -> bool:
     """Checks if question explicitly mentions marine boundaries, EEZ, IMBL, or international borders."""
     q = question.lower()
@@ -50,7 +49,10 @@ def _asks_for_boundary(question: str) -> bool:
         "territorial", "territorial waters", "geofence", "geofencing", "sovereignty",
         "sovereign", "marine boundary", "marine boundaries", "cross border", "vliz",
         "marine regions",
-=======
+    ]
+    return any(kw in q for kw in keywords)
+
+
 def _asks_for_geofence(question: str) -> bool:
     """Checks if question explicitly mentions maritime boundaries, IMBL, or protected marine sanctuaries."""
     q = question.lower()
@@ -59,7 +61,6 @@ def _asks_for_geofence(question: str) -> bool:
         "marine national park", "protected area", "protected zone", "mpa", "restricted",
         "pakistan", "sri lanka", "gulf of mannar", "sir creek", "malvan", "gahirmatha",
         "geofence", "no fishing zone", "prohibited",
->>>>>>> 401bb31 (feat(v0.5): Marine risk matrix, spatial geofences, REST telemetry and GIS overlays)
     ]
     return any(kw in q for kw in keywords)
 
@@ -121,6 +122,8 @@ class Planner:
 
         if intent in ("marine_boundary", "boundary_check"):
             add_task("boundary_agent", "check_boundary", required=True)
+            if _asks_for_geofence(question):
+                add_task("geofence_agent", "evaluate_boundaries", required=True)
             if _asks_for_weather(question):
                 add_task("weather_agent", "get_marine_conditions", required=True)
 
@@ -152,8 +155,17 @@ class Planner:
             if _asks_for_geofence(question):
                 add_task("geofence_agent", "evaluate_boundaries", required=True)
 
+        elif _asks_for_boundary(question):
+            add_task("boundary_agent", "check_boundary", required=True)
+            if _asks_for_geofence(question):
+                add_task("geofence_agent", "evaluate_boundaries", required=True)
+            if _asks_for_weather(question):
+                add_task("weather_agent", "get_marine_conditions", required=True)
+
         elif intent == "geofence_check" or _asks_for_geofence(question):
             add_task("geofence_agent", "evaluate_boundaries", required=True)
+            if _asks_for_boundary(question):
+                add_task("boundary_agent", "check_boundary", required=True)
             if _asks_for_weather(question):
                 add_task("weather_agent", "get_marine_conditions", required=True)
                 add_task("risk_agent", "assess_risk", required=True)

@@ -364,20 +364,14 @@ def _process_orca_query(
     needs_risk = any(t.agent == "risk_agent" and t.action == "assess_risk" for t in plan.tasks)
     needs_pfz = any(t.agent == "pfz_agent" and t.action == "find_nearest_zones" for t in plan.tasks)
     needs_geospatial = any(t.agent == "geospatial_agent" and t.action == "calculate_distance" for t in plan.tasks)
-<<<<<<< HEAD
     needs_boundary = any(t.agent == "boundary_agent" and t.action == "check_boundary" for t in plan.tasks)
-=======
     needs_geofence = any(t.agent == "geofence_agent" and t.action == "evaluate_boundaries" for t in plan.tasks)
->>>>>>> 401bb31 (feat(v0.5): Marine risk matrix, spatial geofences, REST telemetry and GIS overlays)
 
     weather_evidence: Optional[WeatherEvidence] = None
     risk_evidence: Optional[RiskEvidence] = None
     pfz_evidence_list: List[PFZEvidence] = []
-<<<<<<< HEAD
     boundary_evidence: Optional[BoundaryEvidence] = None
-=======
     geofence_evidence: Optional[GeofenceEvidence] = None
->>>>>>> 401bb31 (feat(v0.5): Marine risk matrix, spatial geofences, REST telemetry and GIS overlays)
     executed_tasks: List[str] = []
     skipped_tasks: List[str] = []
 

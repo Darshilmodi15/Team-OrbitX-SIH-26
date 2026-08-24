@@ -3,8 +3,24 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, Polygon, GeoJSON, use
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import PFZMarker from './PFZMarker';
-import type { LocationCoords, PFZEvidenceItem } from '../App';
-import { fetchMarineBoundariesEEZ, checkMarineBoundary } from '../services/boundariesApi';
+import { fetchMarineBoundariesEEZ, checkMarineBoundary } from '../services/api';
+
+export interface LocationCoords {
+  lat: number;
+  lon: number;
+}
+
+export interface PFZEvidenceItem {
+  id?: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  distance_km: number;
+  depth_m?: number | null;
+  species: string[];
+  source?: string;
+  is_mock?: boolean;
+}
 
 export interface GeofenceZoneData {
   id: string;
@@ -170,7 +186,7 @@ export default function MarineMap({ userLocation, pfzZones = [], geofenceEvidenc
   // Load official Marine Regions EEZ GeoJSON on mount
   useEffect(() => {
     let isMounted = true;
-    fetchMarineBoundariesEEZ(8480).then((data) => {
+    fetchMarineBoundariesEEZ(8480).then((data: any) => {
       if (isMounted && data) {
         setEezGeoJson(data);
       }
@@ -183,7 +199,7 @@ export default function MarineMap({ userLocation, pfzZones = [], geofenceEvidenc
   // Update real-time spatial geofence calculation when vessel location changes
   useEffect(() => {
     let isMounted = true;
-    checkMarineBoundary(userLocation.lat, userLocation.lon, 8480).then((data) => {
+    checkMarineBoundary(userLocation.lat, userLocation.lon, 8480).then((data: any) => {
       if (isMounted && data) {
         setBoundaryCheck(data);
       }

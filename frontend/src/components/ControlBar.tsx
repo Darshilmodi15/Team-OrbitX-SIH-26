@@ -87,11 +87,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
           className="min-w-[110px] h-9 inline-flex items-center justify-center gap-1.5 px-3.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 text-slate-700 hover:text-slate-900 text-xs font-semibold shadow-2xs whitespace-nowrap transition"
         >
           <span className="text-sm">⚡</span>
-<<<<<<< HEAD
-          <span>{t.swaggerApiBtn || 'Swagger API'}</span>
-=======
           <span>{t.swaggerBtn || t.swaggerApiBtn || 'Swagger API'}</span>
->>>>>>> 2c901e8298007759847dff231f5ec0d85b4cd9b6
           <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
         </a>
 
