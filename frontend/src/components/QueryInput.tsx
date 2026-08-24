@@ -7,11 +7,13 @@ interface QueryInputProps {
 
 export default function QueryInput({ onSendMessage, isLoading }: QueryInputProps) {
   const [input, setInput] = useState('');
+  const [isListening, setIsListening] = useState(false);
 
   const quickPrompts = [
-    'Where is the nearest potential fishing zone?',
-    'Is it safe to fish near Mumbai today?',
-    'What are the marine weather conditions?',
+    { label: 'Nearest PFZ', icon: '🐟', query: 'Where is the nearest potential fishing zone?' },
+    { label: 'Safety Check', icon: '🛡️', query: 'Is it safe to fish near Mumbai today?' },
+    { label: 'Marine Weather', icon: '🌊', query: 'What are the current marine weather and wave conditions?' },
+    { label: 'Sailing Advisory', icon: '🧭', query: 'Can small crafts sail safely this afternoon?' },
   ];
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -21,54 +23,109 @@ export default function QueryInput({ onSendMessage, isLoading }: QueryInputProps
     setInput('');
   };
 
-  const handleQuickPrompt = (prompt: string) => {
+  const handleQuickPrompt = (query: string) => {
     if (isLoading) return;
-    onSendMessage(prompt);
+    onSendMessage(query);
+  };
+
+  const handleVoiceInput = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Voice recognition is not supported in your browser.');
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+          setInput(transcript);
+        }
+      };
+
+      recognition.onerror = () => {
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch {
+      setIsListening(false);
+    }
   };
 
   return (
-    <div className="p-3 bg-[#060e1f]/95 border-t border-[#00f0ff]/20 backdrop-blur-md">
-      {/* Quick Prompts */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-2 no-scrollbar">
-        <span className="text-[10px] font-mono text-slate-500 uppercase shrink-0">Quick:</span>
-        {quickPrompts.map((prompt, idx) => (
+    <div className="p-4 bg-slate-950/90 border-t border-slate-800/80 backdrop-blur-2xl shrink-0">
+      {/* Quick Action Tag Pills */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2.5 mb-2.5 no-scrollbar">
+        <span className="text-[10px] font-mono text-slate-500 uppercase shrink-0 flex items-center gap-1 font-bold">
+          <span>⚡</span> Quick:
+        </span>
+        {quickPrompts.map((p, idx) => (
           <button
             key={idx}
             type="button"
             disabled={isLoading}
-            onClick={() => handleQuickPrompt(prompt)}
-            className="text-[11px] px-2.5 py-1 rounded-full bg-slate-900/80 border border-slate-700/70 text-slate-300 hover:text-[#00f0ff] hover:border-[#00f0ff]/40 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+            onClick={() => handleQuickPrompt(p.query)}
+            className="text-[11px] px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-700/70 text-slate-200 hover:text-[#22d3ee] hover:border-[#22d3ee]/50 hover:bg-slate-800/80 transition-all whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed shrink-0 flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer font-sans"
           >
-            {prompt}
+            <span>{p.icon}</span>
+            <span className="font-medium">{p.label}</span>
           </button>
         ))}
       </div>
 
-      {/* Input Field */}
-      <form onSubmit={handleSubmit} className="flex items-center gap-2">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask ORCA anything about marine conditions, safety, or fishing zones..."
-          disabled={isLoading}
-          className="flex-1 bg-slate-950/80 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-[#00f0ff]/60 focus:ring-1 focus:ring-[#00f0ff]/40 transition-all font-sans disabled:opacity-50"
-        />
+      {/* Floating Input Capsule */}
+      <form onSubmit={handleSubmit} className="flex items-center gap-2 relative">
+        <div className="relative flex-1 flex items-center">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask ORCA about marine conditions, safety risk, or fishing zones..."
+            disabled={isLoading}
+            className="w-full bg-slate-900/90 border border-slate-700/80 focus:border-[#22d3ee] focus:ring-2 focus:ring-[#22d3ee]/25 rounded-2xl pl-4 pr-11 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none transition-all font-sans disabled:opacity-50 shadow-inner"
+          />
 
+          {/* Voice Input Button */}
+          <button
+            type="button"
+            onClick={handleVoiceInput}
+            title={isListening ? 'Listening...' : 'Click to Speak'}
+            className={`absolute right-3 p-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
+              isListening ? 'text-rose-400 bg-rose-950/60 animate-pulse' : 'text-slate-400 hover:text-[#22d3ee]'
+            }`}
+          >
+            🎤
+          </button>
+        </div>
+
+        {/* Send Button */}
         <button
           type="submit"
           disabled={!input.trim() || isLoading}
-          className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#00f0ff] to-[#0284c7] hover:from-[#38bdf8] hover:to-[#0369a1] text-slate-950 font-semibold text-sm shadow-[0_0_15px_rgba(0,240,255,0.25)] transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 cursor-pointer"
+          className="px-5 py-3 rounded-2xl bg-gradient-to-r from-[#22d3ee] to-[#0284c7] hover:from-[#38bdf8] hover:to-[#0369a1] text-slate-950 font-bold text-sm shadow-[0_0_20px_rgba(34,211,238,0.35)] hover:shadow-[0_0_25px_rgba(34,211,238,0.5)] transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 cursor-pointer active:scale-95"
         >
           {isLoading ? (
             <>
-              <span className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
-              <span>Analyzing...</span>
+              <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
+              <span>Analyzing</span>
             </>
           ) : (
             <>
               <span>Send</span>
-              <span>→</span>
+              <span className="text-base font-mono">→</span>
             </>
           )}
         </button>

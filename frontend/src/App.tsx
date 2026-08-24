@@ -48,7 +48,7 @@ export interface MessageItem {
 }
 
 export default function App() {
-  const [userLocation] = useState<LocationCoords>({
+  const [userLocation, setUserLocation] = useState<LocationCoords>({
     lat: 18.9220,
     lon: 72.8347, // Mumbai Port
   });
@@ -61,7 +61,7 @@ export default function App() {
     {
       id: 'init-greeting',
       sender: 'assistant',
-      text: '🌊 Welcome aboard. I am ORCA Marine AI.\n\nI provide real-time maritime intelligence, navigational safety assessments, and Potential Fishing Zone (PFZ) advisories based on authoritative marine data.\n\nHow may I assist your voyage today?',
+      text: '🌊 **Welcome aboard ORCA Marine AI Tactical Operations Console.**\n\nI provide real-time maritime intelligence, navigational safety assessments, and INCOIS-derived Potential Fishing Zone (PFZ) advisories.\n\nUse the quick actions below or ask about sea conditions, wind & wave risks, or optimal fishing locations.',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
@@ -69,6 +69,20 @@ export default function App() {
   const [pfzZones, setPfzZones] = useState<PFZEvidenceItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleSelectPort = (coords: LocationCoords) => {
+    setUserLocation(coords);
+    const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `sys-${Date.now()}`,
+        sender: 'assistant',
+        text: `📍 **Vessel Position Updated**: Lat: \`${coords.lat.toFixed(4)}°N\`, Lon: \`${coords.lon.toFixed(4)}°E\`. Ready for regional marine intelligence queries.`,
+        timestamp: timeNow,
+      },
+    ]);
+  };
 
   const handleSendMessage = async (question: string) => {
     const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -133,14 +147,18 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#030712] text-slate-100 overflow-hidden font-sans">
+    <div className="flex flex-col h-screen w-screen bg-[#020617] text-slate-100 overflow-hidden font-sans select-none">
       {/* Top Application Header */}
-      <Header userLocation={userLocation} currentDate={currentDate} />
+      <Header
+        userLocation={userLocation}
+        currentDate={currentDate}
+        onSelectPort={handleSelectPort}
+      />
 
-      {/* Main Split Layout: Left Conversational Assistant / Right Live Map */}
-      <main className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+      {/* Main Split Layout: Left Conversational Assistant / Right Live Tactical Map */}
+      <main className="flex-1 flex flex-col lg:flex-row overflow-hidden relative min-h-0">
         {/* Left Side: ORCA Conversational Assistant */}
-        <section className="w-full lg:w-[480px] xl:w-[540px] h-[50vh] lg:h-full shrink-0 flex flex-col z-10 shadow-2xl">
+        <section className="w-full lg:w-[480px] xl:w-[560px] h-[45vh] lg:h-full shrink-0 flex flex-col z-10 shadow-2xl">
           <ChatPanel
             messages={messages}
             isLoading={isLoading}
@@ -150,8 +168,8 @@ export default function App() {
           />
         </section>
 
-        {/* Right Side: Leaflet Interactive Tactical Map */}
-        <section className="flex-1 h-[50vh] lg:h-full relative overflow-hidden">
+        {/* Right Side: Leaflet Interactive Tactical GIS Map */}
+        <section className="flex-1 h-[55vh] lg:h-full relative overflow-hidden flex flex-col min-h-0">
           <MarineMap userLocation={userLocation} pfzZones={pfzZones} />
         </section>
       </main>
