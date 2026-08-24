@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Volume2, Square, Copy, Check, ShieldCheck } from 'lucide-react';
 import EvidencePanel from './EvidencePanel';
 import type { MessageItem } from '../App';
+import { synthesizeVoiceAudio } from '../services/api';
 
 interface ChatMessageProps {
   message: MessageItem;
@@ -11,6 +12,7 @@ interface ChatMessageProps {
 export default function ChatMessage({ message, currentLang = 'en' }: ChatMessageProps) {
   const [isPlayingVoice, setIsPlayingVoice] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const isUser = message.sender === 'user';
 
   const handleCopy = () => {
@@ -19,11 +21,55 @@ export default function ChatMessage({ message, currentLang = 'en' }: ChatMessage
     setTimeout(() => setIsCopied(false), 2000);
   };
 
-  const handleSpeak = (text: string) => {
-    if (!('speechSynthesis' in window)) return;
-
-    if (isPlayingVoice) {
+  const stopAudio = () => {
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+      audioPlayerRef.current.currentTime = 0;
+      audioPlayerRef.current = null;
+    }
+    if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
+    }
+    setIsPlayingVoice(false);
+  };
+
+  const handleSpeak = async (text: string) => {
+    if (isPlayingVoice) {
+      stopAudio();
+      return;
+    }
+
+    setIsPlayingVoice(true);
+
+    try {
+      // 1. Try Sarvam AI Bulbul v3 Neural Voice Synthesis
+      const synthRes = await synthesizeVoiceAudio(text, currentLang || 'en', 'meera');
+      if (synthRes && synthRes.audio_base64) {
+        const audioSrc = `data:audio/wav;base64,${synthRes.audio_base64}`;
+        const audio = new Audio(audioSrc);
+        audioPlayerRef.current = audio;
+
+        audio.onended = () => {
+          setIsPlayingVoice(false);
+          audioPlayerRef.current = null;
+        };
+        audio.onerror = () => {
+          fallbackWebSpeech(text);
+        };
+
+        await audio.play();
+        return;
+      }
+    } catch (err) {
+      console.warn('Sarvam TTS synthesis unavailable, falling back to Web Speech:', err);
+    }
+
+    // 2. Fallback to Browser Web Speech API
+    fallbackWebSpeech(text);
+  };
+
+  const fallbackWebSpeech = (text: string) => {
+    if (!('speechSynthesis' in window)) {
       setIsPlayingVoice(false);
       return;
     }
@@ -85,7 +131,7 @@ export default function ChatMessage({ message, currentLang = 'en' }: ChatMessage
     );
   }
 
-  // Assistant message formatting (Clean white card)
+  // Assistant message formatting (Clean card)
   return (
     <div className="flex justify-start items-start gap-2 mb-3">
       <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-base shrink-0 shadow-2xs">
@@ -107,7 +153,7 @@ export default function ChatMessage({ message, currentLang = 'en' }: ChatMessage
             {/* Listen / Voice button */}
             <button
               onClick={() => handleSpeak(message.text)}
-              title={isPlayingVoice ? 'Stop Audio' : 'Listen in regional voice'}
+              title={isPlayingVoice ? 'Stop Audio' : 'Listen via Sarvam AI Bulbul voice'}
               className={`p-1 rounded-md text-[11px] font-sans flex items-center gap-1 transition cursor-pointer ${
                 isPlayingVoice
                   ? 'bg-rose-100 text-rose-700 font-bold animate-pulse'
@@ -148,4 +194,3 @@ export default function ChatMessage({ message, currentLang = 'en' }: ChatMessage
     </div>
   );
 }
-

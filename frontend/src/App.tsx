@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { TopHeader } from './components/TopHeader';
 import { ControlBar } from './components/ControlBar';
 import { GisLayersPanel, type GisLayerState } from './components/GisLayersPanel';
@@ -317,16 +317,18 @@ export default function App() {
       />
 
       {/* 3. MAIN CONTENT: 3 SEPARATE COLUMNS (Never overlay chatbot on map) */}
-      <main className="flex-1 flex flex-col lg:flex-row p-3 gap-3 overflow-hidden min-h-0 relative bg-[#F7F9FC]">
-        {/* LEFT COLUMN: GIS SATELLITE LAYERS (260-280px) */}
-        <GisLayersPanel
-          layers={gisLayers}
-          onToggleLayer={handleToggleLayer}
-          currentLang={currentLang}
-        />
+      <main className="flex-1 flex flex-row p-2.5 gap-2.5 overflow-hidden min-h-0 relative bg-[#F7F9FC]">
+        {/* LEFT COLUMN: GIS SATELLITE LAYERS (250-270px) */}
+        <aside className="w-[250px] xl:w-[270px] shrink-0 h-full overflow-hidden flex flex-col">
+          <GisLayersPanel
+            layers={gisLayers}
+            onToggleLayer={handleToggleLayer}
+            currentLang={currentLang}
+          />
+        </aside>
 
         {/* CENTER COLUMN: CENTRAL SATELLITE MAP (flex: 1) */}
-        <section className="flex-1 h-full min-h-[350px] relative overflow-hidden flex flex-col">
+        <section className="flex-1 h-full min-w-0 relative overflow-hidden flex flex-col rounded-2xl border border-slate-200 shadow-sm bg-[#d4e4f7]">
           <MarineMap
             userLocation={userLocation}
             pfzZones={pfzZones}
@@ -335,25 +337,27 @@ export default function App() {
           />
         </section>
 
-        {/* RIGHT COLUMN: ORCA CHATBOT OPTION B (400-440px) */}
-        <ChatPanel
-          messages={messages}
-          isLoading={isLoading}
-          error={error}
-          currentLang={currentLang}
-          onSendMessage={handleSendMessage}
-          onClearError={() => setError(null)}
-          onResetChat={() =>
-            setMessages([
-              {
-                id: `reset-${Date.now()}`,
-                sender: 'assistant',
-                text: '🌊 **Conversation Reset**. ORCA Marine AI is standing by for your questions.',
-                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              },
-            ])
-          }
-        />
+        {/* RIGHT COLUMN: ORCA CHATBOT (380-420px) */}
+        <aside className="w-[380px] xl:w-[420px] shrink-0 h-full overflow-hidden flex flex-col">
+          <ChatPanel
+            messages={messages}
+            isLoading={isLoading}
+            error={error}
+            currentLang={currentLang}
+            onSendMessage={handleSendMessage}
+            onClearError={() => setError(null)}
+            onResetChat={() =>
+              setMessages([
+                {
+                  id: `reset-${Date.now()}`,
+                  sender: 'assistant',
+                  text: '🌊 **Conversation Reset**. ORCA Marine AI is standing by for your questions.',
+                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                },
+              ])
+            }
+          />
+        </aside>
       </main>
 
       {/* 4. FOOTER */}

@@ -43,6 +43,10 @@ export default function AgentTrace({ plan, reasoning, sourcesUsed }: AgentTraceP
         return { label: 'Geofence Agent', color: 'bg-rose-50 text-rose-700 border-rose-200', icon: '🛑' };
       case 'geofence_spatial_engine':
         return { label: 'Spatial Engine', color: 'bg-rose-50 text-rose-700 border-rose-200', icon: '🗺️' };
+      case 'sarvam_ai_language_service':
+        return { label: 'Sarvam AI (Indic NMT & Saaras)', color: 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold', icon: '🇮🇳' };
+      case 'bhashini_multilingual_service':
+        return { label: 'Bhashini / NMT Service', color: 'bg-teal-50 text-teal-800 border-teal-200', icon: '🌐' };
       default:
         return { label: agent, color: 'bg-slate-100 text-slate-700 border-slate-200', icon: '🤖' };
     }

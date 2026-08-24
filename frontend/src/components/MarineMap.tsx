@@ -174,7 +174,7 @@ export default function MarineMap({
   }, [userLocation, targetPfz]);
 
   return (
-    <div className="relative w-full h-full min-h-[350px] flex-1 rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-slate-900">
+    <div className="relative w-full h-full overflow-hidden bg-[#b0c8df]">
       {/* 1. Base Map Switcher: Satellite vs Standard Map */}
       <div className="absolute top-3 left-3 z-[1000] flex items-center bg-white/95 backdrop-blur-md rounded-xl p-1 shadow-md border border-slate-200 text-xs font-semibold">
         <button
