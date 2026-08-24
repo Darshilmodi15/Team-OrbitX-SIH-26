@@ -47,14 +47,9 @@ ORCA/
 │   ├── app/
 │   │   ├── __init__.py
 │   │   ├── main.py                     # FastAPI application & /query orchestrator
-│   │   ├── models/
-│   │   │   ├── __init__.py
-│   │   │   └── agent_models.py         # Structured evidence contracts (Pydantic)
 │   │   ├── agents/
 │   │   │   ├── __init__.py
 │   │   │   ├── intent_agent.py         # Intent parsing agent
-│   │   │   ├── weather_agent.py        # Weather evidence builder
-│   │   │   ├── pfz_agent.py            # PFZ advisory evidence builder
 │   │   │   └── risk_agent.py           # Marine safety risk evaluation agent
 │   │   ├── data/
 │   │   │   ├── __init__.py             # Provider exports
@@ -71,7 +66,6 @@ ORCA/
 │   │       └── planner.py              # Deterministic multi-agent Planner
 │   └── tests/
 │       ├── __init__.py
-│       ├── test_agent_contracts.py     # Pydantic contract validation tests
 │       ├── test_planner.py             # Planner unit tests (6 rules)
 │       └── test_query.py               # End-to-end /query integration tests
 └── frontend/                           # Client interface directory

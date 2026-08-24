@@ -152,7 +152,6 @@ export function generateSafeRoute(startLat: number, startLon: number, targetLat:
   const waypoints: [number, number][] = [[startLat, startLon]];
   
   if (avoidStorm) {
-    // Arc path curving slightly westward or southward to avoid coastal shallow banks and squalls
     const midLat = (startLat + targetLat) / 2 + 0.08;
     const midLon = (startLon + targetLon) / 2 - 0.12;
     waypoints.push([midLat, midLon]);
@@ -167,7 +166,6 @@ export function generateSafeRoute(startLat: number, startLon: number, targetLat:
 }
 
 export function getSimulatedWeather(lat: number, lon: number): WeatherMetrics {
-  // Deterministic calculation based on latitude
   const isSouth = lat < 12.0;
   const isKutch = lat > 21.5;
 
@@ -200,12 +198,111 @@ export function getSimulatedWeather(lat: number, lon: number): WeatherMetrics {
   };
 }
 
+// Multilingual synthesis dictionary for fallback
+const MULTILINGUAL_ANSWERS: Record<string, {
+  safeHeading: string;
+  cautionHeading: string;
+  dangerHeading: string;
+  pfzIntro: string;
+  routeHint: string;
+  geofenceSafe: string;
+}> = {
+  en: {
+    safeHeading: '✅ **CONDITIONS SAFE**: Wave height is {wave}m, wind is {wind} km/h with clear sky. Normal navigation and fishing operations may proceed.',
+    cautionHeading: '⚠️ **CAUTION ADVISED**: Wave height is {wave}m with squall gusts up to {wind} km/h. Small artisanal crafts should remain within 5 NM of shore.',
+    dangerHeading: '🚨 **SEVERE WEATHER HAZARD**: High waves ({wave}m) and rough seas. Venturing into the sea is strictly discouraged.',
+    pfzIntro: '🎯 **Potential Fishing Zones (PFZ)**:',
+    routeHint: '🧭 **Safe Navigational Route**: A weather-optimized waypoint corridor has been plotted on your satellite GIS map.',
+    geofenceSafe: '🛑 Vessel is within international compliance zone. Safe distance maintained from international boundaries.',
+  },
+  gu: {
+    safeHeading: '✅ **દરિયાઈ સ્થિતિ સુરક્ષિત છે**: મોજાંઓની ઊંચાઈ {wave}m છે, પવનની ગતિ {wind} km/h છે. સામાન્ય માછીમારી અને નેવિગેશન ચાલુ રાખી શકાય છે.',
+    cautionHeading: '⚠️ **સાવચેતી રાખવી જરૂરી છે**: મોજાંઓની ઊંચાઈ {wave}m છે અને પવનની ગતિ {wind} km/h છે. નાની બોટને કિનારાથી 5 નોટિકલ માઈલની અંદર રહેવાની સલાહ આપવામાં આવે છે.',
+    dangerHeading: '🚨 **અત્યંત જોખમી દરિયાઈ સ્થિતિ**: ઊંચા મોજાં ({wave}m) અને ઝડપી પવન. દરિયામાં જવું નહીં.',
+    pfzIntro: '🎯 **સંભવિત માછીમારી વિસ્તારો (PFZ)**:',
+    routeHint: '🧭 **સુરક્ષિત નેવિગેશન માર્ગ**: હવામાન-અનુકૂળ સુરક્ષિત માર્ગ તમારા સેટેલાઇટ GIS નકશા પર દોરવામાં આવ્યો છે.',
+    geofenceSafe: '🛑 બોટ નિયત સીમાની અંદર સુરક્ષિત છે. આંતરરાષ્ટ્રીય સરહદ (IMBL) થી સલામત અંતર જળવાયેલું છે.',
+  },
+  hi: {
+    safeHeading: '✅ **समुद्री स्थिति सुरक्षित है**: लहरों की ऊंचाई {wave}m है, हवा की गति {wind} km/h है। सामान्य नौकायन एवं मछली पकड़ने का कार्य जारी रखा जा सकता है।',
+    cautionHeading: '⚠️ **सावधानी बरतें**: लहरों की ऊंचाई {wave}m है और तेज हवाएं {wind} km/h हैं। छोटी नौकाओं को तट के करीब रहने की सलाह दी जाती है।',
+    dangerHeading: '🚨 **गंभीर मौसम खतरा**: ऊंची लहरें ({wave}m) और अशांत समुद्र। समुद्र में जाने से बचें।',
+    pfzIntro: '🎯 **संभावित मत्स्य क्षेत्र (PFZ)**:',
+    routeHint: '🧭 **सुरक्षित नेविगेशन मार्ग**: मौसम-अनुकूलित सुरक्षित मार्ग आपके GIS सैटेलाइट मैप पर प्रदर्शित किया गया है।',
+    geofenceSafe: '🛑 नौका सुरक्षित क्षेत्र में है। अंतर्राष्ट्रीय समुद्री सीमा (IMBL) से सुरक्षित दूरी बनी हुई है।',
+  },
+  mr: {
+    safeHeading: '✅ **परिस्थिती सुरक्षित आहे**: लाटांची उंची {wave}m आहे, वाऱ्याचा वेग {wind} km/h आहे. नियमित मासेमारी सुरू ठेवता येईल.',
+    cautionHeading: '⚠️ **सावधगिरी बाळगा**: लाटांची उंची {wave}m आहे व वारे {wind} km/h आहेत. लहान बोटींनी किनाऱ्याजवळ राहावे.',
+    dangerHeading: '🚨 **गंभीर सागरी धोका**: उंच लाटा ({wave}m) व खवळलेला समुद्र. समुद्रात जाणे टाळा.',
+    pfzIntro: '🎯 **संभाव्य मासेमारी क्षेत्र (PFZ)**:',
+    routeHint: '🧭 **सुरक्षित नौकानयन मार्ग**: उपग्रह GIS नकाशावर सुरक्षित मार्ग दर्शविला आहे.',
+    geofenceSafe: '🛑 बोट सुरक्षित सागरी सीमेत आहे. आंतरराष्ट्रीय सीमेपासून (IMBL) सुरक्षित अंतर राखले आहे.',
+  },
+  ta: {
+    safeHeading: '✅ **கடல் நிலைமைகள் பாதுகாப்பானது**: அலை உயரம் {wave}m, காற்று வேகம் {wind} km/h. மீன்பிடி நடவடிக்கைகளை தொடரலாம்.',
+    cautionHeading: '⚠️ **எச்சரிக்கை தேவை**: அலை உயரம் {wave}m, காற்று வேகம் {wind} km/h. சிறிய படகுகள் கரைக்கு அருகில் இருக்கவும்.',
+    dangerHeading: '🚨 **கடுமையான வானிலை ஆபத்து**: உயர் அலைகள் ({wave}m). கடலுக்குள் செல்ல வேண்டாம்.',
+    pfzIntro: '🎯 **சாத்தியமான மீன்பிடி மண்டலங்கள் (PFZ)**:',
+    routeHint: '🧭 **பாதுகாப்பான வழித்தடம்**: செயற்கைக்கோள் GIS வரைபடத்தில் பாதுகாப்பான வழித்தடம் திட்டமிடப்பட்டுள்ளது.',
+    geofenceSafe: '🛑 படகு பாதுகாப்பான எல்லைக்குள் உள்ளது. சர்வதேச கடல் எல்லையிலிருந்து (IMBL) பாதுகாப்பான தூரம் பராமரிக்கப்படுகிறது.',
+  },
+  te: {
+    safeHeading: '✅ **సముద్ర పరిస్థితులు సురక్షితం**: అలల ఎత్తు {wave}m, గాలి వేగం {wind} km/h. సాధారణ చేపల వేట కొనసాగించవచ్చు.',
+    cautionHeading: '⚠️ **జాగ్రత్త అవసరం**: అలల ఎత్తు {wave}m, గాలి వేగం {wind} km/h. చిన్న బోట్లు తీరానికి దగ్గరగా ఉండాలి.',
+    dangerHeading: '🚨 **తీవ్ర వాతావరణ ప్రమాదం**: ఎత్తైన అలలు ({wave}m). సముద్రంలోకి వెళ్లవద్దు.',
+    pfzIntro: '🎯 **చేపల వేట మండలాలు (PFZ)**:',
+    routeHint: '🧭 **సురక్షిత మార్గం**: శాటిలైట్ GIS మ్యాప్‌లో సురక్షిత మార్గం సూచించబడింది.',
+    geofenceSafe: '🛑 బోటు సురక్షిత ప్రాంతంలో ఉంది. అంతర్జాతీయ సరిహద్దు (IMBL) నుండి రక్షిత దూరం ఉంది.',
+  },
+  bn: {
+    safeHeading: '✅ **সমুদ্রের অবস্থা নিরাপদ**: ঢেউয়ের উচ্চতা {wave}m, বাতাসের গতি {wind} km/h। স্বাভাবিক মাছ ধরা চালিয়ে যাওয়া যেতে পারে।',
+    cautionHeading: '⚠️ **সতর্কতা প্রয়োজন**: ঢেউয়ের উচ্চতা {wave}m এবং বাতাসের গতি {wind} km/h। ছোট নৌকা উপকূলের কাছাকাছি থাকুন।',
+    dangerHeading: '🚨 **মারাত্মক আবহাওয়া বিপদ**: উচ্চ ঢেউ ({wave}m) এবং উত্তাল সমুদ্র। সমুদ্রে যাবেন না।',
+    pfzIntro: '🎯 **সম্ভাব্য মাছ ধরার অঞ্চল (PFZ)**:',
+    routeHint: '🧭 **নিরাপদ রুট**: স্যাটেলাইট GIS মানচিত্রে নিরাপদ রুট দেখানো হয়েছে।',
+    geofenceSafe: '🛑 নৌকা নিরাপদ সীমানায় রয়েছে। আন্তর্জাতিক সীমানা (IMBL) থেকে নিরাপদ দূরত্ব বজায় রাখা হয়েছে।',
+  },
+  kn: {
+    safeHeading: '✅ **ಪರಿಸ್ಥಿತಿ ಸುರಕ್ಷಿತವಾಗಿದೆ**: ಅಲೆಗಳ ಎತ್ತರ {wave}m, ಗಾಳಿಯ ವೇಗ {wind} km/h. ನಿಯಮಿತ ಮೀನುಗಾರಿಕೆ ಮುಂದುವರಿಸಬಹುದು.',
+    cautionHeading: '⚠️ **ಎಚ್ಚರಿಕೆ ವಹಿಸಿ**: ಅಲೆಗಳ ಎತ್ತರ {wave}m ಹಾಗೂ ಗಾಳಿಯ ವೇಗ {wind} km/h. ಸಣ್ಣ ಬೋಟ್‌ಗಳು ತೀರದ ಸಮೀಪವಿರಬೇಕು.',
+    dangerHeading: '🚨 **ತೀವ್ರ ಹವಾಮಾನ ಅಪಾಯ**: ಎತ್ತರದ ಅಲೆಗಳು ({wave}m). ಸಮುದ್ರಕ್ಕೆ ಇಳಿಯಬೇಡಿ.',
+    pfzIntro: '🎯 **ಸಂಭಾವ್ಯ ಮೀನುಗಾರಿಕೆ ವಲಯಗಳು (PFZ)**:',
+    routeHint: '🧭 **ಸುರಕ್ಷಿತ ಮಾರ್ಗ**: ಉಪಗ್ರಹ GIS ನಕ್ಷೆಯಲ್ಲಿ ಸುರಕ್ಷಿತ ಮಾರ್ಗವನ್ನು ರೂಪಿಸಲಾಗಿದೆ.',
+    geofenceSafe: '🛑 ಬೋಟ್ ಸುರಕ್ಷಿತ ವಲಯದಲ್ಲಿದೆ. ಅಂತರರಾಷ್ಟ್ರೀಯ ಗಡಿಯಿಂದ (IMBL) ಸುರಕ್ಷಿತ ಅಂತರ ಕಾಪಾಡಿಕೊಳ್ಳಲಾಗಿದೆ.',
+  },
+  ml: {
+    safeHeading: '✅ **സാഹചര്യം അനുകൂലമാണ്**: തിരമാല ഉയരം {wave}m, കാറ്റിന്റെ വേഗത {wind} km/h. സാധാരണ മത്സ്യബന്ധനം തുടരാം.',
+    cautionHeading: '⚠️ **ജാഗ്രത പാലിക്കുക**: തിരമാല ഉയരം {wave}m, കാറ്റ് {wind} km/h. ചെറിയ വള്ളങ്ങൾ തീരത്തോട് ചേർന്ന് നിൽക്കുക.',
+    dangerHeading: '🚨 **ഗുരുതര കാലാവസ്ഥ അപകടം**: ഉയർന്ന തിരമാലകൾ ({wave}m). കടലിൽ പോകരുത്.',
+    pfzIntro: '🎯 **സാധ്യതാ മത്സ്യബന്ധന മേഖലകൾ (PFZ)**:',
+    routeHint: '🧭 **സുരക്ഷിത പാത**: ഉപഗ്രഹ GIS മാപ്പിൽ സുരക്ഷിത പാത രേഖപ്പെടുത്തിയിട്ടുണ്ട്.',
+    geofenceSafe: '🛑 ബോട്ട് സുരക്ഷിത അതിർത്തിക്കുള്ളിലാണ്. അന്താരാഷ്ട്ര അതിർത്തിയിൽ (IMBL) നിന്ന് സുരക്ഷിത അകലം പാലിക്കുന്നു.',
+  },
+  pa: {
+    safeHeading: '✅ **ਹਾਲਾਤ ਸੁਰੱਖਿਅਤ ਹਨ**: ਲਹਿਰਾਂ ਦੀ ਉਚਾਈ {wave}m ਹੈ, ਹਵਾ ਦੀ ਗਤੀ {wind} km/h ਹੈ। ਆਮ ਮੱਛੀ ਫੜਨਾ ਜਾਰੀ ਰੱਖਿਆ ਜਾ ਸਕਦਾ ਹੈ।',
+    cautionHeading: '⚠️ **ਸਾਵਧਾਨੀ ਵਰਤੋ**: ਲਹਿਰਾਂ ਦੀ ਉਚਾਈ {wave}m ਹੈ ਅਤੇ ਤੇਜ਼ ਹਵਾਵਾਂ {wind} km/h ਹਨ। ਛੋਟੀਆਂ ਕਿਸ਼ਤੀਆਂ ਕਿਨਾਰੇ ਨੇੜੇ ਰਹਿਣ।',
+    dangerHeading: '🚨 **ਗੰਭੀਰ ਮੌਸਮ ਖ਼ਤਰਾ**: ਉੱਚੀਆਂ ਲਹਿਰਾਂ ({wave}m)। ਸਮੁੰਦਰ ਵਿੱਚ ਜਾਣ ਤੋਂ ਬਚੋ।',
+    pfzIntro: '🎯 **ਸੰਭਾਵੀ ਮੱਛੀ ਫੜਨ ਵਾਲੇ ਖੇਤਰ (PFZ)**:',
+    routeHint: '🧭 **ਸੁਰੱਖਿਅਤ ਨੇਵੀਗੇਸ਼ਨ ਰੂਟ**: ਸੈਟੇਲਾਈਟ GIS ਨਕਸ਼ੇ ਤੇ ਸੁਰੱਖਿਅਤ ਰੂਟ ਤਿਆਰ ਕੀਤਾ ਗਿਆ ਹੈ।',
+    geofenceSafe: '🛑 ਕਿਸ਼ਤੀ ਸੁਰੱਖਿਅਤ ਖੇਤਰ ਵਿੱਚ ਹੈ। ਅੰਤਰਰਾਸ਼ਟਰੀ ਸਮੁੰਦਰੀ ਸਰਹੱਦ (IMBL) ਤੋਂ ਸੁਰੱਖਿਅਤ ਦੂਰੀ ਬਣੀ ਹੋਈ ਹੈ।',
+  },
+  or: {
+    safeHeading: '✅ **ସ୍ଥିତି ସୁରକ୍ଷିତ ଅଛି**: ତରଙ୍ଗ ଉଚ୍ଚତା {wave}m, ପବନ ଗତି {wind} km/h। ସାଧାରଣ ମତ୍ସ୍ୟ ଚାଷ ଜାରି ରହିପାରିବ।',
+    cautionHeading: '⚠️ **ସତର୍କତା ଅବଲମ୍ବନ କରନ୍ତୁ**: ତରଙ୍ଗ ଉଚ୍ଚତା {wave}m ଏବଂ ପବନ {wind} km/h। ଛୋଟ ଡଙ୍ଗାଗୁଡ଼ିକ ଉପକୂଳ ନିକଟରେ ରୁହନ୍ତୁ।',
+    dangerHeading: '🚨 **ଗମ୍ଭୀର ପାଣିପାଗ ବିପଦ**: ଉଚ୍ଚ ତରଙ୍ଗ ({wave}m)। ସମୁଦ୍ରକୁ ଯିବା ଅନୁଚିତ।',
+    pfzIntro: '🎯 **ସମ୍ଭାବ୍ୟ ମତ୍ସ୍ୟ ଚାଷ ଅଞ୍ଚଳ (PFZ)**:',
+    routeHint: '🧭 **ସୁରକ୍ଷିତ ନାଭିଗେସନ୍ ପଥ**: ସାଟେଲାଇଟ୍ GIS ମାନଚିତ୍ରରେ ସୁରକ୍ଷିତ ରୁଟ୍ ପ୍ରଦର୍ଶିତ ହୋଇଛି।',
+    geofenceSafe: '🛑 ଡଙ୍ଗା ସୁରକ୍ଷିତ ସୀମା ମଧ୍ୟରେ ଅଛି। ଆନ୍ତର୍ଜାତୀୟ ସୀମା (IMBL) ଠାରୁ ସୁରକ୍ଷିତ ଦୂରତା ବଜାୟ ରହିଛି।',
+  },
+};
+
 export async function askMarineAI(
   question: string,
   lat: number,
   lon: number,
   date = new Date().toISOString().split('T')[0],
-  language = 'auto'
+  language = 'en'
 ): Promise<QueryApiResponse> {
   const geofenceCheck = checkGeofenceProximity(lat, lon);
   const weather = getSimulatedWeather(lat, lon);
@@ -233,7 +330,7 @@ export async function askMarineAI(
       agentName: 'Bhashini Indic Multilingual NMT Service',
       role: 'Language Identification & Neural Machine Translation',
       icon: '🌐',
-      detail: `Identified input query stream (Target Lang: ${language.toUpperCase()}). Normalized query to operational English for agent reasoning.`,
+      detail: `Target language: ${language.toUpperCase()}. Normalized input query for multi-agent reasoning.`,
       timestamp: now,
       status: 'completed',
     },
@@ -279,7 +376,7 @@ export async function askMarineAI(
     },
   ];
 
-  // Try live backend /api/chat first (falls back to /query)
+  // Try live backend /api/chat first
   try {
     const res = await fetch(`${BACKEND_URL}/api/chat`, {
       method: 'POST',
@@ -288,7 +385,7 @@ export async function askMarineAI(
         message: question,
         location: { lat, lon },
         date,
-        language: language || 'auto',
+        language: language || 'en',
         session_id: 'orca-main-session',
       }),
     });
@@ -296,9 +393,8 @@ export async function askMarineAI(
     if (res.ok) {
       const data = await res.json();
       
-      // Update Bhashini step details from backend response
       if (agentSteps[0]) {
-        agentSteps[0].detail = `Detected: ${data.language_name || data.language} (${data.language}). Processed English query: "${data.english_query || question}" -> Response translated back to user.`;
+        agentSteps[0].detail = `Detected: ${data.language_name || data.language} (${data.language}). Synthesized response in target language.`;
       }
 
       return {
@@ -319,49 +415,40 @@ export async function askMarineAI(
       };
     }
   } catch {
-    // Graceful fallback to client-side multi-agent engine
+    // Fallback to client-side multi-agent engine
   }
 
+  // Client-side multilingual answer generator
+  const langKey = MULTILINGUAL_ANSWERS[language] ? language : 'en';
+  const langData = MULTILINGUAL_ANSWERS[langKey] || MULTILINGUAL_ANSWERS.en;
 
-  // Generate autonomous answer
-  let answer = '';
-  const qLower = question.toLowerCase();
+  const safetyVerdict = (riskLevel === 'safe'
+    ? langData.safeHeading
+    : riskLevel === 'caution'
+    ? langData.cautionHeading
+    : langData.dangerHeading
+  )
+    .replace('{wave}', String(weather.wave_height_m))
+    .replace('{wind}', String(weather.wind_speed_kmh));
 
-  if (qLower.includes('ecology') || qLower.includes('decline') || qLower.includes('why') || qLower.includes('ratnagiri')) {
-    answer = `📊 **Historical Ecological & Oceanographic Analysis** for Coastal Sector (${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E):\n\n` +
-      `1. **Sea Surface Temperature (SST) Anomaly**: Multi-year satellite data indicates a +0.85°C rise in coastal SST, weakening the seasonal summer upwelling.\n` +
-      `2. **Chlorophyll-a Bloom Shift**: Primary phytoplankton concentration dropped by 18% near the shore, pushing pelagic schools (Oil Sardines & Mackerel) 15-20 NM further offshore into deeper shelf-break waters.\n` +
-      `3. **Recommendation**: Mariculture operators and artisanal fleets are advised to focus on offshore shelf-break zones (>70m depth) where thermal fronts remain intact.`;
-  } else if (qLower.includes('geofence') || qLower.includes('boundary') || qLower.includes('international') || geofenceCheck.inDanger) {
-    answer = `🛑 **Geofencing & Maritime Security Report**:\n\n` +
-      (geofenceCheck.warning || `Vessel is in international compliance zone. Nearest boundary is ${geofenceCheck.distanceKm} km away.`) +
-      `\n\n📌 **Active Alert Zones**:\n- Sri Lanka IMBL Buffer: 12 NM caution zone active.\n- Sir Creek High Security Zone: Strict zero-trespass monitored by Coast Guard AIS.`;
-  } else {
-    const safetyVerdict = riskLevel === 'safe'
-      ? `✅ **CONDITIONS SAFE**: Wave height is ${weather.wave_height_m}m, wind is ${weather.wind_speed_kmh} km/h with clear sky. Normal navigation and fishing operations may proceed.`
-      : riskLevel === 'caution'
-      ? `⚠️ **CAUTION ADVISED**: Wave height is ${weather.wave_height_m}m with squall gusts up to ${weather.wind_speed_kmh} km/h. Small artisanal crafts should remain within 5 NM of shore.`
-      : `🚨 **SEVERE WEATHER HAZARD**: High waves (${weather.wave_height_m}m) and rough seas. Venturing into the sea is strictly discouraged.`;
+  const pfzDetails = sortedPfz.slice(0, 3).map((z, idx) => 
+    `${idx + 1}. **${z.name}**\n   - 📍 Distance: ${z.distance_km} km (${z.lat.toFixed(4)}°N, ${z.lon.toFixed(4)}°E)\n   - 🐟 Species: ${z.dominant_species}\n   - 🌊 Depth: ~${z.depth_m}m | SST: ${z.sst_c}°C | Chlorophyll: ${z.chlorophyll_mg_m3} mg/m³\n   - ⭐ Match: ${z.confidence}% (${z.yield_level})`
+  ).join('\n\n');
 
-    const pfzDetails = sortedPfz.slice(0, 3).map((z, idx) => 
-      `${idx + 1}. **${z.name}**\n   - 📍 Distance: ${z.distance_km} km at (${z.lat.toFixed(4)}, ${z.lon.toFixed(4)})\n   - 🐟 Species: ${z.dominant_species}\n   - 🌊 Depth: ~${z.depth_m}m | SST: ${z.sst_c}°C | Chlorophyll: ${z.chlorophyll_mg_m3} mg/m³\n   - ⭐ Yield Confidence: ${z.confidence}% (${z.yield_level})`
-    ).join('\n\n');
-
-    answer = `🌊 **ORCA Marine Operational Advisory** for (${lat.toFixed(4)}, ${lon.toFixed(4)}) on ${date}:\n\n` +
-      `${safetyVerdict}\n\n` +
-      (geofenceCheck.warning ? `⚠️ **Boundary Notice**: ${geofenceCheck.warning}\n\n` : '') +
-      `🎯 **Identified Potential Fishing Zones (PFZ)**:\n\n${pfzDetails}\n\n` +
-      `🧭 **Safe Navigational Recommendation**: A weather-optimized waypoint corridor to '${targetPfz.name}' has been plotted on your GIS tactical map.`;
-  }
+  const answer = `🌊 **ORCA Marine AI Advisory** (${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E) [${date}]:\n\n` +
+    `${safetyVerdict}\n\n` +
+    (geofenceCheck.warning ? `🛑 **Boundary Alert**: ${geofenceCheck.warning}\n\n` : `🛑 **Boundary Status**: ${langData.geofenceSafe}\n\n`) +
+    `${langData.pfzIntro}\n\n${pfzDetails}\n\n` +
+    `${langData.routeHint}`;
 
   const reasoning = [
-    `Parsed user intent for question: "${question}".`,
+    `Parsed user intent for query: "${question}" (Language: ${language.toUpperCase()}).`,
     `Ingested satellite Earth Observation & marine weather: Wave=${weather.wave_height_m}m, Wind=${weather.wind_speed_kmh}km/h, Forecast=${weather.forecast}.`,
     `Evaluated marine risk status as "${riskLevel.toUpperCase()}".`,
     `Computed proximity to ${MOCK_PFZ_ZONES.length} Potential Fishing Zones. Closest zone is '${targetPfz.name}' (${targetPfz.distance_km} km).`,
     `Evaluated geofence proximity against IMBL and Marine Protected Area polygons (nearest distance: ${geofenceCheck.distanceKm} km).`,
     `Generated weather-evasive safe navigational route to target waypoint.`,
-    `Synthesized explainable evidence-based recommendation.`,
+    `Synthesized explainable evidence-based recommendation in ${language.toUpperCase()}.`,
   ];
 
   return {
@@ -373,6 +460,7 @@ export async function askMarineAI(
       'Satellite Earth Observation PFZ Service (ISRO Oceansat)',
       'IMBL Geofence Reasoner (Shapely Spatial Engine)',
       'A* Navigational Route Optimizer',
+      'Bhashini Indic Multilingual Translation Layer',
     ],
     risk_level: riskLevel,
     weather,
@@ -381,6 +469,8 @@ export async function askMarineAI(
     geofence_warning: geofenceCheck.warning,
     recommended_route: safeRoute,
     agent_steps: agentSteps,
+    language: language,
+    language_name: language.toUpperCase(),
   };
 }
 
