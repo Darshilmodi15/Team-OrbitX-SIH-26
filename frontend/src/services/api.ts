@@ -334,6 +334,48 @@ export async function checkLocationSafetyAlerts(
   return await response.json();
 }
 
+/* ==========================================================================
+   Emergency Services & SOS APIs
+   ========================================================================== */
+
+export async function fetchEmergencyContacts(region?: string) {
+  const query = region ? `?region=${encodeURIComponent(region)}` : '';
+  const response = await fetch(`${API_BASE_URL}/api/emergency/contacts${query}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch emergency contacts');
+  }
+  return await response.json();
+}
+
+export async function broadcastSOS(payload: {
+  vessel_name?: string;
+  registration_no?: string;
+  lat: number;
+  lon: number;
+  crew_count?: number;
+  emergency_nature: string;
+  notes?: string;
+  contact_phone?: string;
+}) {
+  const response = await fetch(`${API_BASE_URL}/api/emergency/sos`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to dispatch SOS broadcast');
+  }
+  return await response.json();
+}
+
+export async function fetchActiveSOS() {
+  const response = await fetch(`${API_BASE_URL}/api/emergency/sos/active`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch active SOS broadcasts');
+  }
+  return await response.json();
+}
+
 export default {
   queryORCA,
   registerUser,
@@ -354,4 +396,7 @@ export default {
   markNotificationAsRead,
   markAllNotificationsAsRead,
   checkLocationSafetyAlerts,
+  fetchEmergencyContacts,
+  broadcastSOS,
+  fetchActiveSOS,
 };

@@ -7,6 +7,7 @@ import CurrentMarineStatusCard from './components/CurrentMarineStatusCard';
 import ForecastHorizonTimeline from './components/ForecastHorizonTimeline';
 import TerminologyExplainerModal from './components/TerminologyExplainerModal';
 import NotificationCenterModal, { type NotificationItem } from './components/NotificationCenterModal';
+import EmergencySOSModal from './components/EmergencySOSModal';
 import MobileBottomNav, { type MobileTab } from './components/MobileBottomNav';
 import { TopHeader } from './components/TopHeader';
 import { ControlBar } from './components/ControlBar';
@@ -85,6 +86,7 @@ export default function App() {
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isTerminologyModalOpen, setIsTerminologyModalOpen] = useState(false);
   const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
+  const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
 
   // User Authentication State
   const [currentUser, setCurrentUser] = useState<any | null>(null);
@@ -474,6 +476,7 @@ export default function App() {
               <MarineMap
                 userLocation={userLocation}
                 pfzZones={gisLayers.pfz ? pfzZones : []}
+                layers={gisLayers}
               />
             </div>
 
@@ -564,7 +567,7 @@ export default function App() {
               if (tab === 'ecology') {
                 setIsEcologyModalOpen(true);
               } else if (tab === 'emergency') {
-                setIsNotificationsModalOpen(true);
+                setIsEmergencyModalOpen(true);
               } else {
                 setMobileTab(tab);
               }
@@ -597,6 +600,13 @@ export default function App() {
             unreadCount={unreadAlertsCount}
             onMarkRead={handleMarkRead}
             onMarkAllRead={handleMarkAllRead}
+            currentLang={currentLang}
+          />
+
+          <EmergencySOSModal
+            isOpen={isEmergencyModalOpen}
+            onClose={() => setIsEmergencyModalOpen(false)}
+            userLocation={userLocation}
             currentLang={currentLang}
           />
         </div>
