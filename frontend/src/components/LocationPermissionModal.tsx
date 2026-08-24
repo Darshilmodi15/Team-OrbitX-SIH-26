@@ -73,100 +73,103 @@ export default function LocationPermissionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn font-sans">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-700/80 rounded-3xl p-5 sm:p-7 shadow-2xl text-white">
-        {/* Top Icon */}
-        <div className="w-12 h-12 rounded-2xl bg-teal-950/80 border border-teal-500/40 flex items-center justify-center text-teal-400 mx-auto mb-3 shadow-sm">
-          <Navigation className="w-6 h-6 animate-pulse" />
+    <div className="modal-backdrop">
+      <div className="modal-card p-6 sm:p-8">
+        {/* Icon */}
+        <div className="text-center mb-5">
+          <div
+            className="w-12 h-12 rounded-2xl flex items-center justify-center text-white mx-auto mb-3 shadow-sm"
+            style={{ background: 'linear-gradient(135deg, #0B3D5B 0%, #0F766E 100%)' }}
+          >
+            <Navigation className="w-5 h-5" />
+          </div>
+          <h2 className="text-lg font-bold text-slate-900">Set Your Location</h2>
+          <p className="text-xs text-slate-500 mt-1 leading-relaxed max-w-xs mx-auto">
+            ORCA uses your location for coastal distance, live wave telemetry, and maritime boundary monitoring.
+          </p>
         </div>
 
-        {/* Title */}
-        <h2 className="text-lg font-black text-center text-white tracking-tight mb-1">
-          Allow Location Access?
-        </h2>
-        <p className="text-xs text-center text-slate-300 leading-relaxed mb-5">
-          ORCA uses your GPS location to calculate coastal distance, provide live wave and weather telemetry from INCOIS, and monitor maritime boundary geofences.
-        </p>
-
-        {/* Status / Validation Feedback */}
+        {/* Validation Feedback */}
         {validationResult && (
           <div
-            className={`mb-4 p-3.5 rounded-2xl border text-xs leading-relaxed ${
+            className={`mb-4 p-3.5 rounded-xl border text-xs leading-relaxed ${
               validationResult.is_coastal_supported
-                ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-300'
-                : 'bg-amber-950/50 border-amber-500/40 text-amber-300'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                : 'bg-amber-50 border-amber-200 text-amber-800'
             }`}
           >
-            <div className="flex items-center gap-2 font-bold mb-1">
+            <div className="flex items-center gap-2 font-semibold mb-1">
               {validationResult.is_coastal_supported ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               ) : (
-                <AlertCircle className="w-4 h-4 text-amber-400" />
+                <AlertCircle className="w-4 h-4 text-amber-600" />
               )}
               <span>
                 {validationResult.is_coastal_supported
-                  ? `Coastal Zone Verified (${validationResult.coastal_region})`
+                  ? `Coastal Zone Verified — ${validationResult.coastal_region}`
                   : 'Inland / Unsupported Location'}
               </span>
             </div>
-            <p className="text-[11px] text-slate-200">{validationResult.message}</p>
+            <p className="text-[11px] text-slate-600">{validationResult.message}</p>
           </div>
         )}
 
+        {/* Error */}
         {errorMsg && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-950/50 border border-rose-500/40 text-rose-300 text-xs flex items-center gap-2">
+          <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
             <span>⚠️</span>
             <span>{errorMsg}</span>
           </div>
         )}
 
-        {/* Main Action Buttons */}
+        {/* Action Buttons */}
         {!showManualPicker ? (
           <div className="space-y-3">
             <button
               onClick={handleRequestGPS}
               disabled={isLocating}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500 text-white text-xs font-bold shadow-lg flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer disabled:opacity-50"
+              className="w-full py-3 rounded-xl text-white text-sm font-bold shadow-sm flex items-center justify-center gap-2 transition active:scale-[0.97] cursor-pointer disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg, #0B3D5B 0%, #0F766E 100%)' }}
             >
               {isLocating ? (
-                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
                   <MapPin className="w-4 h-4" />
-                  <span>Allow GPS Location</span>
+                  <span>Use GPS Location</span>
                 </>
               )}
             </button>
 
             <button
               onClick={() => setShowManualPicker(true)}
-              className="w-full py-3 rounded-2xl bg-slate-950/70 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer"
+              className="w-full py-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-sm font-semibold flex items-center justify-center gap-2 transition cursor-pointer"
             >
-              <Compass className="w-4 h-4 text-cyan-400" />
-              <span>Choose Coastal Location Manually</span>
+              <Compass className="w-4 h-4 text-teal-700" />
+              <span>Choose Coastal Port Manually</span>
             </button>
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wider mb-1 font-bold">
-              Select Coastal Port Base:
+            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+              Select Coastal Port
             </div>
-            <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin">
+            <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1">
               {INDIAN_PORTS.map((port) => (
                 <button
                   key={port.id}
                   onClick={() => handleSelectPort(port)}
-                  className="w-full p-2.5 rounded-xl bg-slate-950 hover:bg-teal-950/60 border border-slate-800 hover:border-teal-500 text-left transition flex items-center justify-between text-xs cursor-pointer group"
+                  className="w-full p-3 rounded-xl bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-300 text-left transition flex items-center justify-between text-xs cursor-pointer group"
                 >
                   <div>
-                    <div className="font-bold text-slate-200 group-hover:text-teal-300">
+                    <div className="font-semibold text-slate-800 group-hover:text-teal-800">
                       {port.name}
                     </div>
-                    <div className="text-[10px] text-slate-400">
-                      {port.state} ({port.lat.toFixed(2)}°N, {port.lon.toFixed(2)}°E)
+                    <div className="text-[11px] text-slate-400 mt-0.5">
+                      {port.state} · {port.lat.toFixed(2)}°N, {port.lon.toFixed(2)}°E
                     </div>
                   </div>
-                  <span className="text-[10px] text-teal-400 opacity-0 group-hover:opacity-100 transition">
+                  <span className="text-[11px] text-teal-600 opacity-0 group-hover:opacity-100 transition font-medium">
                     Select →
                   </span>
                 </button>
@@ -175,9 +178,9 @@ export default function LocationPermissionModal({
 
             <button
               onClick={() => setShowManualPicker(false)}
-              className="w-full py-2 text-[11px] text-slate-400 hover:text-slate-200 transition cursor-pointer"
+              className="w-full py-2.5 text-xs text-slate-500 hover:text-slate-700 transition cursor-pointer font-medium"
             >
-              ← Back to GPS prompt
+              ← Back to GPS
             </button>
           </div>
         )}

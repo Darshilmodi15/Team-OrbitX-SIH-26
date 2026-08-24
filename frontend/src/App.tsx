@@ -12,13 +12,13 @@ import GovernmentPortalModal from './components/GovernmentPortalModal';
 import SuperAdminModal from './components/SuperAdminModal';
 import MobileBottomNav, { type MobileTab } from './components/MobileBottomNav';
 import { TopHeader } from './components/TopHeader';
-import { ControlBar } from './components/ControlBar';
 import { GisLayersPanel, type GisLayerState } from './components/GisLayersPanel';
 import MarineMap from './components/MarineMap';
 import ChatPanel from './components/ChatPanel';
 import { FishAnalyticsModal } from './components/FishAnalyticsModal';
 import { AgentTraceModal } from './components/AgentTraceModal';
 import { Footer } from './components/Footer';
+import { MessageSquare, X } from 'lucide-react';
 import {
   queryORCA,
   fetchMarineConditions,
@@ -78,11 +78,11 @@ export interface MessageItem {
 }
 
 export default function App() {
-  // App Navigation Flow Stage
+  // Navigation
   const [appStage, setAppStage] = useState<'landing' | 'dashboard'>('landing');
-  const [mobileTab, setMobileTab] = useState<MobileTab>('status');
+  const [mobileTab, setMobileTab] = useState<MobileTab>('map');
 
-  // Modals for Onboarding, Notifications & Reference
+  // Modals
   const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
@@ -91,29 +91,31 @@ export default function App() {
   const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
   const [isGovPortalOpen, setIsGovPortalOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [isEcologyModalOpen, setIsEcologyModalOpen] = useState(false);
+  const [isReasoningModalOpen, setIsReasoningModalOpen] = useState(false);
 
-  // User Authentication State
+  // Chat drawer state
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isStatusExpanded, setIsStatusExpanded] = useState(true);
+
+  // User
   const [currentUser, setCurrentUser] = useState<any | null>(null);
 
-  // Operational Location & Telemetry
-  const [selectedPort, setSelectedPort] = useState<Port>(INDIAN_PORTS[0]); // Mumbai Sassoon Dock
+  // Location
+  const [selectedPort, setSelectedPort] = useState<Port>(INDIAN_PORTS[0]);
   const [userLocation, setUserLocation] = useState<LocationCoords>({
     lat: INDIAN_PORTS[0].lat,
     lon: INDIAN_PORTS[0].lon,
   });
-
-  const [currentDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
-  );
-
+  const [currentDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [currentLang, setCurrentLang] = useState<string>('en');
 
-  // Notifications State
+  // Notifications
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadAlertsCount, setUnreadAlertsCount] = useState<number>(0);
   const [activeCriticalToast, setActiveCriticalToast] = useState<NotificationItem | null>(null);
 
-  // Baseline / Live Telemetry Weather & Safety
+  // Weather & Safety
   const [weather, setWeather] = useState<WeatherMetrics>(
     INDIAN_PORTS[0].defaultWeather || {
       wave_height_m: 1.2,
@@ -129,10 +131,9 @@ export default function App() {
       source: 'INCOIS_OSF_LIVE',
     }
   );
-
   const [riskLevel, setRiskLevel] = useState<'safe' | 'caution' | 'unsafe'>('safe');
 
-  // GIS Layer Switches State
+  // GIS Layers
   const [gisLayers, setGisLayers] = useState<GisLayerState>({
     pfz: true,
     geofence: true,
@@ -143,11 +144,7 @@ export default function App() {
     wind: true,
   });
 
-  // Modal visibility states
-  const [isEcologyModalOpen, setIsEcologyModalOpen] = useState(false);
-  const [isReasoningModalOpen, setIsReasoningModalOpen] = useState(false);
-
-  // Active PFZ Zones on Map
+  // PFZ Zones
   const [pfzZones, setPfzZones] = useState<PFZEvidenceItem[]>(
     MOCK_PFZ_ZONES.map((z) => ({
       name: z.name,
@@ -160,20 +157,19 @@ export default function App() {
     }))
   );
 
-  // Initial welcome greeting
+  // Messages
   const [messages, setMessages] = useState<MessageItem[]>([
     {
       id: 'init-greeting',
       sender: 'assistant',
-      text: '🌊 **Welcome to ORCA Marine AI Coastal Safety Console.**\n\nI provide real-time maritime intelligence, navigational safety assessments, and INCOIS-derived Potential Fishing Zone (PFZ) advisories.\n\nUse voice input or ask about sea conditions, wind & wave risks, or boundary geofences in Gujarati (ગુજરાતી), Hindi (हिन्दी), Marathi (मराठी), Tamil (தமிழ்), Telugu (తెలుగు), Malayalam (മലയാളം), or English.',
+      text: '🌊 **Welcome to ORCA Marine AI.**\n\nI provide real-time maritime intelligence, navigational safety assessments, and INCOIS-derived Potential Fishing Zone (PFZ) advisories.\n\nAsk me about sea conditions, wave safety, fishing zones, or coastal navigation in any Indian language.',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
-
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Synchronize Live Telemetry & Check Location Safety Alerts
+  // ═══ Live Telemetry & Alerts ═══
   useEffect(() => {
     let isMounted = true;
 
@@ -207,8 +203,6 @@ export default function App() {
           if (alertsData && alertsData.notifications) {
             setNotifications(alertsData.notifications);
             setUnreadAlertsCount(alertsData.unread_count || 0);
-
-            // Pop up critical toast if critical alert exists
             const criticalAlert = alertsData.notifications.find(
               (n: any) => (n.severity === 'CRITICAL' || n.severity === 'HIGH') && !n.is_read
             );
@@ -223,22 +217,16 @@ export default function App() {
     }
 
     refreshTelemetryAndAlerts();
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [userLocation, currentDate, currentUser]);
 
-  // Handle Notifications
+  // ═══ Notification Handlers ═══
   const handleMarkRead = async (id: string) => {
     try {
       await markNotificationAsRead(id);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
-      );
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
       setUnreadAlertsCount((c) => Math.max(0, c - 1));
-      if (activeCriticalToast?.id === id) {
-        setActiveCriticalToast(null);
-      }
+      if (activeCriticalToast?.id === id) setActiveCriticalToast(null);
     } catch (err) {
       console.warn('Mark read error:', err);
     }
@@ -255,21 +243,13 @@ export default function App() {
     }
   };
 
-  // Onboarding Handlers
-  const handleStartOnboarding = () => {
-    setIsLanguageModalOpen(true);
-  };
-
-  const handleLanguageContinue = () => {
-    setIsLanguageModalOpen(false);
-    setIsAuthModalOpen(true);
-  };
+  // ═══ Onboarding Flow ═══
+  const handleStartOnboarding = () => setIsLanguageModalOpen(true);
+  const handleLanguageContinue = () => { setIsLanguageModalOpen(false); setIsAuthModalOpen(true); };
 
   const handleAuthSuccess = (userProfile: any) => {
     setCurrentUser(userProfile);
-    if (userProfile.preferred_language) {
-      setCurrentLang(userProfile.preferred_language);
-    }
+    if (userProfile.preferred_language) setCurrentLang(userProfile.preferred_language);
     setIsAuthModalOpen(false);
     setIsLocationModalOpen(true);
   };
@@ -280,64 +260,47 @@ export default function App() {
     setAppStage('dashboard');
   };
 
-  const handleDirectDemo = () => {
-    setAppStage('dashboard');
-  };
+  const handleDirectDemo = () => setAppStage('dashboard');
 
-  // Handle Global Language Switching
+  // ═══ Language & Port Selection ═══
   const handleSelectLang = (lang: string) => {
     setCurrentLang(lang);
     const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
     const langGreetings: Record<string, string> = {
-      gu: '🌐 **ભાષા બદલાઈ ગઈ છે**: ગુજરાતી (Gujarati). ઓર્કા મરીન એઆઇ હવે તમને ગુજરાતીમાં દરિયાઈ હવામાન, મોજાં, સુરક્ષા અને માછીમારી વિસ્તાર (PFZ) ની માહિતી આપશે.',
-      hi: '🌐 **भाषा बदल दी गई है**: हिन्दी (Hindi). ओर्का मरीन एआई अब आपको हिन्दी में समुद्री मौसम, लहरों की स्थिति, सुरक्षा और मत्स्य क्षेत्रों (PFZ) की जानकारी प्रदान करेगा।',
-      mr: '🌐 **भाषा बदलली आहे**: मराठी (Marathi). ऑर्का मरीन एआय आता तुम्हाला मराठीत सागरी हवामान, लाटांची स्थिती आणि मासेमारी क्षेत्राची माहिती देईल.',
-      ta: '🌐 **மொழி மாற்றப்பட்டது**: தமிழ் (Tamil). ஆர்கா மரைன் ஏஐ இப்போது கடல் வானிலை, அலை உயரம் மற்றும் மீன்பிடி மண்டல தகவல்களை தமிழில் வழங்கும்.',
-      ml: '🌐 **ഭാഷ മാറ്റി**: മലയാളം (Malayalam). ഓർക്ക മറൈൻ എഐ ഇനി കടൽ കാലാവസ്ഥയും സുരക്ഷാ മുന്നറിയിപ്പുകളും മലയാളത്തിൽ ലഭ്യമാക്കും.',
-      te: '🌐 **భాష మార్చబడింది**: తెలుగు (Telugu). ఓర్కా మెరైన్ ఏఐ ఇప్పుడు సముద్ర వాతావరణం మరియు చేపల వేట మండల సమాచారాన్ని తెలుగులో అందిస్తుంది.',
-      bn: '🌐 **ভাষা পরিবর্তিত হয়েছে**: বাংলা (Bengali). ওর্কা মেরিন এআই এখন বাংলায় সামুদ্রিক আবহাওয়া ও নিরাপত্তা তথ্য প্রদান করবে।',
-      en: '🌐 **Language switched**: English. ORCA Marine AI will now provide marine weather, wave safety, and fishing zone intelligence in English.',
+      gu: '🌐 **ભાષા બદલાઈ ગઈ છે**: ગુજરાતી. ઓર્કા મરીન AI હવે તમને ગુજરાતીમાં માહિતી આપશે.',
+      hi: '🌐 **भाषा बदल दी गई है**: हिन्दी. ओर्का मरीन AI अब हिन्दी में जानकारी प्रदान करेगा।',
+      mr: '🌐 **भाषा बदलली आहे**: मराठी. ऑर्का मरीन AI आता मराठीत माहिती देईल.',
+      ta: '🌐 **மொழி மாற்றப்பட்டது**: தமிழ். ஆர்கா மரைன் AI தமிழில் தகவல்களை வழங்கும்.',
+      ml: '🌐 **ഭാഷ മാറ്റി**: മലയാളം. ഓർക്ക മറൈൻ AI മലയാളത്തിൽ ലഭ്യമാക്കും.',
+      te: '🌐 **భాష మార్చబడింది**: తెలుగు. ఓర్కా మెరైన్ AI తెలుగులో సమాచారం అందిస్తుంది.',
+      bn: '🌐 **ভাষা পরিবর্তিত হয়েছে**: বাংলা. ওর্কা মেরিন AI বাংলায় তথ্য প্রদান করবে।',
+      en: '🌐 **Language switched**: English. ORCA Marine AI will now respond in English.',
     };
-
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: `lang-change-${Date.now()}`,
-        sender: 'assistant',
-        text: langGreetings[lang] || langGreetings.en,
-        timestamp: timeNow,
-      },
-    ]);
+    setMessages((prev) => [...prev, {
+      id: `lang-change-${Date.now()}`,
+      sender: 'assistant',
+      text: langGreetings[lang] || langGreetings.en,
+      timestamp: timeNow,
+    }]);
   };
 
-  // Handle User Selecting a Standard Coastal Port
   const handleSelectPort = (port: Port) => {
     setSelectedPort(port);
     setUserLocation({ lat: port.lat, lon: port.lon });
-
-    if (port.defaultWeather) {
-      setWeather(port.defaultWeather);
-    }
-
+    if (port.defaultWeather) setWeather(port.defaultWeather);
     const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: `port-change-${Date.now()}`,
-        sender: 'assistant',
-        text: `⚓ **Vessel Port Changed**: Location updated to **${port.name} (${port.state})** at \`${port.lat.toFixed(4)}°N, ${port.lon.toFixed(4)}°E\`.\n\nLive marine radar and INCOIS telemetry re-centered for this coastal sector.`,
-        timestamp: timeNow,
-      },
-    ]);
+    setMessages((prev) => [...prev, {
+      id: `port-change-${Date.now()}`,
+      sender: 'assistant',
+      text: `⚓ **Location updated** to **${port.name}** (${port.state}) at \`${port.lat.toFixed(4)}°N, ${port.lon.toFixed(4)}°E\`.\n\nMarine telemetry re-centered for this coastal sector.`,
+      timestamp: timeNow,
+    }]);
   };
 
-  // Main Handler for Chat/Query Submission
+  // ═══ Chat/Query Handler ═══
   const handleSendMessage = async (questionText: string) => {
     if (!questionText.trim() || isLoading) return;
-
     const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
     const userMsg: MessageItem = {
       id: `user-${Date.now()}`,
       sender: 'user',
@@ -359,7 +322,6 @@ export default function App() {
       if (response.nearest_pfz && Array.isArray(response.nearest_pfz) && response.nearest_pfz.length > 0) {
         setPfzZones(response.nearest_pfz);
       }
-
       if (response.weather) {
         setWeather({
           wave_height_m: response.weather.wave_height_m || weather.wave_height_m,
@@ -375,10 +337,7 @@ export default function App() {
           source: response.weather.source || 'INCOIS_OSF_LIVE',
         });
       }
-
-      if (response.risk_level) {
-        setRiskLevel(response.risk_level as any);
-      }
+      if (response.risk_level) setRiskLevel(response.risk_level as any);
 
       const assistantMsg: MessageItem = {
         id: `assistant-${Date.now()}`,
@@ -391,30 +350,27 @@ export default function App() {
         reasoning: response.reasoning,
         sources_used: response.sources_used,
       };
-
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err: any) {
-      console.error('Error querying ORCA backend:', err);
-      const errMsg = err?.message || 'Failed to connect to ORCA backend. Please ensure the backend is running.';
+      const errMsg = err?.message || 'Failed to connect to ORCA backend.';
       setError(errMsg);
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `error-${Date.now()}`,
-          sender: 'assistant',
-          text: `⚠️ **Connection Error**: ${errMsg}\n\nPlease check that the ORCA backend server is active at \`http://localhost:8000\`.`,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        },
-      ]);
+      setMessages((prev) => [...prev, {
+        id: `error-${Date.now()}`,
+        sender: 'assistant',
+        text: `⚠️ **Connection Error**: ${errMsg}\n\nPlease check that the backend is running at \`http://localhost:8000\`.`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      }]);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // ═══════════════════════════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════════════════════════
+
   return (
     <>
-      {/* Onboarding & Navigation Flow */}
       {appStage === 'landing' ? (
         <LandingPage
           onGetStarted={handleStartOnboarding}
@@ -423,9 +379,9 @@ export default function App() {
           currentLang={currentLang}
         />
       ) : (
-        /* Mobile-First Operational Safety & Marine Intelligence Dashboard */
-        <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 font-sans text-slate-100">
-          {/* Top Bar with Branding, Health Status & Persona Badge */}
+        /* ═══════ DASHBOARD: Map-First Layout ═══════ */
+        <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-100 font-sans text-slate-900">
+          {/* Compact Header */}
           <TopHeader
             vesselLat={userLocation.lat}
             vesselLon={userLocation.lon}
@@ -434,107 +390,139 @@ export default function App() {
             currentLang={currentLang}
             currentUser={currentUser}
             unreadAlertsCount={unreadAlertsCount}
+            selectedPort={selectedPort}
+            onSelectPort={handleSelectPort}
+            onSelectLang={handleSelectLang}
             onOpenNotifications={() => setIsNotificationsModalOpen(true)}
             onOpenAdmin={() => setIsAdminModalOpen(true)}
+            onOpenGovPortal={() => setIsGovPortalOpen(true)}
             onReturnHome={() => setAppStage('landing')}
           />
 
-          {/* Control Bar: Location, Language, Modals */}
-          <ControlBar
-            selectedPort={selectedPort}
-            onSelectPort={handleSelectPort}
-            currentLang={currentLang}
-            onSelectLang={handleSelectLang}
-            onOpenReasoning={() => setIsReasoningModalOpen(true)}
-            onOpenEcology={() => setIsEcologyModalOpen(true)}
-            onOpenGovPortal={() => setIsGovPortalOpen(true)}
-          />
-
-          {/* GIS Layer Toggles */}
-          <GisLayersPanel
-            layers={gisLayers}
-            onToggleLayer={(k) => setGisLayers((prev) => ({ ...prev, [k]: !prev[k] }))}
-            currentLang={currentLang}
-          />
-
-          {/* Floating Critical Toast Alert */}
+          {/* Critical Alert Toast */}
           {activeCriticalToast && (
-            <div className="z-30 px-4 py-2 bg-rose-950/90 border-b border-rose-500/50 flex items-center justify-between text-xs text-rose-200 animate-fadeIn">
+            <div className="z-40 px-4 py-2 bg-rose-50 border-b border-rose-200 flex items-center justify-between text-xs text-rose-800 animate-slideDown">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping shrink-0"></span>
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shrink-0" />
                 <span><strong>{activeCriticalToast.title}:</strong> {activeCriticalToast.message}</span>
               </div>
               <button
                 onClick={() => handleMarkRead(activeCriticalToast.id)}
-                className="ml-3 px-2 py-0.5 rounded-lg bg-rose-900/80 hover:bg-rose-800 text-white font-mono text-[10px] shrink-0 cursor-pointer"
+                className="ml-3 px-2.5 py-1 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-700 font-semibold text-[10px] shrink-0 cursor-pointer transition"
               >
                 Dismiss
               </button>
             </div>
           )}
 
-          {/* Main Body: Responsive Desktop Grid & Mobile Tab Switching */}
-          <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative min-h-0 bg-slate-950 pb-14 md:pb-0">
-            {/* Desktop Left (60%): Tactical Map */}
-            <div className={`w-full md:w-[60%] lg:w-[63%] xl:w-[65%] h-full relative flex-col min-h-0 ${
-              mobileTab === 'map' ? 'flex' : 'hidden md:flex'
-            }`}>
+          {/* ═══ Main Content Area: Full-Width Map + Floating Overlays ═══ */}
+          <main className="flex-1 relative overflow-hidden min-h-0 pb-14 md:pb-0">
+            {/* Full Map Background */}
+            <div className={`absolute inset-0 ${mobileTab === 'map' || typeof window !== 'undefined' && window.innerWidth >= 768 ? 'block' : 'hidden md:block'}`}>
               <MarineMap
                 userLocation={userLocation}
                 pfzZones={gisLayers.pfz ? pfzZones : []}
                 layers={gisLayers}
               />
+
+              {/* GIS Layer Panel (floating on map) */}
+              <GisLayersPanel
+                layers={gisLayers}
+                onToggleLayer={(k) => setGisLayers((prev) => ({ ...prev, [k]: !prev[k] }))}
+                currentLang={currentLang}
+              />
             </div>
 
-            {/* Desktop Right (40%) / Mobile Status & Chat */}
-            <div className={`w-full md:w-[40%] lg:w-[37%] xl:w-[35%] h-full flex flex-col min-h-0 bg-slate-900 border-t md:border-t-0 md:border-l border-slate-800 shadow-xl z-10 overflow-y-auto ${
-              mobileTab === 'map' ? 'hidden md:flex' : 'flex'
-            }`}>
-              {/* Mobile Tab Conditionals */}
-              {mobileTab === 'status' && (
-                <div className="p-3.5 sm:p-4 space-y-3.5 overflow-y-auto">
-                  <CurrentMarineStatusCard
-                    weather={weather}
-                    riskLevel={riskLevel}
-                    coastalRegion={selectedPort.state}
-                    distanceToCoastKm={4.8}
-                    onOpenTerminology={() => setIsTerminologyModalOpen(true)}
-                    currentLang={currentLang}
-                  />
+            {/* ═══ Floating Status Card (top-right on desktop) ═══ */}
+            <div className={`absolute top-3 right-3 z-20 hidden md:block`}>
+              <div
+                className="glass-light border border-slate-200/80 rounded-xl overflow-hidden animate-fadeIn"
+                style={{ width: 'var(--status-card-width)', boxShadow: 'var(--shadow-lg)' }}
+              >
+                {/* Toggle Header */}
+                <button
+                  onClick={() => setIsStatusExpanded(!isStatusExpanded)}
+                  className="w-full px-4 py-2.5 flex items-center justify-between text-xs font-bold text-slate-700 hover:bg-white/60 transition cursor-pointer"
+                >
+                  <span>Marine Status</span>
+                  <span className="text-[10px] text-slate-400">{isStatusExpanded ? '▲ Collapse' : '▼ Expand'}</span>
+                </button>
 
-                  <ForecastHorizonTimeline
-                    userLocation={userLocation}
-                    baseWeather={weather}
-                    currentLang={currentLang}
-                  />
-
-                  {/* Ask ORCA Quick Prompt Section on Mobile */}
-                  <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 text-xs">
-                    <div className="font-bold text-slate-200 mb-2 flex items-center justify-between">
-                      <span>💬 Ask ORCA Safety AI</span>
-                      <button
-                        onClick={() => setMobileTab('chat')}
-                        className="text-teal-400 font-mono text-[11px] hover:underline cursor-pointer"
-                      >
-                        Open Full Chat →
-                      </button>
-                    </div>
-                    <p className="text-[11px] text-slate-400 mb-3">
-                      Ask questions in Gujarati, Hindi, Marathi, Tamil, Telugu, Malayalam, or English.
-                    </p>
-                    <button
-                      onClick={() => setMobileTab('chat')}
-                      className="w-full py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs transition active:scale-95 cursor-pointer text-center"
-                    >
-                      Open AI Maritime Assistant
-                    </button>
+                {isStatusExpanded && (
+                  <div className="px-3 pb-3 space-y-3">
+                    <CurrentMarineStatusCard
+                      weather={weather}
+                      riskLevel={riskLevel}
+                      coastalRegion={selectedPort.state}
+                      distanceToCoastKm={4.8}
+                      onOpenTerminology={() => setIsTerminologyModalOpen(true)}
+                      currentLang={currentLang}
+                    />
+                    <ForecastHorizonTimeline
+                      userLocation={userLocation}
+                      baseWeather={weather}
+                      currentLang={currentLang}
+                    />
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+            </div>
 
-              {/* Chat View */}
-              {(mobileTab === 'chat' || window.innerWidth >= 768) && mobileTab !== 'status' && (
-                <div className="flex-1 flex flex-col min-h-0 bg-white">
+            {/* ═══ Mobile Status View ═══ */}
+            {mobileTab === 'status' && (
+              <div className="absolute inset-0 z-10 bg-slate-50 overflow-y-auto p-4 space-y-3 md:hidden">
+                <CurrentMarineStatusCard
+                  weather={weather}
+                  riskLevel={riskLevel}
+                  coastalRegion={selectedPort.state}
+                  distanceToCoastKm={4.8}
+                  onOpenTerminology={() => setIsTerminologyModalOpen(true)}
+                  currentLang={currentLang}
+                />
+                <ForecastHorizonTimeline
+                  userLocation={userLocation}
+                  baseWeather={weather}
+                  currentLang={currentLang}
+                />
+                <div className="p-4 rounded-xl bg-white border border-slate-200 text-xs text-center">
+                  <button
+                    onClick={() => { setMobileTab('chat'); setIsChatOpen(true); }}
+                    className="px-6 py-2.5 rounded-xl text-white text-sm font-bold transition active:scale-[0.97] cursor-pointer"
+                    style={{ background: 'linear-gradient(135deg, #0B3D5B 0%, #0F766E 100%)' }}
+                  >
+                    💬 Open AI Assistant
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ═══ Chat Drawer (Desktop: bottom-right floating panel) ═══ */}
+            {/* Desktop floating chat */}
+            {isChatOpen && (
+              <div
+                className="absolute bottom-3 right-3 z-30 hidden md:flex flex-col glass-light border border-slate-200/80 rounded-xl overflow-hidden animate-slideUp"
+                style={{
+                  width: 'var(--chat-drawer-width)',
+                  height: 'calc(100% - 24px)',
+                  boxShadow: 'var(--shadow-float)',
+                }}
+              >
+                {/* Chat Header */}
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200/60 bg-white/60">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg flex items-center justify-center text-white text-xs" style={{ background: 'linear-gradient(135deg, #0B3D5B, #0F766E)' }}>
+                      🌊
+                    </div>
+                    <span className="text-xs font-bold text-slate-800">ORCA AI Assistant</span>
+                  </div>
+                  <button
+                    onClick={() => setIsChatOpen(false)}
+                    className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="flex-1 min-h-0 bg-white/80">
                   <ChatPanel
                     messages={messages}
                     onSendMessage={handleSendMessage}
@@ -544,10 +532,24 @@ export default function App() {
                     onClearError={() => setError(null)}
                   />
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Desktop Dual Mode (Always Show Chat on Desktop) */}
-              <div className="hidden md:flex flex-1 flex-col min-h-0 bg-white">
+            {/* Desktop Chat Toggle Pill (when chat is closed) */}
+            {!isChatOpen && (
+              <button
+                onClick={() => setIsChatOpen(true)}
+                className="absolute bottom-4 right-4 z-20 hidden md:flex items-center gap-2 px-5 py-3 rounded-full text-white text-sm font-bold shadow-lg hover:shadow-xl transition-all active:scale-[0.97] cursor-pointer animate-fadeIn"
+                style={{ background: 'linear-gradient(135deg, #0B3D5B 0%, #0F766E 100%)' }}
+              >
+                <MessageSquare className="w-4 h-4" />
+                <span>Ask ORCA</span>
+              </button>
+            )}
+
+            {/* ═══ Mobile Chat View ═══ */}
+            {mobileTab === 'chat' && (
+              <div className="absolute inset-0 z-10 bg-white flex flex-col md:hidden">
                 <ChatPanel
                   messages={messages}
                   onSendMessage={handleSendMessage}
@@ -557,15 +559,15 @@ export default function App() {
                   onClearError={() => setError(null)}
                 />
               </div>
-            </div>
+            )}
           </main>
 
-          {/* Desktop Status Footer */}
+          {/* Desktop Footer */}
           <div className="hidden md:block">
             <Footer currentLang={currentLang} />
           </div>
 
-          {/* Mobile Bottom Navigation Bar */}
+          {/* Mobile Bottom Navigation */}
           <MobileBottomNav
             activeTab={mobileTab}
             unreadCount={unreadAlertsCount}
@@ -580,78 +582,21 @@ export default function App() {
             }}
           />
 
-          {/* Modals */}
-          <FishAnalyticsModal
-            isOpen={isEcologyModalOpen}
-            onClose={() => setIsEcologyModalOpen(false)}
-            currentLang={currentLang}
-          />
-
-          <AgentTraceModal
-            isOpen={isReasoningModalOpen}
-            onClose={() => setIsReasoningModalOpen(false)}
-            currentLang={currentLang}
-          />
-
-          <TerminologyExplainerModal
-            isOpen={isTerminologyModalOpen}
-            onClose={() => setIsTerminologyModalOpen(false)}
-            currentLang={currentLang}
-          />
-
-          <NotificationCenterModal
-            isOpen={isNotificationsModalOpen}
-            onClose={() => setIsNotificationsModalOpen(false)}
-            notifications={notifications}
-            unreadCount={unreadAlertsCount}
-            onMarkRead={handleMarkRead}
-            onMarkAllRead={handleMarkAllRead}
-            currentLang={currentLang}
-          />
-
-          <EmergencySOSModal
-            isOpen={isEmergencyModalOpen}
-            onClose={() => setIsEmergencyModalOpen(false)}
-            userLocation={userLocation}
-            currentLang={currentLang}
-          />
-
-          <GovernmentPortalModal
-            isOpen={isGovPortalOpen}
-            onClose={() => setIsGovPortalOpen(false)}
-            currentUser={currentUser}
-            currentLang={currentLang}
-          />
-
-          <SuperAdminModal
-            isOpen={isAdminModalOpen}
-            onClose={() => setIsAdminModalOpen(false)}
-            userLocation={userLocation}
-            currentLang={currentLang}
-          />
+          {/* ═══ All Modals ═══ */}
+          <FishAnalyticsModal isOpen={isEcologyModalOpen} onClose={() => setIsEcologyModalOpen(false)} currentLang={currentLang} />
+          <AgentTraceModal isOpen={isReasoningModalOpen} onClose={() => setIsReasoningModalOpen(false)} currentLang={currentLang} />
+          <TerminologyExplainerModal isOpen={isTerminologyModalOpen} onClose={() => setIsTerminologyModalOpen(false)} currentLang={currentLang} />
+          <NotificationCenterModal isOpen={isNotificationsModalOpen} onClose={() => setIsNotificationsModalOpen(false)} notifications={notifications} unreadCount={unreadAlertsCount} onMarkRead={handleMarkRead} onMarkAllRead={handleMarkAllRead} currentLang={currentLang} />
+          <EmergencySOSModal isOpen={isEmergencyModalOpen} onClose={() => setIsEmergencyModalOpen(false)} userLocation={userLocation} currentLang={currentLang} />
+          <GovernmentPortalModal isOpen={isGovPortalOpen} onClose={() => setIsGovPortalOpen(false)} currentUser={currentUser} currentLang={currentLang} />
+          <SuperAdminModal isOpen={isAdminModalOpen} onClose={() => setIsAdminModalOpen(false)} userLocation={userLocation} currentLang={currentLang} />
         </div>
       )}
 
       {/* Onboarding Modals */}
-      <LanguageSelectorModal
-        isOpen={isLanguageModalOpen}
-        currentLang={currentLang}
-        onSelectLang={(code) => setCurrentLang(code)}
-        onContinue={handleLanguageContinue}
-      />
-
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onAuthSuccess={handleAuthSuccess}
-        onClose={() => setIsAuthModalOpen(false)}
-        currentLang={currentLang}
-      />
-
-      <LocationPermissionModal
-        isOpen={isLocationModalOpen}
-        onLocationApproved={handleLocationApproved}
-        currentLang={currentLang}
-      />
+      <LanguageSelectorModal isOpen={isLanguageModalOpen} currentLang={currentLang} onSelectLang={(code) => setCurrentLang(code)} onContinue={handleLanguageContinue} />
+      <AuthModal isOpen={isAuthModalOpen} onAuthSuccess={handleAuthSuccess} onClose={() => setIsAuthModalOpen(false)} currentLang={currentLang} />
+      <LocationPermissionModal isOpen={isLocationModalOpen} onLocationApproved={handleLocationApproved} currentLang={currentLang} />
     </>
   );
 }

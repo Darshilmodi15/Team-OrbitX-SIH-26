@@ -177,33 +177,34 @@ export default function QueryInput({ onSendMessage, isLoading, currentLang = 'en
       )}
 
       {/* "You said:" Voice Confirmation & Edit Box */}
+      {/* Voice Transcript Preview Card (Light Maritime Theme) */}
       {transcriptPending && (
-        <div className="mb-2.5 p-3 rounded-2xl bg-teal-950/90 border border-teal-500/50 text-white shadow-lg animate-fadeIn">
-          <div className="flex items-center justify-between text-[11px] font-mono font-bold text-teal-300 mb-1">
-            <span>🎤 YOU SAID:</span>
+        <div className="mb-2.5 p-3 rounded-2xl bg-[#F0FDFA] border border-[#99F6E4] text-[#0F172A] shadow-sm animate-fadeIn">
+          <div className="flex items-center justify-between text-[11px] font-bold text-[#0F766E] mb-1">
+            <span>🎤 Voice Recognition Result:</span>
             <button
               onClick={() => setTranscriptPending(null)}
-              className="text-slate-400 hover:text-white transition cursor-pointer"
+              className="text-[#64748B] hover:text-[#0F172A] transition cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
-          <p className="text-xs text-slate-100 font-medium mb-2.5 italic">
+          <p className="text-xs text-[#1E293B] font-medium mb-2.5 italic">
             "{transcriptPending}"
           </p>
           <div className="flex items-center gap-2">
             <button
               onClick={handleSendTranscript}
-              className="flex-1 py-1.5 px-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer"
+              className="flex-1 py-1.5 px-3 rounded-xl bg-[#0F766E] hover:bg-[#0D655E] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer shadow-xs"
             >
               <Check className="w-3.5 h-3.5" />
               <span>Send Query</span>
             </button>
             <button
               onClick={handleEditTranscript}
-              className="py-1.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+              className="py-1.5 px-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 text-[#334155] font-semibold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
             >
-              <Edit3 className="w-3.5 h-3.5 text-teal-400" />
+              <Edit3 className="w-3.5 h-3.5 text-[#0F766E]" />
               <span>Edit Text</span>
             </button>
           </div>

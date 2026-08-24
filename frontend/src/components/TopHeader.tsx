@@ -1,7 +1,7 @@
 import React from 'react';
-import { Compass, Waves, Wind, ShieldCheck, ShieldAlert, AlertTriangle, Bell } from 'lucide-react';
-import type { WeatherMetrics } from '../data/maritimeData';
-import { TRANSLATIONS } from '../data/maritimeData';
+import { ShieldCheck, ShieldAlert, AlertTriangle, Bell, MapPin, Globe, Settings, ChevronLeft, Landmark } from 'lucide-react';
+import { INDIAN_PORTS, REGIONAL_LANGUAGES, TRANSLATIONS } from '../data/maritimeData';
+import type { WeatherMetrics, Port } from '../data/maritimeData';
 
 interface TopHeaderProps {
   vesselLat?: number;
@@ -11,189 +11,182 @@ interface TopHeaderProps {
   currentLang: string;
   currentUser?: any | null;
   unreadAlertsCount?: number;
+  selectedPort?: Port;
+  onSelectPort?: (port: Port) => void;
+  onSelectLang?: (lang: string) => void;
   onOpenNotifications?: () => void;
   onOpenAdmin?: () => void;
+  onOpenGovPortal?: () => void;
   onReturnHome?: () => void;
 }
 
 export const TopHeader: React.FC<TopHeaderProps> = ({
-  vesselLat = 18.9220,
-  vesselLon = 72.8347,
-  weather = {
-    wave_height_m: 1.2,
-    wind_speed_kmh: 18,
-    wind_direction_deg: 240,
-    wind_direction_cardinal: 'WSW',
-    forecast: 'Clear',
-    temperature_c: 29.5,
-    sst_c: 28.2,
-    swell_period_s: 7,
-    tide_state: 'Ebb',
-    visibility_km: 15,
-    source: 'INCOIS_OSF_LIVE',
-  },
   riskLevel,
   currentLang,
   currentUser,
   unreadAlertsCount = 0,
+  selectedPort,
+  onSelectPort,
+  onSelectLang,
   onOpenNotifications,
   onOpenAdmin,
+  onOpenGovPortal,
   onReturnHome,
 }) => {
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
 
   const safetyConfig = {
     safe: {
-      label: t.safeHeading || 'SAFE TO VENTURE',
+      label: t.safeHeading || 'SAFE',
       icon: ShieldCheck,
-      cardClass: 'bg-emerald-50 border-emerald-200 text-emerald-800',
-      iconClass: 'text-emerald-600',
-      badgeClass: 'bg-emerald-100 text-emerald-800',
-      dotClass: 'bg-emerald-500',
+      bg: 'bg-emerald-50',
+      border: 'border-emerald-200',
+      text: 'text-emerald-800',
+      iconColor: 'text-emerald-600',
+      dot: 'bg-emerald-500',
     },
     caution: {
-      label: t.cautionHeading || 'CAUTION ADVISED',
+      label: t.cautionHeading || 'CAUTION',
       icon: AlertTriangle,
-      cardClass: 'bg-amber-50 border-amber-200 text-amber-900',
-      iconClass: 'text-amber-600',
-      badgeClass: 'bg-amber-100 text-amber-800',
-      dotClass: 'bg-amber-500',
+      bg: 'bg-amber-50',
+      border: 'border-amber-200',
+      text: 'text-amber-800',
+      iconColor: 'text-amber-600',
+      dot: 'bg-amber-500',
     },
     unsafe: {
-      label: t.dangerHeading || 'SEVERE HAZARD',
+      label: t.dangerHeading || 'HAZARD',
       icon: ShieldAlert,
-      cardClass: 'bg-rose-50 border-rose-200 text-rose-900',
-      iconClass: 'text-rose-600',
-      badgeClass: 'bg-rose-100 text-rose-800',
-      dotClass: 'bg-rose-500 animate-ping',
+      bg: 'bg-rose-50',
+      border: 'border-rose-200',
+      text: 'text-rose-800',
+      iconColor: 'text-rose-600',
+      dot: 'bg-rose-500 animate-pulse',
     },
   }[riskLevel];
 
   const SafetyIcon = safetyConfig.icon;
 
   return (
-    <header className="w-full bg-white border-b border-slate-200 px-4 sm:px-6 py-3 shadow-xs flex flex-wrap items-center justify-between gap-4 select-none shrink-0 z-30">
-      {/* Brand Section */}
-      <div className="flex items-center gap-3.5 min-w-[280px]">
-        {/* Logo Emblem / Home Button */}
+    <header
+      className="w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-5 flex items-center justify-between gap-3 select-none shrink-0 z-40"
+      style={{ height: 'var(--header-height)' }}
+    >
+      {/* LEFT: Logo + Brand */}
+      <div className="flex items-center gap-2.5 shrink-0">
         <button
           onClick={onReturnHome}
-          title="Return to ORCA Landing Page"
-          className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#0F766E] to-[#0284C7] flex items-center justify-center text-white text-2xl shadow-sm border border-teal-500/20 shrink-0 hover:scale-105 transition cursor-pointer"
+          title="Return to Landing Page"
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 hover:opacity-90 transition cursor-pointer"
+          style={{ background: 'linear-gradient(135deg, #0B3D5B 0%, #0F766E 100%)' }}
         >
-          🌊
+          <ChevronLeft className="w-4 h-4" />
         </button>
-        <div>
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="text-lg sm:text-xl font-black font-display text-slate-900 tracking-tight">
-              {t.appTitle || 'ORCA Marine AI'}
-            </h1>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-teal-50 text-teal-700 border border-teal-200/80 tracking-wide uppercase font-mono">
-              {t.sihBadge || 'SIH 2026 • ORBITX'}
-            </span>
-            {currentUser && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 font-mono">
-                <span>👤</span>
-                <span>{currentUser.role || 'USER'}</span>
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-slate-500 font-medium tracking-normal mt-0.5">
-            {t.tagline || 'Autonomous Marine Intelligence & Decision Support'}
+        <div className="hidden sm:block">
+          <h1 className="text-sm font-bold text-slate-900 leading-tight tracking-tight">
+            ORCA Marine AI
+          </h1>
+          <p className="text-[10px] text-slate-400 font-medium leading-none">
+            Coastal Safety Intelligence
           </p>
         </div>
       </div>
 
-      {/* 4 Discrete Telemetry & Safety Status Cards */}
-      <div className="flex items-center flex-wrap gap-3 text-xs">
-        {/* Card 1: GPS Coordinates */}
-        <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-slate-50/80 border border-slate-200 shadow-2xs hover:border-slate-300 transition">
-          <div className="w-7 h-7 rounded-lg bg-teal-100/60 flex items-center justify-center text-teal-700 shrink-0">
-            <Compass className="w-4 h-4" />
-          </div>
-          <div>
-            <span className="block text-[9px] uppercase tracking-wider font-bold text-slate-400">
-              {t.gpsLabel || 'GPS Coordinates'}
-            </span>
-            <span className="font-mono font-bold text-slate-800 text-xs">
-              {vesselLat.toFixed(4)}°N, {vesselLon.toFixed(4)}°E
-            </span>
-          </div>
-        </div>
+      {/* CENTER: Safety Badge */}
+      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${safetyConfig.bg} ${safetyConfig.border} border ${safetyConfig.text}`}>
+        <div className={`w-2 h-2 rounded-full ${safetyConfig.dot} shrink-0`} />
+        <SafetyIcon className={`w-3.5 h-3.5 ${safetyConfig.iconColor}`} />
+        <span className="text-[11px] font-bold tracking-wide uppercase">
+          {safetyConfig.label}
+        </span>
+        {currentUser && (
+          <span className="hidden lg:inline text-[10px] font-medium opacity-70 ml-1">
+            · {currentUser.role || 'USER'}
+          </span>
+        )}
+      </div>
 
-        {/* Card 2: Wave Height */}
-        <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-slate-50/80 border border-slate-200 shadow-2xs hover:border-slate-300 transition">
-          <div className="w-7 h-7 rounded-lg bg-sky-100/60 flex items-center justify-center text-sky-700 shrink-0">
-            <Waves className="w-4 h-4" />
+      {/* RIGHT: Port + Language + Actions */}
+      <div className="flex items-center gap-2">
+        {/* Port Selector (compact) */}
+        {onSelectPort && selectedPort && (
+          <div className="hidden md:flex items-center relative">
+            <MapPin className="w-3.5 h-3.5 text-teal-700 absolute left-2.5 pointer-events-none" />
+            <select
+              value={selectedPort.id}
+              onChange={(e) => {
+                const port = INDIAN_PORTS.find((p) => p.id === e.target.value);
+                if (port) onSelectPort(port);
+              }}
+              aria-label="Select Port"
+              className="h-8 bg-white text-slate-700 text-[11px] font-medium rounded-lg pl-7 pr-6 border border-slate-200 hover:border-slate-300 focus:outline-none focus:border-teal-500 cursor-pointer appearance-none transition max-w-[180px]"
+            >
+              {INDIAN_PORTS.map((port) => (
+                <option key={port.id} value={port.id}>
+                  {port.name}
+                </option>
+              ))}
+            </select>
           </div>
-          <div>
-            <span className="block text-[9px] uppercase tracking-wider font-bold text-slate-400">
-              {t.waveHeightLabel || 'Wave Height'}
-            </span>
-            <span className={`font-bold text-xs ${weather.wave_height_m > 2.0 ? 'text-rose-600' : 'text-slate-800'}`}>
-              {weather.wave_height_m.toFixed(1)} m <span className="text-slate-400 font-normal">({weather.swell_period_s || 7}s)</span>
-            </span>
-          </div>
-        </div>
+        )}
 
-        {/* Card 3: Wind Speed */}
-        <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-slate-50/80 border border-slate-200 shadow-2xs hover:border-slate-300 transition">
-          <div className="w-7 h-7 rounded-lg bg-teal-100/60 flex items-center justify-center text-teal-700 shrink-0">
-            <Wind className="w-4 h-4" />
+        {/* Language Selector (compact) */}
+        {onSelectLang && (
+          <div className="hidden sm:flex items-center relative">
+            <Globe className="w-3.5 h-3.5 text-sky-600 absolute left-2.5 pointer-events-none" />
+            <select
+              value={currentLang}
+              onChange={(e) => onSelectLang(e.target.value)}
+              aria-label="Select Language"
+              className="h-8 bg-white text-slate-700 text-[11px] font-medium rounded-lg pl-7 pr-5 border border-slate-200 hover:border-slate-300 focus:outline-none focus:border-teal-500 cursor-pointer appearance-none transition max-w-[100px]"
+            >
+              {REGIONAL_LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.native}
+                </option>
+              ))}
+            </select>
           </div>
-          <div>
-            <span className="block text-[9px] uppercase tracking-wider font-bold text-slate-400">
-              {t.windSpeedLabel || 'Wind Speed'}
-            </span>
-            <span className="font-bold text-slate-800 text-xs">
-              {weather.wind_speed_kmh.toFixed(0)} km/h <span className="text-slate-400 font-normal font-sans">({weather.forecast || 'Clear'})</span>
-            </span>
-          </div>
-        </div>
+        )}
 
-        {/* Card 4: Marine Safety Status Badge */}
-        <div className={`flex items-center gap-2.5 px-3.5 py-2 rounded-xl border shadow-2xs ${safetyConfig.cardClass} transition`}>
-          <div className="relative flex items-center justify-center shrink-0">
-            <SafetyIcon className={`w-4 h-4 ${safetyConfig.iconClass}`} />
-          </div>
-          <div>
-            <span className="block text-[9px] uppercase tracking-wider font-bold opacity-70">
-              {t.marineSafetyLabel || 'Marine Safety'}
-            </span>
-            <span className="font-black tracking-wide text-xs">
-              {safetyConfig.label}
-            </span>
-          </div>
-        </div>
+        {/* Government Marine Portal */}
+        {onOpenGovPortal && (
+          <button
+            onClick={onOpenGovPortal}
+            title="Official Government Portal & Schemes"
+            className="w-8 h-8 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-teal-700 hover:text-teal-900 flex items-center justify-center transition cursor-pointer"
+          >
+            <Landmark className="w-3.5 h-3.5" />
+          </button>
+        )}
 
-        {/* Notifications Bell Action */}
+        {/* Notifications */}
         {onOpenNotifications && (
           <button
             onClick={onOpenNotifications}
-            title="Open Coastal Safety Alerts & Advisories"
-            className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 hover:text-teal-700 transition relative cursor-pointer"
+            title="Alerts & Advisories"
+            className="w-8 h-8 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-800 flex items-center justify-center transition relative cursor-pointer"
           >
-            <Bell className="w-4 h-4" />
+            <Bell className="w-3.5 h-3.5" />
             {unreadAlertsCount > 0 && (
-              <span className="absolute -top-1 -right-1 px-1.5 py-0.2 bg-rose-600 text-white rounded-full text-[9px] font-mono font-bold animate-pulse">
-                {unreadAlertsCount}
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center animate-pulse">
+                {unreadAlertsCount > 9 ? '9+' : unreadAlertsCount}
               </span>
             )}
           </button>
         )}
 
-        {/* Super Admin Console Button */}
+        {/* Admin/Settings */}
         {onOpenAdmin && (
           <button
             onClick={onOpenAdmin}
-            title="Open Super Admin Telemetry & Fleet Console"
-            className="p-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 hover:text-purple-900 transition cursor-pointer"
+            title="Admin Console"
+            className="w-8 h-8 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-800 flex items-center justify-center transition cursor-pointer"
           >
-            <ShieldAlert className="w-4 h-4" />
+            <Settings className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
     </header>
   );
 };
-

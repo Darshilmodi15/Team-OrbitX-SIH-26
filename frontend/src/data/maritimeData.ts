@@ -549,7 +549,6 @@ export const QUICK_PROMPTS: QuickPrompt[] = [
 ];
 
 export const REGIONAL_LANGUAGES = [
-  { code: 'auto', name: 'Auto Detect (Bhashini AI)', native: '🌐 Auto Detect' },
   { code: 'en', name: 'English', native: 'English' },
   { code: 'gu', name: 'Gujarati', native: 'ગુજરાતી' },
   { code: 'hi', name: 'Hindi', native: 'हिन्दी' },

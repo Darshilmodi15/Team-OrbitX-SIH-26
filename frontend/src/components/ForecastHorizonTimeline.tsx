@@ -98,44 +98,45 @@ export default function ForecastHorizonTimeline({
         const maxWave = Math.max(...items.map((i) => i.wave_height_m));
         const maxGust = Math.max(...items.map((i) => i.wind_gusts_kmh));
 
-        if (maxWave >= startWave + 0.4 || maxGust >= 40) {
+        if (maxWave >= startWave + 0.6 || maxGust >= 45) {
           setIsDeteriorating(true);
           setDeteriorationMessage(
-            `Wave heights and wind gusts are forecast to escalate from ${startWave.toFixed(1)}m to ${maxWave.toFixed(1)}m in the next 4–6 hours. Proactive return recommended for small craft.`
+            `Forecast model indicates deteriorating conditions reaching ${maxWave.toFixed(1)}m waves and ${maxGust} km/h gusts within the next 6 hours.`
           );
-        } else {
-          setIsDeteriorating(false);
-          setDeteriorationMessage(null);
+          return;
         }
       }
+      setIsDeteriorating(false);
+      setDeteriorationMessage(null);
     }
 
     loadForecast();
+
     return () => {
       isMounted = false;
     };
-  }, [userLocation, baseWeather]);
+  }, [userLocation.lat, userLocation.lon, baseWeather.wave_height_m, baseWeather.wind_speed_kmh]);
 
   return (
-    <div className="w-full rounded-3xl bg-slate-900/90 border border-slate-800 p-4 sm:p-5 text-white shadow-md font-sans">
+    <div className="w-full rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 text-slate-900 shadow-md font-sans">
       {/* Title */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-teal-950 border border-teal-500/30 flex items-center justify-center text-teal-400">
+          <div className="w-7 h-7 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-[#0F766E]">
             <Clock className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-xs sm:text-sm font-bold text-white">
+            <h3 className="text-xs sm:text-sm font-bold text-slate-900">
               6-Hour Safety Forecast Horizon
             </h3>
-            <span className="text-[10px] text-slate-400 font-mono">
-              INCOIS Ocean State Forecast (OSF) Model
+            <span className="text-[10px] text-slate-500 font-sans">
+              INCOIS Ocean State Forecast Model
             </span>
           </div>
         </div>
 
         {isDeteriorating && (
-          <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-950/80 border border-amber-500/40 text-amber-300 text-[10px] font-mono font-bold animate-pulse">
+          <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold animate-pulse">
             <TrendingUp className="w-3 h-3" />
             <span>Deterioration Ahead</span>
           </span>
@@ -144,8 +145,8 @@ export default function ForecastHorizonTimeline({
 
       {/* Deterioration Alert Banner */}
       {isDeteriorating && deteriorationMessage && (
-        <div className="mb-3 p-3 rounded-2xl bg-amber-950/40 border border-amber-500/40 text-amber-200 text-xs flex items-start gap-2 leading-relaxed">
-          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+        <div className="mb-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2 leading-relaxed">
+          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
           <span>{deteriorationMessage}</span>
         </div>
       )}
@@ -153,42 +154,51 @@ export default function ForecastHorizonTimeline({
       {/* Horizontal Scrollable Timeline Cards */}
       <div className="flex items-center gap-2.5 overflow-x-auto pb-1.5 scrollbar-thin">
         {forecastList.map((item) => {
-          const riskColor = {
-            safe: 'border-emerald-500/30 bg-emerald-950/20 text-emerald-300',
-            caution: 'border-amber-500/40 bg-amber-950/30 text-amber-300',
-            unsafe: 'border-rose-500/50 bg-rose-950/40 text-rose-300',
+          const riskConfig = {
+            safe: {
+              cardBg: 'bg-emerald-50/70 border-emerald-200 text-emerald-900',
+              badge: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+            },
+            caution: {
+              cardBg: 'bg-amber-50/70 border-amber-200 text-amber-900',
+              badge: 'bg-amber-100 text-amber-800 border-amber-300',
+            },
+            unsafe: {
+              cardBg: 'bg-rose-50/70 border-rose-200 text-rose-900',
+              badge: 'bg-rose-100 text-rose-800 border-rose-300',
+            },
           }[item.risk];
 
           return (
             <div
               key={item.hour_offset}
-              className={`min-w-[100px] sm:min-w-[110px] p-2.5 rounded-2xl border ${riskColor} flex flex-col justify-between shrink-0 transition-transform hover:scale-105`}
+              className={`min-w-[105px] sm:min-w-[115px] p-2.5 rounded-xl border ${riskConfig.cardBg} flex flex-col justify-between shrink-0 transition hover:shadow-xs`}
             >
               {/* Header */}
-              <div className="flex items-center justify-between mb-1.5 font-mono text-xs font-bold">
-                <span className="text-white">{item.time_label}</span>
-                <span className="text-[9px] uppercase px-1.5 py-0.2 rounded border font-semibold">
+              <div className="flex items-center justify-between mb-1.5 text-xs font-bold">
+                <span className="text-slate-900">{item.time_label}</span>
+                <span className={`text-[9px] uppercase px-1.5 py-0.2 rounded border font-bold ${riskConfig.badge}`}>
                   {item.risk}
                 </span>
               </div>
 
               {/* Wave */}
-              <div className="flex items-center gap-1.5 text-xs font-mono font-semibold text-slate-200 mb-1">
-                <Waves className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 mb-1">
+                <Waves className="w-3.5 h-3.5 text-blue-700 shrink-0" />
                 <span>{item.wave_height_m.toFixed(1)}m</span>
               </div>
 
               {/* Wind & Gusts */}
-              <div className="flex items-center gap-1.5 text-[11px] font-mono text-slate-300 mb-1">
-                <Wind className="w-3 h-3 text-sky-400 shrink-0" />
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-700 mb-1">
+                <Wind className="w-3 h-3 text-teal-700 shrink-0" />
                 <span>{item.wind_speed_kmh}k</span>
-                <span className="text-[9px] text-slate-400 font-normal">({item.wind_gusts_kmh}g)</span>
+                <span className="text-[9px] text-slate-500 font-normal">({item.wind_gusts_kmh}g)</span>
               </div>
 
               {/* Rain Probability */}
-              <div className="flex items-center gap-1 text-[10px] text-slate-400 font-mono">
-                <CloudRain className="w-3 h-3 text-indigo-400 shrink-0" />
-                <span>{item.precipitation_probability}%</span>
+              <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                <CloudRain className="w-3 h-3 text-indigo-600 shrink-0" />
+                <span>{item.precipitation_probability}% rain</span>
               </div>
             </div>
           );
