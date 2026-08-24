@@ -10,6 +10,7 @@ from app.data.pfz.base import PFZProvider
 from app.data.pfz.mock import MockPFZProvider
 from app.data.weather.base import WeatherProvider
 from app.data.weather.mock import MockWeatherProvider
+from app.routers.pfz import router as pfz_router
 
 # Initialize data providers (can be swapped with real INCOIS/marine dataset providers)
 weather_provider: WeatherProvider = MockWeatherProvider()
@@ -29,6 +30,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include API routers
+app.include_router(pfz_router)
 
 
 class Location(BaseModel):
@@ -53,7 +57,7 @@ def health_check():
     return {
         "status": "healthy",
         "service": "ORCA Marine AI Backend",
-        "endpoints": ["/query"],
+        "endpoints": ["/query", "/api/pfz"],
     }
 
 
