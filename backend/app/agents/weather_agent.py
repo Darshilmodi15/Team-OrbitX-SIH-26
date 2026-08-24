@@ -15,6 +15,8 @@ def get_marine_weather(
     Preserves data provenance, source timestamps, cache state, and real vs. mock flags.
     """
     raw: Dict[str, Any] = provider.get_weather(lat=lat, lon=lon, date=date)
+    is_mock = bool(raw.get("is_mock", True))
+    source = str(raw.get("source", "mock_marine_weather" if is_mock else "open_meteo_marine_api"))
     
     return WeatherEvidence(
         forecast=str(raw.get("forecast", "clear")),
@@ -32,6 +34,6 @@ def get_marine_weather(
         grid_lon=float(raw["grid_lon"]) if raw.get("grid_lon") is not None else None,
         resolution_method=str(raw["resolution_method"]) if raw.get("resolution_method") is not None else None,
         data_age_sec=int(raw["data_age_sec"]) if raw.get("data_age_sec") is not None else None,
-        source=str(raw.get("source", "mock_marine_weather")),
-        is_mock=bool(raw.get("is_mock", True)),
+        source=source,
+        is_mock=is_mock,
     )

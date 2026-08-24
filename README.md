@@ -61,20 +61,26 @@ ORCA/
 │   │   │   ├── weather/
 │   │   │   │   ├── __init__.py
 │   │   │   │   ├── base.py             # Abstract WeatherProvider interface
-│   │   │   │   └── mock.py             # MockWeatherProvider implementation
+│   │   │   │   ├── mock.py             # MockWeatherProvider implementation
+│   │   │   │   └── open_meteo.py       # Live Open-Meteo marine weather provider
 │   │   │   └── pfz/
 │   │   │       ├── __init__.py
 │   │   │       ├── base.py             # Abstract PFZProvider interface
-│   │   │       └── mock.py             # MockPFZProvider implementation
+│   │   │       └── mock.py             # MockPFZProvider implementation (INCOIS)
 │   │   └── services/
 │   │       ├── __init__.py
+│   │       ├── bhashini.py             # Multilingual NMT & language detection
 │   │       └── planner.py              # Deterministic multi-agent Planner
 │   └── tests/
 │       ├── __init__.py
 │       ├── test_agent_contracts.py     # Pydantic contract validation tests
+│       ├── test_bhashini.py            # Multilingual Bhashini tests
+│       ├── test_chat.py                # Conversational chat tests
+│       ├── test_pfz_api.py             # INCOIS PFZ REST endpoint tests
 │       ├── test_planner.py             # Planner unit tests (6 rules)
-│       └── test_query.py               # End-to-end /query integration tests
-└── frontend/                           # Client interface directory
+│       ├── test_query.py               # End-to-end /query integration tests
+│       └── test_weather_provider.py    # Open-Meteo live weather provider tests
+└── frontend/                           # React + Leaflet tactical GIS dashboard
 ```
 
 ---
