@@ -7,6 +7,7 @@
 - **🌊 Real INCOIS Ocean State Forecast (OSF)**: Authoritative operational Significant Wave Height ($HS$ in metres), Wind Speed ($m/s$ and $km/h$), and Wind Direction ($16$-point cardinal & meteorological degrees) retrieved programmatically via official INCOIS NetCDF Subset Service (NCSS) / THREDDS catalog.
 - **⚡ Low-Bandwidth Coastal Geospatial Cache**: Compact query payloads (~130–160 bytes) with 0.05° (~5.5 km) spatial grid normalization allowing nearby vessels to reuse forecasts with sub-millisecond retrieval latencies.
 - **🛡️ Marine Safety Risk Assessment Agent**: Evaluates complex marine conditions (wave heights, wind speeds, squall/storm risks) into clear risk tiers (`SAFE`, `CAUTION`, `UNSAFE`) with operational guidance.
+- **🗺️ Marine Boundaries & EEZ Integration (Marine Regions / VLIZ)**: Official Exclusive Economic Zone boundaries from Flanders Marine Institute (VLIZ) World EEZ v12 via Web Feature Service (WFS) with spatial containment testing and automated geofence distance monitoring.
 - **🐟 Potential Fishing Zones (PFZ) Advisory**: Identifies thermal fronts, chlorophyll blooms, shelf breaks, and upwelling regions with distance calculations, depth estimates, and dominant target species.
 - **🌐 Bhashini Multilingual Layer**: End-to-end voice and text intelligence supporting 10+ Indian coastal languages (Hindi, Gujarati, Marathi, Tamil, Telugu, Malayalam, Bengali, Odia, etc.).
 - **🔍 Full Reasoning Trace & Source Attribution**: Every advisory response includes an end-to-end reasoning trace and attribution of all services and agents consulted (`is_mock=False` for INCOIS).
@@ -214,6 +215,54 @@ curl -X POST "http://localhost:8000/query" \
 
 ---
 
+## 🗺️ Marine Boundaries Integration (Marine Regions / VLIZ)
+
+ORCA Marine AI integrates real, authoritative maritime boundary and Exclusive Economic Zone (EEZ) data from **Marine Regions / Flanders Marine Institute (VLIZ)**.
+
+### Data Source Metadata
+- **Provider:** Marine Regions / Flanders Marine Institute (VLIZ)
+- **Dataset:** World EEZ (Dataset Version: `World EEZ v12`)
+- **Service:** WFS (Web Feature Service)
+- **Official WFS Endpoint:** `https://geo.vliz.be/geoserver/MarineRegions/wfs`
+- **Layers Used:** `MarineRegions:eez` (Primary EEZ polygons) & `MarineRegions:eez_boundaries` (Maritime boundary lines)
+- **Format:** GeoJSON
+- **Primary Regional Target:** Indian Exclusive Economic Zone (`MRGID: 8480`, `iso_ter1: IND`)
+- **License:** Creative Commons Attribution 4.0 International (CC BY 4.0)
+- **Provenance Note:** The boundary dataset is versioned (`World EEZ v12`) and accessed via the official WFS service. It represents jurisdictional zones and is not classified as live dynamic stream data.
+
+### How It Works
+
+```mermaid
+flowchart TD
+    VLIZ[Marine Regions / VLIZ WFS Endpoint] -->|WFS GeoJSON Request| BackendService[MarineBoundariesService]
+    BackendService -->|Low-Bandwidth Cache| LocalGeoJSON[data/marine_regions/eez_mrgid_8480.geojson]
+    BackendService -->|Point-in-Polygon & Distance| BoundaryAgent[Boundary Agent]
+    BoundaryAgent -->|BoundaryEvidence| EvidenceBundle[Unified Evidence Bundle]
+    EvidenceBundle --> Synthesizer[Operational Advisory Synthesizer]
+    BackendService -->|GET /api/marine-boundaries/eez| LeafletMap[React Leaflet MarineMap Layer]
+    LeafletMap -->|Interactive Layer Toggle| UserUI[Tactical GIS Dashboard]
+```
+
+1. **Backend Retrieval & Resilient Caching**: The backend connects to the Marine Regions WFS endpoint using `mrgid=8480` (India) with automated SSL fallback context. It caches the GeoJSON locally in `data/marine_regions/` to guarantee sub-millisecond retrieval and offline resilience.
+2. **Spatial Point-in-Polygon & Distance Calculations**: Pure Python ray-casting containment tests and Haversine distance-to-segment algorithms calculate whether a vessel is inside national waters and its exact distance to the outer maritime boundary.
+3. **Automated Geofence Tiers**:
+   - `SAFE`: Vessel is comfortably inside national EEZ (> 25 km from outer boundary).
+   - `WARNING`: Vessel is within 25 km of an international maritime boundary corridor.
+   - `CRITICAL`: Vessel is outside national EEZ / operating in international or foreign waters.
+4. **AI Multi-Agent Planning**: The deterministic `Planner` dispatches the `boundary_agent` when queries ask about borders, boundaries, international waters, or EEZ limits.
+
+### Marine Boundary REST Endpoints
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/marine-boundaries/info` | Returns dataset version, provenance metadata, and WFS details. |
+| `GET` | `/api/marine-boundaries/eez?mrgid=8480` | Returns the GeoJSON FeatureCollection for the specified EEZ. |
+| `GET` | `/api/marine-boundaries/check?lat=18.922&lon=72.500` | Evaluates vessel coordinates, distance to boundary, and geofence status. |
+| `POST` | `/api/marine-boundaries/check` | Evaluates location via JSON body (`{"lat": 18.922, "lon": 72.500, "mrgid": 8480}`). |
+
+---
+
 ## 📄 License
 
 This project is licensed under the MIT License.
+

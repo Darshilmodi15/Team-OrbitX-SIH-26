@@ -44,6 +44,19 @@ class RiskEvidence(BaseModel):
     source: str = Field(default="risk_assessment_agent", description="Agent responsible for the risk evaluation")
 
 
+class BoundaryEvidence(BaseModel):
+    """Structured Marine Boundary & EEZ evidence returned by Boundary Agent."""
+    inside_eez: bool = Field(..., description="Whether coordinates are within the sovereign EEZ")
+    distance_to_boundary_km: float = Field(..., description="Distance in kilometers to outer maritime boundary")
+    geofence_status: str = Field(..., description="Geofence alert level ('safe', 'warning', 'critical')")
+    country: str = Field(..., description="Sovereign territory / coastal country name")
+    zone_name: str = Field(..., description="Jurisdictional zone name (e.g. 'Indian Exclusive Economic Zone')")
+    mrgid: int = Field(default=8480, description="Marine Regions Geographic Identifier")
+    status_message: str = Field(..., description="Actionable boundary explanation")
+    source: str = Field(default="Marine Regions / Flanders Marine Institute (VLIZ)", description="Data provenance")
+    dataset_version: str = Field(default="World EEZ v12", description="Dataset release version")
+
+
 class AgentResult(BaseModel):
     """Result envelope for an individual agent operation."""
     agent: str = Field(..., description="Name of the agent executing the task")
@@ -58,6 +71,7 @@ class EvidenceBundle(BaseModel):
     weather: Optional[WeatherEvidence] = Field(default=None, description="Weather evidence if collected")
     pfz_zones: List[PFZEvidence] = Field(default_factory=list, description="List of PFZ evidence items if collected")
     risk: Optional[RiskEvidence] = Field(default=None, description="Risk assessment evidence if evaluated")
+    boundary: Optional[BoundaryEvidence] = Field(default=None, description="Marine boundary & EEZ geofence evidence if evaluated")
     location_lat: float = Field(..., description="Inquiry latitude coordinate")
     location_lon: float = Field(..., description="Inquiry longitude coordinate")
     date: str = Field(..., description="Inquiry forecast date string")

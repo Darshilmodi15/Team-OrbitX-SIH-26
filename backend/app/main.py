@@ -5,6 +5,7 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from app.agents.boundary_agent import check_marine_boundary_evidence
 from app.agents.intent_agent import parse_intent
 from app.agents.pfz_agent import get_pfz_zones_evidence
 from app.agents.risk_agent import assess_risk
@@ -18,11 +19,13 @@ from app.data.weather.mock import MockWeatherProvider
 from app.data.weather.open_meteo import OpenMeteoWeatherProvider
 from app.models.agent_models import (
     AgentResult,
+    BoundaryEvidence,
     EvidenceBundle,
     PFZEvidence,
     RiskEvidence,
     WeatherEvidence,
 )
+from app.routers.marine_boundaries import router as boundaries_router
 from app.routers.pfz import router as pfz_router
 from app.services.bhashini import SUPPORTED_LANGUAGES, bhashini_service
 from app.services.planner import ExecutionPlan, Planner
@@ -33,8 +36,8 @@ pfz_provider: PFZProvider = MockPFZProvider()
 
 app = FastAPI(
     title="ORCA Marine AI Backend",
-    description="Autonomous Maritime Intelligence, Multi-Agent Decision Support & Bhashini Multilingual Layer.",
-    version="1.1.0",
+    description="Autonomous Maritime Intelligence, Multi-Agent Decision Support, Marine Boundaries & Bhashini Multilingual Layer.",
+    version="1.2.0",
 )
 
 # Enable CORS for frontend applications
@@ -48,6 +51,7 @@ app.add_middleware(
 
 # Include API routers
 app.include_router(pfz_router)
+app.include_router(boundaries_router)
 
 
 class Location(BaseModel):
@@ -75,6 +79,7 @@ class QueryResponse(BaseModel):
     risk_level: Optional[str] = Field(default=None, description="Evaluated safety risk level ('safe', 'caution', 'unsafe')")
     weather: Optional[WeatherEvidence] = Field(default=None, description="Structured meteorological evidence")
     nearest_pfz: Optional[List[PFZEvidence]] = Field(default=None, description="Structured PFZ evidence items")
+    boundary: Optional[BoundaryEvidence] = Field(default=None, description="Marine Boundary & EEZ geofence evaluation")
 
 
 class ChatRequest(BaseModel):
@@ -109,6 +114,7 @@ class ChatResponse(BaseModel):
     risk_level: Optional[str] = None
     weather: Optional[Dict[str, Any]] = None
     nearest_pfz: Optional[List[Dict[str, Any]]] = None
+    boundary: Optional[BoundaryEvidence] = None
 
 
 class TranslateRequest(BaseModel):
@@ -134,6 +140,9 @@ def health_check():
             "/api/detect-language",
             "/api/translate",
             "/api/pfz",
+            "/api/marine-boundaries/info",
+            "/api/marine-boundaries/eez",
+            "/api/marine-boundaries/check",
         ],
     }
 
@@ -187,7 +196,7 @@ def _process_orca_query(
     Core ORCA Agentic Multilingual Pipeline:
     1. Language Detection via Bhashini
     2. Translation: User Indic Language -> English
-    3. Multi-Agent Reasoning (Intent -> Planner -> Weather -> Risk -> PFZ -> Route)
+    3. Multi-Agent Reasoning (Intent -> Planner -> Weather -> Risk -> PFZ -> Boundary -> Route)
     4. Translation: English Synthesized Answer -> User Indic Language
     """
     reasoning: List[str] = []
@@ -278,10 +287,12 @@ def _process_orca_query(
     needs_risk = any(t.agent == "risk_agent" and t.action == "assess_risk" for t in plan.tasks)
     needs_pfz = any(t.agent == "pfz_agent" and t.action == "find_nearest_zones" for t in plan.tasks)
     needs_geospatial = any(t.agent == "geospatial_agent" and t.action == "calculate_distance" for t in plan.tasks)
+    needs_boundary = any(t.agent == "boundary_agent" and t.action == "check_boundary" for t in plan.tasks)
 
     weather_evidence: Optional[WeatherEvidence] = None
     risk_evidence: Optional[RiskEvidence] = None
     pfz_evidence_list: List[PFZEvidence] = []
+    boundary_evidence: Optional[BoundaryEvidence] = None
     executed_tasks: List[str] = []
     skipped_tasks: List[str] = []
 
@@ -385,11 +396,33 @@ def _process_orca_query(
         skipped_tasks.append("pfz_agent:find_nearest_zones")
         skipped_tasks.append("geospatial_agent:calculate_distance")
 
+    # 5d. Marine Boundaries Agent (Marine Regions / VLIZ World EEZ v12)
+    if needs_boundary:
+        boundary_evidence = check_marine_boundary_evidence(lat=lat, lon=lon)
+        sources_used.append(boundary_evidence.source)
+        executed_tasks.append("boundary_agent:check_boundary")
+        agent_results.append(
+            AgentResult(
+                agent="boundary_agent",
+                action="check_boundary",
+                success=True,
+                evidence=boundary_evidence.model_dump(),
+            )
+        )
+        reasoning.append(
+            f"Evidence (boundary_agent): jurisdiction='{boundary_evidence.country}' ({boundary_evidence.zone_name}), "
+            f"distance_to_boundary={boundary_evidence.distance_to_boundary_km} km, geofence_status='{boundary_evidence.geofence_status.upper()}' "
+            f"[Source: {boundary_evidence.source}]."
+        )
+    else:
+        skipped_tasks.append("boundary_agent:check_boundary")
+
     # Construct EvidenceBundle
     evidence_bundle = EvidenceBundle(
         weather=weather_evidence,
         pfz_zones=pfz_evidence_list,
         risk=risk_evidence,
+        boundary=boundary_evidence,
         location_lat=lat,
         location_lon=lon,
         date=query_date,
@@ -470,9 +503,21 @@ def _process_orca_query(
             ]
             answer_parts.append("Nearby Potential Fishing Zones (PFZ):\n" + "\n".join(pfz_text_lines))
 
-    if not evidence_bundle.weather and not evidence_bundle.pfz_zones:
+    # Boundary & EEZ section
+    if evidence_bundle.boundary:
+        b_ev = evidence_bundle.boundary
+        b_icon = "🛡️" if b_ev.geofence_status == "safe" else ("⚠️" if b_ev.geofence_status == "warning" else "🚨")
         answer_parts.append(
-            "ORCA Marine AI is standing by. You can ask for navigational safety assessments (e.g., 'Is it safe to sail today?'), potential fishing zones (e.g., 'Where is the nearest PFZ?'), or marine weather forecasts."
+            f"Maritime Boundary Status ({b_ev.dataset_version} - {b_ev.source}):\n"
+            f"- Zone: {b_ev.zone_name} (MRGID: {b_ev.mrgid})\n"
+            f"- Sovereign Jurisdiction: {b_ev.country}\n"
+            f"- Distance to Maritime Boundary: {b_ev.distance_to_boundary_km} km\n"
+            f"- Geofence Alert: {b_icon} {b_ev.geofence_status.upper()} ({b_ev.status_message})"
+        )
+
+    if not evidence_bundle.weather and not evidence_bundle.pfz_zones and not evidence_bundle.boundary:
+        answer_parts.append(
+            "ORCA Marine AI is standing by. You can ask for navigational safety assessments (e.g., 'Is it safe to sail today?'), potential fishing zones (e.g., 'Where is the nearest PFZ?'), marine boundary checks (e.g., 'Am I inside Indian EEZ?'), or marine weather forecasts."
         )
 
     english_answer = "\n\n".join(answer_parts)
@@ -503,6 +548,7 @@ def _process_orca_query(
         "risk_level": risk_evidence.level if risk_evidence else None,
         "weather": weather_evidence.model_dump() if weather_evidence else None,
         "nearest_pfz": [z.model_dump() for z in pfz_evidence_list] if pfz_evidence_list else None,
+        "boundary": boundary_evidence,
     }
 
 
@@ -529,6 +575,7 @@ def handle_query(request: QueryRequest) -> QueryResponse:
         risk_level=result.get("risk_level"),
         weather=result.get("weather"),
         nearest_pfz=result.get("nearest_pfz"),
+        boundary=result.get("boundary"),
     )
 
 
@@ -560,4 +607,5 @@ def handle_chat(request: ChatRequest) -> ChatResponse:
         risk_level=result.get("risk_level"),
         weather=result.get("weather"),
         nearest_pfz=result.get("nearest_pfz"),
+        boundary=result.get("boundary"),
     )
