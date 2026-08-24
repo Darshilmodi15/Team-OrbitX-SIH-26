@@ -24,37 +24,13 @@ VALID_INTENTS = {"safety_check", "nearest_pfz", "weather_conditions", "general"}
 def _fallback_intent(question: str) -> Dict[str, Any]:
     """Heuristic fallback for intent classification if API key is not provided or call fails."""
     q_lower = question.lower()
-    if any(k in q_lower for k in [
-        "safe", "safety", "risk", "danger", "hazard", "can i sail", "can i fish", "ok to go",
-        "સુરક્ષિત", "જોખમ", "દરિયામાં જવું", "સલામત",
-        "सुरक्षित", "खतरा", "समुद्र में जाना", "सुरक्षा",
-        "பாதுகாப்பானது", "ஆபத்து", "கடலுக்குள் செல்ல",
-        "సురక్షిత", "ప్రమాదం", "సముద్ర ప్రయాణం",
-        "സുരക്ഷിതം", "അപകടം", "കടലിൽ പോകാൻ",
-        "নিরাপদ", "বিপদ", "সমুদ্রে যাওয়া",
-        "सुरक्षित", "धोका", "सागरी सुरक्षा"
-    ]):
+    if any(k in q_lower for k in ["safe", "safety", "risk", "danger", "hazard", "can i sail", "can i fish", "ok to go"]):
         return {"intent": "safety_check", "location_hint": None}
-    elif any(k in q_lower for k in [
-        "pfz", "fishing zone", "fish zone", "nearest fish", "catch fish", "tuna", "mackerel", "pomfret",
-        "માછીમારી", "મત્સ્ય", "ઝોન", "નજીકનું pfz",
-        "मत्स्य क्षेत्र", "मछली पकड़ने", "निकटतम pfz",
-        "மீன்பிடி", "மண்டலம்",
-        "చేపల వేట", "మండలం",
-        "മത്സ്യബന്ധന", "മേഖല",
-        "মাছ ধরার", "অঞ্চল",
-        "मासेमारी", "क्षेत्र"
-    ]):
+    elif any(k in q_lower for k in ["pfz", "fishing zone", "fish zone", "nearest fish", "catch fish", "tuna", "mackerel"]):
         return {"intent": "nearest_pfz", "location_hint": None}
     elif any(k in q_lower for k in [
-        "weather", "wind", "wave", "forecast", "temp", "rain", "storm", "sea condition", "tide", "cyclone",
-        "હવામાન", "પવન", "મોજાં", "વાવાઝોડું", "ભરતી", "તાપમાન",
-        "मौसम", "हवा", "लहर", "चक्रवात", "ज्वार", "तापमान",
-        "வானிலை", "காற்று", "அலை", "புயல்",
-        "వాతావరణం", "గాలి", "అలలు", "తుఫాను",
-        "കാലാവസ്ഥ", "കാറ്റ്", "തിരമാല", "ചുഴലിക്കാറ്റ്",
-        "আবহাওয়া", "বাতাস", "ঢেউ", "ঘূর্ণিঝড়",
-        "हवामान", "वारा", "लाटा", "चक्रीवादळ"
+        "weather", "wind", "winds", "wave", "waves", "wave height", "wind speed", "wind direction",
+        "forecast", "temp", "temperature", "rain", "storm", "sea condition", "swell", "sea state"
     ]):
         return {"intent": "weather_conditions", "location_hint": None}
     return {"intent": "general", "location_hint": None}

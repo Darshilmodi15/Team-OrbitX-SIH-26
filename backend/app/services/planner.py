@@ -33,8 +33,9 @@ def _asks_for_weather(question: str) -> bool:
     q = question.lower()
     keywords = [
         "weather", "condition", "conditions", "wind", "winds", "wave", "waves",
-        "forecast", "sea state", "storm", "rain", "rainy", "squall", "visibility",
-        "temperature", "temp", "safe", "safety",
+        "wave height", "wind speed", "wind direction", "swell", "sea state",
+        "forecast", "storm", "rain", "rainy", "squall", "visibility",
+        "temperature", "temp", "safe", "safety", "ocean state", "marine",
     ]
     return any(kw in q for kw in keywords)
 

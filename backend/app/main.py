@@ -12,7 +12,10 @@ from app.agents.weather_agent import get_marine_weather
 from app.data.pfz.base import PFZProvider
 from app.data.pfz.mock import MockPFZProvider
 from app.data.weather.base import WeatherProvider
+from app.data.weather.cache import MarineWeatherCache
+from app.data.weather.incois import IncoisWeatherProvider
 from app.data.weather.mock import MockWeatherProvider
+from app.data.weather.open_meteo import OpenMeteoWeatherProvider
 from app.models.agent_models import (
     AgentResult,
     EvidenceBundle,
@@ -24,8 +27,8 @@ from app.routers.pfz import router as pfz_router
 from app.services.bhashini import SUPPORTED_LANGUAGES, bhashini_service
 from app.services.planner import ExecutionPlan, Planner
 
-# Initialize data providers (can be swapped with real INCOIS/marine dataset providers)
-weather_provider: WeatherProvider = MockWeatherProvider()
+# Initialize authoritative INCOIS data provider with low-bandwidth geospatial cache
+weather_provider: WeatherProvider = IncoisWeatherProvider()
 pfz_provider: PFZProvider = MockPFZProvider()
 
 app = FastAPI(
@@ -69,6 +72,9 @@ class QueryResponse(BaseModel):
     language_name: Optional[str] = Field(default="English", description="Human readable language name")
     original_question: Optional[str] = Field(default=None, description="Original query prior to translation")
     english_question: Optional[str] = Field(default=None, description="English query processed by agents")
+    risk_level: Optional[str] = Field(default=None, description="Evaluated safety risk level ('safe', 'caution', 'unsafe')")
+    weather: Optional[WeatherEvidence] = Field(default=None, description="Structured meteorological evidence")
+    nearest_pfz: Optional[List[PFZEvidence]] = Field(default=None, description="Structured PFZ evidence items")
 
 
 class ChatRequest(BaseModel):
@@ -406,28 +412,50 @@ def _process_orca_query(
         wave_h = evidence_bundle.weather.wave_height_m
         wind_spd = evidence_bundle.weather.wind_speed_kmh
         forecast = evidence_bundle.weather.forecast
+        w_ev = evidence_bundle.weather
+        wind_extra = f", Wind Direction: {w_ev.wind_direction_cardinal} ({w_ev.wind_direction_deg}°)" if w_ev.wind_direction_cardinal else ""
+        provenance = f" [Source: {w_ev.source}]" if w_ev.source else ""
 
         if risk_level == "unsafe":
             answer_parts.append(
-                f"⚠️ Sea conditions are UNSAFE ({forecast}, wave height {wave_h}m, wind speed {wind_spd} km/h). {risk_reason}"
+                f"⚠️ Sea conditions are UNSAFE ({forecast}, wave height {wave_h}m, wind speed {wind_spd} km/h{wind_extra}). {risk_reason}{provenance}"
             )
         elif risk_level == "caution":
             answer_parts.append(
-                f"⚠️ CAUTION ADVISED: {risk_reason} (Wave height: {wave_h}m, Wind: {wind_spd} km/h, Forecast: {forecast})."
+                f"⚠️ CAUTION ADVISED: {risk_reason} (Wave height: {wave_h}m, Wind: {wind_spd} km/h{wind_extra}, Forecast: {forecast}).{provenance}"
             )
         else:
             answer_parts.append(
-                f"✅ Conditions are SAFE for navigation and fishing ({forecast} weather, wave height {wave_h}m, wind speed {wind_spd} km/h)."
+                f"✅ Conditions are SAFE for navigation and fishing ({forecast} weather, wave height {wave_h}m, wind speed {wind_spd} km/h{wind_extra}).{provenance}"
             )
     elif evidence_bundle.weather:
-        wave_h = evidence_bundle.weather.wave_height_m
-        wind_spd = evidence_bundle.weather.wind_speed_kmh
-        forecast = evidence_bundle.weather.forecast
-        temp_c = evidence_bundle.weather.temperature_c if evidence_bundle.weather.temperature_c is not None else "N/A"
-        vis_km = evidence_bundle.weather.visibility_km if evidence_bundle.weather.visibility_km is not None else "N/A"
-        answer_parts.append(
-            f"Marine Weather Conditions:\n- Forecast: {forecast.capitalize()}\n- Wave Height: {wave_h}m\n- Wind Speed: {wind_spd} km/h\n- Temperature: {temp_c}°C\n- Visibility: {vis_km} km"
-        )
+        w_ev = evidence_bundle.weather
+        if w_ev.cache_status == "unavailable":
+            answer_parts.append("Marine wave/wind data is currently unavailable from the ocean forecast provider.")
+        elif w_ev.source == "INCOIS_OSF_WW3" or not w_ev.is_mock:
+            spd_ms_str = f"{w_ev.wind_speed_ms:.2f} m/s" if w_ev.wind_speed_ms is not None else f"{w_ev.wind_speed_kmh / 3.6:.2f} m/s"
+            dir_str = f"{w_ev.wind_direction_cardinal} ({w_ev.wind_direction_deg:.1f}°)" if (w_ev.wind_direction_cardinal and w_ev.wind_direction_deg is not None) else (w_ev.wind_direction_cardinal or "N/A")
+            f_time = w_ev.forecast_time or "Latest available"
+            c_stat = "Live" if w_ev.cache_status == "live" else ("Cached" if w_ev.cache_status == "cached" else (f"Stale ({w_ev.data_age_sec // 60}m ago)" if w_ev.data_age_sec else "Cached"))
+            
+            answer_parts.append(
+                f"INCOIS Ocean State Forecast (OSF):\n"
+                f"- Significant Wave Height: {w_ev.wave_height_m:.2f} m\n"
+                f"- Wind Speed: {spd_ms_str} ({w_ev.wind_speed_kmh:.1f} km/h)\n"
+                f"- Wind Direction: {dir_str}\n"
+                f"- Sea Condition: {w_ev.forecast.capitalize()}\n"
+                f"- Forecast Time: {f_time}\n"
+                f"- Data Provenance: INCOIS OSF WW3 ({c_stat})"
+            )
+        else:
+            wave_h = w_ev.wave_height_m
+            wind_spd = w_ev.wind_speed_kmh
+            forecast = w_ev.forecast
+            temp_c = w_ev.temperature_c if w_ev.temperature_c is not None else "N/A"
+            vis_km = w_ev.visibility_km if w_ev.visibility_km is not None else "N/A"
+            answer_parts.append(
+                f"Marine Weather Conditions:\n- Forecast: {forecast.capitalize()}\n- Wave Height: {wave_h}m\n- Wind Speed: {wind_spd} km/h\n- Temperature: {temp_c}°C\n- Visibility: {vis_km} km"
+            )
 
     if evidence_bundle.pfz_zones:
         risk_level = evidence_bundle.risk.level if evidence_bundle.risk else "safe"
@@ -472,7 +500,7 @@ def _process_orca_query(
         "reasoning": reasoning,
         "sources_used": sources_used,
         "plan": plan,
-        "risk_level": risk_evidence.level if risk_evidence else ("unsafe" if weather_evidence and weather_evidence.wave_height_m > 2.5 else "safe"),
+        "risk_level": risk_evidence.level if risk_evidence else None,
         "weather": weather_evidence.model_dump() if weather_evidence else None,
         "nearest_pfz": [z.model_dump() for z in pfz_evidence_list] if pfz_evidence_list else None,
     }
@@ -498,6 +526,9 @@ def handle_query(request: QueryRequest) -> QueryResponse:
         language_name=result["language_name"],
         original_question=result["original_message"],
         english_question=result["english_query"],
+        risk_level=result.get("risk_level"),
+        weather=result.get("weather"),
+        nearest_pfz=result.get("nearest_pfz"),
     )
 
 

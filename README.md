@@ -4,12 +4,12 @@
 
 ---
 
-## 🌟 Key Features
-
-- **🧠 Intent Classification Agent**: Powered by Google Gemini (`gemini-2.5-flash`) or Anthropic Claude (`claude-sonnet-4-6`), queries are classified into domain intents (`safety_check`, `nearest_pfz`, `weather_conditions`, `general`) with automatic geographic location hint extraction.
+- **🌊 Real INCOIS Ocean State Forecast (OSF)**: Authoritative operational Significant Wave Height ($HS$ in metres), Wind Speed ($m/s$ and $km/h$), and Wind Direction ($16$-point cardinal & meteorological degrees) retrieved programmatically via official INCOIS NetCDF Subset Service (NCSS) / THREDDS catalog.
+- **⚡ Low-Bandwidth Coastal Geospatial Cache**: Compact query payloads (~130–160 bytes) with 0.05° (~5.5 km) spatial grid normalization allowing nearby vessels to reuse forecasts with sub-millisecond retrieval latencies.
 - **🛡️ Marine Safety Risk Assessment Agent**: Evaluates complex marine conditions (wave heights, wind speeds, squall/storm risks) into clear risk tiers (`SAFE`, `CAUTION`, `UNSAFE`) with operational guidance.
 - **🐟 Potential Fishing Zones (PFZ) Advisory**: Identifies thermal fronts, chlorophyll blooms, shelf breaks, and upwelling regions with distance calculations, depth estimates, and dominant target species.
-- **🔍 Full Reasoning Trace & Source Attribution**: Every advisory response includes an end-to-end reasoning trace and attribution of all services and agents consulted.
+- **🌐 Bhashini Multilingual Layer**: End-to-end voice and text intelligence supporting 10+ Indian coastal languages (Hindi, Gujarati, Marathi, Tamil, Telugu, Malayalam, Bengali, Odia, etc.).
+- **🔍 Full Reasoning Trace & Source Attribution**: Every advisory response includes an end-to-end reasoning trace and attribution of all services and agents consulted (`is_mock=False` for INCOIS).
 - **⚡ High-Performance FastAPI Backend**: RESTful API with automated OpenAPI docs, CORS support, and Pydantic data validation.
 
 ---
@@ -47,28 +47,40 @@ ORCA/
 │   ├── app/
 │   │   ├── __init__.py
 │   │   ├── main.py                     # FastAPI application & /query orchestrator
+│   │   ├── models/
+│   │   │   ├── __init__.py
+│   │   │   └── agent_models.py         # Structured evidence contracts (Pydantic)
 │   │   ├── agents/
 │   │   │   ├── __init__.py
 │   │   │   ├── intent_agent.py         # Intent parsing agent
+│   │   │   ├── weather_agent.py        # Weather evidence builder
+│   │   │   ├── pfz_agent.py            # PFZ advisory evidence builder
 │   │   │   └── risk_agent.py           # Marine safety risk evaluation agent
 │   │   ├── data/
 │   │   │   ├── __init__.py             # Provider exports
 │   │   │   ├── weather/
 │   │   │   │   ├── __init__.py
 │   │   │   │   ├── base.py             # Abstract WeatherProvider interface
-│   │   │   │   └── mock.py             # MockWeatherProvider implementation
+│   │   │   │   ├── mock.py             # MockWeatherProvider implementation
+│   │   │   │   └── open_meteo.py       # Live Open-Meteo marine weather provider
 │   │   │   └── pfz/
 │   │   │       ├── __init__.py
 │   │   │       ├── base.py             # Abstract PFZProvider interface
-│   │   │       └── mock.py             # MockPFZProvider implementation
+│   │   │       └── mock.py             # MockPFZProvider implementation (INCOIS)
 │   │   └── services/
 │   │       ├── __init__.py
+│   │       ├── bhashini.py             # Multilingual NMT & language detection
 │   │       └── planner.py              # Deterministic multi-agent Planner
 │   └── tests/
 │       ├── __init__.py
+│       ├── test_agent_contracts.py     # Pydantic contract validation tests
+│       ├── test_bhashini.py            # Multilingual Bhashini tests
+│       ├── test_chat.py                # Conversational chat tests
+│       ├── test_pfz_api.py             # INCOIS PFZ REST endpoint tests
 │       ├── test_planner.py             # Planner unit tests (6 rules)
-│       └── test_query.py               # End-to-end /query integration tests
-└── frontend/                           # Client interface directory
+│       ├── test_query.py               # End-to-end /query integration tests
+│       └── test_weather_provider.py    # Open-Meteo live weather provider tests
+└── frontend/                           # React + Leaflet tactical GIS dashboard
 ```
 
 ---
