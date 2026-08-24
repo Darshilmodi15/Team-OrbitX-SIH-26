@@ -1,0 +1,182 @@
+{
+  "source": "INCOIS",
+  "region": "Maharashtra",
+  "pfz_zones": [
+    {
+      "id": "pfz_001",
+      "landing_centre": "Narpad/DahanuAgar",
+      "direction": "NW",
+      "bearing_deg": 292,
+      "distance_km": {
+        "min": 16,
+        "max": 21
+      },
+      "depth_m": {
+        "min": 20,
+        "max": 25
+      },
+      "latitude": 20.0736,
+      "longitude": 72.5597
+    },
+    {
+      "id": "pfz_002",
+      "landing_centre": "Gholvad",
+      "direction": "SW",
+      "bearing_deg": 262,
+      "distance_km": {
+        "min": 19,
+        "max": 24
+      },
+      "depth_m": {
+        "min": 22,
+        "max": 27
+      },
+      "latitude": 20.0569,
+      "longitude": 72.5414
+    },
+    {
+      "id": "pfz_003",
+      "landing_centre": "DhaktiDahanu/Gungawada",
+      "direction": "NW",
+      "bearing_deg": 292,
+      "distance_km": {
+        "min": 19,
+        "max": 24
+      },
+      "depth_m": {
+        "min": 23,
+        "max": 28
+      },
+      "latitude": 20.0389,
+      "longitude": 72.5239
+    },
+    {
+      "id": "pfz_004",
+      "landing_centre": "Varor",
+      "direction": "NW",
+      "bearing_deg": 306,
+      "distance_km": {
+        "min": 21,
+        "max": 26
+      },
+      "depth_m": {
+        "min": 24,
+        "max": 29
+      },
+      "latitude": 20.0258,
+      "longitude": 72.5028
+    },
+    {
+      "id": "pfz_005",
+      "landing_centre": "Dahanu",
+      "direction": "NW",
+      "bearing_deg": 279,
+      "distance_km": {
+        "min": 24,
+        "max": 29
+      },
+      "depth_m": {
+        "min": 26,
+        "max": 31
+      },
+      "latitude": 20.0153,
+      "longitude": 72.48
+    },
+    {
+      "id": "pfz_006",
+      "landing_centre": "Tarapur Pt",
+      "direction": "NW",
+      "bearing_deg": 310,
+      "distance_km": {
+        "min": 26,
+        "max": 31
+      },
+      "depth_m": {
+        "min": 26,
+        "max": 31
+      },
+      "latitude": 20.0017,
+      "longitude": 72.4589
+    },
+    {
+      "id": "pfz_007",
+      "landing_centre": "Ghivali",
+      "direction": "NW",
+      "bearing_deg": 303,
+      "distance_km": {
+        "min": 27,
+        "max": 32
+      },
+      "depth_m": {
+        "min": 27,
+        "max": 32
+      },
+      "latitude": 19.9853,
+      "longitude": 72.44
+    },
+    {
+      "id": "pfz_008",
+      "landing_centre": "Kambode",
+      "direction": "NW",
+      "bearing_deg": 295,
+      "distance_km": {
+        "min": 28,
+        "max": 33
+      },
+      "depth_m": {
+        "min": 26,
+        "max": 31
+      },
+      "latitude": 19.9669,
+      "longitude": 72.4228
+    },
+    {
+      "id": "pfz_009",
+      "landing_centre": "PokharanDandi/Uchheli",
+      "direction": "NW",
+      "bearing_deg": 298,
+      "distance_km": {
+        "min": 31,
+        "max": 36
+      },
+      "depth_m": {
+        "min": 27,
+        "max": 32
+      },
+      "latitude": 19.9461,
+      "longitude": 72.4089
+    },
+    {
+      "id": "pfz_010",
+      "landing_centre": "Navapur (Ucheli Cr)",
+      "direction": "NW",
+      "bearing_deg": 296,
+      "distance_km": {
+        "min": 33,
+        "max": 38
+      },
+      "depth_m": {
+        "min": 29,
+        "max": 34
+      },
+      "latitude": 19.9228,
+      "longitude": 72.3997
+    },
+    {
+      "id": "pfz_011",
+      "landing_centre": "Satpati(N)",
+      "direction": "W",
+      "bearing_deg": 270,
+      "distance_km": {
+        "min": 65,
+        "max": 70
+      },
+      "depth_m": {
+        "min": 28,
+        "max": 33
+      },
+      "latitude": 19.7242,
+      "longitude": 72.0794
+    }
+  ]
+}
