@@ -70,7 +70,7 @@ export default function MapPage() {
               userLocation={userLocation}
               pfzZones={pfzZones}
               layers={gisLayers}
-              onRelocateVessel={handleRelocateVessel}
+              onSelectCoords={(lat, lon) => handleRelocateVessel({ lat, lon })}
             />
           </div>
         </div>

@@ -3,44 +3,8 @@ import type { ReactNode } from 'react';
 import { INDIAN_PORTS, MOCK_PFZ_ZONES, type Port, type WeatherMetrics } from '../data/maritimeData';
 import { queryORCA } from '../services/api';
 
-export interface LocationCoords {
-  lat: number;
-  lon: number;
-}
-
-export interface PFZEvidenceItem {
-  id?: string;
-  name: string;
-  latitude: number;
-  longitude: number;
-  distance_km: number;
-  depth_m?: number | null;
-  species: string[];
-  source?: string;
-  is_mock?: boolean;
-}
-
-export interface MessageItem {
-  id: string;
-  sender: 'user' | 'assistant';
-  text: string;
-  timestamp: string;
-  weather?: any;
-  risk_level?: string | null;
-  plan?: any;
-  reasoning?: string[];
-  sources_used?: string[];
-}
-
-export interface GisLayerState {
-  pfz: boolean;
-  geofence: boolean;
-  route: boolean;
-  sst: boolean;
-  chlorophyll: boolean;
-  waves: boolean;
-  wind: boolean;
-}
+import type { LocationCoords, PFZEvidenceItem, MessageItem, GisLayerState } from '../types';
+export type { LocationCoords, PFZEvidenceItem, MessageItem, GisLayerState };
 
 interface GlobalContextProps {
   selectedPort: Port;
@@ -117,6 +81,9 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
     chlorophyll: true,
     waves: true,
     wind: true,
+    eez: true,
+    ports: true,
+    vessels: true,
   });
 
   const [pfzZones, setPfzZones] = useState<PFZEvidenceItem[]>(

@@ -44,7 +44,6 @@ export default function AssistantPage() {
               currentLang={currentLang}
               onSendMessage={handleSendMessage}
               onClearError={() => setError(null)}
-              onResetChat={resetChat}
             />
         </div>
       </div>
