@@ -1,144 +1,191 @@
 import React from 'react';
-import { Compass, Waves, Wind, ShieldCheck, ShieldAlert, AlertTriangle } from 'lucide-react';
-import type { WeatherMetrics } from '../data/maritimeData';
-import { TRANSLATIONS } from '../data/maritimeData';
+import { ShieldCheck, ShieldAlert, AlertTriangle, Bell, MapPin, Globe, Settings, ChevronLeft, Landmark } from 'lucide-react';
+import { INDIAN_PORTS, REGIONAL_LANGUAGES, TRANSLATIONS } from '../data/maritimeData';
+import type { WeatherMetrics, Port } from '../data/maritimeData';
 
 interface TopHeaderProps {
-  vesselLat: number;
-  vesselLon: number;
-  weather: WeatherMetrics;
+  vesselLat?: number;
+  vesselLon?: number;
+  weather?: WeatherMetrics;
   riskLevel: 'safe' | 'caution' | 'unsafe';
   currentLang: string;
+  currentUser?: any | null;
+  unreadAlertsCount?: number;
+  selectedPort?: Port;
+  onSelectPort?: (port: Port) => void;
+  onSelectLang?: (lang: string) => void;
+  onOpenNotifications?: () => void;
+  onOpenAdmin?: () => void;
+  onOpenGovPortal?: () => void;
+  onReturnHome?: () => void;
 }
 
 export const TopHeader: React.FC<TopHeaderProps> = ({
-  vesselLat,
-  vesselLon,
-  weather,
   riskLevel,
   currentLang,
+  currentUser,
+  unreadAlertsCount = 0,
+  selectedPort,
+  onSelectPort,
+  onSelectLang,
+  onOpenNotifications,
+  onOpenAdmin,
+  onOpenGovPortal,
+  onReturnHome,
 }) => {
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
 
   const safetyConfig = {
     safe: {
-      label: t.safeHeading || 'SAFE TO VENTURE',
+      label: t.safeHeading || 'SAFE',
       icon: ShieldCheck,
-      cardClass: 'bg-emerald-50/80 border-emerald-200 text-emerald-800',
-      iconClass: 'text-emerald-600',
-      badgeClass: 'bg-emerald-100 text-emerald-800',
-      dotClass: 'bg-emerald-500',
+      bg: 'bg-emerald-50',
+      border: 'border-emerald-200',
+      text: 'text-emerald-800',
+      iconColor: 'text-emerald-600',
+      dot: 'bg-emerald-500',
     },
     caution: {
-      label: t.cautionHeading || 'CAUTION ADVISED',
+      label: t.cautionHeading || 'CAUTION',
       icon: AlertTriangle,
-      cardClass: 'bg-amber-50/80 border-amber-200 text-amber-900',
-      iconClass: 'text-amber-600',
-      badgeClass: 'bg-amber-100 text-amber-800',
-      dotClass: 'bg-amber-500',
+      bg: 'bg-amber-50',
+      border: 'border-amber-200',
+      text: 'text-amber-800',
+      iconColor: 'text-amber-600',
+      dot: 'bg-amber-500',
     },
     unsafe: {
-      label: t.dangerHeading || 'SEVERE HAZARD',
+      label: t.dangerHeading || 'HAZARD',
       icon: ShieldAlert,
-      cardClass: 'bg-rose-50/80 border-rose-200 text-rose-900',
-      iconClass: 'text-rose-600',
-      badgeClass: 'bg-rose-100 text-rose-800',
-      dotClass: 'bg-rose-500 animate-ping',
+      bg: 'bg-rose-50',
+      border: 'border-rose-200',
+      text: 'text-rose-800',
+      iconColor: 'text-rose-600',
+      dot: 'bg-rose-500 animate-pulse',
     },
   }[riskLevel];
 
   const SafetyIcon = safetyConfig.icon;
 
   return (
-    <header className="w-full bg-white border-b border-slate-200/90 px-4 sm:px-6 py-3 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3 select-none">
-      {/* Brand Section */}
-      <div className="flex items-center gap-3.5 w-full md:w-auto justify-between md:justify-start">
-        <div className="flex items-center gap-3">
-          {/* Logo Emblem */}
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-600 to-sky-600 flex items-center justify-center text-white text-xl shadow-md border border-teal-500/30 ring-2 ring-teal-100">
-            🌊
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base sm:text-lg font-black font-display text-slate-900 tracking-tight flex items-center gap-1.5">
-                <span>{t.appTitle || 'ORCA Marine AI'}</span>
-              </h1>
-              <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-teal-50 text-teal-700 border border-teal-200/80 tracking-wide">
-                {t.sihBadge || 'SIH 2026 • orbitX'}
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500 font-medium">
-              {t.tagline || 'Autonomous Marine Intelligence & Decision Support'}
-            </p>
-          </div>
+    <header
+      className="w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-5 flex items-center justify-between gap-3 select-none shrink-0 z-40"
+      style={{ height: 'var(--header-height)' }}
+    >
+      {/* LEFT: Logo + Brand */}
+      <div className="flex items-center gap-2.5 shrink-0">
+        <button
+          onClick={onReturnHome}
+          title="Return to Landing Page"
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 hover:opacity-90 transition cursor-pointer"
+          style={{ background: 'linear-gradient(135deg, #0B3D5B 0%, #0F766E 100%)' }}
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <div className="hidden sm:block">
+          <h1 className="text-sm font-bold text-slate-900 leading-tight tracking-tight">
+            ORCA Marine AI
+          </h1>
+          <p className="text-[10px] text-slate-400 font-medium leading-none">
+            Coastal Safety Intelligence
+          </p>
         </div>
-
-        <span className="inline-flex sm:hidden items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200">
-          SIH 2026
-        </span>
       </div>
 
-      {/* 4 Discrete Telemetry & Safety Status Cards */}
-      <div className="flex items-center flex-wrap gap-2.5 sm:gap-3 w-full md:w-auto justify-start md:justify-end text-xs">
-        {/* Card 1: GPS Coordinates */}
-        <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 shadow-sm hover:border-slate-300 transition">
-          <div className="w-7 h-7 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600">
-            <Compass className="w-4 h-4" />
-          </div>
-          <div>
-            <span className="block text-[9px] uppercase tracking-wider font-bold text-slate-400">
-              {t.gpsLabel || 'GPS Coordinates'}
-            </span>
-            <span className="font-mono font-bold text-slate-800 text-[11px]">
-              {vesselLat.toFixed(4)}°N, {vesselLon.toFixed(4)}°E
-            </span>
-          </div>
-        </div>
+      {/* CENTER: Safety Badge */}
+      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${safetyConfig.bg} ${safetyConfig.border} border ${safetyConfig.text}`}>
+        <div className={`w-2 h-2 rounded-full ${safetyConfig.dot} shrink-0`} />
+        <SafetyIcon className={`w-3.5 h-3.5 ${safetyConfig.iconColor}`} />
+        <span className="text-[11px] font-bold tracking-wide uppercase">
+          {safetyConfig.label}
+        </span>
+        {currentUser && (
+          <span className="hidden lg:inline text-[10px] font-medium opacity-70 ml-1">
+            · {currentUser.role || 'USER'}
+          </span>
+        )}
+      </div>
 
-        {/* Card 2: Wave Height */}
-        <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 shadow-sm hover:border-slate-300 transition">
-          <div className="w-7 h-7 rounded-lg bg-sky-50 flex items-center justify-center text-sky-600">
-            <Waves className="w-4 h-4" />
+      {/* RIGHT: Port + Language + Actions */}
+      <div className="flex items-center gap-2">
+        {/* Port Selector (compact) */}
+        {onSelectPort && selectedPort && (
+          <div className="hidden md:flex items-center relative">
+            <MapPin className="w-3.5 h-3.5 text-teal-700 absolute left-2.5 pointer-events-none" />
+            <select
+              value={selectedPort.id}
+              onChange={(e) => {
+                const port = INDIAN_PORTS.find((p) => p.id === e.target.value);
+                if (port) onSelectPort(port);
+              }}
+              aria-label="Select Port"
+              className="h-8 bg-white text-slate-700 text-[11px] font-medium rounded-lg pl-7 pr-6 border border-slate-200 hover:border-slate-300 focus:outline-none focus:border-teal-500 cursor-pointer appearance-none transition max-w-[180px]"
+            >
+              {INDIAN_PORTS.map((port) => (
+                <option key={port.id} value={port.id}>
+                  {port.name}
+                </option>
+              ))}
+            </select>
           </div>
-          <div>
-            <span className="block text-[9px] uppercase tracking-wider font-bold text-slate-400">
-              {t.waveHeightLabel || 'Wave Height'}
-            </span>
-            <span className={`font-bold text-[11px] ${weather.wave_height_m > 2.0 ? 'text-rose-600' : 'text-slate-800'}`}>
-              {weather.wave_height_m.toFixed(1)} m <span className="text-slate-400 font-normal">({weather.swell_period_s}s)</span>
-            </span>
-          </div>
-        </div>
+        )}
 
-        {/* Card 3: Wind Speed */}
-        <div className="hidden lg:flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 shadow-sm hover:border-slate-300 transition">
-          <div className="w-7 h-7 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600">
-            <Wind className="w-4 h-4" />
+        {/* Language Selector (compact) */}
+        {onSelectLang && (
+          <div className="hidden sm:flex items-center relative">
+            <Globe className="w-3.5 h-3.5 text-sky-600 absolute left-2.5 pointer-events-none" />
+            <select
+              value={currentLang}
+              onChange={(e) => onSelectLang(e.target.value)}
+              aria-label="Select Language"
+              className="h-8 bg-white text-slate-700 text-[11px] font-medium rounded-lg pl-7 pr-5 border border-slate-200 hover:border-slate-300 focus:outline-none focus:border-teal-500 cursor-pointer appearance-none transition max-w-[100px]"
+            >
+              {REGIONAL_LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.native}
+                </option>
+              ))}
+            </select>
           </div>
-          <div>
-            <span className="block text-[9px] uppercase tracking-wider font-bold text-slate-400">
-              {t.windSpeedLabel || 'Wind Speed'}
-            </span>
-            <span className="font-bold text-slate-800 text-[11px]">
-              {weather.wind_speed_kmh.toFixed(0)} km/h <span className="text-slate-400 font-normal font-sans">({weather.forecast})</span>
-            </span>
-          </div>
-        </div>
+        )}
 
-        {/* Card 4: Marine Safety Status Badge */}
-        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border shadow-sm ${safetyConfig.cardClass} transition`}>
-          <div className="relative flex items-center justify-center">
-            <SafetyIcon className={`w-4 h-4 ${safetyConfig.iconClass}`} />
-          </div>
-          <div>
-            <span className="block text-[9px] uppercase tracking-wider font-bold opacity-70">
-              {t.marineSafetyLabel || 'Marine Safety'}
-            </span>
-            <span className="font-extrabold tracking-wide text-[11px]">
-              {safetyConfig.label}
-            </span>
-          </div>
-        </div>
+        {/* Government Marine Portal */}
+        {onOpenGovPortal && (
+          <button
+            onClick={onOpenGovPortal}
+            title="Official Government Portal & Schemes"
+            className="w-8 h-8 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-teal-700 hover:text-teal-900 flex items-center justify-center transition cursor-pointer"
+          >
+            <Landmark className="w-3.5 h-3.5" />
+          </button>
+        )}
+
+        {/* Notifications */}
+        {onOpenNotifications && (
+          <button
+            onClick={onOpenNotifications}
+            title="Alerts & Advisories"
+            className="w-8 h-8 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-800 flex items-center justify-center transition relative cursor-pointer"
+          >
+            <Bell className="w-3.5 h-3.5" />
+            {unreadAlertsCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center animate-pulse">
+                {unreadAlertsCount > 9 ? '9+' : unreadAlertsCount}
+              </span>
+            )}
+          </button>
+        )}
+
+        {/* Admin/Settings */}
+        {onOpenAdmin && (
+          <button
+            onClick={onOpenAdmin}
+            title="Admin Console"
+            className="w-8 h-8 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-800 flex items-center justify-center transition cursor-pointer"
+          >
+            <Settings className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
     </header>
   );

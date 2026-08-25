@@ -1,133 +1,296 @@
-import { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Send, Mic, MicOff, Sparkles, Check, Edit3, X, CornerDownLeft } from 'lucide-react';
+import { getQuickPrompts } from '../data/quickPrompts';
+import { transcribeVoiceAudio } from '../services/api';
+import { getStrings } from '../i18n';
 
 interface QueryInputProps {
   onSendMessage: (question: string) => void;
   isLoading: boolean;
+  currentLang?: string;
 }
 
-export default function QueryInput({ onSendMessage, isLoading }: QueryInputProps) {
+export default function QueryInput({
+  onSendMessage,
+  isLoading,
+  currentLang = 'en',
+}: QueryInputProps) {
   const [input, setInput] = useState('');
-  const [isListening, setIsListening] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [transcriptPending, setTranscriptPending] = useState<string | null>(null);
 
-  const quickPrompts = [
-    { label: 'Nearest PFZ', icon: '🐟', query: 'Where is the nearest potential fishing zone?' },
-    { label: 'Safety Check', icon: '🛡️', query: 'Is it safe to fish near Mumbai today?' },
-    { label: 'Marine Weather', icon: '🌊', query: 'What are the current marine weather and wave conditions?' },
-    { label: 'Sailing Advisory', icon: '🧭', query: 'Can small crafts sail safely this afternoon?' },
-  ];
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
-    onSendMessage(input.trim());
+  const t = getStrings(currentLang);
+  const quickPrompts = getQuickPrompts(currentLang);
+
+  // Auto-expand textarea height as user types
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+    }
+  }, [input]);
+
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = input.trim();
+    if (!trimmed || isLoading) return;
+    onSendMessage(trimmed);
+    setInput('');
+    setTranscriptPending(null);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
+  const handleSendPrompt = (promptText: string) => {
+    if (isLoading) return;
+    onSendMessage(promptText);
+  };
+
+  const handleSendTranscript = () => {
+    if (!transcriptPending || isLoading) return;
+    onSendMessage(transcriptPending);
+    setTranscriptPending(null);
     setInput('');
   };
 
-  const handleQuickPrompt = (query: string) => {
-    if (isLoading) return;
-    onSendMessage(query);
+  const handleEditTranscript = () => {
+    if (transcriptPending) {
+      setInput(transcriptPending);
+      setTranscriptPending(null);
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+      }
+    }
   };
 
-  const handleVoiceInput = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+  const startRecording = async () => {
+    setTranscriptPending(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        setIsTranscribing(true);
+        try {
+          // Call Sarvam AI Saaras v3 STT
+          const result = await transcribeVoiceAudio(audioBlob, currentLang || 'auto');
+          if (result && result.transcript) {
+            setTranscriptPending(result.transcript);
+          }
+        } catch (err) {
+          console.warn('Sarvam STT fallback to Web Speech:', err);
+          handleBrowserSpeechFallback();
+        } finally {
+          setIsTranscribing(false);
+          setIsRecording(false);
+          stream.getTracks().forEach((trk) => trk.stop());
+        }
+      };
+
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+    } catch (err) {
+      console.warn('Microphone permission or hardware error:', err);
+      handleBrowserSpeechFallback();
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    } else {
+      setIsRecording(false);
+    }
+  };
+
+  const handleBrowserSpeechFallback = () => {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert('Voice recognition is not supported in your browser.');
+      alert('Voice recording requires microphone permissions on a supported browser.');
       return;
     }
 
     try {
       const recognition = new SpeechRecognition();
-      recognition.lang = 'en-US';
+      const langCodes: Record<string, string> = {
+        gu: 'gu-IN',
+        hi: 'hi-IN',
+        mr: 'mr-IN',
+        ta: 'ta-IN',
+        ml: 'ml-IN',
+        te: 'te-IN',
+        bn: 'bn-IN',
+        kn: 'kn-IN',
+        or: 'or-IN',
+        en: 'en-IN',
+      };
+      recognition.lang = langCodes[currentLang] || 'en-IN';
       recognition.interimResults = false;
 
-      recognition.onstart = () => {
-        setIsListening(true);
-      };
-
+      recognition.onstart = () => setIsRecording(true);
       recognition.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
         if (transcript) {
-          setInput(transcript);
+          setTranscriptPending(transcript);
         }
       };
-
-      recognition.onerror = () => {
-        setIsListening(false);
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-
+      recognition.onerror = () => setIsRecording(false);
+      recognition.onend = () => setIsRecording(false);
       recognition.start();
     } catch {
-      setIsListening(false);
+      setIsRecording(false);
+    }
+  };
+
+  const toggleVoice = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
     }
   };
 
   return (
-    <div className="p-4 bg-slate-950/90 border-t border-slate-800/80 backdrop-blur-2xl shrink-0">
-      {/* Quick Action Tag Pills */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2.5 mb-2.5 no-scrollbar">
-        <span className="text-[10px] font-mono text-slate-500 uppercase shrink-0 flex items-center gap-1 font-bold">
-          <span>⚡</span> Quick:
+    <div className="border-t border-slate-200 bg-white p-3 sm:p-4 shrink-0 shadow-2xs">
+      {/* Voice Status Indicator Banner */}
+      {isRecording && (
+        <div className="mb-2.5 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 animate-pulse">
+          <div className="flex items-center gap-2 font-semibold">
+            <span className="h-2 w-2 rounded-full bg-red-600 animate-ping" />
+            <span>Listening to Indic Speech (Sarvam Saaras v3)... Tap mic to finish.</span>
+          </div>
+          <span className="font-mono text-[10px] font-bold uppercase text-red-800">
+            RECORDING
+          </span>
+        </div>
+      )}
+
+      {isTranscribing && (
+        <div className="mb-2.5 flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-800">
+          <span className="h-3 w-3 animate-spin rounded-full border-2 border-teal-600 border-t-transparent" />
+          <span>Transcribing speech through Sarvam AI Saaras v3...</span>
+        </div>
+      )}
+
+      {/* Voice Transcript Confirmation Card */}
+      {transcriptPending && (
+        <div className="mb-3 rounded-lg border border-teal-200 bg-teal-50/70 p-3 text-slate-900 shadow-2xs animate-fadeIn">
+          <div className="flex items-center justify-between text-xs font-bold text-teal-900 mb-1.5">
+            <span>🎤 Transcribed Regional Input:</span>
+            <button
+              type="button"
+              onClick={() => setTranscriptPending(null)}
+              className="text-slate-400 hover:text-slate-700 cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <p className="text-xs font-medium text-slate-800 italic mb-2.5 bg-white p-2 rounded-md border border-teal-100">
+            "{transcriptPending}"
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSendTranscript}
+              className="flex-1 rounded-md bg-[#0D9488] px-3 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-[#0F766E] transition cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <Check className="h-3.5 w-3.5" />
+              <span>{t.sendQuery}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleEditTranscript}
+              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <Edit3 className="h-3.5 w-3.5 text-[#0D9488]" />
+              <span>{t.editText}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Prompts Carousel */}
+      <div className="mb-2.5 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        <span className="flex items-center gap-1 shrink-0 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+          <Sparkles className="h-3 w-3 text-[#0D9488]" />
+          <span>Quick:</span>
         </span>
-        {quickPrompts.map((p, idx) => (
+        {quickPrompts.slice(0, 4).map((prompt, idx) => (
           <button
             key={idx}
             type="button"
+            onClick={() => handleSendPrompt(prompt.query)}
             disabled={isLoading}
-            onClick={() => handleQuickPrompt(p.query)}
-            className="text-[11px] px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-700/70 text-slate-200 hover:text-[#22d3ee] hover:border-[#22d3ee]/50 hover:bg-slate-800/80 transition-all whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed shrink-0 flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer font-sans"
+            className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-700 hover:border-[#0D9488] hover:bg-teal-50 hover:text-teal-900 transition shrink-0 cursor-pointer disabled:opacity-50"
           >
-            <span>{p.icon}</span>
-            <span className="font-medium">{p.label}</span>
+            <span>{prompt.icon}</span>
+            <span>{prompt.label}</span>
           </button>
         ))}
       </div>
 
-      {/* Floating Input Capsule */}
-      <form onSubmit={handleSubmit} className="flex items-center gap-2 relative">
-        <div className="relative flex-1 flex items-center">
-          <input
-            type="text"
+      {/* Main Input Field & Actions */}
+      <form onSubmit={handleSubmit} className="flex items-end gap-2">
+        {/* Voice Input Microphone */}
+        <button
+          type="button"
+          onClick={toggleVoice}
+          disabled={isLoading || isTranscribing}
+          title={isRecording ? 'Stop Recording' : 'Speak in your regional language (Sarvam Saaras v3)'}
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition cursor-pointer ${
+            isRecording
+              ? 'bg-red-600 text-white border-red-700 shadow-md animate-bounce'
+              : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-teal-400 hover:bg-teal-50 hover:text-teal-700'
+          }`}
+        >
+          {isRecording ? <MicOff className="h-4.5 w-4.5" /> : <Mic className="h-4.5 w-4.5" />}
+        </button>
+
+        {/* Multi-line Auto-Expanding Textarea (Never Truncates!) */}
+        <div className="relative flex-1 min-w-0">
+          <textarea
+            ref={textareaRef}
+            rows={1}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask ORCA about marine conditions, safety risk, or fishing zones..."
+            onKeyDown={handleKeyDown}
+            placeholder={t.chatPlaceholder}
             disabled={isLoading}
-            className="w-full bg-slate-900/90 border border-slate-700/80 focus:border-[#22d3ee] focus:ring-2 focus:ring-[#22d3ee]/25 rounded-2xl pl-4 pr-11 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none transition-all font-sans disabled:opacity-50 shadow-inner"
+            className="w-full resize-none rounded-lg border border-slate-200 bg-slate-50/80 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#0D9488] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#0D9488]/20 transition leading-relaxed max-h-32"
           />
-
-          {/* Voice Input Button */}
-          <button
-            type="button"
-            onClick={handleVoiceInput}
-            title={isListening ? 'Listening...' : 'Click to Speak'}
-            className={`absolute right-3 p-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
-              isListening ? 'text-rose-400 bg-rose-950/60 animate-pulse' : 'text-slate-400 hover:text-[#22d3ee]'
-            }`}
-          >
-            🎤
-          </button>
         </div>
 
         {/* Send Button */}
         <button
           type="submit"
           disabled={!input.trim() || isLoading}
-          className="px-5 py-3 rounded-2xl bg-gradient-to-r from-[#22d3ee] to-[#0284c7] hover:from-[#38bdf8] hover:to-[#0369a1] text-slate-950 font-bold text-sm shadow-[0_0_20px_rgba(34,211,238,0.35)] hover:shadow-[0_0_25px_rgba(34,211,238,0.5)] transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 cursor-pointer active:scale-95"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#0A2540] text-white shadow-xs hover:bg-[#081D33] active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          title="Send query"
         >
-          {isLoading ? (
-            <>
-              <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
-              <span>Analyzing</span>
-            </>
-          ) : (
-            <>
-              <span>Send</span>
-              <span className="text-base font-mono">→</span>
-            </>
-          )}
+          <Send className="h-4 w-4" />
         </button>
       </form>
     </div>

@@ -1,32 +1,31 @@
-# React + TypeScript + Vite
+# ORCA Frontend - Tactical Marine GIS Dashboard 🌊🗺️
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+The **ORCA Frontend** is a modern, responsive single-page tactical GIS dashboard built with **React 19**, **TypeScript**, **Vite**, **Tailwind CSS v4**, and **Leaflet / React-Leaflet**.
 
-Currently, two official plugins are available:
+## 🚀 Quickstart
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+# Install dependencies
+npm install
 
-## React Compiler
+# Run Vite dev server (defaults to http://localhost:5173)
+npm run dev
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+# Build for production
+npm run build
 
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+# Run Oxlint
+npm run lint
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## 🌟 Key Components & Features
+
+- **Interactive Tactical Nautical Chart (`MarineMap.tsx`)**: Leaflet-based map with custom markers, vessel tracking, EEZ boundaries, international maritime borders, and dynamic GIS overlay layers.
+- **GIS Layer Controls (`GisLayersPanel.tsx`)**: Toggle Potential Fishing Zones (PFZ), Geofences, EEZ Polygons, Sea Surface Temperature (SST) heatmaps, Chlorophyll distributions, Wave vectors, and Wind barbs.
+- **Conversational Marine Advisory (`ChatPanel.tsx`, `QueryInput.tsx`)**: Multi-turn AI chat with regional voice recording (Microphone -> Sarvam Saaras STT) and audio response playback (Sarvam Bulbul TTS).
+- **Reasoning Trace Inspector (`AgentTraceModal.tsx`)**: Deep visibility into multi-agent task execution plans, reasoning chains, and data source attributions.
+- **Maritime Emergency SOS Hub (`EmergencySOSModal.tsx`)**: Instant distress trigger, MRCC routing, IMO MAYDAY VHF Channel 16 transcript generator, and 24x7 emergency contacts.
+- **Government Circulars Portal (`GovernmentPortalModal.tsx`)**: Gazette circulars, monsoon fishing ban updates, PMMSY subsidies, and policy documents.
+- **Super Admin Diagnostics (`SuperAdminModal.tsx`)**: Service latency monitoring, fleet management with RBAC, and Before-vs-After historical oceanographic comparisons.
+- **11-Language Regional Localization (`i18n.ts`)**: Instant UI translation across English, Gujarati, Hindi, Marathi, Tamil, Telugu, Malayalam, Bengali, Odia, Kannada, and Punjabi.
+

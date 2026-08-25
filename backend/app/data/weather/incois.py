@@ -282,21 +282,45 @@ class IncoisWeatherProvider(WeatherProvider):
             }
 
             # Store in cache
-            self.cache.set(
+            cached_res = self.cache.set(
                 lat=lat,
                 lon=lon,
                 data=result,
                 forecast_time=live_raw["forecast_time"],
                 source="INCOIS_OSF_WW3",
             )
-            return result
+
+            # Persist observation in database if available
+            try:
+                from app.db.session import get_db_context
+                from app.repositories import MarineObservationRepository
+                with get_db_context() as db:
+                    MarineObservationRepository.record_observation(
+                        db=db,
+                        latitude=lat,
+                        longitude=lon,
+                        region_cell=cached_res.get("region_cell", f"{lat:.3f}_{lon:.3f}"),
+                        wave_height_m=round(hs, 2),
+                        wind_speed_kmh=wind_speed_kmh,
+                        wind_direction_deg=wind_dir_deg,
+                        risk_level="SAFE" if hs < 1.8 else ("CAUTION" if hs < 2.8 else "UNSAFE"),
+                        source="INCOIS_OSF_WW3",
+                        resolution_method=method,
+                    )
+            except Exception as db_err:
+                logger.debug(f"Observation persistence skipped: {db_err}")
+
+            return cached_res
 
         # Step 4: Live fetch failed or returned no data; check stale cache
         if cached_data is not None:
-            # Return stale cached data with explicit marker
+            # Return stale cached data with explicit marker and warning
             stale_copy = dict(cached_data)
             stale_copy["cache_status"] = "stale"
             stale_copy["is_stale"] = True
+            stale_copy["freshness"] = "ACCEPTABLE_STALE"
+            if "warning" not in stale_copy:
+                stale_copy["warning"] = "Live INCOIS service unreachable. Showing cached forecast."
             return stale_copy
 
         # Step 5: No data available — Return explicit data-unavailable record (NEVER fake values)
@@ -317,6 +341,7 @@ class IncoisWeatherProvider(WeatherProvider):
             "forecast_time": None,
             "retrieval_time": datetime.now(timezone.utc).isoformat(),
             "cache_status": "unavailable",
+            "freshness": "EXPIRED",
             "resolution_method": "failed",
             "error_detail": str(fetch_error) if fetch_error else "Location out of ocean model domain or service unreachable",
             "is_mock": False,

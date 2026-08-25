@@ -1,37 +1,101 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   ORCA Marine AI — Maritime Design System
+   National Coastal Safety & Decision Intelligence Platform
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 :root {
-  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  /* ── Primary Palette ── */
+  --maritime-navy: #0B3D5B;
+  --maritime-navy-deep: #082C42;
+  --maritime-navy-light: #0E4D73;
+  --maritime-teal: #0F766E;
+  --maritime-teal-light: #14B8A6;
+  --maritime-sky: #0EA5E9;
+  --maritime-sky-light: #38BDF8;
 
-  --bg-darkest: #020617;
-  --bg-deep: #030a1c;
-  --bg-panel: rgba(10, 19, 39, 0.75);
-  --bg-panel-hover: rgba(15, 28, 56, 0.85);
-  --bg-card: rgba(13, 24, 48, 0.65);
-  
-  --border-subtle: rgba(34, 211, 238, 0.15);
-  --border-active: rgba(34, 211, 238, 0.45);
-  --border-glass: rgba(255, 255, 255, 0.08);
+  /* ── Neutral Palette ── */
+  --maritime-sand: #F8F6F0;
+  --maritime-warm-white: #FAFAF8;
+  --maritime-slate-50: #F8FAFC;
+  --maritime-slate-100: #F1F5F9;
+  --maritime-slate-200: #E2E8F0;
+  --maritime-slate-300: #CBD5E1;
+  --maritime-slate-400: #94A3B8;
+  --maritime-slate-500: #64748B;
+  --maritime-slate-600: #475569;
+  --maritime-slate-700: #334155;
+  --maritime-slate-800: #1E293B;
+  --maritime-slate-900: #0F172A;
 
-  --cyan-400: #22d3ee;
-  --cyan-500: #06b6d4;
-  --emerald-400: #34d399;
-  --emerald-500: #10b981;
-  --amber-400: #fbbf24;
-  --amber-500: #f59e0b;
-  --rose-400: #fb7185;
-  --rose-500: #f43f5e;
-  --blue-400: #60a5fa;
-  --blue-500: #3b82f6;
+  /* ── Semantic Colors ── */
+  --maritime-safe: #10B981;
+  --maritime-safe-bg: #ECFDF5;
+  --maritime-safe-border: #A7F3D0;
+  --maritime-caution: #F59E0B;
+  --maritime-caution-bg: #FFFBEB;
+  --maritime-caution-border: #FDE68A;
+  --maritime-danger: #DC2626;
+  --maritime-danger-bg: #FEF2F2;
+  --maritime-danger-border: #FECACA;
 
-  --shadow-glow-cyan: 0 0 25px rgba(34, 211, 238, 0.25);
-  --shadow-glow-emerald: 0 0 25px rgba(52, 211, 153, 0.25);
-  --shadow-glow-rose: 0 0 25px rgba(251, 113, 133, 0.3);
-  --shadow-glass: 0 12px 36px 0 rgba(0, 0, 0, 0.5);
+  /* ── Typography ── */
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* ── Typography Scale (5-step) ── */
+  --text-xs: 0.6875rem;    /* 11px — labels, metadata */
+  --text-sm: 0.8125rem;    /* 13px — body small, UI elements */
+  --text-base: 0.9375rem;  /* 15px — body text */
+  --text-lg: 1.125rem;     /* 18px — section headings */
+  --text-xl: 1.5rem;       /* 24px — page headings */
+  --text-2xl: 2rem;        /* 32px — hero titles */
+  --text-3xl: 2.75rem;     /* 44px — landing hero */
+
+  /* ── Spacing ── */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+
+  /* ── Borders & Radius ── */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-full: 9999px;
+  --border-subtle: 1px solid var(--maritime-slate-200);
+
+  /* ── Shadows ── */
+  --shadow-xs: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.1), 0 4px 6px -4px rgba(15, 23, 42, 0.06);
+  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.06);
+  --shadow-float: 0 16px 48px -12px rgba(11, 61, 91, 0.25);
+
+  /* ── Transitions ── */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ── Layout ── */
+  --header-height: 52px;
+  --mobile-nav-height: 56px;
+  --chat-drawer-width: 420px;
+  --status-card-width: 320px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GLOBAL RESETS & BASE STYLES
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 * {
   box-sizing: border-box;
@@ -39,67 +103,124 @@
   padding: 0;
 }
 
-body {
-  font-family: var(--font-body);
-  background-color: var(--bg-darkest);
-  background-image: 
-    radial-gradient(circle at 10% 20%, rgba(6, 182, 212, 0.07) 0%, transparent 45%),
-    radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.06) 0%, transparent 45%),
-    radial-gradient(circle at 50% 50%, rgba(14, 165, 233, 0.03) 0%, transparent 60%);
-  color: #f1f5f9;
-  overflow: hidden;
-  height: 100vh;
-  width: 100vw;
-  -webkit-font-smoothing: antialiased;
+html {
+  scroll-behavior: smooth;
 }
 
-/* Custom Tactical Scrollbars */
+body {
+  font-family: var(--font-body);
+  background-color: var(--maritime-warm-white);
+  color: var(--maritime-slate-900);
+  min-height: 100vh;
+  width: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TYPOGRAPHY UTILITIES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+.text-maritime-xs { font-size: var(--text-xs); }
+.text-maritime-sm { font-size: var(--text-sm); }
+.text-maritime-base { font-size: var(--text-base); }
+.text-maritime-lg { font-size: var(--text-lg); }
+.text-maritime-xl { font-size: var(--text-xl); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCROLLBAR DESIGN
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
 }
+
 ::-webkit-scrollbar-track {
-  background: rgba(2, 6, 23, 0.6);
+  background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: rgba(34, 211, 238, 0.2);
-  border-radius: 4px;
+  background: var(--maritime-slate-300);
+  border-radius: var(--radius-full);
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(34, 211, 238, 0.45);
+  background: var(--maritime-slate-400);
 }
 
-/* Glassmorphism & Visual Styles */
-.glass-panel {
-  background: var(--bg-panel);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border-glass);
-  box-shadow: var(--shadow-glass);
+/* Scroll-hidden utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-.glass-card {
-  background: var(--bg-card);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border-glass);
-  border-radius: 14px;
-  transition: all 0.2s ease-in-out;
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-.glass-card:hover {
-  border-color: rgba(34, 211, 238, 0.3);
-  background: rgba(18, 32, 64, 0.75);
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.glow-cyan {
-  box-shadow: var(--shadow-glow-cyan);
-}
-.glow-emerald {
-  box-shadow: var(--shadow-glow-emerald);
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-/* Pulse Animations for Tactical Radar */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @keyframes radar-pulse-glow {
   0% {
     transform: scale(0.9);
@@ -115,74 +236,244 @@ body {
   }
 }
 
-.pulse-beacon {
-  animation: radar-pulse-glow 2.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
-/* Leaflet Container & Popup Styling */
+@keyframes breathe {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.animate-fadeIn {
+  animation: fadeIn var(--transition-base) ease-out;
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp var(--transition-slow) ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp var(--transition-slow) ease-out;
+}
+
+.animate-slideDown {
+  animation: slideDown var(--transition-base) ease-out;
+}
+
+.animate-scaleIn {
+  animation: scaleIn var(--transition-spring) ease-out;
+}
+
+.pulse-beacon {
+  animation: radar-pulse-glow 2.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--maritime-slate-200) 25%,
+    var(--maritime-slate-100) 50%,
+    var(--maritime-slate-200) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.animate-breathe {
+  animation: breathe 2s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GLASS & OVERLAY UTILITIES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.glass-light {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-dark {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.overlay-gradient {
+  background: linear-gradient(
+    135deg,
+    rgba(11, 61, 91, 0.03) 0%,
+    rgba(15, 118, 110, 0.02) 50%,
+    rgba(14, 165, 233, 0.03) 100%
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LEAFLET MAP OVERRIDES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .leaflet-container {
-  background: #091326 !important;
+  background: var(--maritime-slate-900) !important;
   font-family: var(--font-body);
   width: 100% !important;
   height: 100% !important;
 }
 
 .leaflet-popup-content-wrapper {
-  background: rgba(8, 17, 36, 0.94) !important;
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  color: #f1f5f9 !important;
-  border: 1px solid rgba(34, 211, 238, 0.35) !important;
-  box-shadow: 0 16px 32px -4px rgba(0, 0, 0, 0.75), 0 0 20px rgba(34, 211, 238, 0.25) !important;
-  border-radius: 14px !important;
-  padding: 4px !important;
+  background: #FFFFFF !important;
+  color: var(--maritime-slate-900) !important;
+  border: 1px solid var(--maritime-slate-200) !important;
+  box-shadow: var(--shadow-lg) !important;
+  border-radius: var(--radius-xl) !important;
+  padding: 2px !important;
+  font-family: var(--font-body);
+}
+
+.leaflet-popup-content {
+  margin: 10px 14px !important;
+  font-size: var(--text-sm);
+  line-height: 1.5;
 }
 
 .leaflet-popup-tip {
-  background: rgba(8, 17, 36, 0.94) !important;
-  border: 1px solid rgba(34, 211, 238, 0.35) !important;
+  background: #FFFFFF !important;
+  border: 1px solid var(--maritime-slate-200) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.leaflet-control-zoom {
+  border: 1px solid var(--maritime-slate-200) !important;
+  box-shadow: var(--shadow-md) !important;
+  border-radius: var(--radius-lg) !important;
+  overflow: hidden;
 }
 
 .leaflet-control-zoom a {
-  background-color: rgba(10, 20, 42, 0.85) !important;
-  color: #22d3ee !important;
-  border: 1px solid rgba(34, 211, 238, 0.25) !important;
-  backdrop-filter: blur(12px);
-  border-radius: 8px !important;
-  margin-bottom: 4px !important;
+  background-color: #FFFFFF !important;
+  color: var(--maritime-teal) !important;
+  font-weight: 600 !important;
+  width: 32px !important;
+  height: 32px !important;
+  line-height: 32px !important;
+  font-size: 16px !important;
 }
+
 .leaflet-control-zoom a:hover {
-  background-color: rgba(16, 32, 66, 0.95) !important;
-  color: #ffffff !important;
-  border-color: #22d3ee !important;
+  background-color: var(--maritime-slate-50) !important;
+  color: var(--maritime-sky) !important;
 }
 
 .leaflet-control-attribution {
-  background: rgba(2, 6, 23, 0.8) !important;
-  color: #64748b !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  color: var(--maritime-slate-500) !important;
   font-size: 10px !important;
-  backdrop-filter: blur(8px);
-  border-top-left-radius: 8px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-top-left-radius: var(--radius-md);
   padding: 2px 8px !important;
+  box-shadow: none;
 }
+
 .leaflet-control-attribution a {
-  color: #22d3ee !important;
+  color: var(--maritime-teal) !important;
   text-decoration: none;
 }
+
 .leaflet-control-attribution a:hover {
   text-decoration: underline;
 }
 
-/* Custom Marker Styling */
+/* ═══════════════════════════════════════════════════════════════════════════
+   CUSTOM MAP MARKERS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .custom-user-marker,
-.custom-pfz-marker {
+.custom-pfz-marker,
+.custom-city-marker {
   background: transparent;
   border: none;
 }
 
-.font-display {
-  font-family: var(--font-display);
+.city-halo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(15, 118, 110, 0.25);
+  box-shadow: var(--shadow-md);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--maritime-slate-700);
 }
-.font-mono {
-  font-family: var(--font-mono);
+
+.city-halo-badge.priority-city {
+  background: rgba(15, 118, 110, 0.92);
+  color: #FFFFFF;
+  border: 1.5px solid rgba(255, 255, 255, 0.8);
+  box-shadow: var(--shadow-lg), 0 0 12px rgba(15, 118, 110, 0.4);
+  font-weight: 700;
+}
+
+.city-halo-badge:hover {
+  transform: translateY(-1px) scale(1.04);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODAL BACKDROP
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn var(--transition-fast) ease-out;
+}
+
+.modal-card {
+  background: #FFFFFF;
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-float);
+  border: 1px solid var(--maritime-slate-200);
+  max-width: 480px;
+  width: calc(100% - 32px);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  animation: scaleIn var(--transition-spring) ease-out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FOCUS STYLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:focus-visible {
+  outline: 2px solid var(--maritime-teal);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SELECTION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+::selection {
+  background: rgba(15, 118, 110, 0.15);
+  color: var(--maritime-navy);
 }
