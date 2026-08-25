@@ -41,7 +41,7 @@ export interface PFZEvidenceItem {
   name: string;
   latitude: number;
   longitude: number;
-  distance_km?: number | null;
+  distance_km: number;
   depth_m?: number | null;
   species: string[];
   source?: string;

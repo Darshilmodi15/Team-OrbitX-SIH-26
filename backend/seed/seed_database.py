@@ -469,6 +469,19 @@ def seed_database():
 
         logger.info("Database seeding complete!")
 
+    # Stamp Alembic version table if alembic is available
+    try:
+        from alembic.config import Config
+        from alembic import command
+        alembic_ini_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic.ini")
+        if os.path.exists(alembic_ini_path):
+            alembic_cfg = Config(alembic_ini_path)
+            command.stamp(alembic_cfg, "head")
+            logger.info("Stamped alembic revision to head.")
+    except Exception as e:
+        logger.warning(f"Alembic stamp notice (non-fatal): {e}")
+
 
 if __name__ == "__main__":
     seed_database()
+
