@@ -28,9 +28,13 @@ from app.models.agent_models import (
     RiskEvidence,
     WeatherEvidence,
 )
+from app.routers.auth import router as auth_router, user_router
+from app.routers.location import router as location_router
 from app.routers.marine_boundaries import router as boundaries_router
 from app.routers.pfz import router as pfz_router
-from app.services.bhashini import SUPPORTED_LANGUAGES, bhashini_service
+from app.routers.voice import router as voice_router
+from app.services.language import SUPPORTED_LANGUAGES, language_service
+from app.services.bhashini import bhashini_service
 from app.services.planner import ExecutionPlan, Planner
 
 # Initialize data providers
@@ -40,8 +44,8 @@ geofence_provider: GeofenceProvider = SpatialGeofenceProvider()
 
 app = FastAPI(
     title="ORCA Marine AI Backend",
-    description="Autonomous Maritime Intelligence, Multi-Agent Decision Support, Risk Matrix, Marine Boundaries & Bhashini Multilingual Layer.",
-    version="1.2.0",
+    description="Autonomous Maritime Intelligence, Multi-Agent Decision Support, Risk Matrix, Sarvam AI Multilingual Layer, and Coastal Safety Platform.",
+    version="1.4.0",
 )
 
 # Enable CORS for frontend applications
@@ -53,9 +57,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from app.routers.notifications import router as notifications_router
+from app.routers.emergency import router as emergency_router
+from app.routers.government import router as government_router
+from app.routers.admin import router as admin_router
+
 # Include API routers
+app.include_router(auth_router)
+app.include_router(user_router)
+app.include_router(location_router)
+app.include_router(notifications_router)
+app.include_router(emergency_router)
+app.include_router(government_router)
+app.include_router(admin_router)
 app.include_router(pfz_router)
 app.include_router(boundaries_router)
+app.include_router(voice_router)
 
 
 class Location(BaseModel):
@@ -140,8 +157,9 @@ def health_check():
     return {
         "status": "healthy",
         "service": "ORCA Marine AI Backend",
-        "version": "1.2.0",
-        "bhashini_configured": bhashini_service.is_configured,
+        "version": "1.3.0",
+        "sarvam_configured": language_service.is_configured,
+        "bhashini_configured": language_service.is_configured,
         "endpoints": [
             "/query",
             "/api/chat",
@@ -153,6 +171,10 @@ def health_check():
             "/api/languages",
             "/api/detect-language",
             "/api/translate",
+            "/api/voice/transcribe",
+            "/api/voice/transcribe-base64",
+            "/api/voice/speak",
+            "/api/voice/speakers",
             "/api/marine-boundaries/info",
             "/api/marine-boundaries/eez",
             "/api/marine-boundaries/check",
@@ -234,8 +256,8 @@ def get_supported_languages():
 
 @app.post("/api/detect-language")
 def detect_language_endpoint(request: DetectLanguageRequest):
-    """Detects the Indian regional language of input text."""
-    lang_code = bhashini_service.detect_language(request.text)
+    """Detects the Indian regional language of input text using Sarvam AI / Language Service."""
+    lang_code = language_service.detect_language(request.text)
     return {
         "language": lang_code,
         "language_name": SUPPORTED_LANGUAGES.get(lang_code, "Unknown"),
@@ -244,8 +266,8 @@ def detect_language_endpoint(request: DetectLanguageRequest):
 
 @app.post("/api/translate")
 def translate_endpoint(request: TranslateRequest):
-    """Translates text between Indian languages and English using Bhashini NMT."""
-    translated = bhashini_service.translate(
+    """Translates text between Indian languages and English using Sarvam AI / Language Service."""
+    translated = language_service.translate(
         text=request.text,
         source_lang=request.source_language,
         target_lang=request.target_language,
@@ -272,9 +294,11 @@ def _process_orca_query(
 ) -> Dict[str, Any]:
     """
     Core ORCA Agentic Multilingual & Decision Pipeline:
-    1. Language Detection via Bhashini
-    3. Multi-Agent Reasoning (Intent -> Planner -> Weather -> Risk -> PFZ -> Boundary / Geofence)
-    4. Translation: English Synthesized Answer -> User Indic Language
+    1. Language Detection via Sarvam AI / Language Service
+    2. Intent Classification Agent
+    3. Deterministic Task Planner
+    4. Execution: Weather Agent -> Risk Engine -> PFZ Agent -> Spatial Geofence Agent
+    5. Operational Response Synthesis & Translation to User Indic Language
     """
     reasoning: List[str] = []
     sources_used: List[str] = []
@@ -282,30 +306,31 @@ def _process_orca_query(
 
     # Step 1: Detect or resolve language
     if not requested_lang or requested_lang.lower() == "auto":
-        detected_lang = bhashini_service.detect_language(question_raw, session_id=session_id)
+        detected_lang = language_service.detect_language(question_raw, session_id=session_id)
     else:
         detected_lang = requested_lang.lower()
         if session_id:
-            bhashini_service.set_session_language(session_id, detected_lang)
+            language_service.set_session_language(session_id, detected_lang)
 
     lang_name = SUPPORTED_LANGUAGES.get(detected_lang, detected_lang.upper())
+    sources_used.append("sarvam_ai_language_service")
     sources_used.append("bhashini_multilingual_service")
 
     # Step 2: Translate Indic text to English if needed
     if detected_lang != "en":
-        english_question = bhashini_service.translate(
+        english_question = language_service.translate(
             text=question_raw,
             source_lang=detected_lang,
             target_lang="en",
         )
         reasoning.append(
-            f"Bhashini Multilingual Layer: Identified language as '{lang_name}' ({detected_lang}). "
+            f"Language Layer (Sarvam AI): Identified language as '{lang_name}' ({detected_lang}). "
             f"Translated user query to English: '{english_question}'."
         )
     else:
         english_question = question_raw
         reasoning.append(
-            f"Bhashini Multilingual Layer: Processed native English query: '{english_question}'."
+            f"Language Layer (Sarvam AI): Processed native English query: '{english_question}'."
         )
 
     # Step 3: Intent Classification Agent
@@ -640,13 +665,13 @@ def _process_orca_query(
 
     # Step 7: Translate English response back to target Indic language
     if detected_lang != "en":
-        final_answer = bhashini_service.translate(
+        final_answer = language_service.translate(
             text=english_answer,
             source_lang="en",
             target_lang=detected_lang,
         )
         reasoning.append(
-            f"Bhashini Multilingual Layer: Translated operational response back into {lang_name}."
+            f"Language Layer (Sarvam AI): Translated operational response back into {lang_name}."
         )
     else:
         final_answer = english_answer

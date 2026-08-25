@@ -1,7 +1,7 @@
 import React from 'react';
 import { INDIAN_PORTS, REGIONAL_LANGUAGES, TRANSLATIONS } from '../data/maritimeData';
 import type { Port } from '../data/maritimeData';
-import { Globe, MapPin, ExternalLink, Activity, Cpu } from 'lucide-react';
+import { Globe, MapPin, ExternalLink, Activity, Cpu, Landmark } from 'lucide-react';
 
 interface ControlBarProps {
   selectedPort: Port;
@@ -10,6 +10,7 @@ interface ControlBarProps {
   onSelectLang: (lang: string) => void;
   onOpenReasoning: () => void;
   onOpenEcology: () => void;
+  onOpenGovPortal?: () => void;
 }
 
 export const ControlBar: React.FC<ControlBarProps> = ({
@@ -19,6 +20,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
   onSelectLang,
   onOpenReasoning,
   onOpenEcology,
+  onOpenGovPortal,
 }) => {
   const t = (TRANSLATIONS[currentLang] || TRANSLATIONS.en) as any;
 
@@ -76,8 +78,20 @@ export const ControlBar: React.FC<ControlBarProps> = ({
         </div>
       </div>
 
-      {/* RIGHT GROUP: Swagger API, Fish Trend Analytics, Agent Trace Buttons */}
+      {/* RIGHT GROUP: Government Portal, Swagger API, Fish Trend Analytics, Agent Trace Buttons */}
       <div className="flex items-center flex-wrap gap-3">
+        {/* Government Portal Button */}
+        {onOpenGovPortal && (
+          <button
+            onClick={onOpenGovPortal}
+            title="Open Government Circulars, Bans & Schemes Portal"
+            className="min-w-[130px] h-9 inline-flex items-center justify-center gap-1.5 px-3.5 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#0B4A72] text-xs font-semibold shadow-xs whitespace-nowrap transition cursor-pointer"
+          >
+            <Landmark className="w-3.5 h-3.5 text-[#0B4A72] shrink-0" />
+            <span>Government Portal</span>
+          </button>
+        )}
+
         {/* Swagger API Button */}
         <a
           href="http://localhost:8000/docs"

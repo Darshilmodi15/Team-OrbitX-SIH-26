@@ -67,7 +67,11 @@ export default function MarineMetrics({ weather, riskLevel, riskProfile }: Marin
   };
 
   return (
+<<<<<<< HEAD
     <div className="mt-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs shadow-2xs">
+=======
+    <div className="mt-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs shadow-xs">
+>>>>>>> 5fd7c4a999b00da775a59a7cf0487a86ecfd9c76
       <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-200/80">
         <span className="font-bold text-slate-800 flex items-center gap-1.5 font-mono tracking-tight text-xs">
           <span>🌊</span> METEOROLOGICAL TELEMETRY
