@@ -37,10 +37,10 @@ export default function SafetyStatusBanner() {
     }
   > = {
     safe: {
-      title: t.safe,
+      title: t.safe || 'SAFE TO OPERATE',
       description: t.safeDesc || 'Marine conditions are favorable for all vessel classes and fishing operations.',
       icon: ShieldCheck,
-      cardBg: 'bg-emerald-50/90 border-emerald-300',
+      cardBg: 'bg-emerald-50/70 border-emerald-200',
       badgeBg: 'bg-emerald-600 text-white',
       textColor: 'text-emerald-950',
       descColor: 'text-emerald-800',
@@ -48,10 +48,10 @@ export default function SafetyStatusBanner() {
       bulletIcon: CheckCircle2,
     },
     caution: {
-      title: t.caution,
+      title: t.caution || 'CAUTION ADVISED',
       description: t.cautionDesc || 'Moderate swells or gusty coastal winds detected. Exercise heightened vigilance.',
       icon: AlertTriangle,
-      cardBg: 'bg-amber-50/90 border-amber-300',
+      cardBg: 'bg-amber-50/70 border-amber-200',
       badgeBg: 'bg-amber-600 text-white',
       textColor: 'text-amber-950',
       descColor: 'text-amber-800',
@@ -62,7 +62,7 @@ export default function SafetyStatusBanner() {
       title: 'HAZARD WARNING',
       description: 'Squall weather, elevated wave action, or proximity to restricted maritime zones.',
       icon: AlertTriangle,
-      cardBg: 'bg-orange-50/90 border-orange-300',
+      cardBg: 'bg-orange-50/70 border-orange-200',
       badgeBg: 'bg-orange-600 text-white',
       textColor: 'text-orange-950',
       descColor: 'text-orange-800',
@@ -73,7 +73,7 @@ export default function SafetyStatusBanner() {
       title: t.dangerous || 'DANGER / EMERGENCY',
       description: t.dangerousDesc || 'Dangerous sea state. Small craft advisory in effect. Avoid venturing to sea.',
       icon: ShieldAlert,
-      cardBg: 'bg-red-50/90 border-red-300',
+      cardBg: 'bg-red-50/70 border-red-200',
       badgeBg: 'bg-red-600 text-white',
       textColor: 'text-red-950',
       descColor: 'text-red-800',
@@ -93,44 +93,47 @@ export default function SafetyStatusBanner() {
   const isWindSafe = windVal < 30.0;
 
   return (
-    <section className={`rounded-xl border ${statusConfig.cardBg} p-4 sm:p-5 shadow-xs transition-all`}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <section className={`rounded-2xl border ${statusConfig.cardBg} p-4 shadow-xs transition-all`}>
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         {/* Main Status Indicator */}
-        <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+        <div className="flex items-start sm:items-center gap-3 min-w-0">
           <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-xs text-white"
-            style={{ backgroundColor: statusConfig.accentColor }}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-xs"
+            style={{ backgroundColor: statusConfig.accentColor, color: '#ffffff' }}
           >
-            <StatusIcon className="h-6 w-6" aria-hidden="true" />
+            <StatusIcon className="h-5 w-5" aria-hidden="true" />
           </div>
 
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className={`font-display text-base sm:text-lg font-extrabold tracking-tight ${statusConfig.textColor}`}>
-                {statusConfig.title}
-              </h2>
-              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${statusConfig.badgeBg}`}>
+              <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-mono font-extrabold uppercase tracking-wide ${statusConfig.badgeBg}`}>
                 {currentLevel.toUpperCase()}
               </span>
+              <h2 className={`font-display text-xs sm:text-sm font-extrabold tracking-tight ${statusConfig.textColor}`}>
+                {statusConfig.title}
+              </h2>
             </div>
-            <p className={`mt-0.5 text-xs sm:text-sm font-medium leading-relaxed ${statusConfig.descColor}`}>
+            <p className={`mt-0.5 text-xs ${statusConfig.descColor} leading-relaxed`}>
               {statusConfig.description}
             </p>
           </div>
         </div>
 
-        {/* Action / Evidence Toggle */}
-        <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-          <button
-            type="button"
-            onClick={() => setShowEvidence(!showEvidence)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-2xs hover:bg-white transition cursor-pointer"
-          >
-            <Cpu className="h-3.5 w-3.5 text-[#0D9488]" />
-            <span>{t.whyThisStatus}</span>
-            {showEvidence ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          </button>
-        </div>
+        {/* Explainability Toggle Button */}
+        <button
+          type="button"
+          onClick={() => setShowEvidence(!showEvidence)}
+          className="self-start sm:self-center flex items-center gap-1.5 rounded-lg border border-slate-200/80 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-white transition cursor-pointer shrink-0 shadow-2xs"
+          aria-expanded={showEvidence}
+        >
+          <HelpCircle className="h-3.5 w-3.5 text-[#0D9488]" />
+          <span>{showEvidence ? (t.evidence || 'Hide Evidence') : (t.whyThisStatus || 'Why ORCA calculated this status')}</span>
+          {showEvidence ? (
+            <ChevronUp className="h-3 w-3 text-slate-400" />
+          ) : (
+            <ChevronDown className="h-3 w-3 text-slate-400" />
+          )}
+        </button>
       </div>
 
       {/* Expandable Decision Evidence Tray */}

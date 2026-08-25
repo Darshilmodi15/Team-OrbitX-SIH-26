@@ -327,25 +327,27 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => setIsDesktopChatOpen(true)}
-                className="absolute bottom-4 right-4 z-30 flex items-center gap-2 rounded-xl bg-[#0A2540] px-4 py-2.5 text-xs font-bold text-white shadow-xl hover:bg-[#081D33] active:scale-95 transition cursor-pointer"
+                className="absolute bottom-3 right-3 z-30 flex items-center gap-2 rounded-xl bg-[#0A2540] px-3.5 py-2 text-xs font-bold text-white shadow-xl hover:bg-[#081D33] active:scale-95 transition cursor-pointer border border-slate-700/40"
               >
-                <MessageSquare className="h-4 w-4 text-[#0D9488]" />
-                <span>{t.askOrca}</span>
+                <div className="flex h-5 w-5 items-center justify-center rounded-lg bg-[#0D9488]/20 text-[#0D9488]">
+                  <MessageSquare className="h-3 w-3" />
+                </div>
+                <span>{t.askOrca || 'Ask ORCA Assistant'}</span>
               </button>
             )}
 
             {/* Desktop Docked / Floating Assistant Panel */}
             {isDesktopChatOpen && (
-              <div className="absolute bottom-3 right-3 z-30 flex flex-col w-80 lg:w-96 h-[calc(100%-24px)] max-h-[520px] rounded-2xl border border-slate-200/80 bg-white/95 backdrop-blur-sm shadow-2xl overflow-hidden animate-scaleIn">
+              <div className="absolute bottom-3 right-3 z-30 flex flex-col w-80 lg:w-[380px] h-[calc(100%-24px)] max-h-[500px] rounded-2xl border border-slate-200/80 bg-white/95 backdrop-blur-md shadow-2xl overflow-hidden animate-scaleIn">
                 {/* Assistant Header */}
-                <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-3.5 py-2.5">
+                <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/90 px-3.5 py-2.5">
                   <div className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#0A2540] text-white">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#0A2540] text-white">
                       <MessageSquare className="h-3.5 w-3.5 text-[#0D9488]" />
                     </div>
                     <div>
                       <h4 className="font-display text-xs font-bold text-slate-900">
-                        {t.chatTitle}
+                        {t.chatTitle || 'ORCA Maritime Assistant'}
                       </h4>
                       <p className="text-[10px] text-slate-400 font-mono">
                         Sarvam AI & INCOIS Telemetry
@@ -356,7 +358,8 @@ export default function DashboardPage() {
                   <button
                     type="button"
                     onClick={() => setIsDesktopChatOpen(false)}
-                    className="rounded-md p-1 text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition cursor-pointer"
+                    className="rounded-lg p-1 text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition cursor-pointer"
+                    title="Close Assistant"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -379,15 +382,15 @@ export default function DashboardPage() {
         </div>
 
         {/* Right Sidebar: Command & Marine Telemetry Dashboard */}
-        <aside className="w-80 lg:w-[420px] border-l border-slate-200 bg-white overflow-y-auto p-4 space-y-4 shadow-2xs">
+        <aside className="w-80 lg:w-[400px] border-l border-slate-200/80 bg-white overflow-y-auto p-3.5 space-y-3.5 shadow-2xs">
           {/* Safety Status Banner */}
           <SafetyStatusBanner />
 
           {/* Location & Coastline Distance Card */}
-          <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-50 border border-teal-200 text-[#0D9488]">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-50 border border-teal-200/60 text-[#0D9488]">
                   <MapPin className="h-4 w-4" />
                 </div>
                 <div>
@@ -405,12 +408,12 @@ export default function DashboardPage() {
                 onClick={() => openModal(setIsLocationOpen)}
                 className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-bold text-[#0D9488] hover:bg-teal-50 transition cursor-pointer"
               >
-                {t.change}
+                {t.change || 'Change'}
               </button>
             </div>
 
             <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-              <span className="text-slate-500 font-medium">Distance to Coastline:</span>
+              <span className="text-slate-500 font-medium">Distance to Coast:</span>
               <span className="font-mono font-bold text-slate-900">
                 {coastInfo.distanceKm.toFixed(1)} km ({coastInfo.coastalRegion})
               </span>
@@ -441,10 +444,15 @@ export default function DashboardPage() {
           <HistoricalAnalyticsPanel userLocation={userLocation} currentLang={currentLang} />
 
           {/* Marine Terminology Guide Card */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 flex items-center justify-between">
+          <div className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3.5 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-[#0D9488]" />
-              <span className="text-xs font-bold text-slate-900">Marine Terminology Guide</span>
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 text-[#0D9488]">
+                <BookOpen className="h-3.5 w-3.5" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-slate-900 block">Marine Terminology Guide</span>
+                <span className="text-[10px] text-slate-500">Plain-language maritime handbook</span>
+              </div>
             </div>
             <button
               type="button"

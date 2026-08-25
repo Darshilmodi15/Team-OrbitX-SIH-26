@@ -109,72 +109,59 @@ export default function ForecastHorizonTimeline({
   };
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs">
-      <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 mb-3.5">
-        <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-[#0D9488]" />
-          <h3 className="font-display text-sm sm:text-base font-bold text-slate-900">
-            {t.safetyForecast}
+    <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+      <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+        <div>
+          <h3 className="font-display text-xs sm:text-sm font-bold text-slate-900">
+            {t.safetyForecast || '6-Hour Safety Horizon'}
           </h3>
+          <p className="text-[11px] text-slate-500">
+            {t.sixHourOutlook || 'Predictive ocean state forecast computed every hour.'}
+          </p>
         </div>
-        <span className="text-xs font-semibold text-slate-500 font-mono">
-          {t.sixHourOutlook}
-        </span>
+
+        <div className="flex items-center gap-1 text-[11px] font-mono text-slate-500 shrink-0">
+          <Clock className="h-3 w-3 text-[#0D9488]" />
+          <span>+6h Horizon</span>
+        </div>
       </div>
 
-      {/* Horizontal Scrollable Timeline Container (No clipping!) */}
-      <div className="overflow-x-auto pb-2 scrollbar-thin">
-        <div className="flex items-stretch gap-2.5 sm:gap-3 min-w-max">
-          {forecastSteps.map((step, idx) => {
-            const riskInfo = getRiskPill(step.risk_level);
-            const RiskIcon = riskInfo.icon;
-            return (
-              <div
-                key={idx}
-                className="flex flex-col justify-between w-36 sm:w-40 rounded-lg border border-slate-200 bg-slate-50/60 p-3 hover:bg-white hover:border-[#0D9488]/40 hover:shadow-xs transition"
-              >
-                {/* Time & Offset */}
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-bold text-slate-900">
-                    {step.time}
-                  </span>
-                  <span className="rounded-sm bg-slate-200/80 px-1.5 py-0.2 text-[10px] font-mono font-bold text-slate-700">
-                    {step.hourOffset}
+      {/* Hourly Timeline Cards */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        {forecastSteps.map((step, idx) => {
+          const riskInfo = getRiskPill(step.risk_level);
+          return (
+            <div
+              key={idx}
+              className="flex flex-col justify-between min-w-[115px] sm:min-w-[120px] rounded-xl border border-slate-100 bg-slate-50/60 p-2.5 hover:border-slate-200 hover:bg-slate-50 transition shrink-0"
+            >
+              <div className="flex items-center justify-between text-[11px] font-mono mb-1">
+                <span className="font-bold text-slate-800">{step.time}</span>
+                <span className="text-slate-400 font-semibold">{step.hourOffset}</span>
+              </div>
+
+              <div className="space-y-1 my-1">
+                <div className="flex items-center gap-1.5 text-xs">
+                  <Waves className="h-3.5 w-3.5 text-sky-600 shrink-0" />
+                  <span className="font-bold text-slate-900 font-mono">
+                    {step.wave_height_m?.toFixed(2)}m
                   </span>
                 </div>
-
-                {/* Weather Condition Icon */}
-                <div className="my-2.5 flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white border border-slate-200 text-sky-600 shadow-2xs">
-                    {step.wave_height_m > 1.8 ? (
-                      <CloudRain className="h-4 w-4 text-sky-700" />
-                    ) : step.wave_height_m > 1.3 ? (
-                      <CloudSun className="h-4 w-4 text-amber-600" />
-                    ) : (
-                      <Sun className="h-4 w-4 text-amber-500" />
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-800 truncate">
-                      {step.wave_height_m?.toFixed(2)} m
-                    </p>
-                    <p className="text-[10px] text-slate-500 truncate">
-                      {step.wind_speed_kmh?.toFixed(0)} km/h
-                    </p>
-                  </div>
-                </div>
-
-                {/* Risk Level Badge */}
-                <div
-                  className={`mt-1 flex items-center justify-center gap-1 rounded-md border px-2 py-1 text-[10px] font-bold ${riskInfo.bg}`}
-                >
-                  <RiskIcon className="h-3 w-3 shrink-0" />
-                  <span className="truncate">{riskInfo.label}</span>
+                <div className="flex items-center gap-1.5 text-[11px] text-slate-600">
+                  <Wind className="h-3 w-3 text-teal-600 shrink-0" />
+                  <span className="font-mono">{step.wind_speed_kmh?.toFixed(0)} km/h</span>
                 </div>
               </div>
-            );
-          })}
-        </div>
+
+              <div className="mt-1 pt-1.5 border-t border-slate-200/60">
+                <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider ${riskInfo.bg}`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${riskInfo.dot}`} />
+                  <span className="truncate">{riskInfo.label}</span>
+                </span>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </section>
   );

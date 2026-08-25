@@ -174,7 +174,7 @@ export default function Navbar({
         <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Real-time Safety Status Pill */}
           <div
-            className={`hidden sm:flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold ${currentBadge.bg}`}
+            className={`hidden sm:flex items-center gap-1.5 rounded-xl border px-2.5 py-1 text-xs font-semibold ${currentBadge.bg}`}
           >
             <span className={`h-2 w-2 rounded-full ${currentBadge.dot} animate-pulse`} />
             <SafetyIcon className="h-3.5 w-3.5 shrink-0" />
@@ -182,7 +182,7 @@ export default function Navbar({
           </div>
 
           {/* Telemetry Freshness Status */}
-          <div className="hidden xl:flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-mono font-bold text-slate-700 shadow-2xs">
+          <div className="hidden xl:flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-white px-2.5 py-1 text-[11px] font-mono font-bold text-slate-700 shadow-2xs">
             <Radio className="h-3 w-3 text-emerald-600 animate-pulse" />
             <span>{dataFreshnessText}</span>
           </div>
@@ -191,7 +191,7 @@ export default function Navbar({
           <button
             type="button"
             onClick={onOpenEmergency}
-            className="flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1 text-xs font-bold text-white shadow-xs hover:bg-red-700 active:scale-95 transition cursor-pointer"
+            className="flex items-center gap-1.5 rounded-xl bg-red-600 px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-red-700 active:scale-95 transition cursor-pointer"
             title="Emergency Maritime Distress SOS"
           >
             <Phone className="h-3.5 w-3.5 animate-bounce" />
@@ -202,7 +202,7 @@ export default function Navbar({
           <button
             type="button"
             onClick={onOpenNotifications}
-            className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition cursor-pointer"
+            className="relative flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition cursor-pointer shadow-2xs"
             title={t.alerts}
             aria-label="Safety Notifications"
           >
@@ -219,7 +219,7 @@ export default function Navbar({
             <button
               type="button"
               onClick={() => setShowLangMenu(!showLangMenu)}
-              className="flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition cursor-pointer"
+              className="flex h-8 items-center gap-1.5 rounded-xl border border-slate-200/80 bg-white px-2.5 text-xs font-medium text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition cursor-pointer shadow-2xs"
               aria-label="Select Language"
             >
               <Globe2 className="h-3.5 w-3.5 text-[#0D9488]" />
