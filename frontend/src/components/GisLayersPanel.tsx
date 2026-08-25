@@ -55,7 +55,7 @@ export function GisLayersPanel({
   ];
 
   return (
-    <div className="absolute top-3 left-3 z-[1000]">
+    <div className="absolute top-3 left-3 z-20">
       {/* Toggle Button */}
       <button
         type="button"

@@ -449,7 +449,7 @@ export default function MarineMap({
           ═════════════════════════════════════════════════════ */}
 
       {/* Top-Left: Live Data Freshness Badge */}
-      <div className="absolute top-3 left-3 z-[1000] flex items-center gap-2 rounded-xl bg-slate-900/90 backdrop-blur-md px-3 py-1.5 text-xs font-mono font-bold text-white border border-slate-700 shadow-xl">
+      <div className="absolute top-3 left-3 z-20 flex items-center gap-2 rounded-xl bg-slate-900/80 backdrop-blur-md px-2.5 py-1 text-[11px] font-mono font-bold text-white border border-slate-700/60 shadow-lg">
         <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
         <span className="tracking-wider">{dataFreshnessText}</span>
         <span className="text-slate-400 font-normal">|</span>
@@ -459,11 +459,11 @@ export default function MarineMap({
       </div>
 
       {/* Top-Right: Satellite vs Standard Map Mode Toggle */}
-      <div className="absolute top-3 right-3 z-[1000] flex items-center gap-1 rounded-xl bg-slate-900/90 backdrop-blur-md p-1 border border-slate-700 shadow-xl text-xs font-bold">
+      <div className="absolute top-3 right-3 z-20 flex items-center gap-0.5 rounded-lg bg-slate-900/80 backdrop-blur-md p-0.5 border border-slate-700/60 shadow-lg text-[11px] font-bold">
         <button
           type="button"
           onClick={() => setBaseMapType('satellite')}
-          className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+          className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
             baseMapType === 'satellite'
               ? 'bg-[#0D9488] text-white shadow-xs'
               : 'text-slate-300 hover:text-white'
@@ -474,7 +474,7 @@ export default function MarineMap({
         <button
           type="button"
           onClick={() => setBaseMapType('standard')}
-          className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+          className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
             baseMapType === 'standard'
               ? 'bg-[#0D9488] text-white shadow-xs'
               : 'text-slate-300 hover:text-white'
@@ -484,16 +484,16 @@ export default function MarineMap({
         </button>
       </div>
 
-      {/* Right-Center Floating Action Control Group */}
-      <div className="absolute right-3 top-16 z-[1000] flex flex-col gap-2">
-        {/* Layer Manager Toggle Button */}
+      {/* Right-Center Floating Action Controls */}
+      <div className="absolute right-3 top-14 z-20 flex flex-col gap-1.5">
+        {/* Layer Manager Toggle */}
         <button
           type="button"
           onClick={() => setShowLayersMenu(!showLayersMenu)}
           title="Toggle Marine Layers"
-          className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-700 text-white shadow-xl hover:bg-slate-800 active:scale-95 transition cursor-pointer"
+          className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/90 backdrop-blur-sm border border-slate-200 text-slate-700 shadow-md hover:bg-white hover:text-[#0D9488] active:scale-95 transition cursor-pointer"
         >
-          <Layers className="h-5 w-5 text-[#22d3ee]" />
+          <Layers className="h-4 w-4" />
         </button>
 
         {/* Recenter / GPS Detect */}
@@ -510,9 +510,9 @@ export default function MarineMap({
             }
           }}
           title="Recenter GPS Position"
-          className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-700 text-white shadow-xl hover:bg-slate-800 active:scale-95 transition cursor-pointer"
+          className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/90 backdrop-blur-sm border border-slate-200 text-slate-700 shadow-md hover:bg-white hover:text-[#0D9488] active:scale-95 transition cursor-pointer"
         >
-          <Navigation className="h-5 w-5 text-[#34d399]" />
+          <Navigation className="h-4 w-4" />
         </button>
 
         {/* Fullscreen Toggle */}
@@ -520,15 +520,15 @@ export default function MarineMap({
           type="button"
           onClick={handleToggleFullscreen}
           title="Toggle Fullscreen"
-          className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-700 text-white shadow-xl hover:bg-slate-800 active:scale-95 transition cursor-pointer"
+          className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/90 backdrop-blur-sm border border-slate-200 text-slate-700 shadow-md hover:bg-white hover:text-[#0D9488] active:scale-95 transition cursor-pointer"
         >
-          {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+          {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
         </button>
       </div>
 
       {/* Expandable Layer Manager Popout */}
       {showLayersMenu && (
-        <div className="absolute right-16 top-16 z-[1000] w-64 rounded-2xl bg-slate-900/95 backdrop-blur-xl border border-slate-700 p-4 shadow-2xl text-xs text-white animate-scaleIn">
+        <div className="absolute right-14 top-14 z-20 w-56 rounded-xl bg-slate-900/95 backdrop-blur-xl border border-slate-700 p-3 shadow-2xl text-xs text-white animate-scaleIn">
           <div className="flex items-center justify-between pb-2 border-b border-slate-800 mb-3">
             <span className="font-bold text-slate-100 flex items-center gap-1.5">
               <Layers className="h-4 w-4 text-[#22d3ee]" />
@@ -607,7 +607,7 @@ export default function MarineMap({
           BOTTOM SHEET: TAP PFZ / GEOSPATIAL INTELLIGENCE
           ═════════════════════════════════════════════════════ */}
       {selectedZone && (
-        <div className="absolute bottom-3 left-3 right-3 sm:left-auto sm:right-3 sm:w-96 z-[1000] rounded-2xl bg-slate-900/95 backdrop-blur-xl border border-slate-700 p-4 shadow-2xl text-white animate-fadeIn">
+        <div className="absolute bottom-3 left-3 right-3 sm:left-auto sm:right-3 sm:w-80 z-20 rounded-xl bg-slate-900/95 backdrop-blur-xl border border-slate-700 p-3 shadow-2xl text-white animate-fadeIn">
           <div className="flex items-start justify-between pb-2 border-b border-slate-800 mb-2.5">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-950 border border-emerald-500/40 text-emerald-400">
@@ -667,7 +667,7 @@ export default function MarineMap({
           FAR-FROM-COAST WARNING OVERLAY
           ═════════════════════════════════════════════════════ */}
       {showFarFromCoastWarning && (
-        <div className="absolute top-16 left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 sm:max-w-md z-[1000] rounded-2xl bg-amber-950/90 backdrop-blur-xl border border-amber-500/50 p-4 text-white shadow-2xl animate-fadeIn">
+        <div className="absolute top-16 left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 sm:max-w-md z-20 rounded-xl bg-amber-950/90 backdrop-blur-xl border border-amber-500/50 p-3 text-white shadow-2xl animate-fadeIn">
           <div className="flex items-start gap-3">
             <AlertTriangle className="h-6 w-6 text-amber-400 shrink-0 mt-0.5" />
             <div className="flex-1 text-xs">
