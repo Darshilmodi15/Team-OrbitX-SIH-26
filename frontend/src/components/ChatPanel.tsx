@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import ChatMessage from './ChatMessage';
 import QueryInput from './QueryInput';
-import QuickPromptsGrid from './QuickPromptsGrid';
 import type { MessageItem } from '../App';
 import { TRANSLATIONS } from '../data/maritimeData';
 
@@ -60,14 +59,14 @@ export default function ChatPanel({
         currentLang === 'gu'
           ? 'નજીકનો સંભવિત માછીમારી વિસ્તાર (PFZ) ક્યાં આવેલો છે?'
           : currentLang === 'hi'
-          ? 'निकटतम संभावित मत्स्य क्षेत्र (PFZ) कहाँ स्थित है?'
-          : currentLang === 'mr'
-          ? 'जवळचे संभाव्य मासेमारी क्षेत्र (PFZ) कुठे आहे?'
-          : currentLang === 'ta'
-          ? 'அருகிலுள்ள சாத்தியமான மீன்பிடி மண்டலம் எங்குள்ளது?'
-          : currentLang === 'ml'
-          ? 'ഏറ്റവും അടുത്തുള്ള മത്സ്യബന്ധന മേഖല എവിടെയാണ്?'
-          : 'Where is the nearest Potential Fishing Zone (PFZ)?',
+            ? 'निकटतम संभावित मत्स्य क्षेत्र (PFZ) कहाँ स्थित है?'
+            : currentLang === 'mr'
+              ? 'जवळचे संभाव्य मासेमारी क्षेत्र (PFZ) कुठे आहे?'
+              : currentLang === 'ta'
+                ? 'அருகிலுள்ள சாத்தியமான மீன்பிடி மண்டலம் எங்குள்ளது?'
+                : currentLang === 'ml'
+                  ? 'ഏറ്റവും അടുത്തുള്ള മത്സ്യബന്ധന മേഖല എവിടെയാണ്?'
+                  : 'Where is the nearest Potential Fishing Zone (PFZ)?',
     },
     {
       id: 'safe',
@@ -79,14 +78,14 @@ export default function ChatPanel({
         currentLang === 'gu'
           ? 'શું આજે દરિયામાં માછીમારી કરવા જવું સુરક્ષિત છે?'
           : currentLang === 'hi'
-          ? 'क्या आज समुद्र में नौकायन सुरक्षित है?'
-          : currentLang === 'mr'
-          ? 'आज समुद्रात जाणे सुरक्षित आहे का?'
-          : currentLang === 'ta'
-          ? 'இன்று கடலுக்குள் செல்ல பாதுகாப்பானதா?'
-          : currentLang === 'ml'
-          ? 'ഇന്ന് കടലിൽ പോകുന്നത് സുരക്ഷിതമാണോ?'
-          : 'Is it safe to venture into the sea today?',
+            ? 'क्या आज समुद्र में नौकायन सुरक्षित है?'
+            : currentLang === 'mr'
+              ? 'आज समुद्रात जाणे सुरक्षित आहे का?'
+              : currentLang === 'ta'
+                ? 'இன்று கடலுக்குள் செல்ல பாதுகாப்பானதா?'
+                : currentLang === 'ml'
+                  ? 'ഇന്ന് കടലിൽ പോകുന്നത് സുരക്ഷിതമാണോ?'
+                  : 'Is it safe to venture into the sea today?',
     },
     {
       id: 'tide',
@@ -98,14 +97,14 @@ export default function ChatPanel({
         currentLang === 'gu'
           ? 'આજના દરિયાઈ ભરતી-ઓટ અને હવામાનની સ્થિતિ જણાવો.'
           : currentLang === 'hi'
-          ? 'आज के समुद्री ज्वार-भाटा और मौसम का पूर्वानुमान बताएं।'
-          : currentLang === 'mr'
-          ? 'आज समुद्रातील भरती आणि हवामानाचा अंदाज सांगा.'
-          : currentLang === 'ta'
-          ? 'இன்றைய அலை மற்றும் வானிலை நிலவரம் என்ன?'
-          : currentLang === 'ml'
-          ? 'ഇന്നത്തെ വേലിയേറ്റവും കാലാവസ്ഥയും വ്യക്തമാക്കുക.'
-          : 'What is the current tide state and marine weather forecast?',
+            ? 'आज के समुद्री ज्वार-भाटा और मौसम का पूर्वानुमान बताएं।'
+            : currentLang === 'mr'
+              ? 'आज समुद्रातील भरती आणि हवामानाचा अंदाज सांगा.'
+              : currentLang === 'ta'
+                ? 'இன்றைய அலை மற்றும் வானிலை நிலவரம் என்ன?'
+                : currentLang === 'ml'
+                  ? 'ഇന്നത്തെ വേലിയേറ്റവും കാലാവസ്ഥയും വ്യക്തമാക്കുക.'
+                  : 'What is the current tide state and marine weather forecast?',
     },
     {
       id: 'conditions',
@@ -117,14 +116,14 @@ export default function ChatPanel({
         currentLang === 'gu'
           ? 'દરિયાઈ મોજાંઓની ઊંચાઈ અને પવનની ગતિ કેટલી છે?'
           : currentLang === 'hi'
-          ? 'समुद्री लहरों की ऊंचाई और हवा की गति क्या है?'
-          : currentLang === 'mr'
-          ? 'सागरी लाटांची उंची आणि वाऱ्याचा वेग किती आहे?'
-          : currentLang === 'ta'
-          ? 'கடல் அலை உயரம் மற்றும் காற்றின் வேகம் என்ன?'
-          : currentLang === 'ml'
-          ? 'തിരമാല ഉയരവും കാറ്റിന്റെ വേഗതയും വ്യക്തമാക്കുക.'
-          : 'What are the significant wave heights and wind speeds?',
+            ? 'समुद्री लहरों की ऊंचाई और हवा की गति क्या है?'
+            : currentLang === 'mr'
+              ? 'सागरी लाटांची उंची आणि वाऱ्याचा वेग किती आहे?'
+              : currentLang === 'ta'
+                ? 'கடல் அலை உயரம் மற்றும் காற்றின் வேகம் என்ன?'
+                : currentLang === 'ml'
+                  ? 'തിരമാല ഉയരവും കാറ്റിന്റെ വേഗതയും വ്യക്തമാക്കുക.'
+                  : 'What are the significant wave heights and wind speeds?',
     },
     {
       id: 'cyclone',
@@ -136,14 +135,14 @@ export default function ChatPanel({
         currentLang === 'gu'
           ? 'શું આપણા દરિયાકાંઠે વાવાઝોડા અથવા હાઈ-વેવ એલર્ટ છે?'
           : currentLang === 'hi'
-          ? 'क्या हमारे क्षेत्र में कोई चक्रवात या उच्च लहर चेतावनी है?'
-          : currentLang === 'mr'
-          ? 'आमच्या भागात कोणतीही चक्रीवादळ किंवा उंच लाटांची चेतावणी आहे का?'
-          : currentLang === 'ta'
-          ? 'எங்கள் பகுதியில் புயல் எச்சரிக்கை உள்ளதா?'
-          : currentLang === 'ml'
-          ? 'ചുഴലിക്കാറ്റ് മുന്നറിയിപ്പ് ഉണ്ടോ?'
-          : 'Are there any active cyclone or high swell alerts for our coordinates?',
+            ? 'क्या हमारे क्षेत्र में कोई चक्रवात या उच्च लहर चेतावनी है?'
+            : currentLang === 'mr'
+              ? 'आमच्या भागात कोणतीही चक्रीवादळ किंवा उंच लाटांची चेतावणी आहे का?'
+              : currentLang === 'ta'
+                ? 'எங்கள் பகுதியில் புயல் எச்சரிக்கை உள்ளதா?'
+                : currentLang === 'ml'
+                  ? 'ചുഴലിക്കാറ്റ് മുന്നറിയിപ്പ് ഉണ്ടോ?'
+                  : 'Are there any active cyclone or high swell alerts for our coordinates?',
     },
     {
       id: 'route',
@@ -155,14 +154,14 @@ export default function ChatPanel({
         currentLang === 'gu'
           ? 'સૌથી નજીકના PFZ ઝોન માટે હવામાન-સુરક્ષિત નેવિગેશન માર્ગ દર્શાવો.'
           : currentLang === 'hi'
-          ? 'निकटतम PFZ क्षेत्र के लिए सुरक्षित नेविगेशन मार्ग दिखाएं।'
-          : currentLang === 'mr'
-          ? 'जवळच्या PFZ क्षेत्रासाठी सुरक्षित जलमार्ग दाखवा.'
-          : currentLang === 'ta'
-          ? 'பாதுகாப்பான வழித்தடத்தை காட்டவும்.'
-          : currentLang === 'ml'
-          ? 'സുരക്ഷിതമായ യാത്രാ മാർഗ്ഗം കാണിക്കുക.'
-          : 'Show the weather-safe navigation route to the nearest PFZ.',
+            ? 'निकटतम PFZ क्षेत्र के लिए सुरक्षित नेविगेशन मार्ग दिखाएं।'
+            : currentLang === 'mr'
+              ? 'जवळच्या PFZ क्षेत्रासाठी सुरक्षित जलमार्ग दाखवा.'
+              : currentLang === 'ta'
+                ? 'பாதுகாப்பான வழித்தடத்தை காட்டவும்.'
+                : currentLang === 'ml'
+                  ? 'സുരക്ഷിതമായ യാത്രാ മാർഗ്ഗം കാണിക്കുക.'
+                  : 'Show the weather-safe navigation route to the nearest PFZ.',
     },
   ];
 
@@ -249,17 +248,7 @@ export default function ChatPanel({
       {/* 3. CHATBOT CONVERSATION SCROLL AREA (Only this scrolls) */}
       <div className="flex-1 overflow-y-auto p-3.5 space-y-3 bg-[#F7F9FC]/60">
         {messages.map((msg, index) => (
-          <div key={msg.id || index}>
-            <ChatMessage message={msg} currentLang={currentLang} />
-            {/* Show prominent quick ask grid right after greeting when conversation starts */}
-            {index === 0 && messages.length <= 2 && (
-              <QuickPromptsGrid
-                currentLang={currentLang}
-                onSelectPrompt={onSendMessage}
-                isLoading={isLoading}
-              />
-            )}
-          </div>
+          <ChatMessage key={msg.id || index} message={msg} currentLang={currentLang} />
         ))}
 
         {/* Loading State Animation */}
@@ -277,10 +266,10 @@ export default function ChatPanel({
                 {currentLang === 'gu'
                   ? 'ઓર્કા ડેટાનું સંશ્લેષણ કરી રહ્યું છે...'
                   : currentLang === 'hi'
-                  ? 'ऑर्का समुद्री डेटा का विश्लेषण कर रहा है...'
-                  : currentLang === 'mr'
-                  ? 'ऑर्का डेटाचे विश्लेषण करत आहे...'
-                  : 'ORCA is synthesizing marine evidence...'}
+                    ? 'ऑर्का समुद्री डेटा का विश्लेषण कर रहा है...'
+                    : currentLang === 'mr'
+                      ? 'ऑर्का डेटाचे विश्लेषण करत आहे...'
+                      : 'ORCA is synthesizing marine evidence...'}
               </span>
             </div>
           </div>
