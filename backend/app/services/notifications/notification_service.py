@@ -90,6 +90,13 @@ class NotificationService:
         """Marks a notification as read."""
         if notification_id in self._notifications:
             self._notifications[notification_id].is_read = True
+            try:
+                from app.db.session import get_db_context
+                from app.repositories import NotificationRepository
+                with get_db_context() as db:
+                    NotificationRepository.mark_read(db, notification_id)
+            except Exception:
+                pass
             return self._notifications[notification_id]
         return None
 
@@ -101,10 +108,42 @@ class NotificationService:
                 if not n.is_read:
                     n.is_read = True
                     count += 1
+        try:
+            from app.db.session import get_db_context
+            from app.repositories import NotificationRepository
+            with get_db_context() as db:
+                NotificationRepository.mark_all_read(db, user_id)
+        except Exception:
+            pass
         return count
 
     def add_notification(self, notif: SafetyNotification) -> SafetyNotification:
         self._notifications[notif.id] = notif
+        try:
+            from app.db.session import get_db_context
+            from app.db.models import Notification as DBNotification
+            from app.repositories import NotificationRepository
+            import json
+            with get_db_context() as db:
+                db_notif = DBNotification(
+                    id=notif.id,
+                    user_id=notif.user_id if notif.user_id != "global" else None,
+                    category=notif.category.value if hasattr(notif.category, "value") else str(notif.category),
+                    severity=notif.severity.value if hasattr(notif.severity, "value") else str(notif.severity),
+                    title=notif.title,
+                    message=notif.message,
+                    source=notif.source,
+                    is_read=notif.is_read,
+                    language=notif.language or "en",
+                    translated_title=notif.translated_title,
+                    translated_message=notif.translated_message,
+                    action_link=notif.action_link,
+                    metadata_json=json.dumps(notif.metadata) if notif.metadata else None,
+                    created_at=datetime.now(timezone.utc),
+                )
+                NotificationRepository.create_notification(db, db_notif)
+        except Exception as e:
+            logger.debug(f"Notification DB persistence: {e}")
         return notif
 
     def evaluate_location_alerts(

@@ -42,10 +42,24 @@ weather_provider: WeatherProvider = OpenMeteoWeatherProvider()
 pfz_provider: PFZProvider = MockPFZProvider()
 geofence_provider: GeofenceProvider = SpatialGeofenceProvider()
 
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifecycle manager: ensures database schema exists on startup."""
+    try:
+        from app.db.session import init_db
+        init_db()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Database schema auto-init note: {e}")
+    yield
+
 app = FastAPI(
     title="ORCA Marine AI Backend",
     description="Autonomous Maritime Intelligence, Multi-Agent Decision Support, Risk Matrix, Sarvam AI Multilingual Layer, and Coastal Safety Platform.",
     version="1.4.0",
+    lifespan=lifespan,
 )
 
 # Enable CORS for frontend applications

@@ -1,11 +1,12 @@
-import { Check, ArrowRight } from 'lucide-react';
-import { REGIONAL_LANGUAGES } from '../data/maritimeData';
+import { Check, Globe2 } from 'lucide-react';
+import { SUPPORTED_LANGUAGES, getStrings } from '../i18n';
 
 interface LanguageSelectorModalProps {
   currentLang: string;
   onSelectLang: (langCode: string) => void;
   onContinue: () => void;
   isOpen: boolean;
+  onClose?: () => void;
 }
 
 export default function LanguageSelectorModal({
@@ -13,61 +14,71 @@ export default function LanguageSelectorModal({
   onSelectLang,
   onContinue,
   isOpen,
+  onClose,
 }: LanguageSelectorModalProps) {
+  const t = getStrings(currentLang);
   if (!isOpen) return null;
 
   return (
-    <div className="modal-backdrop">
-      <div className="modal-card p-6 sm:p-8">
-        {/* Header */}
-        <div className="text-center mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center mx-auto mb-3 text-2xl">
-            🌐
+    <div className="modal-backdrop px-3" role="dialog" aria-modal="true" aria-labelledby="language-title">
+      <div className="modal-card max-w-2xl p-5 sm:p-6">
+        <div className="mb-5 flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
+              <Globe2 className="h-5 w-5" aria-hidden="true" />
+            </div>
+            <div>
+              <h2 id="language-title" className="text-lg font-bold text-slate-950">
+                {t.selectLanguage}
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">{t.descriptor}</p>
+            </div>
           </div>
-          <h2 className="text-lg font-bold text-slate-900">Select Your Language</h2>
-          <p className="text-xs text-slate-500 mt-1">ତମାରી ভাষা পসন্দ করো / अपनी भाषा चुनें</p>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              {t.close}
+            </button>
+          )}
         </div>
 
-        {/* Language Grid */}
-        <div className="grid grid-cols-2 gap-2 mb-6">
-          {REGIONAL_LANGUAGES.map((lang) => {
-            const isSelected = currentLang === lang.code;
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {SUPPORTED_LANGUAGES.map((lang) => {
+            const selected = currentLang === lang.code;
             return (
               <button
                 key={lang.code}
+                type="button"
                 onClick={() => onSelectLang(lang.code)}
-                className={`p-3.5 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer ${
-                  isSelected
-                    ? 'bg-teal-50 border-teal-500 text-teal-900 shadow-sm ring-1 ring-teal-200'
-                    : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700'
+                className={`flex min-h-14 items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left transition ${
+                  selected
+                    ? 'border-teal-500 bg-teal-50 text-teal-950 ring-1 ring-teal-200'
+                    : 'border-slate-200 bg-white text-slate-800 hover:border-teal-300 hover:bg-teal-50/60'
                 }`}
               >
-                <div>
-                  <div className={`font-bold text-sm ${isSelected ? 'text-teal-900' : 'text-slate-800'}`}>
-                    {lang.native}
-                  </div>
-                  <div className={`text-[11px] ${isSelected ? 'text-teal-600' : 'text-slate-400'}`}>
-                    {lang.name}
-                  </div>
-                </div>
-                {isSelected && (
-                  <div className="w-5 h-5 rounded-full bg-teal-600 flex items-center justify-center shrink-0">
-                    <Check className="w-3 h-3 text-white" />
-                  </div>
+                <span>
+                  <span className="block text-base font-bold">{lang.native}</span>
+                  <span className="block text-xs font-medium text-slate-500">{lang.name}</span>
+                </span>
+                {selected && (
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-teal-700 text-white">
+                    <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                  </span>
                 )}
               </button>
             );
           })}
         </div>
 
-        {/* Continue Button */}
         <button
+          type="button"
           onClick={onContinue}
-          className="w-full py-3 rounded-xl text-white text-sm font-bold shadow-sm flex items-center justify-center gap-2 transition active:scale-[0.97] cursor-pointer"
-          style={{ background: 'linear-gradient(135deg, #0B3D5B 0%, #0F766E 100%)' }}
+          className="mt-5 flex min-h-12 w-full items-center justify-center rounded-lg bg-[#0B3D5B] px-5 text-sm font-bold text-white transition hover:bg-[#082C42]"
         >
-          <span>Continue</span>
-          <ArrowRight className="w-4 h-4" />
+          {t.continue}
         </button>
       </div>
     </div>

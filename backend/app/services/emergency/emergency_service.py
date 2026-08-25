@@ -245,6 +245,36 @@ class EmergencyService:
         )
 
         self._active_sos_records[sos_id] = response
+
+        # Persist to database if available
+        try:
+            from app.db.session import get_db_context
+            from app.db.models import SOSRequest as DBSOSRequest
+            from app.repositories import EmergencyRepository
+            import json
+            with get_db_context() as db:
+                db_sos = DBSOSRequest(
+                    id=sos_id,
+                    user_id=None,
+                    vessel_name=req.vessel_name or "Fishing Craft / Motor Vessel",
+                    registration_no=req.registration_no or "IND-VESSEL",
+                    latitude=req.lat,
+                    longitude=req.lon,
+                    crew_count=req.crew_count,
+                    emergency_nature=req.emergency_nature.value if hasattr(req.emergency_nature, "value") else str(req.emergency_nature),
+                    notes=req.notes or "",
+                    contact_phone=req.contact_phone,
+                    status="ACTIVE_BEACON_DISPATCHED",
+                    assigned_mrcc=assigned_mrcc,
+                    mayday_message=mayday,
+                    emergency_hotlines_json=json.dumps(hotlines),
+                    recorded_telemetry_json=json.dumps(response.recorded_telemetry),
+                    created_at=datetime.now(timezone.utc),
+                )
+                EmergencyRepository.create_sos(db, db_sos)
+        except Exception as e:
+            logger.debug(f"SOS broadcast DB persistence: {e}")
+
         logger.warning(f"🚨 EMERGENCY SOS BROADCAST REGISTERED: {sos_id} at ({req.lat}, {req.lon}) - {req.emergency_nature}")
         return response
 

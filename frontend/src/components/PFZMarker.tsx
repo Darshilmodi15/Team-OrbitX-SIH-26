@@ -1,6 +1,6 @@
 import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
-import type { PFZEvidenceItem } from '../App';
+import type { PFZEvidenceItem } from '../context/AppContext';
 
 /**
  * Creates glowing tactical HTML marker icon for INCOIS Potential Fishing Zones (PFZ).

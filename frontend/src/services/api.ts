@@ -175,6 +175,14 @@ export async function fetchMarineForecast(lat: number, lon: number, date?: strin
   return await response.json();
 }
 
+export async function fetchPFZDataset() {
+  const response = await fetch(`${API_BASE_URL}/api/pfz`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch Potential Fishing Zone dataset');
+  }
+  return await response.json();
+}
+
 /* ==========================================================================
    Marine Boundaries & GIS APIs
    ========================================================================== */
@@ -468,6 +476,13 @@ export async function fetchHistoricalComparison(lat: number, lon: number, period
   return await response.json();
 }
 
+export type UserProfile = any;
+export type GovernmentAnnouncement = any;
+export type GovernmentDocument = any;
+export type SystemHealth = any;
+export const createGovernmentAnnouncement = publishGovernmentAnnouncement;
+export const updateLocation = updateUserLocation;
+
 export default {
   queryORCA,
   registerUser,
@@ -479,6 +494,7 @@ export default {
   fetchMarineConditions,
   fetchMarineRisk,
   fetchMarineForecast,
+  fetchPFZDataset,
   fetchMarineBoundariesEEZ,
   checkMarineBoundary,
   fetchGeofences,

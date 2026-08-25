@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { LocationCoords } from '../App';
+import type { LocationCoords } from '../context/AppContext';
 import { REGIONAL_LANGUAGES, TRANSLATIONS } from '../data/maritimeData';
 
 export interface PortOption {

@@ -170,12 +170,13 @@ class GovernmentService:
 
     def create_announcement(self, req: CreateAnnouncementRequest) -> GovernmentAnnouncement:
         ann_id = f"GOV-ANN-{uuid.uuid4().hex[:6].upper()}"
+        pub_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         ann = GovernmentAnnouncement(
             id=ann_id,
             title=req.title,
             issuing_authority=req.issuing_authority,
             state_or_national=req.state_or_national,
-            publish_date=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            publish_date=pub_date,
             effective_dates=req.effective_dates,
             summary=req.summary,
             full_text=req.full_text,
@@ -186,6 +187,35 @@ class GovernmentService:
             is_active=True,
         )
         self._announcements[ann_id] = ann
+
+        # Persist to database if available
+        try:
+            from app.db.session import get_db_context
+            from app.db.models import GovernmentAlert as DBGovernmentAlert
+            from app.repositories import GovernmentAlertRepository
+            with get_db_context() as db:
+                db_alert = DBGovernmentAlert(
+                    id=ann_id,
+                    title=req.title,
+                    issuing_authority=req.issuing_authority,
+                    state_or_national=req.state_or_national,
+                    publish_date=pub_date,
+                    effective_dates=req.effective_dates or "Immediate Effect",
+                    summary=req.summary,
+                    full_text=req.full_text,
+                    category=req.category.value if hasattr(req.category, "value") else str(req.category),
+                    reference_number=req.reference_number,
+                    document_url=None,
+                    severity="CRITICAL" if req.is_urgent else "INFO",
+                    is_urgent=req.is_urgent,
+                    is_active=True,
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc),
+                )
+                GovernmentAlertRepository.create_alert(db, db_alert)
+        except Exception as e:
+            logger.debug(f"Government announcement DB persistence: {e}")
+
         logger.info(f"Published new official government circular: {ann_id} - {ann.title}")
         return ann
 

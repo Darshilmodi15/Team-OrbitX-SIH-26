@@ -2,10 +2,10 @@
 Authentication and Role-Based Access Control (RBAC) Service for ORCA.
 
 Supports:
-- User registration (Email/Phone + Password + Role)
+- User registration (Email/Phone + Password + Role) with password salt + hashing
 - User login & Bearer JWT token generation
 - Role verification (USER, GOVERNMENT, SUPER_ADMIN)
-- In-memory persistent user repository with pre-seeded accounts for demo
+- Synchronized database persistence (PostgreSQL/SQLite) with in-memory caching
 """
 import hashlib
 import hmac
@@ -22,22 +22,46 @@ from app.models.user_models import RegisterRequest, UserProfile, UserRole
 
 logger = logging.getLogger(__name__)
 
-JWT_SECRET = os.getenv("ORCA_JWT_SECRET", "orca_marine_ai_jwt_secret_key_sih_2026_coastal_safety")
+JWT_SECRET = os.getenv("JWT_SECRET") or os.getenv("ORCA_JWT_SECRET") or "orca_marine_ai_jwt_secret_key_sih_2026_coastal_safety"
 JWT_EXPIRY_SECONDS = 86400 * 7  # 7 days
 
 
+import bcrypt
+
+
 def hash_password(password: str, salt: Optional[str] = None) -> Tuple[str, str]:
-    """Hashes password with salt using SHA-256."""
-    if not salt:
-        salt = secrets.token_hex(16)
-    hashed = hashlib.sha256((password + salt).encode("utf-8")).hexdigest()
-    return hashed, salt
+    """
+    Hashes password using Bcrypt with 12 adaptive work factor rounds.
+    Returns (bcrypt_hash_str, salt_str).
+    """
+    pwd_bytes = password.encode("utf-8")
+    if salt:
+        try:
+            salt_bytes = salt.encode("utf-8")
+        except Exception:
+            salt_bytes = bcrypt.gensalt(rounds=12)
+    else:
+        salt_bytes = bcrypt.gensalt(rounds=12)
+
+    hashed = bcrypt.hashpw(pwd_bytes, salt_bytes)
+    return hashed.decode("utf-8"), salt_bytes.decode("utf-8")
 
 
 def verify_password(password: str, hashed: str, salt: str) -> bool:
-    """Verifies candidate password against stored hash."""
-    candidate_hash, _ = hash_password(password, salt)
-    return hmac.compare_digest(candidate_hash, hashed)
+    """
+    Verifies candidate password against stored Bcrypt hash with legacy SHA-256 fallback.
+    """
+    try:
+        pwd_bytes = password.encode("utf-8")
+        hashed_bytes = hashed.encode("utf-8")
+        if hashed.startswith("$2b$") or hashed.startswith("$2a$") or hashed.startswith("$2y$"):
+            return bcrypt.checkpw(pwd_bytes, hashed_bytes)
+        
+        # Legacy fallback if existing SHA-256 hash was stored
+        legacy_hash = hashlib.sha256((password + salt).encode("utf-8")).hexdigest()
+        return hmac.compare_digest(legacy_hash, hashed)
+    except Exception:
+        return False
 
 
 def create_token(user_id: str, role: str, email_or_phone: str) -> str:
@@ -82,7 +106,7 @@ def decode_token(token: str) -> Optional[Dict[str, Any]]:
 
 
 class AuthService:
-    """Authentication and User Profile Management Service."""
+    """Authentication and User Profile Management Service with DB backing."""
 
     def __init__(self):
         # In-memory dictionary: user_id -> user_data
@@ -94,6 +118,7 @@ class AuthService:
         """Pre-seeds accounts for demonstration & role verification."""
         demo_accounts = [
             {
+                "id": "USR-DEMO-01",
                 "name": "Captain Ramesh Koli",
                 "email": "fisherman@orca.marine",
                 "phone": "9876543210",
@@ -102,6 +127,7 @@ class AuthService:
                 "preferred_language": "gu",
             },
             {
+                "id": "USR-DEMO-02",
                 "name": "Officer Priya Sharma (Fisheries Dept)",
                 "email": "officer@fisheries.gov.in",
                 "phone": "9123456780",
@@ -110,6 +136,7 @@ class AuthService:
                 "preferred_language": "hi",
             },
             {
+                "id": "USR-DEMO-03",
                 "name": "Super Admin OrbitX",
                 "email": "admin@orca.marine",
                 "phone": "9999999999",
@@ -120,7 +147,7 @@ class AuthService:
         ]
 
         for acc in demo_accounts:
-            user_id = str(uuid.uuid4())
+            user_id = acc.get("id") or str(uuid.uuid4())
             pwd_hash, salt = hash_password(acc["password"])
             now_iso = datetime.now(timezone.utc).isoformat()
             
@@ -144,15 +171,30 @@ class AuthService:
 
     def register(self, req: RegisterRequest) -> Tuple[UserProfile, str]:
         """Registers a new user and issues access token."""
-        # Check uniqueness
+        # Check uniqueness in-memory
         if req.email and req.email.lower() in self._lookup:
             raise ValueError(f"Email '{req.email}' is already registered.")
         if req.mobile_number and req.mobile_number in self._lookup:
             raise ValueError(f"Mobile number '{req.mobile_number}' is already registered.")
 
+        # Check DB uniqueness if available
+        try:
+            from app.db.session import get_db_context
+            from app.repositories import UserRepository
+            with get_db_context() as db:
+                if req.email and UserRepository.get_by_email(db, req.email):
+                    raise ValueError(f"Email '{req.email}' is already registered.")
+                if req.mobile_number and UserRepository.get_by_phone(db, req.mobile_number):
+                    raise ValueError(f"Mobile number '{req.mobile_number}' is already registered.")
+        except ValueError:
+            raise
+        except Exception:
+            pass
+
         user_id = str(uuid.uuid4())
         pwd_hash, salt = hash_password(req.password)
         now_iso = datetime.now(timezone.utc).isoformat()
+        role_val = req.role if isinstance(req.role, UserRole) else UserRole(req.role or "USER")
 
         user_data = {
             "id": user_id,
@@ -162,12 +204,30 @@ class AuthService:
             "password_hash": pwd_hash,
             "password_salt": salt,
             "preferred_language": req.preferred_language or "en",
-            "role": req.role or UserRole.USER,
+            "role": role_val,
             "location_permission_status": "prompt",
             "location_sharing_enabled": True,
             "created_at": now_iso,
             "last_login": now_iso,
         }
+
+        # Persist to database if available
+        try:
+            from app.db.session import get_db_context
+            from app.repositories import UserRepository
+            with get_db_context() as db:
+                UserRepository.create_user(
+                    db=db,
+                    name=req.name,
+                    password_hash=pwd_hash,
+                    password_salt=salt,
+                    email=req.email,
+                    mobile_number=req.mobile_number,
+                    preferred_language=req.preferred_language or "en",
+                    role=role_val.value,
+                )
+        except Exception as e:
+            logger.debug(f"Database user persistence note: {e}")
 
         self._users[user_id] = user_data
         if req.email:
@@ -185,8 +245,38 @@ class AuthService:
         key = email_or_phone.strip().lower()
         user_id = self._lookup.get(key)
         if not user_id:
-            # Check phone lookup
             user_id = self._lookup.get(email_or_phone.strip())
+
+        # If not found in memory, check database
+        if not user_id:
+            try:
+                from app.db.session import get_db_context
+                from app.repositories import UserRepository
+                with get_db_context() as db:
+                    db_user = UserRepository.get_by_identifier(db, email_or_phone)
+                    if db_user:
+                        user_id = db_user.id
+                        user_data = {
+                            "id": db_user.id,
+                            "name": db_user.name,
+                            "email": db_user.email,
+                            "mobile_number": db_user.mobile_number,
+                            "password_hash": db_user.password_hash,
+                            "password_salt": db_user.password_salt,
+                            "preferred_language": db_user.preferred_language,
+                            "role": UserRole(db_user.role),
+                            "location_permission_status": db_user.location_permission_status,
+                            "location_sharing_enabled": db_user.location_sharing_enabled,
+                            "created_at": db_user.created_at.isoformat() if db_user.created_at else datetime.now(timezone.utc).isoformat(),
+                            "last_login": datetime.now(timezone.utc).isoformat(),
+                        }
+                        self._users[user_id] = user_data
+                        if db_user.email:
+                            self._lookup[db_user.email.lower()] = user_id
+                        if db_user.mobile_number:
+                            self._lookup[db_user.mobile_number] = user_id
+            except Exception as e:
+                logger.debug(f"DB lookup during login: {e}")
 
         if not user_id or user_id not in self._users:
             raise ValueError("Invalid credentials: No account found with provided email or mobile number.")
@@ -203,6 +293,31 @@ class AuthService:
     def get_user_by_id(self, user_id: str) -> Optional[UserProfile]:
         """Retrieves public user profile by ID."""
         user_data = self._users.get(user_id)
+        if not user_data:
+            try:
+                from app.db.session import get_db_context
+                from app.repositories import UserRepository
+                with get_db_context() as db:
+                    db_user = UserRepository.get_by_id(db, user_id)
+                    if db_user:
+                        user_data = {
+                            "id": db_user.id,
+                            "name": db_user.name,
+                            "email": db_user.email,
+                            "mobile_number": db_user.mobile_number,
+                            "password_hash": db_user.password_hash,
+                            "password_salt": db_user.password_salt,
+                            "preferred_language": db_user.preferred_language,
+                            "role": UserRole(db_user.role),
+                            "location_permission_status": db_user.location_permission_status,
+                            "location_sharing_enabled": db_user.location_sharing_enabled,
+                            "created_at": db_user.created_at.isoformat() if db_user.created_at else datetime.now(timezone.utc).isoformat(),
+                            "last_login": db_user.last_login.isoformat() if db_user.last_login else None,
+                        }
+                        self._users[user_id] = user_data
+            except Exception:
+                pass
+
         if not user_data:
             return None
         return self._to_profile(user_data)

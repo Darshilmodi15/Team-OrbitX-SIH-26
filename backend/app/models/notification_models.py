@@ -34,6 +34,9 @@ class SafetyNotification(BaseModel):
     source: str = Field(default="ORCA Safety Engine", description="Data provenance (e.g. INCOIS, Indian Coast Guard)")
     timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat(), description="ISO timestamp")
     is_read: bool = Field(default=False, description="Read state")
+    language: Optional[str] = Field(default="en", description="Language ISO code ('en', 'gu', 'hi', 'ta', etc.)")
+    translated_title: Optional[str] = Field(default=None, description="Localized headline in recipient language")
+    translated_message: Optional[str] = Field(default=None, description="Localized advisory text in recipient language")
     action_link: Optional[str] = Field(default=None, description="Optional deep link or action URI")
     metadata: Optional[Dict[str, Any]] = Field(default=None, description="Additional contextual telemetry")
 

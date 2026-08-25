@@ -71,6 +71,23 @@ class LocationService:
 
         if user_id:
             self._current_locations[user_id] = result.model_dump()
+            try:
+                from app.db.session import get_db_context
+                from app.repositories import UserRepository
+                with get_db_context() as db:
+                    UserRepository.record_location(
+                        db=db,
+                        user_id=user_id if user_id != "anonymous_session" else None,
+                        latitude=lat,
+                        longitude=lon,
+                        accuracy_m=accuracy_m,
+                        coastal_distance_km=distance_km,
+                        is_coastal=is_supported,
+                        coastal_region=region,
+                        location_source="GPS",
+                    )
+            except Exception as e:
+                logger.debug(f"Location DB persistence: {e}")
 
         return result
 
