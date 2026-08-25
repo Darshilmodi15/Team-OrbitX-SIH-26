@@ -484,8 +484,8 @@ export default function MarineMap({
         </button>
       </div>
 
-      {/* Right-Center Floating Action Controls */}
-      <div className="absolute right-3 top-14 z-20 flex flex-col gap-1.5">
+      {/* Left-Side Floating Action Controls (Cleanly positioned on left so right side is free for assistant & info panel) */}
+      <div className="absolute left-3 top-14 z-20 flex flex-col gap-1.5">
         {/* Layer Manager Toggle */}
         <button
           type="button"
@@ -528,7 +528,7 @@ export default function MarineMap({
 
       {/* Expandable Layer Manager Popout */}
       {showLayersMenu && (
-        <div className="absolute right-14 top-14 z-20 w-56 rounded-xl bg-slate-900/95 backdrop-blur-xl border border-slate-700 p-3 shadow-2xl text-xs text-white animate-scaleIn">
+        <div className="absolute left-12 top-14 z-20 w-56 rounded-xl bg-slate-900/95 backdrop-blur-xl border border-slate-700 p-3 shadow-2xl text-xs text-white animate-scaleIn">
           <div className="flex items-center justify-between pb-2 border-b border-slate-800 mb-3">
             <span className="font-bold text-slate-100 flex items-center gap-1.5">
               <Layers className="h-4 w-4 text-[#22d3ee]" />
