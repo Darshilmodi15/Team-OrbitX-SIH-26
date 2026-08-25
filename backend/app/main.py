@@ -46,11 +46,39 @@ from app.services.planner import ExecutionPlan, Planner
 # Initialize authoritative INCOIS data provider with low-bandwidth geospatial cache
 weather_provider: WeatherProvider = IncoisWeatherProvider()
 pfz_provider: PFZProvider = MockPFZProvider()
+geofence_provider: GeofenceProvider = SpatialGeofenceProvider()
+
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifecycle manager: ensures database schema exists and initial seed data is loaded."""
+    import logging
+    import threading
+    logger = logging.getLogger("orca_lifespan")
+    
+    def _background_init_and_seed():
+        try:
+            from app.db.session import init_db
+            init_db()
+            from seed.seed_database import seed_database
+            seed_database()
+            logger.info("Database schema verification and seeding completed successfully.")
+        except Exception as e:
+            logger.warning(f"Database background init/seed note: {e}")
+
+    # Launch background thread so uvicorn can bind to the port immediately without timing out
+    init_thread = threading.Thread(target=_background_init_and_seed, daemon=True)
+    init_thread.start()
+    
+    yield
+
 
 app = FastAPI(
     title="ORCA Marine AI Backend",
     description="Autonomous Maritime Intelligence, Multi-Agent Decision Support & Bhashini Multilingual Layer.",
-    version="1.2.0",
+    version="1.4.0",
+    lifespan=lifespan,
 )
 
 # Enable CORS for frontend applications
