@@ -44,10 +44,12 @@ services:
   - type: web
     name: orca-frontend
     runtime: static
-    region: singapore
-    plan: free
     buildCommand: "cd frontend && npm install && npm run build"
     staticPublishPath: "./frontend/dist"
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     envVars:
       - key: VITE_API_BASE_URL
         fromService:
