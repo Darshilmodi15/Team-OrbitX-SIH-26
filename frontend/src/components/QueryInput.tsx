@@ -174,7 +174,7 @@ export default function QueryInput({
   };
 
   return (
-    <div className="border-t border-slate-200 bg-white p-3 sm:p-4 shrink-0 shadow-2xs">
+    <div className="border-t border-slate-200 bg-white p-2.5 sm:p-3 shrink-0">
       {/* Voice Status Indicator Banner */}
       {isRecording && (
         <div className="mb-2.5 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 animate-pulse">
@@ -232,44 +232,44 @@ export default function QueryInput({
         </div>
       )}
 
-      {/* Quick Prompts Carousel */}
-      <div className="mb-2.5 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-        <span className="flex items-center gap-1 shrink-0 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
-          <Sparkles className="h-3 w-3 text-[#0D9488]" />
-          <span>Quick:</span>
+      {/* Quick Prompts */}
+      <div className="mb-2 flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none">
+        <span className="flex items-center gap-0.5 shrink-0 text-[9px] font-mono font-bold uppercase tracking-wider text-slate-400">
+          <Sparkles className="h-2.5 w-2.5 text-[#0D9488]" />
         </span>
-        {quickPrompts.slice(0, 4).map((prompt, idx) => (
+        {quickPrompts.slice(0, 3).map((prompt, idx) => (
           <button
             key={idx}
             type="button"
             onClick={() => handleSendPrompt(prompt.query)}
             disabled={isLoading}
-            className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-700 hover:border-[#0D9488] hover:bg-teal-50 hover:text-teal-900 transition shrink-0 cursor-pointer disabled:opacity-50"
+            title={prompt.label}
+            className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600 hover:border-[#0D9488] hover:bg-teal-50 hover:text-teal-800 transition shrink-0 cursor-pointer disabled:opacity-50"
           >
-            <span>{prompt.icon}</span>
+            <span className="text-xs">{prompt.icon}</span>
             <span>{prompt.label}</span>
           </button>
         ))}
       </div>
 
       {/* Main Input Field & Actions */}
-      <form onSubmit={handleSubmit} className="flex items-end gap-2">
+      <form onSubmit={handleSubmit} className="flex items-end gap-1.5">
         {/* Voice Input Microphone */}
         <button
           type="button"
           onClick={toggleVoice}
           disabled={isLoading || isTranscribing}
-          title={isRecording ? 'Stop Recording' : 'Speak in your regional language (Sarvam Saaras v3)'}
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition cursor-pointer ${
+          title={isRecording ? 'Stop Recording' : 'Speak in your regional language'}
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition cursor-pointer ${
             isRecording
               ? 'bg-red-600 text-white border-red-700 shadow-md animate-bounce'
-              : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-teal-400 hover:bg-teal-50 hover:text-teal-700'
+              : 'border-slate-200 bg-slate-50 text-slate-500 hover:border-teal-400 hover:bg-teal-50 hover:text-teal-700'
           }`}
         >
-          {isRecording ? <MicOff className="h-4.5 w-4.5" /> : <Mic className="h-4.5 w-4.5" />}
+          {isRecording ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
         </button>
 
-        {/* Multi-line Auto-Expanding Textarea (Never Truncates!) */}
+        {/* Multi-line Auto-Expanding Textarea */}
         <div className="relative flex-1 min-w-0">
           <textarea
             ref={textareaRef}
@@ -279,7 +279,7 @@ export default function QueryInput({
             onKeyDown={handleKeyDown}
             placeholder={t.chatPlaceholder}
             disabled={isLoading}
-            className="w-full resize-none rounded-lg border border-slate-200 bg-slate-50/80 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#0D9488] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#0D9488]/20 transition leading-relaxed max-h-32"
+            className="w-full resize-none rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:border-[#0D9488] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#0D9488]/20 transition leading-relaxed max-h-24"
           />
         </div>
 
@@ -287,10 +287,10 @@ export default function QueryInput({
         <button
           type="submit"
           disabled={!input.trim() || isLoading}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#0A2540] text-white shadow-xs hover:bg-[#081D33] active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#0A2540] text-white shadow-xs hover:bg-[#081D33] active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           title="Send query"
         >
-          <Send className="h-4 w-4" />
+          <Send className="h-3.5 w-3.5" />
         </button>
       </form>
     </div>

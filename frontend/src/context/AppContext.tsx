@@ -1,4 +1,11 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  type ReactNode,
+} from 'react';
 import {
   queryORCA,
   fetchMarineConditions,
@@ -6,6 +13,9 @@ import {
   markNotificationAsRead,
   markAllNotificationsAsRead,
   checkLocationSafetyAlerts,
+  validateLocation,
+  loginUser,
+  registerUser,
 } from '../services/api';
 import {
   INDIAN_PORTS,
@@ -15,6 +25,7 @@ import {
 } from '../data/maritimeData';
 import type { NotificationItem } from '../components/NotificationCenterModal';
 import type { GisLayerState } from '../types';
+import { computeCoastDistance, type CoastDistanceResult } from '../utils/geospatial';
 
 export type { WeatherMetrics, GisLayerState };
 
@@ -39,18 +50,13 @@ export interface PFZEvidenceItem {
   is_mock?: boolean;
 }
 
-export interface BackendQueryResponse {
-  answer: string;
-  reasoning: string[];
-  sources_used: string[];
-  plan: any;
-  risk_level?: string | null;
-  weather?: any;
-  nearest_pfz?: PFZEvidenceItem[] | null;
-  language?: string;
-  language_name?: string;
-  original_question?: string;
-  english_question?: string;
+export interface HighlightedMapTarget {
+  lat: number;
+  lon: number;
+  title: string;
+  description?: string;
+  type?: 'pfz' | 'hazard' | 'port' | 'user' | 'custom';
+  zoom?: number;
 }
 
 export interface MessageItem {
@@ -63,34 +69,72 @@ export interface MessageItem {
   plan?: any;
   reasoning?: string[];
   sources_used?: string[];
+  route?: any;
+  alerts?: any[];
+  simulation?: any;
+  connectivity_mode?: string;
+  highlightTarget?: HighlightedMapTarget;
 }
 
-export type SafetyLevel = 'safe' | 'caution' | 'unsafe';
+export type SafetyLevel = 'safe' | 'caution' | 'warning' | 'emergency';
+
+export interface UserAccount {
+  id: string;
+  name: string;
+  mobile_number?: string;
+  email?: string;
+  role: 'FISHERMAN' | 'GOVERNMENT' | 'SUPER_ADMIN';
+  token?: string;
+}
 
 /* ═══════════════════════════════════════════════════
    Context Interface
    ═══════════════════════════════════════════════════ */
 
 export interface AppContextValue {
-  // Auth
-  currentUser: any | null;
-  setCurrentUser: (user: any | null) => void;
+  // Onboarding
+  hasCompletedOnboarding: boolean;
+  setHasCompletedOnboarding: (val: boolean) => void;
+  onboardingStep: number;
+  setOnboardingStep: (step: number) => void;
+  resetOnboarding: () => void;
 
-  // Location
+  // Auth
+  currentUser: UserAccount | null;
+  setCurrentUser: (user: UserAccount | null) => void;
+  authenticateWithOtp: (phone: string, otp: string, role?: string, name?: string) => Promise<boolean>;
+  logoutUser: () => void;
+
+  // Location & Geospatial
   selectedPort: Port;
   setSelectedPort: (port: Port) => void;
   userLocation: LocationCoords;
   setUserLocation: (loc: LocationCoords) => void;
+  coastInfo: CoastDistanceResult;
+  farFromCoastThresholdKm: number;
+  setFarFromCoastThresholdKm: (val: number) => void;
+  showFarFromCoastWarning: boolean;
+  dismissFarFromCoastWarning: () => void;
+  handleUpdateUserLocation: (coords: LocationCoords) => void;
+  handleSelectPort: (port: Port) => void;
 
   // Language
   currentLang: string;
   setCurrentLang: (lang: string) => void;
+  handleSelectLang: (lang: string) => void;
 
   // Weather & Safety
   weather: WeatherMetrics;
-  setWeather: (w: WeatherMetrics) => void;
+  setWeather: (w: WeatherMetrics | ((prev: WeatherMetrics) => WeatherMetrics)) => void;
   riskLevel: SafetyLevel;
   setRiskLevel: (r: SafetyLevel) => void;
+  lastUpdated: Date | null;
+  dataFreshnessText: string;
+
+  // Map & AI Bi-Directional Interaction
+  highlightedMapTarget: HighlightedMapTarget | null;
+  setHighlightedMapTarget: (target: HighlightedMapTarget | null) => void;
+  focusOnMapLocation: (lat: number, lon: number, title: string, type?: HighlightedMapTarget['type'], zoom?: number) => void;
 
   // Notifications
   notifications: NotificationItem[];
@@ -104,7 +148,7 @@ export interface AppContextValue {
   pfzZones: PFZEvidenceItem[];
   setPfzZones: (zones: PFZEvidenceItem[]) => void;
 
-  // GIS
+  // GIS Layers
   gisLayers: GisLayerState;
   toggleGisLayer: (key: keyof GisLayerState) => void;
 
@@ -115,12 +159,7 @@ export interface AppContextValue {
   handleSendMessage: (question: string) => Promise<void>;
   clearError: () => void;
 
-  // Port/Language handlers
-  handleSelectPort: (port: Port) => void;
-  handleSelectLang: (lang: string) => void;
-  handleUpdateUserLocation: (coords: LocationCoords) => void;
-
-  // Date
+  // System Date
   currentDate: string;
 }
 
@@ -133,21 +172,79 @@ export function useAppContext() {
 }
 
 /* ═══════════════════════════════════════════════════
-   Provider
+   Provider Implementation
    ═══════════════════════════════════════════════════ */
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  // Auth
-  const [currentUser, setCurrentUser] = useState<any | null>(null);
-
-  // Location
-  const [selectedPort, setSelectedPort] = useState<Port>(INDIAN_PORTS[0]);
-  const [userLocation, setUserLocation] = useState<LocationCoords>({
-    lat: INDIAN_PORTS[0].lat,
-    lon: INDIAN_PORTS[0].lon,
+  // ── Onboarding State ──
+  const [hasCompletedOnboarding, setHasCompletedOnboardingState] = useState<boolean>(() => {
+    const saved = localStorage.getItem('orca_onboarding_completed');
+    return saved === 'true';
   });
 
-  // Language — initialize from localStorage
+  const [onboardingStep, setOnboardingStep] = useState<number>(() => {
+    const saved = localStorage.getItem('orca_onboarding_completed');
+    return saved === 'true' ? 7 : 1;
+  });
+
+  const setHasCompletedOnboarding = useCallback((val: boolean) => {
+    setHasCompletedOnboardingState(val);
+    localStorage.setItem('orca_onboarding_completed', val ? 'true' : 'false');
+  }, []);
+
+  const resetOnboarding = useCallback(() => {
+    setHasCompletedOnboardingState(false);
+    setOnboardingStep(1);
+    localStorage.removeItem('orca_onboarding_completed');
+  }, []);
+
+  // ── Auth ──
+  const [currentUser, setCurrentUserState] = useState<UserAccount | null>(() => {
+    const savedUser = localStorage.getItem('orca_current_user');
+    if (savedUser) {
+      try {
+        return JSON.parse(savedUser);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  const setCurrentUser = useCallback((user: UserAccount | null) => {
+    setCurrentUserState(user);
+    if (user) {
+      localStorage.setItem('orca_current_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('orca_current_user');
+      localStorage.removeItem('orca_auth_token');
+    }
+  }, []);
+
+  const logoutUser = useCallback(() => {
+    setCurrentUser(null);
+  }, [setCurrentUser]);
+
+  const authenticateWithOtp = useCallback(
+    async (phone: string, otp: string, role = 'FISHERMAN', name = 'Vessel Master'): Promise<boolean> => {
+      // In production or prototype demo: OTP 123456 or any 6 digit
+      if (otp.length === 6) {
+        const userObj: UserAccount = {
+          id: `usr_${Date.now()}`,
+          name: name || 'Vessel Master',
+          mobile_number: phone,
+          role: (role as any) || 'FISHERMAN',
+          token: `token_demo_${Date.now()}`,
+        };
+        setCurrentUser(userObj);
+        return true;
+      }
+      return false;
+    },
+    [setCurrentUser]
+  );
+
+  // ── Language ──
   const [currentLang, setCurrentLangState] = useState<string>(() => {
     const saved = localStorage.getItem('orca-lang');
     return saved || 'en';
@@ -158,89 +255,227 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('orca-lang', lang);
   }, []);
 
+  // ── Location & Coast Calculation ──
+  const [selectedPort, setSelectedPort] = useState<Port>(INDIAN_PORTS[0]);
+  const [userLocation, setUserLocation] = useState<LocationCoords>({
+    lat: INDIAN_PORTS[0].lat,
+    lon: INDIAN_PORTS[0].lon,
+  });
+
+  const [farFromCoastThresholdKm, setFarFromCoastThresholdKm] = useState<number>(100.0);
+  const [showFarFromCoastWarning, setShowFarFromCoastWarning] = useState<boolean>(false);
+
+  const [coastInfo, setCoastInfo] = useState<CoastDistanceResult>(() =>
+    computeCoastDistance(INDIAN_PORTS[0].lat, INDIAN_PORTS[0].lon, 100.0)
+  );
+
   const [currentDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
-  // Notifications
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [unreadAlertsCount, setUnreadAlertsCount] = useState<number>(0);
-  const [activeCriticalToast, setActiveCriticalToast] = useState<NotificationItem | null>(null);
+  // ── Telemetry Freshness & Last Updated ──
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(new Date());
+  const [dataFreshnessText, setDataFreshnessText] = useState<string>('LIVE DATA');
 
-  // Weather & Safety
+  useEffect(() => {
+    const updateFreshness = () => {
+      if (!lastUpdated) {
+        setDataFreshnessText('LIVE DATA');
+        return;
+      }
+      const deltaMinutes = Math.floor((Date.now() - lastUpdated.getTime()) / 60000);
+      if (deltaMinutes < 1) {
+        setDataFreshnessText('LIVE DATA');
+      } else if (deltaMinutes === 1) {
+        setDataFreshnessText('UPDATED 1 MIN AGO');
+      } else if (deltaMinutes < 60) {
+        setDataFreshnessText(`UPDATED ${deltaMinutes} MIN AGO`);
+      } else {
+        const timeStr = lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        setDataFreshnessText(`LAST DATA FROM ${timeStr}`);
+      }
+    };
+
+    updateFreshness();
+    const interval = setInterval(updateFreshness, 30000);
+    return () => clearInterval(interval);
+  }, [lastUpdated]);
+
+  // ── Weather & Safety ──
   const [weather, setWeather] = useState<WeatherMetrics>(
     INDIAN_PORTS[0].defaultWeather || {
       wave_height_m: 1.2,
-      wind_speed_kmh: 18,
+      wind_speed_kmh: 18.0,
       wind_direction_deg: 240,
       wind_direction_cardinal: 'WSW',
-      forecast: 'Clear',
+      forecast: 'Clear Sky with Calm Moderate Swell',
       temperature_c: 29.5,
       sst_c: 28.2,
-      swell_period_s: 7,
-      tide_state: 'Ebb',
-      visibility_km: 15,
+      swell_period_s: 7.2,
+      tide_state: 'Ebb Tide',
+      visibility_km: 15.0,
       source: 'INCOIS_OSF_LIVE',
     }
   );
+
   const [riskLevel, setRiskLevel] = useState<SafetyLevel>('safe');
 
-  // GIS
+  // ── Map & AI Interactive Integration ──
+  const [highlightedMapTarget, setHighlightedMapTarget] = useState<HighlightedMapTarget | null>(null);
+
+  const focusOnMapLocation = useCallback(
+    (lat: number, lon: number, title: string, type: HighlightedMapTarget['type'] = 'custom', zoom = 10) => {
+      setHighlightedMapTarget({ lat, lon, title, type, zoom });
+    },
+    []
+  );
+
+  // ── GIS Layers ──
   const [gisLayers, setGisLayers] = useState<GisLayerState>({
     pfz: true,
     geofence: true,
     route: true,
-    sst: true,
-    chlorophyll: true,
-    waves: true,
-    wind: true,
+    sst: false,
+    chlorophyll: false,
+    waves: false,
+    wind: false,
     eez: true,
     ports: true,
-    vessels: true,
+    vessels: false,
   });
 
   const toggleGisLayer = useCallback((key: keyof GisLayerState) => {
-    setGisLayers(prev => ({ ...prev, [key]: !prev[key] }));
+    setGisLayers((prev) => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
-  // PFZ
+  // ── PFZ Intelligence ──
   const [pfzZones, setPfzZones] = useState<PFZEvidenceItem[]>(
-    MOCK_PFZ_ZONES.map(z => ({
+    MOCK_PFZ_ZONES.map((z) => ({
+      id: z.id,
       name: z.name,
       latitude: z.lat,
       longitude: z.lon,
-      distance_km: z.distance_km || 28.5,
+      distance_km: z.distance_km || 24.5,
       depth_m: z.depth_m,
       species: [z.dominant_species],
       source: 'INCOIS_PFZ_ADVISORY',
     }))
   );
 
-  // Messages
+  // ── Notifications ──
+  const [notifications, setNotifications] = useState<NotificationItem[]>([
+    {
+      id: 'notif-1',
+      title: 'Ocean State Forecast Active',
+      message: 'INCOIS wave model reporting favorable sea conditions along the coastal corridor.',
+      severity: 'INFO',
+      category: 'WEATHER',
+      source: 'INCOIS OSF',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      is_read: false,
+    },
+  ]);
+  const [unreadAlertsCount, setUnreadAlertsCount] = useState<number>(1);
+  const [activeCriticalToast, setActiveCriticalToast] = useState<NotificationItem | null>(null);
+
+  // ── Chat & Messages ──
   const [messages, setMessages] = useState<MessageItem[]>([
     {
       id: 'init-greeting',
       sender: 'assistant',
-      text: '**Welcome to ORCA Marine AI.**\n\nI provide real-time maritime intelligence, safety assessments, and Potential Fishing Zone (PFZ) advisories.\n\nAsk me about sea conditions, wave safety, fishing zones, or coastal navigation in any supported Indian language.',
+      text: '🌊 **Welcome to ORCA Marine AI.**\n\nI am your intelligent marine safety and potential fishing zone companion. Ask me anything about current sea conditions, safe routes, or fishing locations in plain language.',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ═══ Live Telemetry & Alerts ═══
+  // ── Geodesic Coast Recalculation on Location Change ──
+  const recalculateGeospatial = useCallback(
+    (coords: LocationCoords) => {
+      const result = computeCoastDistance(coords.lat, coords.lon, farFromCoastThresholdKm);
+      setCoastInfo(result);
+
+      if (result.isFarFromCoast) {
+        setShowFarFromCoastWarning(true);
+      } else {
+        setShowFarFromCoastWarning(false);
+      }
+
+      // Re-evaluate nearest port
+      let nearestPort = INDIAN_PORTS[0];
+      let minDistance = Infinity;
+      for (const p of INDIAN_PORTS) {
+        const d = Math.hypot(p.lat - coords.lat, p.lon - coords.lon);
+        if (d < minDistance) {
+          minDistance = d;
+          nearestPort = p;
+        }
+      }
+      setSelectedPort(nearestPort);
+
+      // Recompute dynamic PFZ distances to newly selected location
+      setPfzZones((prev) =>
+        prev.map((z) => {
+          const dist = computeCoastDistance(z.latitude, z.longitude);
+          const directDist = Math.round(
+            Math.hypot(z.latitude - coords.lat, z.longitude - coords.lon) * 111.0 * 10
+          ) / 10;
+          return {
+            ...z,
+            distance_km: directDist,
+          };
+        })
+      );
+    },
+    [farFromCoastThresholdKm]
+  );
+
+  const handleUpdateUserLocation = useCallback(
+    (coords: LocationCoords) => {
+      setUserLocation(coords);
+      recalculateGeospatial(coords);
+      setLastUpdated(new Date());
+
+      // Async check with backend validate endpoint if available
+      validateLocation(coords.lat, coords.lon).catch(() => null);
+    },
+    [recalculateGeospatial]
+  );
+
+  const handleSelectPort = useCallback(
+    (port: Port) => {
+      setSelectedPort(port);
+      const coords = { lat: port.lat, lon: port.lon };
+      setUserLocation(coords);
+      recalculateGeospatial(coords);
+      if (port.defaultWeather) {
+        setWeather(port.defaultWeather);
+      }
+      setLastUpdated(new Date());
+    },
+    [recalculateGeospatial]
+  );
+
+  const dismissFarFromCoastWarning = useCallback(() => {
+    setShowFarFromCoastWarning(false);
+  }, []);
+
+  // ── Live Telemetry & Alerts Fetcher ──
   useEffect(() => {
     let isMounted = true;
 
-    async function refreshTelemetryAndAlerts() {
+    async function loadTelemetryAndAlerts() {
       try {
         const [condData, riskData, alertsData] = await Promise.all([
           fetchMarineConditions(userLocation.lat, userLocation.lon, currentDate).catch(() => null),
           fetchMarineRisk(userLocation.lat, userLocation.lon, currentDate).catch(() => null),
-          checkLocationSafetyAlerts(userLocation.lat, userLocation.lon, undefined, undefined, currentUser?.id).catch(() => null),
+          checkLocationSafetyAlerts(userLocation.lat, userLocation.lon, undefined, undefined, currentUser?.id).catch(
+            () => null
+          ),
         ]);
 
         if (isMounted) {
           if (condData) {
-            setWeather(prev => ({
+            setWeather((prev) => ({
               ...prev,
               wave_height_m: condData.wave_height_m || prev.wave_height_m,
               wind_speed_kmh: condData.wind_speed_kmh || prev.wind_speed_kmh,
@@ -251,15 +486,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
               sst_c: condData.sea_surface_temperature_c || prev.sst_c,
               swell_period_s: condData.wave_period_s || prev.swell_period_s,
               visibility_km: condData.visibility_km || prev.visibility_km,
-              source: condData.source || prev.source,
+              source: condData.source || 'INCOIS_OSF_LIVE',
             }));
+            setLastUpdated(new Date());
           }
+
           if (riskData?.risk_level) {
-            setRiskLevel(riskData.risk_level as SafetyLevel);
+            const raw = String(riskData.risk_level).toLowerCase();
+            if (raw.includes('emergency') || raw.includes('critical')) setRiskLevel('emergency');
+            else if (raw.includes('danger') || raw.includes('unsafe') || raw.includes('warning')) setRiskLevel('warning');
+            else if (raw.includes('caution') || raw.includes('moderate')) setRiskLevel('caution');
+            else setRiskLevel('safe');
           }
-          if (alertsData?.notifications) {
+
+          if (alertsData?.notifications && alertsData.notifications.length > 0) {
             setNotifications(alertsData.notifications);
-            setUnreadAlertsCount(alertsData.unread_count || 0);
+            setUnreadAlertsCount(alertsData.unread_count || alertsData.notifications.filter((n: any) => !n.is_read).length);
             const criticalAlert = alertsData.notifications.find(
               (n: any) => (n.severity === 'CRITICAL' || n.severity === 'HIGH') && !n.is_read
             );
@@ -267,21 +509,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (err) {
-        console.warn('Telemetry/alerts refresh fallback:', err);
+        console.warn('Telemetry refresh background notice:', err);
       }
     }
 
-    refreshTelemetryAndAlerts();
-    return () => { isMounted = false; };
+    loadTelemetryAndAlerts();
+    return () => {
+      isMounted = false;
+    };
   }, [userLocation, currentDate, currentUser]);
 
-  // ═══ Notification Handlers ═══
+  // ── Notification Handlers ──
   const handleMarkRead = useCallback(async (id: string) => {
     try {
-      await markNotificationAsRead(id);
-      setNotifications(prev => prev.map(n => (n.id === id ? { ...n, is_read: true } : n)));
-      setUnreadAlertsCount(c => Math.max(0, c - 1));
-      setActiveCriticalToast(prev => (prev?.id === id ? null : prev));
+      await markNotificationAsRead(id).catch(() => null);
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
+      setUnreadAlertsCount((c) => Math.max(0, c - 1));
+      setActiveCriticalToast((prev) => (prev?.id === id ? null : prev));
     } catch (err) {
       console.warn('Mark read error:', err);
     }
@@ -289,8 +533,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const handleMarkAllRead = useCallback(async () => {
     try {
-      await markAllNotificationsAsRead(currentUser?.id);
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      await markAllNotificationsAsRead(currentUser?.id).catch(() => null);
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
       setUnreadAlertsCount(0);
       setActiveCriticalToast(null);
     } catch (err) {
@@ -302,169 +546,174 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setActiveCriticalToast(null);
   }, []);
 
-  // ═══ Port & Language Handlers ═══
-  const handleSelectPort = useCallback((port: Port) => {
-    setSelectedPort(port);
-    setUserLocation({ lat: port.lat, lon: port.lon });
-    if (port.defaultWeather) setWeather(port.defaultWeather);
-    const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    setMessages(prev => [
-      ...prev,
-      {
-        id: `port-change-${Date.now()}`,
-        sender: 'assistant',
-        text: `**Location updated** to **${port.name}** (${port.state}) at \`${port.lat.toFixed(4)}°N, ${port.lon.toFixed(4)}°E\`.\n\nMarine telemetry re-centered for this coastal sector.`,
-        timestamp: timeNow,
-      },
-    ]);
-  }, []);
-
-  const handleUpdateUserLocation = useCallback((coordsOrLat: LocationCoords | number, maybeLon?: number) => {
-    let coords: LocationCoords;
-    if (typeof coordsOrLat === 'number' && typeof maybeLon === 'number') {
-      coords = { lat: coordsOrLat, lon: maybeLon };
-    } else if (typeof coordsOrLat === 'object' && coordsOrLat !== null) {
-      coords = coordsOrLat;
-    } else {
-      return;
-    }
-    setUserLocation(coords);
-    // Find nearest port
-    let nearestPort = INDIAN_PORTS[0];
-    let minDist = Infinity;
-    for (const p of INDIAN_PORTS) {
-      const d = Math.hypot(p.lat - coords.lat, p.lon - coords.lon);
-      if (d < minDist) {
-        minDist = d;
-        nearestPort = p;
-      }
-    }
-    setSelectedPort(nearestPort);
-    const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    setMessages(prev => [
-      ...prev,
-      {
-        id: `loc-update-${Date.now()}`,
-        sender: 'assistant',
-        text: `**Coordinates updated** to \`${coords.lat.toFixed(4)}°N, ${coords.lon.toFixed(4)}°E\` near **${nearestPort.name}**.\n\nOceanographic telemetry and boundary geofences refreshed.`,
-        timestamp: timeNow,
-      },
-    ]);
-  }, []);
-
-  const handleSelectLang = useCallback((lang: string) => {
-    setCurrentLang(lang);
-    const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const langGreetings: Record<string, string> = {
-      gu: '**ભાષા બદલાઈ ગઈ છે**: ગુજરાતી. ઓર્કા મરીન AI હવે તમને ગુજરાતીમાં માહિતી આપશે.',
-      hi: '**भाषा बदल दी गई है**: हिन्दी. ओर्का मरीन AI अब हिन्दी में जानकारी प्रदान करेगा।',
-      mr: '**भाषा बदलली आहे**: मराठी. ऑर्का मरीन AI आता मराठीत माहिती देईल.',
-      ta: '**மொழி மாற்றப்பட்டது**: தமிழ். ஆர்கா மரைன் AI தமிழில் தகவல்களை வழங்கும்.',
-      ml: '**ഭാഷ മാറ്റി**: മലയാളം. ഓർക്ക മറൈൻ AI മലയാളത്തിൽ ലഭ്യമാക്കും.',
-      te: '**భాష మార్చబడింది**: తెలుగు. ఓర్కా మెరైన్ AI తెలుగులో సమాచారం అందిస్తుంది.',
-      bn: '**ভাষা পরিবর্তিত হয়েছে**: বাংলা. ওর্কা মেরিন AI বাংলায় তথ্য প্রদান করবে।',
-      en: '**Language switched**: English. ORCA Marine AI will now respond in English.',
-      kn: '**ಭಾಷೆ ಬದಲಾಗಿದೆ**: ಕನ್ನಡ. ORCA ಮರೈನ್ AI ಕನ್ನಡದಲ್ಲಿ ಮಾಹಿತಿ ನೀಡುತ್ತದೆ.',
-      or: '**ଭାଷା ପରିବର୍ତ୍ତିତ ହୋଇଛି**: ଓଡ଼ିଆ. ORCA ମରିନ AI ଓଡ଼ିଆରେ ତଥ୍ୟ ପ୍ରଦାନ କରିବ.',
-      pa: '**ਭਾਸ਼ਾ ਬਦਲੀ ਗਈ ਹੈ**: ਪੰਜਾਬੀ. ORCA ਮਰੀਨ AI ਪੰਜਾਬੀ ਵਿੱਚ ਜਾਣਕਾਰੀ ਪ੍ਰਦਾਨ ਕਰੇਗਾ.',
-    };
-    setMessages(prev => [
-      ...prev,
-      {
-        id: `lang-change-${Date.now()}`,
-        sender: 'assistant',
-        text: langGreetings[lang] || langGreetings.en,
-        timestamp: timeNow,
-      },
-    ]);
-  }, [setCurrentLang]);
-
-  // ═══ Chat/Query Handler ═══
-  const handleSendMessage = useCallback(async (questionText: string) => {
-    if (!questionText.trim() || isLoading) return;
-    const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const userMsg: MessageItem = {
-      id: `user-${Date.now()}`,
-      sender: 'user',
-      text: questionText,
-      timestamp: timeNow,
-    };
-    setMessages(prev => [...prev, userMsg]);
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await queryORCA({
-        location: userLocation,
-        date: currentDate,
-        question: questionText,
-        language: currentLang,
-      });
-
-      if (response.nearest_pfz?.length) {
-        setPfzZones(response.nearest_pfz);
-      }
-      if (response.weather) {
-        setWeather(prev => ({
-          ...prev,
-          wave_height_m: response.weather.wave_height_m || prev.wave_height_m,
-          wind_speed_kmh: response.weather.wind_speed_kmh || prev.wind_speed_kmh,
-          wind_direction_deg: response.weather.wind_direction_deg || prev.wind_direction_deg,
-          wind_direction_cardinal: response.weather.wind_direction_cardinal || prev.wind_direction_cardinal,
-          forecast: response.weather.forecast || prev.forecast,
-          temperature_c: response.weather.temperature_c || prev.temperature_c,
-          sst_c: response.weather.sea_surface_temperature_c || prev.sst_c,
-          swell_period_s: response.weather.wave_period_s || prev.swell_period_s,
-          visibility_km: response.weather.visibility_km || prev.visibility_km,
-          source: response.weather.source || 'INCOIS_OSF_LIVE',
-        }));
-      }
-      if (response.risk_level) setRiskLevel(response.risk_level as SafetyLevel);
-
-      const assistantMsg: MessageItem = {
-        id: `assistant-${Date.now()}`,
-        sender: 'assistant',
-        text: response.answer,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        weather: response.weather,
-        risk_level: response.risk_level,
-        plan: response.plan,
-        reasoning: response.reasoning,
-        sources_used: response.sources_used,
+  // ── Language Handler ──
+  const handleSelectLang = useCallback(
+    (lang: string) => {
+      setCurrentLang(lang);
+      const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const langGreetings: Record<string, string> = {
+        gu: 'ભાષા પસંદ કરેલ છે: **ગુજરાતી**. ઓર્કા મરીન AI દરિયાઈ સુરક્ષા અને માછીમારી સહાય માટે તૈયાર છે.',
+        hi: 'भाषा चुनी गई: **हिन्दी**। ओर्का मरीन AI समुद्री सुरक्षा और मत्स्य क्षेत्र सहायता के लिए तैयार है।',
+        mr: 'भाषा निवडली: **मराठी**. ऑर्का मरीन AI सागरी सुरक्षा आणि मासेमारी सहाय्यासाठी सज्ज आहे.',
+        ta: 'மொழி தேர்ந்தெடுக்கப்பட்டது: **தமிழ்**. ஆர்கா மரைன் AI கடல் பாதுகாப்பு மற்றும் மீன்பிடி தகவல் வழங்க தயாராக உள்ளது.',
+        ml: 'ഭാഷ തിരഞ്ഞെടുത്തു: **മലയാളം**. ഓർക്ക മറൈൻ AI കടൽ സുരക്ഷാ സേവനങ്ങൾക്ക് സജ്ജമാണ്.',
+        te: 'భాష ఎంచుకోబడింది: **తెలుగు**. ఓర్కా మెరైన్ AI సముద్ర భద్రత మరియు మత్స్య సమాచారం అందించడానికి సిద్ధంగా ఉంది.',
+        bn: 'ভাষা নির্বাচিত: **বাংলা**। ওর্কা মেরিন AI সামুদ্রিক সুরক্ষা তথ্যের জন্য প্রস্তুত।',
+        en: 'Language set to: **English**. ORCA Marine AI is ready for marine safety queries.',
+        kn: 'ಭಾಷೆ ಆಯ್ಕೆಮಾಡಲಾಗಿದೆ: **ಕನ್ನಡ**. ORCA ಮರೈನ್ AI ಸಮುದ್ರ ಸುರಕ್ಷತಾ ಮಾಹಿತಿಗೆ ಸಿದ್ಧವಾಗಿದೆ.',
+        or: 'ଭାଷା ଚୟନ ହୋଇଛି: **ଓଡ଼ିଆ**। ORCA ମରିନ AI ସାମୁଦ୍ରିକ ସୁରକ୍ଷା ସୂଚନା ପାଇଁ ପ୍ରସ୍ତୁତ.',
       };
-      setMessages(prev => [...prev, assistantMsg]);
-    } catch (err: any) {
-      const errMsg = err?.message || 'Failed to connect to ORCA backend.';
-      setError(errMsg);
-      setMessages(prev => [
+      setMessages((prev) => [
         ...prev,
         {
-          id: `error-${Date.now()}`,
+          id: `lang-change-${Date.now()}`,
           sender: 'assistant',
-          text: `**Connection Error**: ${errMsg}\n\nPlease check that the backend is running.`,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          text: langGreetings[lang] || langGreetings.en,
+          timestamp: timeNow,
         },
       ]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isLoading, userLocation, currentDate, currentLang]);
+    },
+    [setCurrentLang]
+  );
+
+  // ── Chat / Query Handler with Bi-Directional Map Triggers ──
+  const handleSendMessage = useCallback(
+    async (questionText: string) => {
+      if (!questionText.trim() || isLoading) return;
+      const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const userMsg: MessageItem = {
+        id: `user-${Date.now()}`,
+        sender: 'user',
+        text: questionText,
+        timestamp: timeNow,
+      };
+      setMessages((prev) => [...prev, userMsg]);
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await queryORCA({
+          location: userLocation,
+          date: currentDate,
+          question: questionText,
+          language: currentLang,
+        });
+
+        // If backend returned PFZs, update and focus map
+        let highlightTarget: HighlightedMapTarget | undefined;
+        if (response.nearest_pfz && response.nearest_pfz.length > 0) {
+          setPfzZones(response.nearest_pfz);
+          const topPfz = response.nearest_pfz[0];
+          highlightTarget = {
+            lat: topPfz.latitude,
+            lon: topPfz.longitude,
+            title: topPfz.name,
+            description: `Dominant Species: ${topPfz.species?.join(', ') || 'Pelagic'} • Depth: ${topPfz.depth_m || 45}m`,
+            type: 'pfz',
+            zoom: 10,
+          };
+          setHighlightedMapTarget(highlightTarget);
+        }
+
+        // If backend updated weather
+        if (response.weather) {
+          setWeather((prev) => ({
+            ...prev,
+            wave_height_m: response.weather.wave_height_m || prev.wave_height_m,
+            wind_speed_kmh: response.weather.wind_speed_kmh || prev.wind_speed_kmh,
+            wind_direction_deg: response.weather.wind_direction_deg || prev.wind_direction_deg,
+            wind_direction_cardinal: response.weather.wind_direction_cardinal || prev.wind_direction_cardinal,
+            forecast: response.weather.forecast || prev.forecast,
+            temperature_c: response.weather.temperature_c || prev.temperature_c,
+            sst_c: response.weather.sea_surface_temperature_c || prev.sst_c,
+            swell_period_s: response.weather.wave_period_s || prev.swell_period_s,
+            visibility_km: response.weather.visibility_km || prev.visibility_km,
+            source: response.weather.source || 'INCOIS_OSF_LIVE',
+          }));
+          setLastUpdated(new Date());
+        }
+
+        // If backend returned risk level
+        if (response.risk_level) {
+          const raw = String(response.risk_level).toLowerCase();
+          if (raw.includes('emergency') || raw.includes('critical')) setRiskLevel('emergency');
+          else if (raw.includes('danger') || raw.includes('unsafe') || raw.includes('warning')) setRiskLevel('warning');
+          else if (raw.includes('caution') || raw.includes('moderate')) setRiskLevel('caution');
+          else setRiskLevel('safe');
+        }
+
+        const assistantMsg: MessageItem = {
+          id: `assistant-${Date.now()}`,
+          sender: 'assistant',
+          text: response.answer,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          weather: response.weather,
+          risk_level: response.risk_level,
+          plan: response.plan,
+          reasoning: response.reasoning,
+          sources_used: response.sources_used,
+          route: response.route,
+          alerts: response.alerts,
+          simulation: response.simulation,
+          connectivity_mode: response.connectivity_mode || 'LIVE',
+          highlightTarget,
+        };
+
+        setMessages((prev) => [...prev, assistantMsg]);
+      } catch (err: any) {
+        const errMsg = err?.message || 'Failed to connect to ORCA intelligence backend.';
+        setError(errMsg);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `error-${Date.now()}`,
+            sender: 'assistant',
+            text: `⚠️ **Connection Note**: ${errMsg}\n\nPlease verify backend connectivity. Real-time telemetry is running on local cached models.`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [isLoading, userLocation, currentDate, currentLang]
+  );
 
   const clearError = useCallback(() => setError(null), []);
 
   const value: AppContextValue = {
+    hasCompletedOnboarding,
+    setHasCompletedOnboarding,
+    onboardingStep,
+    setOnboardingStep,
+    resetOnboarding,
     currentUser,
     setCurrentUser,
+    authenticateWithOtp,
+    logoutUser,
     selectedPort,
     setSelectedPort,
     userLocation,
     setUserLocation,
+    coastInfo,
+    farFromCoastThresholdKm,
+    setFarFromCoastThresholdKm,
+    showFarFromCoastWarning,
+    dismissFarFromCoastWarning,
+    handleUpdateUserLocation,
+    handleSelectPort,
     currentLang,
     setCurrentLang,
+    handleSelectLang,
     weather,
     setWeather,
     riskLevel,
     setRiskLevel,
+    lastUpdated,
+    dataFreshnessText,
+    highlightedMapTarget,
+    setHighlightedMapTarget,
+    focusOnMapLocation,
     notifications,
     unreadAlertsCount,
     activeCriticalToast,
@@ -480,9 +729,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     error,
     handleSendMessage,
     clearError,
-    handleSelectPort,
-    handleUpdateUserLocation,
-    handleSelectLang,
     currentDate,
   };
 

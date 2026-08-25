@@ -169,11 +169,20 @@ export default function LandingPage() {
               <div className="mt-8 flex flex-wrap items-center gap-3 sm:gap-4">
                 <button
                   type="button"
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate('/onboarding')}
                   className="flex items-center gap-2 rounded-xl bg-[#0A2540] px-5 py-3.5 text-sm font-extrabold text-white shadow-md hover:bg-[#081D33] active:scale-95 transition cursor-pointer"
                 >
-                  <span>{t.getStarted}</span>
+                  <span>{t.getStarted} (Onboarding)</span>
                   <ArrowRight className="h-4 w-4" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigate('/dashboard')}
+                  className="flex items-center gap-2 rounded-xl bg-[#0D9488] px-5 py-3.5 text-sm font-extrabold text-white shadow-md hover:bg-[#0F766E] active:scale-95 transition cursor-pointer"
+                >
+                  <Anchor className="h-4 w-4" />
+                  <span>Command Dashboard</span>
                 </button>
 
                 <button

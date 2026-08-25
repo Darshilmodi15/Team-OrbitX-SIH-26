@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import type { LocationCoords } from '../context/AppContext';
-import { REGIONAL_LANGUAGES, TRANSLATIONS } from '../data/maritimeData';
 
 export interface PortOption {
   name: string;
@@ -9,34 +8,50 @@ export interface PortOption {
 }
 
 export const PRESET_PORTS: PortOption[] = [
+  { name: 'Dahanu Port', region: 'Maharashtra', coords: { lat: 19.9700, lon: 72.7300 } },
   { name: 'Mumbai Port', region: 'Maharashtra', coords: { lat: 18.9220, lon: 72.8347 } },
   { name: 'Satpati / Palghar', region: 'Maharashtra', coords: { lat: 19.7242, lon: 72.0794 } },
   { name: 'Ratnagiri Harbor', region: 'Maharashtra', coords: { lat: 16.9902, lon: 73.3120 } },
   { name: 'Veraval Port', region: 'Gujarat', coords: { lat: 20.9000, lon: 70.3667 } },
-  { name: 'Porbandar Marine Jetty', region: 'Gujarat', coords: { lat: 21.6417, lon: 69.6093 } },
   { name: 'Kochi (Cochin)', region: 'Kerala', coords: { lat: 9.9312, lon: 76.2673 } },
-  { name: 'Mangaluru Old Port', region: 'Karnataka', coords: { lat: 12.8596, lon: 74.8364 } },
   { name: 'Chennai Port', region: 'Tamil Nadu', coords: { lat: 13.0827, lon: 80.2707 } },
-  { name: 'Visakhapatnam Harbor', region: 'Andhra Pradesh', coords: { lat: 17.6868, lon: 83.2185 } },
+];
+
+export const BHASHINI_LANGUAGES = [
+  { code: 'auto', name: 'Auto Detect' },
+  { code: 'en', name: 'English' },
+  { code: 'hi', name: 'हिन्दी (Hindi)' },
+  { code: 'mr', name: 'मराठी (Marathi)' },
+  { code: 'gu', name: 'ગુજરાતી (Gujarati)' },
+  { code: 'ta', name: 'தமிழ் (Tamil)' },
+  { code: 'te', name: 'తెలుగు (Telugu)' },
+  { code: 'ml', name: 'മലയാളം (Malayalam)' },
+  { code: 'bn', name: 'বাংলা (Bengali)' },
+  { code: 'kn', name: 'ಕನ್ನಡ (Kannada)' },
+  { code: 'or', name: 'ଓଡ଼ିଆ (Odia)' },
+  { code: 'pa', name: 'ਪੰਜਾਬੀ (Punjabi)' },
 ];
 
 interface HeaderProps {
   userLocation: LocationCoords;
   currentDate: string;
-  currentLang: string;
-  onSelectLang: (lang: string) => void;
+  selectedLanguage: string;
+  connectivityMode?: string;
   onSelectPort?: (coords: LocationCoords) => void;
+  onSelectLanguage?: (langCode: string) => void;
+  onTriggerKillerDemo?: () => void;
 }
 
 export default function Header({
   userLocation,
   currentDate,
-  currentLang,
-  onSelectLang,
+  selectedLanguage = 'auto',
+  connectivityMode = 'LIVE',
   onSelectPort,
+  onSelectLanguage,
+  onTriggerKillerDemo,
 }: HeaderProps) {
-  const [selectedPortName, setSelectedPortName] = useState<string>('Mumbai Port');
-  const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
+  const [selectedPortName, setSelectedPortName] = useState<string>('Dahanu Port');
 
   const handlePortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const port = PRESET_PORTS.find((p) => p.name === e.target.value);
@@ -46,92 +61,114 @@ export default function Header({
     }
   };
 
+  const getConnectivityBadge = () => {
+    if (connectivityMode === 'LIVE') {
+      return (
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-400">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+          </span>
+          <span className="font-bold text-[10px]">LIVE INCOIS</span>
+        </div>
+      );
+    }
+    if (connectivityMode === 'CACHED') {
+      return (
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-950/60 border border-amber-500/40 text-amber-300">
+          <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+          <span className="font-bold text-[10px]">CACHED GRID</span>
+        </div>
+      );
+    }
+    return (
+      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-rose-950/60 border border-rose-500/40 text-rose-300">
+        <span className="w-2 h-2 rounded-full bg-rose-400"></span>
+        <span className="font-bold text-[10px]">OFFLINE</span>
+      </div>
+    );
+  };
+
   return (
-    <header className="w-full bg-[#030a1c]/90 border-b border-cyan-500/20 backdrop-blur-2xl px-4 sm:px-6 py-2.5 flex items-center justify-between z-30 shadow-2xl shrink-0">
+    <header className="w-full bg-slate-950/90 border-b border-slate-800/80 backdrop-blur-2xl px-4 sm:px-6 py-2.5 flex items-center justify-between z-30 shadow-2xl shrink-0">
       {/* Brand & Title */}
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 border border-cyan-300/40 flex items-center justify-center text-xl shadow-[0_0_25px_rgba(6,182,212,0.4)] shrink-0">
+        <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-blue-600/30 border border-cyan-400/40 flex items-center justify-center text-xl shadow-[0_0_20px_rgba(34,211,238,0.35)] shrink-0">
           🌊
         </div>
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-lg sm:text-xl font-extrabold text-white tracking-wide flex items-center gap-1.5 font-display">
-              {t.appTitle || 'ORCA Marine AI'}
+              ORCA <span className="text-[#22d3ee] font-medium">Marine AI</span>
             </h1>
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 shadow-[0_0_10px_rgba(6,182,212,0.2)] font-bold">
-              SIH 2026 • OrbitX
+            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-cyan-950/80 text-[#22d3ee] border border-cyan-500/30 font-semibold hidden sm:inline-block">
+              SIH-260176
             </span>
           </div>
           <p className="text-[11px] text-slate-400 font-normal hidden sm:block">
-            {t.tagline || 'Autonomous Marine Intelligence & Decision Support'}
+            Marine Ecosystem Reasoning with Collaborative Agents
           </p>
         </div>
       </div>
 
       {/* Right Controls & Telemetry */}
-      <div className="flex items-center gap-2.5 sm:gap-3 font-mono text-xs">
-        {/* Coastal Port Station Selector */}
-        <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-700/70 text-slate-300 shadow-sm">
-          <span className="text-cyan-400 font-sans font-medium">⚓ Port:</span>
+      <div className="flex items-center gap-2.5 font-mono text-xs">
+        {/* Killer Demo Button */}
+        {onTriggerKillerDemo && (
+          <button
+            onClick={onTriggerKillerDemo}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-500/50 text-amber-300 transition-all font-semibold text-xs shadow-[0_0_15px_rgba(245,158,11,0.2)] cursor-pointer"
+            title="Run the Dahanu fisherman safe PFZ route demonstration"
+          >
+            <span>⚡</span>
+            <span>Killer Demo (Dahanu)</span>
+          </button>
+        )}
+
+        {/* Bhashini Multilingual Dropdown */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-300">
+          <span className="text-purple-400">🌐</span>
+          <select
+            value={selectedLanguage}
+            onChange={(e) => onSelectLanguage && onSelectLanguage(e.target.value)}
+            className="bg-transparent text-slate-100 font-semibold focus:outline-none cursor-pointer pr-1 text-xs"
+          >
+            {BHASHINI_LANGUAGES.map((l) => (
+              <option key={l.code} value={l.code} className="bg-slate-900 text-slate-100">
+                {l.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Port Station Selector */}
+        <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-300">
+          <span className="text-cyan-400">⚓ Port:</span>
           <select
             value={selectedPortName}
             onChange={handlePortChange}
-            className="bg-transparent text-slate-100 font-semibold focus:outline-none cursor-pointer pr-1"
+            className="bg-transparent text-slate-100 font-semibold focus:outline-none cursor-pointer pr-1 text-xs"
           >
             {PRESET_PORTS.map((p) => (
-              <option key={p.name} value={p.name} className="bg-slate-950 text-slate-100">
+              <option key={p.name} value={p.name} className="bg-slate-900 text-slate-100">
                 {p.name} ({p.region})
               </option>
             ))}
           </select>
         </div>
 
-        {/* Coastal Indian Language Switcher */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900/90 border border-cyan-500/30 text-slate-200 shadow-sm">
-          <span className="text-sm">🌐</span>
-          <select
-            value={currentLang}
-            onChange={(e) => onSelectLang(e.target.value)}
-            className="bg-transparent text-cyan-300 font-bold focus:outline-none cursor-pointer pr-1 text-xs"
-          >
-            {REGIONAL_LANGUAGES.map((lang) => (
-              <option key={lang.code} value={lang.code} className="bg-slate-950 text-slate-100">
-                {lang.native} ({lang.name})
-              </option>
-            ))}
-          </select>
-        </div>
-
         {/* GPS Telemetry Pill */}
-        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-700/70 text-slate-300">
-          <span className="text-cyan-400 animate-pulse text-sm">📍</span>
-          <span className="font-semibold text-cyan-200">
-            {userLocation.lat.toFixed(4)}°N, {userLocation.lon.toFixed(4)}°E
+        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-300">
+          <span className="text-[#22d3ee] text-xs">📍</span>
+          <span>
+            {userLocation.lat.toFixed(2)}°N, {userLocation.lon.toFixed(2)}°E
           </span>
           <span className="text-slate-600">|</span>
           <span className="text-slate-400">{currentDate}</span>
         </div>
 
-        {/* Swagger API Docs Button */}
-        <a
-          href="http://localhost:8000/docs"
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Open FastAPI Swagger Interactive Docs"
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-400/40 text-indigo-300 hover:text-indigo-200 transition-all font-sans text-xs font-bold shadow-[0_0_15px_rgba(99,102,241,0.2)]"
-        >
-          <span>⚡</span>
-          <span className="font-semibold">Swagger Docs</span>
-        </a>
-
-        {/* System Online Badge */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.2)]">
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
-          </span>
-          <span className="font-bold tracking-wider text-[11px]">System Online</span>
-        </div>
+        {/* Dynamic Connectivity Badge */}
+        {getConnectivityBadge()}
       </div>
     </header>
   );

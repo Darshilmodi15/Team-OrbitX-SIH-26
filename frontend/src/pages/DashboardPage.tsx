@@ -7,6 +7,14 @@ import {
   Minimize2,
   ChevronRight,
   Layers,
+  MapPin,
+  Compass,
+  AlertTriangle,
+  HelpCircle,
+  Phone,
+  Radio,
+  BookOpen,
+  Fish,
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { getStrings } from '../i18n';
@@ -29,6 +37,8 @@ import LocationSelectorModal from '../components/LocationSelectorModal';
 import AuthModal from '../components/AuthModal';
 import GovernmentPortalModal from '../components/GovernmentPortalModal';
 import SuperAdminModal from '../components/SuperAdminModal';
+import TerminologyExplainerModal from '../components/TerminologyExplainerModal';
+import { FishAnalyticsModal } from '../components/FishAnalyticsModal';
 
 export default function DashboardPage() {
   const {
@@ -52,11 +62,15 @@ export default function DashboardPage() {
     handleUpdateUserLocation,
     currentUser,
     setCurrentUser,
+    coastInfo,
+    showFarFromCoastWarning,
+    dismissFarFromCoastWarning,
+    focusOnMapLocation,
   } = useAppContext();
 
   const t = getStrings(currentLang);
 
-  // Mobile navigation state
+  // Mobile navigation tab state
   const [mobileTab, setMobileTab] = useState<MobileTab>('dashboard');
 
   // Desktop Chat Dock / Floating Panel
@@ -69,6 +83,8 @@ export default function DashboardPage() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isGovPortalOpen, setIsGovPortalOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [isGlossaryOpen, setIsGlossaryOpen] = useState(false);
+  const [isFishAnalyticsOpen, setIsFishAnalyticsOpen] = useState(false);
 
   const handleAskAboutPFZ = (zoneName: string) => {
     setIsDesktopChatOpen(true);
@@ -76,16 +92,22 @@ export default function DashboardPage() {
     handleSendMessage(`Tell me the oceanographic details, depth, and best route to fish in ${zoneName}.`);
   };
 
+  // Auto-minimize chat when any modal opens to prevent overlap
+  const openModal = (setter: (v: boolean) => void) => {
+    setIsDesktopChatOpen(false);
+    setter(true);
+  };
+
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#F8FAFC]">
-      {/* ─── Top Global Navbar ─── */}
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#F8FAFC] select-none font-sans text-slate-900">
+      {/* ─── Top Global Institutional Header ─── */}
       <Navbar
-        onOpenEmergency={() => setIsEmergencyOpen(true)}
-        onOpenNotifications={() => setIsNotificationsOpen(true)}
-        onOpenLocation={() => setIsLocationOpen(true)}
-        onOpenAuth={() => setIsAuthOpen(true)}
-        onOpenGovPortal={() => setIsGovPortalOpen(true)}
-        onOpenAdmin={() => setIsAdminOpen(true)}
+        onOpenEmergency={() => openModal(setIsEmergencyOpen)}
+        onOpenNotifications={() => openModal(setIsNotificationsOpen)}
+        onOpenLocation={() => openModal(setIsLocationOpen)}
+        onOpenAuth={() => openModal(setIsAuthOpen)}
+        onOpenGovPortal={() => openModal(setIsGovPortalOpen)}
+        onOpenAdmin={() => openModal(setIsAdminOpen)}
       />
 
       {/* ─── Mobile Viewport Content ─── */}
@@ -93,26 +115,61 @@ export default function DashboardPage() {
         {/* 1. Mobile Dashboard Overview Tab */}
         {mobileTab === 'dashboard' && (
           <div className="p-3.5 space-y-3.5">
-            {/* Safety Banner */}
+            {/* 1. Emergency / Safety Status Component */}
             <SafetyStatusBanner />
 
-            {/* Marine Telemetry Conditions */}
+            {/* 2. Current Location & Geospatial Coast Distance Card */}
+            <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-50 border border-teal-200 text-[#0D9488]">
+                    <MapPin className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-xs sm:text-sm text-slate-900">
+                      {selectedPort.name}
+                    </h3>
+                    <p className="text-[11px] font-mono text-slate-500">
+                      {userLocation.lat.toFixed(4)}°N, {userLocation.lon.toFixed(4)}°E
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => openModal(setIsLocationOpen)}
+                  className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-bold text-[#0D9488] hover:bg-teal-50 transition cursor-pointer"
+                >
+                  {t.change}
+                </button>
+              </div>
+
+              {/* Live Geodesic Coast Distance Metric */}
+              <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                <span className="text-slate-500 font-medium">Distance to Coastline:</span>
+                <span className="font-mono font-bold text-slate-900">
+                  {coastInfo.distanceKm.toFixed(1)} km ({coastInfo.coastalRegion})
+                </span>
+              </div>
+            </div>
+
+            {/* 3. Marine Weather & Telemetry Conditions Summary */}
             <MarineMetricsGrid />
 
-            {/* 6-Hour Forecast Timeline */}
+            {/* 4. 6-Hour Forecast Outlook Timeline */}
             <ForecastHorizonTimeline
               userLocation={userLocation}
               baseWeather={weather}
               currentLang={currentLang}
             />
 
-            {/* Map Preview Card */}
+            {/* 5. Interactive Satellite Map Preview Card */}
             <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-xs">
-              <div className="h-44 relative">
+              <div className="h-48 relative">
                 <MarineMap
                   userLocation={userLocation}
                   pfzZones={gisLayers.pfz ? pfzZones : []}
-                  layers={gisLayers}
+                  onSelectCoords={(lat, lon) => handleUpdateUserLocation({ lat, lon })}
                 />
               </div>
               <button
@@ -121,39 +178,53 @@ export default function DashboardPage() {
                 className="w-full py-2.5 text-xs font-bold text-[#0D9488] hover:bg-teal-50 flex items-center justify-center gap-1.5 transition cursor-pointer border-t border-slate-200"
               >
                 <MapIcon className="h-3.5 w-3.5" />
-                <span>{t.openMap}</span>
+                <span>Open Full Satellite Map Experience</span>
               </button>
             </div>
 
-            {/* PFZ Zones */}
+            {/* 6. Potential Fishing Zones (PFZ) Panel */}
             <PFZPanel
               pfzZones={pfzZones}
               currentLang={currentLang}
               onAskAboutPFZ={handleAskAboutPFZ}
             />
 
-            {/* Boundary Proximity */}
+            {/* 7. Maritime Boundary & Geofence Proximity */}
             <BoundaryPanel userLocation={userLocation} currentLang={currentLang} />
 
-            {/* Historical Analytics */}
+            {/* 8. Historical Before/Now Analytics */}
             <HistoricalAnalyticsPanel userLocation={userLocation} currentLang={currentLang} />
+
+            {/* 9. Plain-Language Marine Terminology Launcher */}
+            <div className="rounded-xl border border-slate-200 bg-white p-3.5 flex items-center justify-between shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+                  <BookOpen className="h-4 w-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900">Marine Terminology Guide</h4>
+                  <p className="text-[11px] text-slate-500">Plain-language definitions of PFZ, Wave Period & IMBL</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => openModal(setIsGlossaryOpen)}
+                className="text-xs font-bold text-[#0D9488] hover:underline cursor-pointer"
+              >
+                View
+              </button>
+            </div>
           </div>
         )}
 
-        {/* 2. Mobile Full Map Tab */}
+        {/* 2. Mobile Fullscreen Map Tab */}
         {mobileTab === 'map' && (
           <div className="h-full w-full relative">
             <MarineMap
               userLocation={userLocation}
               pfzZones={gisLayers.pfz ? pfzZones : []}
-              layers={gisLayers}
               onSelectCoords={(lat, lon) => handleUpdateUserLocation({ lat, lon })}
               className="h-full w-full"
-            />
-            <GisLayersPanel
-              layers={gisLayers}
-              onToggleLayer={toggleGisLayer}
-              currentLang={currentLang}
             />
           </div>
         )}
@@ -166,7 +237,7 @@ export default function DashboardPage() {
                 {t.chatTitle}
               </span>
               <span className="text-[10px] font-mono text-slate-400">
-                Sarvam AI & Gemini
+                Sarvam AI & INCOIS Telemetry
               </span>
             </div>
             <div className="flex-1 min-h-0">
@@ -185,9 +256,21 @@ export default function DashboardPage() {
         {/* 4. Mobile Alerts Tab */}
         {mobileTab === 'alerts' && (
           <div className="p-3.5 space-y-3">
-            <h3 className="font-display text-base font-bold text-slate-900">
-              {t.alerts}
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-base font-bold text-slate-900">
+                {t.alerts}
+              </h3>
+              {unreadAlertsCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleMarkAllRead}
+                  className="text-xs font-bold text-[#0D9488] hover:underline cursor-pointer"
+                >
+                  {t.markAllRead}
+                </button>
+              )}
+            </div>
+
             {notifications.length === 0 ? (
               <div className="py-12 text-center text-xs text-slate-400">
                 {t.noAlerts}
@@ -197,13 +280,18 @@ export default function DashboardPage() {
                 <div
                   key={n.id}
                   className={`rounded-xl border p-3.5 ${
-                    n.is_read ? 'border-slate-200 bg-white' : 'border-amber-200 bg-amber-50/60'
+                    n.is_read ? 'border-slate-200 bg-white' : 'border-amber-200 bg-amber-50/60 shadow-2xs'
                   }`}
                 >
-                  <p className="text-xs font-bold text-slate-900">
-                    {n.translated_title || n.title}
-                  </p>
-                  <p className="text-xs text-slate-600 mt-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-900">
+                      {n.translated_title || n.title}
+                    </span>
+                    <span className="text-[10px] font-mono uppercase px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-bold">
+                      {n.severity}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
                     {n.translated_message || n.message}
                   </p>
                   {!n.is_read && (
@@ -212,7 +300,7 @@ export default function DashboardPage() {
                       onClick={() => handleMarkRead(n.id)}
                       className="mt-2 text-xs font-semibold text-[#0D9488] hover:underline cursor-pointer"
                     >
-                      Mark as read
+                      Acknowledge & Mark Read
                     </button>
                   )}
                 </div>
@@ -222,23 +310,16 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* ─── Desktop Multi-Column Layout ─── */}
+      {/* ─── Desktop Multi-Column Workspace Layout ─── */}
       <div className="hidden md:flex flex-1 min-h-0 overflow-hidden">
-        {/* Left / Center Area: Interactive Nautical Chart + AI Assistant */}
+        {/* Left / Center Area: Dominant Interactive Satellite Nautical Chart */}
         <div className="flex-1 relative min-w-0 flex flex-col">
-          {/* Main Leaflet Map */}
           <div className="flex-1 relative">
             <MarineMap
               userLocation={userLocation}
               pfzZones={gisLayers.pfz ? pfzZones : []}
-              layers={gisLayers}
               onSelectCoords={(lat, lon) => handleUpdateUserLocation({ lat, lon })}
               className="h-full w-full"
-            />
-            <GisLayersPanel
-              layers={gisLayers}
-              onToggleLayer={toggleGisLayer}
-              currentLang={currentLang}
             />
 
             {/* Desktop Ask ORCA Floating Launcher Button (When closed) */}
@@ -246,7 +327,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => setIsDesktopChatOpen(true)}
-                className="absolute bottom-4 right-4 z-[1000] flex items-center gap-2 rounded-xl bg-[#0A2540] px-4 py-2.5 text-xs font-bold text-white shadow-xl hover:bg-[#081D33] active:scale-95 transition cursor-pointer"
+                className="absolute bottom-4 right-4 z-30 flex items-center gap-2 rounded-xl bg-[#0A2540] px-4 py-2.5 text-xs font-bold text-white shadow-xl hover:bg-[#081D33] active:scale-95 transition cursor-pointer"
               >
                 <MessageSquare className="h-4 w-4 text-[#0D9488]" />
                 <span>{t.askOrca}</span>
@@ -255,12 +336,12 @@ export default function DashboardPage() {
 
             {/* Desktop Docked / Floating Assistant Panel */}
             {isDesktopChatOpen && (
-              <div className="absolute bottom-3 right-3 z-[1000] flex flex-col w-96 lg:w-[420px] h-[calc(100%-24px)] max-h-[640px] rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden animate-scaleIn">
+              <div className="absolute bottom-3 right-3 z-30 flex flex-col w-80 lg:w-96 h-[calc(100%-24px)] max-h-[520px] rounded-2xl border border-slate-200/80 bg-white/95 backdrop-blur-sm shadow-2xl overflow-hidden animate-scaleIn">
                 {/* Assistant Header */}
                 <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-3.5 py-2.5">
                   <div className="flex items-center gap-2">
                     <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#0A2540] text-white">
-                      <MessageSquare className="h-3.5 w-3.5" />
+                      <MessageSquare className="h-3.5 w-3.5 text-[#0D9488]" />
                     </div>
                     <div>
                       <h4 className="font-display text-xs font-bold text-slate-900">
@@ -302,6 +383,40 @@ export default function DashboardPage() {
           {/* Safety Status Banner */}
           <SafetyStatusBanner />
 
+          {/* Location & Coastline Distance Card */}
+          <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-50 border border-teal-200 text-[#0D9488]">
+                  <MapPin className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-xs sm:text-sm text-slate-900">
+                    {selectedPort.name}
+                  </h3>
+                  <p className="text-[11px] font-mono text-slate-500">
+                    {userLocation.lat.toFixed(4)}°N, {userLocation.lon.toFixed(4)}°E
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => openModal(setIsLocationOpen)}
+                className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-bold text-[#0D9488] hover:bg-teal-50 transition cursor-pointer"
+              >
+                {t.change}
+              </button>
+            </div>
+
+            <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+              <span className="text-slate-500 font-medium">Distance to Coastline:</span>
+              <span className="font-mono font-bold text-slate-900">
+                {coastInfo.distanceKm.toFixed(1)} km ({coastInfo.coastalRegion})
+              </span>
+            </div>
+          </div>
+
           {/* Marine Conditions Grid */}
           <MarineMetricsGrid />
 
@@ -324,6 +439,21 @@ export default function DashboardPage() {
 
           {/* Historical Analytics Panel */}
           <HistoricalAnalyticsPanel userLocation={userLocation} currentLang={currentLang} />
+
+          {/* Marine Terminology Guide Card */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-[#0D9488]" />
+              <span className="text-xs font-bold text-slate-900">Marine Terminology Guide</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => openModal(setIsGlossaryOpen)}
+              className="text-xs font-bold text-[#0D9488] hover:underline cursor-pointer"
+            >
+              Learn More →
+            </button>
+          </div>
         </aside>
       </div>
 
@@ -331,12 +461,12 @@ export default function DashboardPage() {
       <MobileNav
         activeTab={mobileTab}
         onChangeTab={setMobileTab}
-        onOpenEmergency={() => setIsEmergencyOpen(true)}
+        onOpenEmergency={() => openModal(setIsEmergencyOpen)}
         unreadCount={unreadAlertsCount}
         currentLang={currentLang}
       />
 
-      {/* ─── Global Modals ─── */}
+      {/* ─── Global Modals & Overlays ─── */}
       <EmergencySOSModal
         isOpen={isEmergencyOpen}
         onClose={() => setIsEmergencyOpen(false)}
@@ -376,6 +506,16 @@ export default function DashboardPage() {
         isOpen={isAdminOpen}
         onClose={() => setIsAdminOpen(false)}
         userLocation={userLocation}
+        currentLang={currentLang}
+      />
+      <TerminologyExplainerModal
+        isOpen={isGlossaryOpen}
+        onClose={() => setIsGlossaryOpen(false)}
+        currentLang={currentLang}
+      />
+      <FishAnalyticsModal
+        isOpen={isFishAnalyticsOpen}
+        onClose={() => setIsFishAnalyticsOpen(false)}
         currentLang={currentLang}
       />
     </div>

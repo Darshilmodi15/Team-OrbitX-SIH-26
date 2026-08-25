@@ -1,4 +1,8 @@
-"""Planner and task orchestrator service for ORCA multi-agent architecture."""
+"""
+Planner and multi-agent task orchestrator service for ORCA.
+Translates detected user intent and operational context into a deterministic,
+auditable multi-agent ExecutionPlan.
+"""
 from typing import List, Set
 from pydantic import BaseModel, Field
 
@@ -40,37 +44,10 @@ def _asks_for_weather(question: str) -> bool:
     return any(kw in q for kw in keywords)
 
 
-def _asks_for_boundary(question: str) -> bool:
-    """Checks if question explicitly mentions marine boundaries, EEZ, IMBL, or international borders."""
-    q = question.lower()
-    keywords = [
-        "boundary", "boundaries", "eez", "exclusive economic zone", "imbl",
-        "border", "borders", "maritime border", "international waters", "foreign waters",
-        "territorial", "territorial waters", "geofence", "geofencing", "sovereignty",
-        "sovereign", "marine boundary", "marine boundaries", "cross border", "vliz",
-        "marine regions",
-    ]
-    return any(kw in q for kw in keywords)
-
-
-def _asks_for_geofence(question: str) -> bool:
-    """Checks if question explicitly mentions maritime boundaries, IMBL, or protected marine sanctuaries."""
-    q = question.lower()
-    keywords = [
-        "boundary", "boundaries", "border", "borders", "imbl", "sanctuary", "sanctuaries",
-        "marine national park", "protected area", "protected zone", "mpa", "restricted",
-        "pakistan", "sri lanka", "gulf of mannar", "sir creek", "malvan", "gahirmatha",
-        "geofence", "no fishing zone", "prohibited",
-    ]
-    return any(kw in q for kw in keywords)
-
-
 class Planner:
     """
-    Deterministic task planner for ORCA.
-    
-    Translates detected user intent and query context into an ordered, structured
-    ExecutionPlan of agent tasks without relying on internal LLM calls.
+    Deterministic task planner for ORCA multi-agent architecture.
+    Translates intent and context into an ordered list of specialized agent tasks.
     """
 
     @classmethod
@@ -82,36 +59,6 @@ class Planner:
         lon: float,
         date: str,
     ) -> ExecutionPlan:
-        """
-        Generates a deterministic ExecutionPlan based on intent and question keywords.
-
-        Rules:
-        1. safety_check:
-           - weather_agent / get_marine_conditions
-           - risk_agent / assess_risk
-           - If also asking for boundaries/geofence:
-             - geofence_agent / evaluate_boundaries
-           - If also asking for fishing zones/spots:
-             - pfz_agent / find_nearest_zones
-             - geospatial_agent / calculate_distance
-           - If also asking for boundaries/borders:
-             - boundary_agent / check_boundary
-        2. nearest_pfz:
-           - pfz_agent / find_nearest_zones
-           - geospatial_agent / calculate_distance
-           - If also asking for boundaries/borders:
-             - boundary_agent / check_boundary
-           - If also asking for boundary/geofence:
-             - geofence_agent / evaluate_boundaries
-        3. weather_conditions:
-           - weather_agent / get_marine_conditions
-        4. marine_boundary / boundary_check:
-           - boundary_agent / check_boundary
-        5. geofence_check / boundary queries:
-           - geofence_agent / evaluate_boundaries
-        6. general:
-           - empty task list
-        """
         task_tuples: List[tuple[str, str, bool]] = []
         seen: Set[tuple[str, str]] = set()
 
@@ -120,67 +67,58 @@ class Planner:
                 seen.add((agent, action))
                 task_tuples.append((agent, action, required))
 
-        if intent in ("marine_boundary", "boundary_check"):
-            add_task("boundary_agent", "check_boundary", required=True)
-            if _asks_for_geofence(question):
-                add_task("geofence_agent", "evaluate_boundaries", required=True)
-            if _asks_for_weather(question):
-                add_task("weather_agent", "get_marine_conditions", required=True)
+        if intent == "combined_pfz_safety":
+            add_task("pfz_agent", "find_nearest_zones", required=True)
+            add_task("weather_agent", "get_marine_conditions", required=True)
+            add_task("risk_agent", "assess_risk", required=True)
+            add_task("geospatial_agent", "calculate_distance", required=True)
+            add_task("route_agent", "plan_safe_route", required=True)
+            add_task("hazard_agent", "detect_hazards", required=True)
+
+        elif intent == "safe_route":
+            add_task("pfz_agent", "find_nearest_zones", required=True)
+            add_task("weather_agent", "get_marine_conditions", required=True)
+            add_task("risk_agent", "assess_risk", required=True)
+            add_task("geospatial_agent", "calculate_distance", required=True)
+            add_task("route_agent", "plan_safe_route", required=True)
+
+        elif intent == "what_if_simulation":
+            add_task("weather_agent", "get_marine_conditions", required=True)
+            add_task("risk_agent", "assess_risk", required=True)
+            add_task("simulation_agent", "run_simulation", required=True)
+
+        elif intent == "hazard_alerts":
+            add_task("weather_agent", "get_marine_conditions", required=True)
+            add_task("hazard_agent", "detect_hazards", required=True)
+            add_task("geospatial_agent", "calculate_distance", required=True)
+
+        elif intent == "geofence_check":
+            add_task("geospatial_agent", "calculate_distance", required=True)
+            add_task("hazard_agent", "detect_hazards", required=True)
 
         elif intent == "safety_check":
             add_task("weather_agent", "get_marine_conditions", required=True)
             add_task("risk_agent", "assess_risk", required=True)
-            if _asks_for_geofence(question):
-                add_task("geofence_agent", "evaluate_boundaries", required=True)
             if _asks_for_pfz(question):
                 add_task("pfz_agent", "find_nearest_zones", required=True)
                 add_task("geospatial_agent", "calculate_distance", required=True)
-            if _asks_for_boundary(question):
-                add_task("boundary_agent", "check_boundary", required=True)
 
         elif intent == "nearest_pfz":
             add_task("pfz_agent", "find_nearest_zones", required=True)
             add_task("geospatial_agent", "calculate_distance", required=True)
             if _asks_for_weather(question):
                 add_task("weather_agent", "get_marine_conditions", required=True)
-            if _asks_for_boundary(question):
-                add_task("boundary_agent", "check_boundary", required=True)
-            if _asks_for_geofence(question):
-                add_task("geofence_agent", "evaluate_boundaries", required=True)
 
         elif intent == "weather_conditions":
             add_task("weather_agent", "get_marine_conditions", required=True)
-            if _asks_for_boundary(question):
-                add_task("boundary_agent", "check_boundary", required=True)
-            if _asks_for_geofence(question):
-                add_task("geofence_agent", "evaluate_boundaries", required=True)
-
-        elif _asks_for_boundary(question):
-            add_task("boundary_agent", "check_boundary", required=True)
-            if _asks_for_geofence(question):
-                add_task("geofence_agent", "evaluate_boundaries", required=True)
-            if _asks_for_weather(question):
-                add_task("weather_agent", "get_marine_conditions", required=True)
-
-        elif intent == "geofence_check" or _asks_for_geofence(question):
-            add_task("geofence_agent", "evaluate_boundaries", required=True)
-            if _asks_for_boundary(question):
-                add_task("boundary_agent", "check_boundary", required=True)
-            if _asks_for_weather(question):
-                add_task("weather_agent", "get_marine_conditions", required=True)
-                add_task("risk_agent", "assess_risk", required=True)
 
         elif intent == "general":
-            if _asks_for_boundary(question):
-                add_task("boundary_agent", "check_boundary", required=True)
-            if _asks_for_geofence(question):
-                add_task("geofence_agent", "evaluate_boundaries", required=True)
+            # General informational query: 0 tasks
+            pass
 
         else:
-            if _asks_for_boundary(question):
-                add_task("boundary_agent", "check_boundary", required=True)
-            if _asks_for_geofence(question):
-                add_task("geofence_agent", "evaluate_boundaries", required=True)
+            # Fallback
+            pass
 
         tasks = [
             ExecutionTask(agent=t[0], action=t[1], required=t[2])

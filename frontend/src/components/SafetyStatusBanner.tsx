@@ -9,24 +9,36 @@ import {
   Waves,
   Wind,
   Compass,
-  Eye,
   CheckCircle2,
   AlertCircle,
   HelpCircle,
+  Radio,
 } from 'lucide-react';
-import { useAppContext } from '../context/AppContext';
-import type { SafetyLevel } from '../types';
+import { useAppContext, type SafetyLevel } from '../context/AppContext';
 import { getStrings } from '../i18n';
 
 export default function SafetyStatusBanner() {
-  const { riskLevel, weather, currentLang } = useAppContext();
+  const { riskLevel, weather, currentLang, coastInfo } = useAppContext();
   const t = getStrings(currentLang);
   const [showEvidence, setShowEvidence] = useState(false);
 
-  const statusConfig = {
+  const statusConfigs: Record<
+    SafetyLevel,
+    {
+      title: string;
+      description: string;
+      icon: typeof ShieldCheck;
+      cardBg: string;
+      badgeBg: string;
+      textColor: string;
+      descColor: string;
+      accentColor: string;
+      bulletIcon: typeof CheckCircle2;
+    }
+  > = {
     safe: {
       title: t.safe,
-      description: t.safeDesc,
+      description: t.safeDesc || 'Marine conditions are favorable for all vessel classes and fishing operations.',
       icon: ShieldCheck,
       cardBg: 'bg-emerald-50/90 border-emerald-300',
       badgeBg: 'bg-emerald-600 text-white',
@@ -37,7 +49,7 @@ export default function SafetyStatusBanner() {
     },
     caution: {
       title: t.caution,
-      description: t.cautionDesc,
+      description: t.cautionDesc || 'Moderate swells or gusty coastal winds detected. Exercise heightened vigilance.',
       icon: AlertTriangle,
       cardBg: 'bg-amber-50/90 border-amber-300',
       badgeBg: 'bg-amber-600 text-white',
@@ -46,9 +58,20 @@ export default function SafetyStatusBanner() {
       accentColor: '#D97706',
       bulletIcon: AlertCircle,
     },
-    unsafe: {
-      title: t.dangerous,
-      description: t.dangerousDesc,
+    warning: {
+      title: 'HAZARD WARNING',
+      description: 'Squall weather, elevated wave action, or proximity to restricted maritime zones.',
+      icon: AlertTriangle,
+      cardBg: 'bg-orange-50/90 border-orange-300',
+      badgeBg: 'bg-orange-600 text-white',
+      textColor: 'text-orange-950',
+      descColor: 'text-orange-800',
+      accentColor: '#EA580C',
+      bulletIcon: AlertCircle,
+    },
+    emergency: {
+      title: t.dangerous || 'DANGER / EMERGENCY',
+      description: t.dangerousDesc || 'Dangerous sea state. Small craft advisory in effect. Avoid venturing to sea.',
       icon: ShieldAlert,
       cardBg: 'bg-red-50/90 border-red-300',
       badgeBg: 'bg-red-600 text-white',
@@ -57,8 +80,10 @@ export default function SafetyStatusBanner() {
       accentColor: '#DC2626',
       bulletIcon: AlertCircle,
     },
-  }[riskLevel];
+  };
 
+  const currentLevel: SafetyLevel = statusConfigs[riskLevel] ? riskLevel : 'safe';
+  const statusConfig = statusConfigs[currentLevel];
   const StatusIcon = statusConfig.icon;
 
   // Evidence calculation metrics
@@ -85,7 +110,7 @@ export default function SafetyStatusBanner() {
                 {statusConfig.title}
               </h2>
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${statusConfig.badgeBg}`}>
-                {riskLevel.toUpperCase()}
+                {currentLevel.toUpperCase()}
               </span>
             </div>
             <p className={`mt-0.5 text-xs sm:text-sm font-medium leading-relaxed ${statusConfig.descColor}`}>
@@ -164,7 +189,7 @@ export default function SafetyStatusBanner() {
                 <span className="text-xs font-bold text-emerald-700">CLEAR</span>
               </div>
               <p className="mt-1 text-[11px] text-slate-500">
-                Safe operational distance from sovereign IMBL
+                {coastInfo.distanceKm.toFixed(1)} km from coastline ({coastInfo.coastalRegion})
               </p>
             </div>
           </div>

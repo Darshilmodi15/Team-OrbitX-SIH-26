@@ -1,362 +1,703 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import {
   MapContainer,
   TileLayer,
   Marker,
-  Popup,
   Polyline,
   Polygon,
-  Circle,
+  CircleMarker,
+  Tooltip,
   useMap,
   useMapEvents,
 } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
-  Anchor,
-  Fish,
-  AlertTriangle,
-  Shield,
   Layers,
   MapPin,
+  Navigation,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Minimize2,
   Compass,
+  Radio,
+  Fish,
+  ShieldAlert,
+  AlertTriangle,
+  Waves,
+  Wind,
+  X,
+  ExternalLink,
+  ChevronRight,
 } from 'lucide-react';
-import type { LocationCoords, PFZEvidenceItem, GisLayerState } from '../context/AppContext';
-import { INDIAN_PORTS, type Port } from '../data/maritimeData';
+import { useAppContext } from '../context/AppContext';
+import { getStrings } from '../i18n';
+import type { LocationCoords, PFZEvidenceItem, HighlightedMapTarget } from '../context/AppContext';
+import { COASTAL_CITIES, INDIAN_PORTS, type Port } from '../data/maritimeData';
+import { computeCoastDistance } from '../utils/geospatial';
 
-// Fix Leaflet default marker icon paths in Vite bundling
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
+/* ═══════════════════════════════════════════════════
+   High-Contrast Outdoor & Sunlight-Safe Icon Factories
+   ═══════════════════════════════════════════════════ */
 
-// Custom Vessel SVG Icon with animated pulse beacon
-const createVesselIcon = () =>
+const createUserVesselIcon = () =>
   L.divIcon({
     className: 'custom-vessel-marker',
     html: `
-      <div style="position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
-        <div style="position: absolute; width: 36px; height: 36px; border-radius: 50%; background: rgba(13, 148, 136, 0.25); animation: radar-pulse-glow 2s infinite;"></div>
-        <div style="width: 22px; height: 22px; border-radius: 50%; background: #0A2540; border: 2.5px solid #FFFFFF; box-shadow: 0 2px 6px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;">
-          <div style="width: 7px; height: 7px; border-radius: 50%; background: #0D9488;"></div>
+      <div class="relative flex items-center justify-center w-10 h-10 cursor-pointer">
+        <div class="absolute w-10 h-10 rounded-full bg-cyan-400/30 animate-ping"></div>
+        <div class="absolute w-7 h-7 rounded-full bg-[#0A2540] border-2 border-[#22d3ee] shadow-lg flex items-center justify-center">
+          <span class="text-white text-xs">⚓</span>
+        </div>
+      </div>
+    `,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+  });
+
+const createSelectedPinIcon = () =>
+  L.divIcon({
+    className: 'custom-pin-marker',
+    html: `
+      <div class="relative flex items-center justify-center w-9 h-9 cursor-pointer">
+        <div class="w-8 h-8 rounded-full bg-[#0D9488] border-2 border-white shadow-xl flex items-center justify-center text-white text-sm font-bold">
+          📍
         </div>
       </div>
     `,
     iconSize: [36, 36],
-    iconAnchor: [18, 18],
-    popupAnchor: [0, -18],
+    iconAnchor: [18, 36],
   });
 
-// Custom PFZ Fish Icon
-const createPFZIcon = () =>
+const createPFZIcon = (yieldLevel = 'High') =>
   L.divIcon({
     className: 'custom-pfz-marker',
     html: `
-      <div style="width: 28px; height: 28px; border-radius: 50%; background: #0284C7; border: 2px solid #FFFFFF; box-shadow: 0 2px 6px rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center; color: white;">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M6.5 12c.94-3.46 4.94-6 8.5-6 3.56 0 6.06 2.54 7 6-.94 3.47-3.44 6-7 6s-7.56-2.53-8.5-6Z"/>
-          <path d="M18 12v.5"/>
-          <path d="m16 10-.5 4"/>
-          <path d="m3 5 3 7-3 7"/>
-        </svg>
+      <div class="relative flex items-center justify-center w-8 h-8 cursor-pointer group">
+        <div class="absolute w-8 h-8 rounded-full bg-emerald-400/20 group-hover:scale-125 transition"></div>
+        <div class="w-6 h-6 rounded-full bg-emerald-600 border-2 border-white shadow-md flex items-center justify-center text-white text-[11px] font-bold">
+          🐟
+        </div>
       </div>
     `,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
-    popupAnchor: [0, -14],
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
   });
 
-// Custom Harbor Port Icon
-const createPortIcon = (isCurrent: boolean) =>
+const createPortMarkerIcon = () =>
   L.divIcon({
     className: 'custom-port-marker',
     html: `
-      <div style="display: flex; align-items: center; gap: 4px; background: ${isCurrent ? '#0D9488' : '#FFFFFF'}; color: ${isCurrent ? '#FFFFFF' : '#0F172A'}; padding: 3px 8px; border-radius: 12px; border: 1.5px solid ${isCurrent ? '#FFFFFF' : '#CBD5E1'}; box-shadow: 0 2px 4px rgba(0,0,0,0.15); font-size: 11px; font-weight: 700; white-space: nowrap;">
-        <span>⚓</span>
+      <div class="w-5 h-5 rounded-full bg-[#0A2540] border border-white shadow-xs flex items-center justify-center text-[9px] text-white">
+        ⚓
       </div>
     `,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-    popupAnchor: [0, -12],
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
   });
 
-// Map Controller to smoothly re-center on vessel
-function MapRecenter({ coords }: { coords: LocationCoords }) {
+/* ═══════════════════════════════════════════════════
+   Map Helper Subcomponents
+   ═══════════════════════════════════════════════════ */
+
+function MapResizer() {
   const map = useMap();
   useEffect(() => {
-    map.flyTo([coords.lat, coords.lon], Math.max(map.getZoom(), 8), {
-      duration: 1.2,
-    });
-  }, [coords.lat, coords.lon, map]);
+    if (!map) return;
+    const t1 = setTimeout(() => map.invalidateSize(), 150);
+    const t2 = setTimeout(() => map.invalidateSize(), 500);
+    const handleResize = () => map.invalidateSize();
+    window.addEventListener('resize', handleResize);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [map]);
   return null;
 }
 
-// Map Click Handler for selecting coordinates
-function MapClickHandler({ onSelectCoords }: { onSelectCoords?: (lat: number, lon: number) => void }) {
+interface MapControllerProps {
+  center: LocationCoords;
+  highlightTarget: HighlightedMapTarget | null;
+}
+
+function MapController({ center, highlightTarget }: MapControllerProps) {
+  const map = useMap();
+
+  // If AI focused on a specific target (e.g. PFZ or Hazard), fly to it smoothly
+  useEffect(() => {
+    if (!map) return;
+    if (highlightTarget && highlightTarget.lat && highlightTarget.lon) {
+      map.flyTo([highlightTarget.lat, highlightTarget.lon], highlightTarget.zoom || 10, {
+        duration: 1.2,
+      });
+    }
+  }, [map, highlightTarget]);
+
+  return null;
+}
+
+interface MapEventsHandlerProps {
+  onMapClick: (lat: number, lon: number) => void;
+}
+
+function MapEventsHandler({ onMapClick }: MapEventsHandlerProps) {
   useMapEvents({
     click(e) {
-      if (onSelectCoords) {
-        onSelectCoords(e.latlng.lat, e.latlng.lng);
-      }
+      onMapClick(e.latlng.lat, e.latlng.lng);
     },
   });
   return null;
 }
 
-interface MarineMapProps {
-  userLocation: LocationCoords;
+/* ═══════════════════════════════════════════════════
+   Main MarineMap Component Props & Interface
+   ═══════════════════════════════════════════════════ */
+
+export interface MarineMapProps {
+  userLocation?: LocationCoords;
   pfzZones?: PFZEvidenceItem[];
-  layers?: GisLayerState;
+  route?: any;
+  geofences?: any[];
+  alerts?: any[];
+  layers?: any;
   onSelectCoords?: (lat: number, lon: number) => void;
   className?: string;
+  isInteractive?: boolean;
 }
 
 export default function MarineMap({
-  userLocation,
-  pfzZones = [],
-  layers = {
-    pfz: true,
-    geofence: true,
-    route: true,
-    sst: true,
-    chlorophyll: true,
-    waves: true,
-    wind: true,
-    eez: true,
-    ports: true,
-    vessels: true,
-  },
+  userLocation: propUserLocation,
+  pfzZones: propPfzZones,
+  route: propRoute,
+  geofences: propGeofences,
+  alerts: propAlerts,
   onSelectCoords,
   className = 'h-full w-full',
+  isInteractive = true,
 }: MarineMapProps) {
-  const [mapType, setMapType] = useState<'carto' | 'satellite' | 'osm'>('carto');
+  const {
+    userLocation: contextUserLocation,
+    handleUpdateUserLocation,
+    pfzZones: contextPfzZones,
+    highlightedMapTarget,
+    setHighlightedMapTarget,
+    dataFreshnessText,
+    currentLang,
+    coastInfo,
+    showFarFromCoastWarning,
+    dismissFarFromCoastWarning,
+    handleSendMessage,
+  } = useAppContext();
 
-  // Authoritative IMBL Boundary lines (Sir Creek & Palk Strait)
-  const imblSirCreek: [number, number][] = [
-    [23.65, 68.05],
-    [23.35, 68.0],
-    [23.0, 67.9],
-    [22.5, 67.8],
-  ];
+  const t = getStrings(currentLang);
+  const activeUserLocation = propUserLocation || contextUserLocation;
+  const activePfzZones = propPfzZones || contextPfzZones;
 
-  const imblPalkStrait: [number, number][] = [
-    [9.8, 79.55],
-    [9.35, 79.25],
-    [9.0, 79.05],
-    [8.8, 78.9],
-  ];
+  // ── Basemap State (Satellite vs Standard) ──
+  const [baseMapType, setBaseMapType] = useState<'satellite' | 'standard'>('satellite');
 
-  // Marine Protected Areas (Gulf of Mannar, Gulf of Kutch)
-  const mpaGulfOfMannar: [number, number][] = [
-    [8.85, 78.85],
-    [9.15, 79.15],
-    [9.25, 79.35],
-    [8.95, 79.05],
-  ];
+  // ── Layer Toggles ──
+  const [showPFZ, setShowPFZ] = useState(true);
+  const [showGeofences, setShowGeofences] = useState(true);
+  const [showAlerts, setShowAlerts] = useState(true);
+  const [showPorts, setShowPorts] = useState(true);
+  const [showWeatherVectors, setShowWeatherVectors] = useState(false);
+  const [showLayersMenu, setShowLayersMenu] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const mpaGulfOfKutch: [number, number][] = [
-    [22.45, 69.5],
-    [22.65, 69.9],
-    [22.8, 70.2],
-    [22.55, 69.8],
-  ];
+  // ── Bottom Sheet / Contextual Panel Selection ──
+  const [selectedZone, setSelectedZone] = useState<PFZEvidenceItem | null>(null);
+  const [selectedHazard, setSelectedHazard] = useState<any | null>(null);
 
-  const vesselIcon = useMemo(() => createVesselIcon(), []);
-  const pfzIcon = useMemo(() => createPFZIcon(), []);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
 
-  // Tile layers
-  const tileConfig = {
-    carto: {
-      url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-      attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; OpenStreetMap contributors',
-    },
-    satellite: {
-      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-    },
-    osm: {
-      url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      attribution: '&copy; OpenStreetMap contributors',
-    },
-  }[mapType];
+  // Real Satellite Basemap (Esri World Imagery) vs Standard Voyager
+  const tileUrl =
+    baseMapType === 'satellite'
+      ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+      : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+
+  const tileAttribution =
+    baseMapType === 'satellite'
+      ? 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and GIS User Community'
+      : '&copy; OpenStreetMap contributors &copy; CARTO';
+
+  // Map Click Handler: Updates coordinates and computes real coast distance
+  const handleMapClick = (lat: number, lon: number) => {
+    if (!isInteractive) return;
+    if (onSelectCoords) {
+      onSelectCoords(lat, lon);
+    } else {
+      handleUpdateUserLocation({ lat, lon });
+    }
+  };
+
+  const handleToggleFullscreen = () => {
+    if (!mapContainerRef.current) return;
+    if (!document.fullscreenElement) {
+      mapContainerRef.current.requestFullscreen?.().catch(() => null);
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen?.().catch(() => null);
+      setIsFullscreen(false);
+    }
+  };
+
+  // Indian Sovereign Boundary and Geofences Data
+  const defaultGeofences = useMemo(
+    () => [
+      {
+        id: 'sir-creek',
+        name: 'Sir Creek IMBL Buffer Zone',
+        risk_level: 'CRITICAL_DANGER',
+        category: 'IMBL',
+        description: 'International Maritime Boundary with Pakistan. Commercial fishing restricted.',
+        coordinates: [
+          [23.7, 68.1],
+          [23.6, 68.3],
+          [23.2, 68.2],
+          [23.3, 67.9],
+          [23.7, 68.1],
+        ],
+      },
+      {
+        id: 'palk-strait',
+        name: 'Palk Strait Sovereign Boundary',
+        risk_level: 'CRITICAL_DANGER',
+        category: 'IMBL',
+        description: 'International boundary between India and Sri Lanka.',
+        coordinates: [
+          [10.1, 79.8],
+          [9.8, 79.9],
+          [9.3, 79.5],
+          [9.5, 79.2],
+          [10.1, 79.8],
+        ],
+      },
+      {
+        id: 'malvan-mpa',
+        name: 'Malvan Coral Marine Sanctuary',
+        risk_level: 'RESTRICTED_MPA',
+        category: 'MPA',
+        description: 'Ecologically sensitive marine protected area. Commercial trawling prohibited.',
+        coordinates: [
+          [16.1, 73.4],
+          [16.1, 73.55],
+          [15.95, 73.55],
+          [15.95, 73.4],
+          [16.1, 73.4],
+        ],
+      },
+      {
+        id: 'gulf-of-mannar',
+        name: 'Gulf of Mannar Marine Biosphere Reserve',
+        risk_level: 'RESTRICTED_MPA',
+        category: 'MPA',
+        description: 'National Marine Park covering 21 coral islands. Regulated artisanal fishing only.',
+        coordinates: [
+          [9.3, 79.0],
+          [9.3, 79.3],
+          [8.8, 78.4],
+          [8.8, 78.1],
+          [9.3, 79.0],
+        ],
+      },
+    ],
+    []
+  );
+
+  const activeGeofences = propGeofences || defaultGeofences;
 
   return (
-    <div className={`relative overflow-hidden rounded-xl border border-slate-200 bg-slate-900 ${className}`}>
-      {/* Map Style Selector Overlay */}
-      <div className="absolute top-3 right-3 z-[1000] flex items-center rounded-lg border border-slate-200 bg-white/95 p-1 shadow-md backdrop-blur-xs">
+    <div
+      ref={mapContainerRef}
+      className={`relative overflow-hidden bg-[#0A192F] select-none ${className}`}
+    >
+      <MapContainer
+        center={[activeUserLocation.lat, activeUserLocation.lon]}
+        zoom={8}
+        zoomControl={false}
+        scrollWheelZoom={true}
+        style={{ height: '100%', width: '100%' }}
+        className="h-full w-full z-0"
+      >
+        <TileLayer attribution={tileAttribution} url={tileUrl} maxZoom={19} />
+        <MapResizer />
+        <MapController center={activeUserLocation} highlightTarget={highlightedMapTarget} />
+        <MapEventsHandler onMapClick={handleMapClick} />
+
+        {/* ── 1. User Vessel GPS Station Marker ── */}
+        <Marker
+          position={[activeUserLocation.lat, activeUserLocation.lon]}
+          icon={createUserVesselIcon()}
+        />
+
+        {/* ── 2. Potential Fishing Zones (PFZ) ── */}
+        {showPFZ &&
+          activePfzZones.map((zone, idx) => (
+            <Marker
+              key={zone.id || `pfz-${idx}`}
+              position={[zone.latitude, zone.longitude]}
+              icon={createPFZIcon()}
+              eventHandlers={{
+                click: () => {
+                  setSelectedZone(zone);
+                  setHighlightedMapTarget({
+                    lat: zone.latitude,
+                    lon: zone.longitude,
+                    title: zone.name,
+                    type: 'pfz',
+                    zoom: 10,
+                  });
+                },
+              }}
+            >
+              <Tooltip direction="top" offset={[0, -10]} opacity={0.95}>
+                <div className="text-xs font-sans p-1 bg-white rounded-md text-slate-900 shadow-md">
+                  <p className="font-bold text-emerald-800 flex items-center gap-1">
+                    <span>🐟</span> {zone.name}
+                  </p>
+                  <p className="text-[10px] text-slate-600">
+                    Depth: {zone.depth_m || 45}m • {zone.species?.join(', ') || 'Pelagic'}
+                  </p>
+                </div>
+              </Tooltip>
+            </Marker>
+          ))}
+
+        {/* ── 3. Maritime Geofences & Sovereign Boundaries ── */}
+        {showGeofences &&
+          activeGeofences.map((g: any) => {
+            if (!g.coordinates || g.coordinates.length < 3) return null;
+            const color = g.risk_level === 'CRITICAL_DANGER' ? '#DC2626' : '#D97706';
+            const positions: [number, number][] = g.coordinates.map((c: any) => [c[0], c[1]]);
+
+            return (
+              <Polygon
+                key={`geo-${g.id}`}
+                positions={positions}
+                pathOptions={{
+                  color: color,
+                  weight: 2,
+                  dashArray: '6, 6',
+                  fillColor: color,
+                  fillOpacity: 0.18,
+                }}
+                eventHandlers={{
+                  click: () => {
+                    setSelectedHazard(g);
+                  },
+                }}
+              >
+                <Tooltip direction="center" opacity={0.95}>
+                  <div className="text-xs font-sans font-bold p-1" style={{ color }}>
+                    ⚠️ {g.name}
+                  </div>
+                </Tooltip>
+              </Polygon>
+            );
+          })}
+
+        {/* ── 4. Indian Coastal Ports & Stations ── */}
+        {showPorts &&
+          INDIAN_PORTS.map((port) => (
+            <Marker
+              key={port.id}
+              position={[port.lat, port.lon]}
+              icon={createPortMarkerIcon()}
+              eventHandlers={{
+                click: () => {
+                  handleUpdateUserLocation({ lat: port.lat, lon: port.lon });
+                },
+              }}
+            >
+              <Tooltip direction="bottom" offset={[0, 8]} opacity={0.9}>
+                <div className="text-[10px] font-sans font-bold text-slate-800 p-0.5">
+                  ⚓ {port.name}
+                </div>
+              </Tooltip>
+            </Marker>
+          ))}
+
+        {/* ── 5. Optional Weather Vector Arrows ── */}
+        {showWeatherVectors && (
+          <CircleMarker
+            center={[activeUserLocation.lat + 0.05, activeUserLocation.lon + 0.05]}
+            radius={24}
+            pathOptions={{
+              color: '#0EA5E9',
+              fillColor: '#0EA5E9',
+              fillOpacity: 0.2,
+              weight: 2,
+              dashArray: '3, 3',
+            }}
+          >
+            <Tooltip direction="top" opacity={0.95}>
+              <div className="text-xs font-sans font-bold text-sky-800 p-1">
+                💨 Wind: 18.5 km/h WSW • Waves: 1.2m
+              </div>
+            </Tooltip>
+          </CircleMarker>
+        )}
+      </MapContainer>
+
+      {/* ═════════════════════════════════════════════════════
+          FLOATING HIGH-CONTRAST TOUCH CONTROLS
+          ═════════════════════════════════════════════════════ */}
+
+      {/* Top-Left: Live Data Freshness Badge */}
+      <div className="absolute top-3 left-3 z-[1000] flex items-center gap-2 rounded-xl bg-slate-900/90 backdrop-blur-md px-3 py-1.5 text-xs font-mono font-bold text-white border border-slate-700 shadow-xl">
+        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+        <span className="tracking-wider">{dataFreshnessText}</span>
+        <span className="text-slate-400 font-normal">|</span>
+        <span className="text-teal-300 font-sans font-semibold">
+          {coastInfo.distanceKm.toFixed(1)} km from Coast
+        </span>
+      </div>
+
+      {/* Top-Right: Satellite vs Standard Map Mode Toggle */}
+      <div className="absolute top-3 right-3 z-[1000] flex items-center gap-1 rounded-xl bg-slate-900/90 backdrop-blur-md p-1 border border-slate-700 shadow-xl text-xs font-bold">
         <button
           type="button"
-          onClick={() => setMapType('carto')}
-          className={`px-2.5 py-1 text-xs font-bold rounded-md transition cursor-pointer ${
-            mapType === 'carto' ? 'bg-[#0A2540] text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-100'
-          }`}
-        >
-          Nautical
-        </button>
-        <button
-          type="button"
-          onClick={() => setMapType('satellite')}
-          className={`px-2.5 py-1 text-xs font-bold rounded-md transition cursor-pointer ${
-            mapType === 'satellite' ? 'bg-[#0A2540] text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-100'
+          onClick={() => setBaseMapType('satellite')}
+          className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+            baseMapType === 'satellite'
+              ? 'bg-[#0D9488] text-white shadow-xs'
+              : 'text-slate-300 hover:text-white'
           }`}
         >
           Satellite
         </button>
+        <button
+          type="button"
+          onClick={() => setBaseMapType('standard')}
+          className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+            baseMapType === 'standard'
+              ? 'bg-[#0D9488] text-white shadow-xs'
+              : 'text-slate-300 hover:text-white'
+          }`}
+        >
+          Nautical
+        </button>
       </div>
 
-      <MapContainer
-        center={[userLocation.lat, userLocation.lon]}
-        zoom={8}
-        minZoom={4}
-        maxZoom={18}
-        scrollWheelZoom={true}
-        className="h-full w-full"
-      >
-        <TileLayer url={tileConfig.url} attribution={tileConfig.attribution} />
-        <MapRecenter coords={userLocation} />
-        {onSelectCoords && <MapClickHandler onSelectCoords={onSelectCoords} />}
+      {/* Right-Center Floating Action Control Group */}
+      <div className="absolute right-3 top-16 z-[1000] flex flex-col gap-2">
+        {/* Layer Manager Toggle Button */}
+        <button
+          type="button"
+          onClick={() => setShowLayersMenu(!showLayersMenu)}
+          title="Toggle Marine Layers"
+          className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-700 text-white shadow-xl hover:bg-slate-800 active:scale-95 transition cursor-pointer"
+        >
+          <Layers className="h-5 w-5 text-[#22d3ee]" />
+        </button>
 
-        {/* ─── 1. Vessel Current Location Marker ─── */}
-        <Marker position={[userLocation.lat, userLocation.lon]} icon={vesselIcon}>
-          <Popup className="orca-map-popup">
-            <div className="p-1">
-              <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs mb-1">
-                <Anchor className="h-4 w-4 text-[#0D9488]" />
-                <span>Active Vessel Station</span>
+        {/* Recenter / GPS Detect */}
+        <button
+          type="button"
+          onClick={() => {
+            if (navigator.geolocation) {
+              navigator.geolocation.getCurrentPosition((pos) => {
+                handleUpdateUserLocation({
+                  lat: pos.coords.latitude,
+                  lon: pos.coords.longitude,
+                });
+              });
+            }
+          }}
+          title="Recenter GPS Position"
+          className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-700 text-white shadow-xl hover:bg-slate-800 active:scale-95 transition cursor-pointer"
+        >
+          <Navigation className="h-5 w-5 text-[#34d399]" />
+        </button>
+
+        {/* Fullscreen Toggle */}
+        <button
+          type="button"
+          onClick={handleToggleFullscreen}
+          title="Toggle Fullscreen"
+          className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-700 text-white shadow-xl hover:bg-slate-800 active:scale-95 transition cursor-pointer"
+        >
+          {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+        </button>
+      </div>
+
+      {/* Expandable Layer Manager Popout */}
+      {showLayersMenu && (
+        <div className="absolute right-16 top-16 z-[1000] w-64 rounded-2xl bg-slate-900/95 backdrop-blur-xl border border-slate-700 p-4 shadow-2xl text-xs text-white animate-scaleIn">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-800 mb-3">
+            <span className="font-bold text-slate-100 flex items-center gap-1.5">
+              <Layers className="h-4 w-4 text-[#22d3ee]" />
+              <span>ORCA GIS Layers</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowLayersMenu(false)}
+              className="text-slate-400 hover:text-white"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() => setShowPFZ(!showPFZ)}
+              className={`w-full flex items-center justify-between p-2 rounded-xl transition cursor-pointer ${
+                showPFZ ? 'bg-emerald-950/70 border border-emerald-500/40 text-emerald-300' : 'bg-slate-800/60 text-slate-400'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <Fish className="h-4 w-4 text-emerald-400" />
+                <span>Fishing Zones (PFZ)</span>
+              </span>
+              <span className="font-mono text-[10px] font-bold">{showPFZ ? 'ON' : 'OFF'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowGeofences(!showGeofences)}
+              className={`w-full flex items-center justify-between p-2 rounded-xl transition cursor-pointer ${
+                showGeofences ? 'bg-rose-950/70 border border-rose-500/40 text-rose-300' : 'bg-slate-800/60 text-slate-400'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <ShieldAlert className="h-4 w-4 text-rose-400" />
+                <span>Geofences & IMBL</span>
+              </span>
+              <span className="font-mono text-[10px] font-bold">{showGeofences ? 'ON' : 'OFF'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowPorts(!showPorts)}
+              className={`w-full flex items-center justify-between p-2 rounded-xl transition cursor-pointer ${
+                showPorts ? 'bg-cyan-950/70 border border-cyan-500/40 text-cyan-300' : 'bg-slate-800/60 text-slate-400'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <Compass className="h-4 w-4 text-cyan-400" />
+                <span>Coastal Ports & Harbors</span>
+              </span>
+              <span className="font-mono text-[10px] font-bold">{showPorts ? 'ON' : 'OFF'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowWeatherVectors(!showWeatherVectors)}
+              className={`w-full flex items-center justify-between p-2 rounded-xl transition cursor-pointer ${
+                showWeatherVectors ? 'bg-sky-950/70 border border-sky-500/40 text-sky-300' : 'bg-slate-800/60 text-slate-400'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <Wind className="h-4 w-4 text-sky-400" />
+                <span>Wind Vectors (Opt-in)</span>
+              </span>
+              <span className="font-mono text-[10px] font-bold">{showWeatherVectors ? 'ON' : 'OFF'}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ═════════════════════════════════════════════════════
+          BOTTOM SHEET: TAP PFZ / GEOSPATIAL INTELLIGENCE
+          ═════════════════════════════════════════════════════ */}
+      {selectedZone && (
+        <div className="absolute bottom-3 left-3 right-3 sm:left-auto sm:right-3 sm:w-96 z-[1000] rounded-2xl bg-slate-900/95 backdrop-blur-xl border border-slate-700 p-4 shadow-2xl text-white animate-fadeIn">
+          <div className="flex items-start justify-between pb-2 border-b border-slate-800 mb-2.5">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-950 border border-emerald-500/40 text-emerald-400">
+                <Fish className="h-4 w-4" />
               </div>
-              <p className="text-[11px] font-mono text-slate-600">
-                Coordinates: {userLocation.lat.toFixed(4)}°N, {userLocation.lon.toFixed(4)}°E
-              </p>
-              <span className="mt-1.5 inline-block rounded-sm bg-emerald-100 text-emerald-800 px-1.5 py-0.5 text-[10px] font-bold">
-                Operational Anchor
+              <div>
+                <h4 className="font-bold text-sm text-slate-100">{selectedZone.name}</h4>
+                <p className="text-[11px] text-slate-400 font-mono">
+                  {selectedZone.latitude.toFixed(2)}°N, {selectedZone.longitude.toFixed(2)}°E
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedZone(null)}
+              className="text-slate-400 hover:text-white"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-xs font-mono mb-3">
+            <div className="p-2 rounded-xl bg-slate-950/70 border border-slate-800">
+              <span className="text-[10px] text-slate-400 block uppercase">Distance to Vessel</span>
+              <span className="font-bold text-emerald-400 text-sm">
+                {selectedZone.distance_km?.toFixed(1) || '24.5'} km
               </span>
             </div>
-          </Popup>
-        </Marker>
+            <div className="p-2 rounded-xl bg-slate-950/70 border border-slate-800">
+              <span className="text-[10px] text-slate-400 block uppercase">Depth Profile</span>
+              <span className="font-bold text-slate-200 text-sm">{selectedZone.depth_m || 45} m</span>
+            </div>
+          </div>
 
-        {/* ─── 2. Potential Fishing Zones (PFZ Fronts) ─── */}
-        {layers.pfz &&
-          pfzZones.map((zone, idx) => (
-            <Marker key={zone.id || idx} position={[zone.latitude, zone.longitude]} icon={pfzIcon}>
-              <Popup>
-                <div className="p-1">
-                  <div className="flex items-center gap-1.5 font-bold text-sky-900 text-xs mb-1">
-                    <Fish className="h-4 w-4 text-sky-600" />
-                    <span>{zone.name}</span>
-                  </div>
-                  <p className="text-[11px] text-slate-600">
-                    Depth: <strong className="text-slate-800">{zone.depth_m || 45} m</strong>
-                  </p>
-                  <p className="text-[11px] text-slate-600">
-                    Target Species:{' '}
-                    <strong className="text-slate-800">
-                      {Array.isArray(zone.species) ? zone.species.join(', ') : 'Tuna, Mackerel'}
-                    </strong>
-                  </p>
-                  <span className="mt-1.5 inline-block rounded-sm bg-sky-100 text-sky-800 px-1.5 py-0.5 text-[10px] font-bold">
-                    INCOIS PFZ Mission
-                  </span>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
+          <div className="mb-3 text-xs text-slate-300">
+            <span className="text-slate-400">Target Species:</span>{' '}
+            <strong className="text-white">{selectedZone.species?.join(', ') || 'Pelagic Fish'}</strong>
+          </div>
 
-        {/* ─── 3. International Boundary (IMBL) Lines ─── */}
-        {layers.geofence && (
-          <>
-            {/* Sir Creek IMBL Line (Red Alert) */}
-            <Polyline
-              positions={imblSirCreek}
-              pathOptions={{
-                color: '#DC2626',
-                weight: 3.5,
-                dashArray: '8, 8',
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                handleSendMessage(`Tell me the sea conditions and optimal route to reach ${selectedZone.name}.`);
+                setSelectedZone(null);
               }}
+              className="flex-1 rounded-xl bg-[#0D9488] py-2 text-xs font-bold text-white shadow-md hover:bg-[#0F766E] transition cursor-pointer flex items-center justify-center gap-1.5"
             >
-              <Popup>
-                <div className="p-1">
-                  <p className="text-xs font-bold text-red-700">
-                    India-Pakistan IMBL (Sir Creek)
-                  </p>
-                  <p className="text-[11px] text-slate-600 mt-0.5">
-                    Sovereign International Boundary. Crossing strictly prohibited by law.
-                  </p>
-                </div>
-              </Popup>
-            </Polyline>
+              <span>Ask ORCA in Chat</span>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
-            {/* Palk Strait IMBL Line */}
-            <Polyline
-              positions={imblPalkStrait}
-              pathOptions={{
-                color: '#DC2626',
-                weight: 3.5,
-                dashArray: '8, 8',
-              }}
-            >
-              <Popup>
-                <div className="p-1">
-                  <p className="text-xs font-bold text-red-700">
-                    India-Sri Lanka IMBL (Palk Strait)
-                  </p>
-                  <p className="text-[11px] text-slate-600 mt-0.5">
-                    International Maritime Boundary Line. Strict surveillance by Indian Coast Guard.
-                  </p>
-                </div>
-              </Popup>
-            </Polyline>
-          </>
-        )}
-
-        {/* ─── 4. Marine Protected Areas (MPAs) ─── */}
-        {layers.geofence && (
-          <>
-            <Polygon
-              positions={mpaGulfOfMannar}
-              pathOptions={{
-                color: '#D97706',
-                fillColor: '#F59E0B',
-                fillOpacity: 0.2,
-                weight: 2,
-              }}
-            >
-              <Popup>
-                <div className="p-1">
-                  <p className="text-xs font-bold text-amber-800">
-                    Gulf of Mannar Marine National Park
-                  </p>
-                  <p className="text-[11px] text-slate-600 mt-0.5">
-                    Protected coral biosphere. Commercial trawling prohibited.
-                  </p>
-                </div>
-              </Popup>
-            </Polygon>
-
-            <Polygon
-              positions={mpaGulfOfKutch}
-              pathOptions={{
-                color: '#D97706',
-                fillColor: '#F59E0B',
-                fillOpacity: 0.2,
-                weight: 2,
-              }}
-            >
-              <Popup>
-                <div className="p-1">
-                  <p className="text-xs font-bold text-amber-800">
-                    Marine National Park (Gulf of Kutch)
-                  </p>
-                  <p className="text-[11px] text-slate-600 mt-0.5">
-                    Mangrove and coral marine sanctuary. Regulated maritime zone.
-                  </p>
-                </div>
-              </Popup>
-            </Polygon>
-          </>
-        )}
-      </MapContainer>
+      {/* ═════════════════════════════════════════════════════
+          FAR-FROM-COAST WARNING OVERLAY
+          ═════════════════════════════════════════════════════ */}
+      {showFarFromCoastWarning && (
+        <div className="absolute top-16 left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 sm:max-w-md z-[1000] rounded-2xl bg-amber-950/90 backdrop-blur-xl border border-amber-500/50 p-4 text-white shadow-2xl animate-fadeIn">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-6 w-6 text-amber-400 shrink-0 mt-0.5" />
+            <div className="flex-1 text-xs">
+              <h4 className="font-bold text-amber-200 text-sm">Far from Coast Warning</h4>
+              <p className="text-slate-200 mt-1 leading-relaxed">
+                Your selected location is <strong>{coastInfo.distanceKm} km</strong> from the coastline (threshold: 100 km).
+              </p>
+              <div className="flex items-center gap-2 mt-3">
+                <button
+                  type="button"
+                  onClick={dismissFarFromCoastWarning}
+                  className="rounded-lg bg-amber-500 px-3 py-1 text-xs font-bold text-slate-950 hover:bg-amber-400 transition cursor-pointer"
+                >
+                  Confirm Position
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleUpdateUserLocation({ lat: 18.9220, lon: 72.8347 }); // Recenter Mumbai
+                    dismissFarFromCoastWarning();
+                  }}
+                  className="text-xs text-amber-200 underline hover:text-white"
+                >
+                  Reset to Coastal Port
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

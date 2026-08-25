@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 import math
 import os
 import re
+import logging
 from typing import Any, Dict, List, Optional, Tuple
 import xml.etree.ElementTree as ET
 
@@ -21,6 +22,8 @@ import httpx
 
 from app.data.weather.base import WeatherProvider
 from app.data.weather.cache import MarineWeatherCache
+
+logger = logging.getLogger(__name__)
 
 
 CARDINAL_DIRECTIONS = [

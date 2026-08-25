@@ -483,6 +483,35 @@ export type SystemHealth = any;
 export const createGovernmentAnnouncement = publishGovernmentAnnouncement;
 export const updateLocation = updateUserLocation;
 
+export async function runKillerDemo(language: string = 'en') {
+  const response = await fetch(`${API_BASE_URL}/api/demo/dahanu?language=${language}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) {
+    throw new Error(`Killer demo failed (${response.status})`);
+  }
+  return await response.json();
+}
+
+export async function getGeofences(lat: number, lon: number) {
+  const response = await fetch(`${API_BASE_URL}/api/geofences?lat=${lat}&lon=${lon}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch geofences (${response.status})`);
+  }
+  return await response.json();
+}
+
+export async function getHazardAlerts(lat: number, lon: number, date?: string) {
+  let url = `${API_BASE_URL}/api/alerts?lat=${lat}&lon=${lon}`;
+  if (date) url += `&date=${date}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch hazard alerts (${response.status})`);
+  }
+  return await response.json();
+}
+
 export default {
   queryORCA,
   registerUser,

@@ -7,6 +7,13 @@ from typing import Any, Dict, Optional, Tuple
 from dotenv import load_dotenv
 import httpx
 
+from app.models.agent_models import LanguageIdentificationResult
+from app.services.sarvam import (
+    SHORT_CODE_TO_SARVAM,
+    SarvamLanguageService,
+    sarvam_language_service,
+)
+
 load_dotenv()
 
 logger = logging.getLogger(__name__)
@@ -113,7 +120,8 @@ class BhashiniService:
     - High-fidelity Gemini / Maritime Rule fallback engines
     """
 
-    def __init__(self):
+    def __init__(self, sarvam_service: Optional[SarvamLanguageService] = None):
+        self.sarvam_service = sarvam_service or sarvam_language_service
         self.user_id = os.getenv("BHASHINI_USER_ID", "").strip()
         self.api_key = (
             os.getenv("BHASHINI_API_KEY", "").strip()
@@ -137,6 +145,11 @@ class BhashiniService:
         """Checks if live Bhashini API credentials are present."""
         return bool(self.user_id and self.api_key)
 
+    @property
+    def is_sarvam_configured(self) -> bool:
+        """Checks if live Sarvam API credentials are present."""
+        return bool(self.sarvam_service and self.sarvam_service.is_configured)
+
     def set_session_language(self, session_id: str, language: str) -> None:
         """Stores the language preference for a multi-turn conversation session."""
         if session_id and language:
@@ -146,22 +159,42 @@ class BhashiniService:
         """Retrieves stored language preference for a session."""
         return self._session_languages.get(session_id)
 
-    def detect_language(self, text: str, session_id: Optional[str] = None) -> str:
+    def identify_language(
+        self,
+        text: str,
+        session_id: Optional[str] = None,
+    ) -> LanguageIdentificationResult:
         """
-        Detects the Indian regional language of the text.
+        Identifies the language and script of the input text.
         
-        Detection priority:
-        1. Multi-turn session language context (if provided and text is non-empty)
+        Priority:
+        1. Sarvam AI Language Identification (/text-lid) if configured
         2. Fast Deterministic Unicode Script Character Frequency Analyzer (100% accurate for Indian scripts)
-        3. Gemini / Bhashini API detection fallback
-        4. Default to 'en' (English)
+        3. Multi-turn session language context (if session_id provided)
+        4. Default to 'en-IN' / 'en' (English)
         """
-        if not text or not text.strip():
-            return "en"
+        if not text or not isinstance(text, str) or not text.strip():
+            return LanguageIdentificationResult(
+                language_code="en-IN",
+                script_code="Latn",
+                request_id=None,
+                provider="deterministic_fallback",
+                detection_status="FALLBACK_DETECTED",
+                short_code="en",
+                language_name="English",
+            )
 
         cleaned_text = text.strip()
 
-        # Check Unicode script ranges for Indic languages
+        # 1. Primary: Try Sarvam Language Identification API
+        if self.sarvam_service and self.sarvam_service.is_configured:
+            sarvam_res = self.sarvam_service.identify_language(cleaned_text)
+            if sarvam_res is not None:
+                if session_id:
+                    self.set_session_language(session_id, sarvam_res.short_code)
+                return sarvam_res
+
+        # 2. Fallback: Fast Deterministic Unicode Script Character Frequency Analyzer
         script_counts = {
             "gu": len(re.findall(r"[\u0A80-\u0AFF]", cleaned_text)),  # Gujarati
             "devanagari": len(re.findall(r"[\u0900-\u097F]", cleaned_text)),  # Hindi / Marathi
@@ -184,18 +217,68 @@ class BhashiniService:
                     detected = "mr"
                 else:
                     detected = "hi"
+                script_code = "Deva"
             else:
                 detected = max_script
+                script_map = {
+                    "gu": "Gujr",
+                    "ta": "Taml",
+                    "te": "Telu",
+                    "kn": "Knda",
+                    "ml": "Mlym",
+                    "bn": "Beng",
+                    "or": "Orya",
+                    "pa": "Guru",
+                }
+                script_code = script_map.get(detected, "Deva")
 
             if session_id:
                 self.set_session_language(session_id, detected)
-            return detected
 
-        # If text is Latin/English or session already set
+            full_code = SHORT_CODE_TO_SARVAM.get(detected, f"{detected}-IN")
+            lang_name = SUPPORTED_LANGUAGES.get(detected, "Unknown")
+
+            return LanguageIdentificationResult(
+                language_code=full_code,
+                script_code=script_code,
+                request_id=None,
+                provider="deterministic_fallback",
+                detection_status="FALLBACK_DETECTED",
+                short_code=detected,
+                language_name=lang_name,
+            )
+
+        # 3. Session Language Store (for Latin/ASCII queries in existing regional sessions)
         if session_id and session_id in self._session_languages:
-            return self._session_languages[session_id]
+            session_lang = self._session_languages[session_id]
+            full_code = SHORT_CODE_TO_SARVAM.get(session_lang, f"{session_lang}-IN")
+            return LanguageIdentificationResult(
+                language_code=full_code,
+                script_code="Latn",
+                request_id=None,
+                provider="session_cache",
+                detection_status="FALLBACK_DETECTED",
+                short_code=session_lang,
+                language_name=SUPPORTED_LANGUAGES.get(session_lang, "English"),
+            )
 
-        return "en"
+        # 4. Default to English (en-IN / en)
+        return LanguageIdentificationResult(
+            language_code="en-IN",
+            script_code="Latn",
+            request_id=None,
+            provider="deterministic_fallback",
+            detection_status="FALLBACK_DETECTED",
+            short_code="en",
+            language_name="English",
+        )
+
+    def detect_language(self, text: str, session_id: Optional[str] = None) -> str:
+        """
+        Detects the Indian regional language code of the text (2-letter ISO 639-1 code).
+        Maintains backward compatibility with all ORCA components and tests.
+        """
+        return self.identify_language(text, session_id=session_id).short_code
 
     def _get_pipeline_config(self, source_lang: str, target_lang: str) -> Optional[Dict[str, Any]]:
         """

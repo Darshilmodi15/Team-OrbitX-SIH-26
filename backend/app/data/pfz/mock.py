@@ -65,6 +65,7 @@ class MockPFZProvider(PFZProvider):
                 avg_depth = int((min_d + max_d) / 2)
 
                 landing = z.get("landing_centre", "Offshore")
+                bearing = z.get("bearing_deg")
                 results.append({
                     "zone_id": z.get("id", "PFZ-INCOIS"),
                     "name": f"INCOIS Zone ({landing})",
@@ -72,6 +73,8 @@ class MockPFZProvider(PFZProvider):
                     "lon": z_lon,
                     "distance_km": dist,
                     "depth_m": avg_depth,
+                    "bearing_deg": bearing,
+                    "landing_centre": landing,
                     "dominant_species": "Mackerel, Pomfret & Sardines (INCOIS Advisory)",
                 })
 
