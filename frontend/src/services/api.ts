@@ -10,7 +10,15 @@
  * - /api/voice/* (Sarvam AI STT Saaras v3 & TTS Bulbul v3)
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+function getApiBaseUrl(): string {
+  let url = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').trim();
+  if (url && !url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('/')) {
+    url = `https://${url}`;
+  }
+  return url.replace(/\/+$/, '');
+}
+
+export const API_BASE_URL = getApiBaseUrl();
 
 export interface QueryPayload {
   location: { lat: number; lon: number };
