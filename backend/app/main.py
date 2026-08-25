@@ -13,7 +13,11 @@ from app.agents.risk_agent import assess_risk
 from app.agents.route_agent import plan_safe_marine_route
 from app.agents.simulation_agent import run_what_if_simulation
 from app.agents.weather_agent import get_marine_weather
-from app.data.geofence import evaluate_vessel_geofences
+from app.data.geofence import (
+    GeofenceProvider,
+    SpatialGeofenceProvider,
+    evaluate_vessel_geofences,
+)
 from app.data.pfz.base import PFZProvider
 from app.data.pfz.mock import MockPFZProvider
 from app.data.weather.base import WeatherProvider
