@@ -15,11 +15,6 @@ services:
         fromDatabase:
           name: orca-postgres
           property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: orca-cache
-          property: connectionString
       - key: JWT_SECRET
         generateValue: true
       - key: INCOIS_BASE_URL
@@ -33,14 +28,7 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.9
 
-  # 2. ORCA Redis Cache
-  - type: redis
-    name: orca-cache
-    region: singapore
-    plan: free
-    ipAllowList: []
-
-  # 3. ORCA React 19 Frontend (Static Site)
+  # 2. ORCA React 19 Frontend (Static Site)
   - type: web
     name: orca-frontend
     runtime: static
