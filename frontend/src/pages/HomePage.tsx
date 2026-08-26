@@ -19,7 +19,7 @@ export default function HomePage() {
           </p>
           <div className="flex gap-4">
             <button 
-              onClick={() => navigate('/language')}
+              onClick={() => navigate('/dashboard')}
               className="bg-teal-600 hover:bg-teal-700 text-white font-medium py-3 px-8 rounded transition-colors cursor-pointer"
             >
               Get Started
