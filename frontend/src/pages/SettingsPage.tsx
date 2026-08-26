@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { AppShell } from "@/components/orca/AppShell";
+import { ThemeToggle } from "@/components/orca/ThemeToggle";
 import { LANGUAGES, useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
 import { formatCoords } from "@/lib/orca/geo";
@@ -13,6 +14,15 @@ export default function SettingsPage() {
   return (
     <AppShell>
       <h1 className="text-xl font-semibold">{t("nav.settings")}</h1>
+
+      {/* Theme Settings Section */}
+      <section className="mt-4 rounded-md border border-border bg-card p-4">
+        <h2 className="text-sm font-semibold mb-1">Theme (Day / Night Mode)</h2>
+        <p className="text-xs text-muted-foreground mb-3">
+          Choose between Moonlit Night (Dark), Coastal Daylight (Light), or match System settings.
+        </p>
+        <ThemeToggle variant="pills" />
+      </section>
 
       <section className="mt-4 rounded-md border border-border bg-card p-4">
         <h2 className="text-sm font-semibold">{t("lang.title")}</h2>

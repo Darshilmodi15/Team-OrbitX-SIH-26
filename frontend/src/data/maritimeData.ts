@@ -75,17 +75,23 @@ export interface QuickPrompt {
 export const COASTAL_CITIES: CoastalCity[] = [
   // GUJARAT
   { id: 'surat', name: 'Surat', state: 'Gujarat', lat: 21.1702, lon: 72.8311, priority: true, minZoom: 5, type: 'Major City' },
-  { id: 'kandla', name: 'Kandla / Deendayal', state: 'Gujarat', lat: 23.0333, lon: 70.2167, priority: false, minZoom: 7, type: 'Port City' },
+  { id: 'veraval', name: 'Veraval', state: 'Gujarat', lat: 20.9077, lon: 70.3678, priority: true, minZoom: 5, type: 'Port City' },
+  { id: 'porbandar', name: 'Porbandar', state: 'Gujarat', lat: 21.6417, lon: 69.6093, priority: true, minZoom: 5, type: 'Port City' },
+  { id: 'kandla', name: 'Kandla / Deendayal', state: 'Gujarat', lat: 23.0333, lon: 70.2167, priority: false, minZoom: 6, type: 'Port City' },
   { id: 'mundra', name: 'Mundra', state: 'Gujarat', lat: 22.8395, lon: 69.7257, priority: false, minZoom: 7, type: 'Port City' },
-  { id: 'okha', name: 'Okha', state: 'Gujarat', lat: 22.4667, lon: 69.0667, priority: false, minZoom: 7, type: 'Port City' },
-  { id: 'porbandar', name: 'Porbandar', state: 'Gujarat', lat: 21.6417, lon: 69.6093, priority: false, minZoom: 7, type: 'Port City' },
-  { id: 'veraval', name: 'Veraval', state: 'Gujarat', lat: 20.9077, lon: 70.3678, priority: false, minZoom: 7, type: 'Port City' },
+  { id: 'okha', name: 'Okha', state: 'Gujarat', lat: 22.4667, lon: 69.0667, priority: false, minZoom: 6, type: 'Port City' },
+  { id: 'dwarka', name: 'Dwarka', state: 'Gujarat', lat: 22.2403, lon: 68.9685, priority: false, minZoom: 6, type: 'Coastal Town' },
+  { id: 'mandvi', name: 'Mandvi', state: 'Gujarat', lat: 22.8333, lon: 69.3500, priority: false, minZoom: 7, type: 'Port City' },
+  { id: 'bhavnagar', name: 'Bhavnagar', state: 'Gujarat', lat: 21.7645, lon: 72.1519, priority: false, minZoom: 6, type: 'Major City' },
+  { id: 'jafrabad', name: 'Jafrabad', state: 'Gujarat', lat: 20.8667, lon: 71.3667, priority: false, minZoom: 7, type: 'Coastal Town' },
+  { id: 'diu', name: 'Diu', state: 'Daman & Diu', lat: 20.7144, lon: 70.9874, priority: false, minZoom: 6, type: 'Port City' },
 
   // MAHARASHTRA
   { id: 'mumbai', name: 'Mumbai', state: 'Maharashtra', lat: 18.9220, lon: 72.8347, priority: true, minZoom: 5, type: 'Major City' },
   { id: 'dahanu', name: 'Dahanu', state: 'Maharashtra', lat: 19.9700, lon: 72.7300, priority: false, minZoom: 7, type: 'Coastal Town' },
-  { id: 'ratnagiri', name: 'Ratnagiri', state: 'Maharashtra', lat: 16.9902, lon: 73.3120, priority: false, minZoom: 7, type: 'Port City' },
+  { id: 'ratnagiri', name: 'Ratnagiri', state: 'Maharashtra', lat: 16.9902, lon: 73.3120, priority: true, minZoom: 6, type: 'Port City' },
   { id: 'sindhudurg', name: 'Sindhudurg', state: 'Maharashtra', lat: 16.0353, lon: 73.4735, priority: false, minZoom: 7, type: 'Coastal Town' },
+  { id: 'alibaug', name: 'Alibaug', state: 'Maharashtra', lat: 18.6414, lon: 72.8722, priority: false, minZoom: 7, type: 'Coastal Town' },
 
   // GOA
   { id: 'panaji', name: 'Panaji', state: 'Goa', lat: 15.4909, lon: 73.8278, priority: true, minZoom: 5, type: 'Major City' },
@@ -93,15 +99,40 @@ export const COASTAL_CITIES: CoastalCity[] = [
 
   // KARNATAKA
   { id: 'mangaluru', name: 'Mangaluru', state: 'Karnataka', lat: 12.8596, lon: 74.8364, priority: true, minZoom: 5, type: 'Major City' },
-  { id: 'karwar', name: 'Karwar', state: 'Karnataka', lat: 14.8185, lon: 74.1300, priority: false, minZoom: 7, type: 'Port City' },
+  { id: 'karwar', name: 'Karwar', state: 'Karnataka', lat: 14.8185, lon: 74.1300, priority: false, minZoom: 6, type: 'Port City' },
   { id: 'udupi', name: 'Udupi', state: 'Karnataka', lat: 13.3409, lon: 74.7421, priority: false, minZoom: 7, type: 'Coastal Town' },
 
   // KERALA
   { id: 'kochi', name: 'Kochi', state: 'Kerala', lat: 9.9312, lon: 76.2673, priority: true, minZoom: 5, type: 'Major City' },
   { id: 'kannur', name: 'Kannur', state: 'Kerala', lat: 11.8745, lon: 75.3704, priority: false, minZoom: 7, type: 'Port City' },
-  { id: 'kozhikode', name: 'Kozhikode', state: 'Kerala', lat: 11.2588, lon: 75.7804, priority: false, minZoom: 7, type: 'Port City' },
+  { id: 'kozhikode', name: 'Kozhikode', state: 'Kerala', lat: 11.2588, lon: 75.7804, priority: false, minZoom: 6, type: 'Port City' },
   { id: 'kollam', name: 'Kollam', state: 'Kerala', lat: 8.8932, lon: 76.6141, priority: false, minZoom: 7, type: 'Port City' },
-  { id: 'thiruvananthapuram', name: 'Thiruvananthapuram', state: 'Kerala', lat: 8.5241, lon: 76.9366, priority: false, minZoom: 7, type: 'Major City' },
+  { id: 'thiruvananthapuram', name: 'Thiruvananthapuram', state: 'Kerala', lat: 8.5241, lon: 76.9366, priority: false, minZoom: 6, type: 'Major City' },
+
+  // TAMIL NADU
+  { id: 'chennai', name: 'Chennai', state: 'Tamil Nadu', lat: 13.0827, lon: 80.2707, priority: true, minZoom: 5, type: 'Major City' },
+  { id: 'rameswaram', name: 'Rameswaram', state: 'Tamil Nadu', lat: 9.2876, lon: 79.3129, priority: true, minZoom: 6, type: 'Port City' },
+  { id: 'cuddalore', name: 'Cuddalore', state: 'Tamil Nadu', lat: 11.7480, lon: 79.7714, priority: false, minZoom: 7, type: 'Port City' },
+  { id: 'nagapattinam', name: 'Nagapattinam', state: 'Tamil Nadu', lat: 10.7672, lon: 79.8449, priority: false, minZoom: 7, type: 'Port City' },
+  { id: 'thoothukudi', name: 'Thoothukudi / Tuticorin', state: 'Tamil Nadu', lat: 8.7642, lon: 78.1348, priority: false, minZoom: 6, type: 'Port City' },
+  { id: 'kanyakumari', name: 'Kanyakumari', state: 'Tamil Nadu', lat: 8.0883, lon: 77.5385, priority: true, minZoom: 5, type: 'Coastal Town' },
+
+  // ANDHRA PRADESH
+  { id: 'vizag', name: 'Visakhapatnam', state: 'Andhra Pradesh', lat: 17.6868, lon: 83.2185, priority: true, minZoom: 5, type: 'Major City' },
+  { id: 'kakinada', name: 'Kakinada', state: 'Andhra Pradesh', lat: 16.9891, lon: 82.2475, priority: false, minZoom: 6, type: 'Port City' },
+  { id: 'machilipatnam', name: 'Machilipatnam', state: 'Andhra Pradesh', lat: 16.1875, lon: 81.1389, priority: false, minZoom: 7, type: 'Port City' },
+  { id: 'krishnapatnam', name: 'Krishnapatnam', state: 'Andhra Pradesh', lat: 14.2833, lon: 80.1167, priority: false, minZoom: 7, type: 'Port City' },
+
+  // ODISHA
+  { id: 'paradip', name: 'Paradip', state: 'Odisha', lat: 20.2644, lon: 86.6710, priority: true, minZoom: 5, type: 'Port City' },
+  { id: 'puri', name: 'Puri', state: 'Odisha', lat: 19.8135, lon: 85.8312, priority: false, minZoom: 6, type: 'Major City' },
+  { id: 'dhamra', name: 'Dhamra', state: 'Odisha', lat: 20.7936, lon: 86.9744, priority: false, minZoom: 7, type: 'Port City' },
+  { id: 'gopalpur', name: 'Gopalpur', state: 'Odisha', lat: 19.2600, lon: 84.9000, priority: false, minZoom: 7, type: 'Port City' },
+
+  // WEST BENGAL
+  { id: 'digha', name: 'Digha', state: 'West Bengal', lat: 21.6266, lon: 87.5074, priority: true, minZoom: 6, type: 'Coastal Town' },
+  { id: 'haldia', name: 'Haldia', state: 'West Bengal', lat: 22.0667, lon: 88.0667, priority: false, minZoom: 6, type: 'Port City' },
+  { id: 'kakdwip', name: 'Kakdwip', state: 'West Bengal', lat: 21.8764, lon: 88.1856, priority: false, minZoom: 7, type: 'Coastal Town' },
 ];
 
 export const INDIAN_PORTS: Port[] = [

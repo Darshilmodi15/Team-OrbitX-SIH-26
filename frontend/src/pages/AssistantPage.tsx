@@ -169,7 +169,7 @@ export default function AssistantPage() {
               <button
                 type="button"
                 onClick={() => ask(s)}
-                className="cursor-pointer rounded-full border border-border bg-card px-3 py-2 text-xs font-medium transition-colors hover:bg-muted"
+                className="cursor-pointer rounded-full border border-border bg-card text-card-foreground px-3 py-2 text-xs font-medium transition-colors hover:bg-muted hover:text-foreground shadow-xs"
               >
                 {s}
               </button>
@@ -185,8 +185,8 @@ export default function AssistantPage() {
                 key={m.id}
                 className={
                   m.role === "user"
-                    ? "ml-auto max-w-[85%] rounded-md bg-secondary px-3 py-2 text-sm text-secondary-foreground"
-                    : "mr-auto max-w-[92%] whitespace-pre-line rounded-md border border-border bg-card px-3 py-2 text-sm"
+                    ? "ml-auto max-w-[85%] rounded-md bg-secondary px-3.5 py-2.5 text-sm text-secondary-foreground shadow-xs"
+                    : "mr-auto max-w-[92%] whitespace-pre-line rounded-md border border-border bg-card text-card-foreground px-3.5 py-2.5 text-sm shadow-xs"
                 }
               >
                 {m.text}
@@ -216,7 +216,7 @@ export default function AssistantPage() {
 
         {/* Single chatbot message/input area with mic + send buttons */}
         <form
-          className="sticky bottom-20 mt-4 flex items-end gap-2 rounded-md border border-border bg-card p-2 lg:bottom-4"
+          className="sticky bottom-20 mt-4 flex items-end gap-2 rounded-md border border-border bg-card p-2 shadow-sm lg:bottom-4"
           onSubmit={(e) => {
             e.preventDefault();
             ask(input);
@@ -234,7 +234,7 @@ export default function AssistantPage() {
             rows={2}
             placeholder={t("chat.placeholder")}
             aria-label={t("chat.placeholder")}
-            className="max-h-40 min-h-11 flex-1 resize-y break-words border-0 bg-transparent text-base shadow-none outline-none"
+            className="max-h-40 min-h-11 flex-1 resize-y break-words border-0 bg-transparent text-foreground placeholder:text-muted-foreground text-base shadow-none outline-none focus:ring-0"
           />
 
           {/* Voice input microphone button */}
@@ -261,7 +261,7 @@ export default function AssistantPage() {
           {/* Send Button */}
           <button
             type="submit"
-            className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md bg-secondary text-secondary-foreground transition hover:brightness-110"
+            className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md bg-secondary text-secondary-foreground transition hover:brightness-110 active:scale-95 shadow-sm"
             aria-label={t("chat.send")}
           >
             <Send className="size-4" aria-hidden />

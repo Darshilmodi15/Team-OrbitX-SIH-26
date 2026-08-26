@@ -15,11 +15,11 @@ function Metric({
   value: string;
 }) {
   return (
-    <div className="flex min-w-0 items-start gap-2.5 rounded-md border border-border bg-card p-3">
+    <div className="flex min-w-0 items-start gap-2.5 rounded-md border border-border bg-card p-3 shadow-xs">
       <Icon className="mt-0.5 size-4 shrink-0 text-secondary" aria-hidden />
       <div className="min-w-0">
-        <p className="truncate text-xs text-muted-foreground">{label}</p>
-        <p className="truncate text-base font-semibold">{value}</p>
+        <p className="truncate text-xs font-medium text-muted-foreground">{label}</p>
+        <p className="truncate text-base font-semibold text-foreground">{value}</p>
       </div>
     </div>
   );
@@ -35,7 +35,7 @@ export function MarineConditions({ data }: { data: MarineSnapshot }) {
   return (
     <section aria-labelledby="marine-heading" className="space-y-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="marine-heading" className="text-base font-semibold">
+        <h2 id="marine-heading" className="text-base font-semibold text-foreground">
           {t("marine.title")}
         </h2>
         <p className="text-xs text-muted-foreground">
@@ -69,14 +69,14 @@ export function ForecastTimeline({ points }: { points: ForecastPoint[] }) {
 
   return (
     <section aria-labelledby="forecast-heading" className="space-y-3">
-      <h2 id="forecast-heading" className="text-base font-semibold">
+      <h2 id="forecast-heading" className="text-base font-semibold text-foreground">
         {t("forecast.title")}
       </h2>
       <ul className="flex snap-x gap-2 overflow-x-auto pb-1">
         {points.map((p, i) => (
           <li
             key={p.time}
-            className="w-28 shrink-0 snap-start rounded-md border border-border bg-card p-2.5"
+            className="w-28 shrink-0 snap-start rounded-md border border-border bg-card p-2.5 shadow-xs"
           >
             <p className="text-xs font-medium text-muted-foreground">
               {i === 0
@@ -86,7 +86,7 @@ export function ForecastTimeline({ points }: { points: ForecastPoint[] }) {
                     minute: "2-digit",
                   })}
             </p>
-            <p className="mt-1 text-sm font-semibold">
+            <p className="mt-1 text-sm font-semibold text-foreground">
               {p.waveHeightM == null ? "\u2014" : `${p.waveHeightM.toFixed(1)} m`}
             </p>
             <p className="text-xs text-muted-foreground">

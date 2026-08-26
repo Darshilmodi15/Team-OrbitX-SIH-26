@@ -35,6 +35,12 @@ import { useAppContext } from '../context/AppContext';
 import { getStrings } from '../i18n';
 import type { LocationCoords, PFZEvidenceItem, HighlightedMapTarget } from '../context/AppContext';
 import { COASTAL_CITIES, INDIAN_PORTS, type Port } from '../data/maritimeData';
+import {
+  getLocalizedCityName,
+  getLocalizedPort,
+  getLocalizedGeofence,
+  getLocalizedSeaName,
+} from '../data/localizedGeo';
 import { computeCoastDistance } from '../utils/geospatial';
 
 /* ═══════════════════════════════════════════════════
@@ -85,16 +91,32 @@ const createPFZIcon = (yieldLevel = 'High') =>
     iconAnchor: [16, 16],
   });
 
-const createPortMarkerIcon = () =>
+const createPortMarkerIcon = (portName?: string) =>
   L.divIcon({
     className: 'custom-port-marker',
     html: `
-      <div class="w-5 h-5 rounded-full bg-[#0A2540] border border-white shadow-xs flex items-center justify-center text-[9px] text-white">
-        ⚓
+      <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#0A2540]/90 backdrop-blur-xs border border-cyan-400/80 shadow-md cursor-pointer hover:scale-110 hover:border-cyan-300 transition">
+        <span class="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-cyan-500 text-white text-[8px] font-bold">⚓</span>
+        ${portName ? `<span class="text-[10px] font-sans font-bold text-cyan-100 whitespace-nowrap leading-none">${portName}</span>` : ''}
       </div>
     `,
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
+    iconSize: [110, 24],
+    iconAnchor: [15, 12],
+  });
+
+const createCityLabelIcon = (cityName: string, isPriority: boolean) =>
+  L.divIcon({
+    className: 'custom-city-marker',
+    html: `
+      <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-950/85 backdrop-blur-xs border ${
+        isPriority ? 'border-amber-400/80 shadow-amber-500/20' : 'border-slate-400/60'
+      } shadow-md whitespace-nowrap cursor-pointer hover:scale-110 hover:border-teal-300 hover:bg-slate-900 transition">
+        <span class="w-1.5 h-1.5 rounded-full ${isPriority ? 'bg-amber-400 animate-pulse' : 'bg-cyan-400'} shrink-0"></span>
+        <span class="text-[10.5px] font-sans font-bold text-white tracking-wide leading-none">${cityName}</span>
+      </div>
+    `,
+    iconSize: [90, 22],
+    iconAnchor: [45, 11],
   });
 
 /* ═══════════════════════════════════════════════════
@@ -204,6 +226,7 @@ export default function MarineMap({
   const [showGeofences, setShowGeofences] = useState(true);
   const [showAlerts, setShowAlerts] = useState(true);
   const [showPorts, setShowPorts] = useState(true);
+  const [showCities, setShowCities] = useState(true);
   const [showWeatherVectors, setShowWeatherVectors] = useState(false);
   const [showLayersMenu, setShowLayersMenu] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);

@@ -19,7 +19,7 @@ export default function MapPage() {
 
   return (
     <AppShell>
-      <h1 className="text-xl font-semibold">{t("map.title")}</h1>
+      <h1 className="text-xl font-semibold text-foreground">{t("map.title")}</h1>
 
       {location ? (
         <>
@@ -31,9 +31,9 @@ export default function MapPage() {
             <MapPanel center={location.coords} interactive height={420} />
           </div>
 
-          <section className="mt-4 rounded-md border border-border bg-card p-4">
-            <h2 className="text-sm font-semibold">{t("map.legend")}</h2>
-            <ul className="mt-2 space-y-2 text-sm">
+          <section className="mt-4 rounded-md border border-border bg-card p-4 shadow-xs">
+            <h2 className="text-sm font-semibold text-foreground">{t("map.legend")}</h2>
+            <ul className="mt-2 space-y-2 text-sm text-card-foreground">
               <li className="flex items-center gap-2">
                 <span className="size-3 rounded-full bg-secondary" aria-hidden />
                 <span>{t("map.yourPin")}</span>
@@ -47,12 +47,12 @@ export default function MapPage() {
             </ul>
           </section>
 
-          <section className="mt-4 rounded-md border border-border bg-card p-4">
-            <h2 className="text-sm font-semibold">{t("glossary.title")}</h2>
+          <section className="mt-4 rounded-md border border-border bg-card p-4 shadow-xs">
+            <h2 className="text-sm font-semibold text-foreground">{t("glossary.title")}</h2>
             <dl className="mt-2 space-y-3">
               {GLOSSARY_ITEMS.map((g) => (
                 <div key={g.fullKey}>
-                  <dt className="text-sm font-medium">
+                  <dt className="text-sm font-semibold text-foreground">
                     {g.short ? `${g.short} — ` : ""}{t(g.fullKey)}
                   </dt>
                   <dd className="mt-0.5 text-sm text-muted-foreground">{t(g.plainKey)}</dd>
@@ -69,4 +69,3 @@ export default function MapPage() {
     </AppShell>
   );
 }
-

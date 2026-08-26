@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Analytics } from "@vercel/analytics/react";
 import { I18nProvider } from "@/lib/orca/i18n";
 import { SessionProvider } from "@/lib/orca/session";
+import { ThemeProvider } from "@/lib/orca/theme";
 import { AppProvider } from "./context/AppContext";
 import LandingPage from "./pages/LandingPage";
 import LanguagePage from "./pages/LanguagePage";
@@ -18,10 +19,11 @@ import TermsPage from "./pages/TermsPage";
 
 export default function App() {
   return (
-    <AppProvider>
-      <I18nProvider>
-        <SessionProvider>
-          <BrowserRouter>
+    <ThemeProvider>
+      <AppProvider>
+        <I18nProvider>
+          <SessionProvider>
+            <BrowserRouter>
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/language" element={<LanguagePage />} />
@@ -44,6 +46,7 @@ export default function App() {
         </SessionProvider>
       </I18nProvider>
     </AppProvider>
+  </ThemeProvider>
   );
 }
 
