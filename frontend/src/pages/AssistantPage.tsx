@@ -67,6 +67,7 @@ export default function AssistantPage() {
       location: location ?? null,
       bundle: marine.data ?? null,
       levelLabel,
+      lang: (lang as LangCode) || "en",
     });
     setMessages((m) => [
       ...m,
