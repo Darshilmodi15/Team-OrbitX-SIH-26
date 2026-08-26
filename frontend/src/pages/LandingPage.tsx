@@ -59,7 +59,66 @@ export default function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       {/* Hero */}
-      <section className="relative isolate bg-primary px-4 py-16 text-primary-foreground md:py-24">
+      <section className="relative isolate bg-primary px-4 pt-6 pb-16 text-primary-foreground md:pt-8 md:pb-24">
+        {/* Top-Right Language Selector inside Hero */}
+        <div className="mx-auto flex max-w-5xl justify-end pb-2 sm:pb-4">
+          <div ref={dropdownRef} className="relative inline-block text-left">
+            <button
+              type="button"
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              aria-expanded={dropdownOpen}
+              aria-haspopup="listbox"
+              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-primary-foreground/30 bg-primary-foreground/10 px-3.5 text-xs font-medium text-primary-foreground backdrop-blur-sm transition-colors hover:bg-primary-foreground/20 cursor-pointer shadow-sm sm:text-sm"
+            >
+              <Globe className="size-3.5 text-secondary shrink-0 sm:size-4" aria-hidden />
+              <span className="font-semibold">{activeLanguage.native}</span>
+              <ChevronDown
+                className={cn(
+                  "size-3.5 opacity-80 transition-transform duration-200",
+                  dropdownOpen && "rotate-180",
+                )}
+                aria-hidden
+              />
+            </button>
+
+            {dropdownOpen && (
+              <div
+                role="listbox"
+                className="absolute right-0 top-full mt-2 z-50 w-56 sm:w-60 max-h-[80vh] sm:max-h-none overflow-y-auto sm:overflow-visible rounded-lg border border-slate-200 bg-white p-1.5 text-slate-900 shadow-2xl ring-1 ring-black/10"
+              >
+                {LANGUAGES.map((l) => {
+                  const isSelected = (selectedLang || lang) === l.code;
+                  return (
+                    <button
+                      key={l.code}
+                      type="button"
+                      role="option"
+                      aria-selected={isSelected}
+                      onClick={() => handleLanguageSelect(l.code)}
+                      className={cn(
+                        "flex w-full cursor-pointer items-center justify-between rounded-md px-3 py-2 text-xs sm:text-sm text-left transition-colors",
+                        isSelected
+                          ? "bg-teal-50 font-semibold text-teal-800"
+                          : "text-slate-700 hover:bg-slate-100 hover:text-slate-900",
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-slate-900">{l.native}</span>
+                        {l.code !== "en" && (
+                          <span className="text-xs text-slate-500">({l.english})</span>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="size-4 shrink-0 text-teal-600" aria-hidden />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="absolute inset-0 -z-10 overflow-hidden opacity-20 pointer-events-none">
           <svg viewBox="0 0 800 400" preserveAspectRatio="none" className="h-full w-full">
             <path d="M0,200 Q200,80 400,200 T800,200 V400 H0Z" fill="currentColor" opacity="0.15" />
@@ -78,65 +137,8 @@ export default function LandingPage() {
             {t("app.desc")}
           </p>
 
-          {/* Controls: Compact Language Dropdown + CTA Buttons */}
+          {/* Centered CTA Buttons */}
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            {/* Compact Language Dropdown */}
-            <div ref={dropdownRef} className="relative inline-block text-left">
-              <button
-                type="button"
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-                aria-expanded={dropdownOpen}
-                aria-haspopup="listbox"
-                className="inline-flex min-h-12 items-center gap-2 rounded-md border border-primary-foreground/30 bg-primary-foreground/10 px-4 text-sm font-medium text-primary-foreground backdrop-blur-sm transition-colors hover:bg-primary-foreground/20 cursor-pointer shadow-sm"
-              >
-                <Globe className="size-4 text-secondary shrink-0" aria-hidden />
-                <span className="font-semibold">{activeLanguage.native}</span>
-                <ChevronDown
-                  className={cn(
-                    "size-3.5 opacity-80 transition-transform duration-200",
-                    dropdownOpen && "rotate-180",
-                  )}
-                  aria-hidden
-                />
-              </button>
-
-              {dropdownOpen && (
-                <div
-                  role="listbox"
-                  className="absolute left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 top-full mt-2 z-50 w-64 max-h-[80vh] sm:max-h-none overflow-y-auto sm:overflow-visible rounded-lg border border-slate-200 bg-white p-1.5 text-slate-900 shadow-2xl ring-1 ring-black/10"
-                >
-                  {LANGUAGES.map((l) => {
-                    const isSelected = (selectedLang || lang) === l.code;
-                    return (
-                      <button
-                        key={l.code}
-                        type="button"
-                        role="option"
-                        aria-selected={isSelected}
-                        onClick={() => handleLanguageSelect(l.code)}
-                        className={cn(
-                          "flex w-full cursor-pointer items-center justify-between rounded-md px-3 py-2 text-sm text-left transition-colors",
-                          isSelected
-                            ? "bg-teal-50 font-semibold text-teal-800"
-                            : "text-slate-700 hover:bg-slate-100 hover:text-slate-900",
-                        )}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-slate-900">{l.native}</span>
-                          {l.code !== "en" && (
-                            <span className="text-xs text-slate-500">({l.english})</span>
-                          )}
-                        </div>
-                        {isSelected && (
-                          <Check className="size-4 shrink-0 text-teal-600" aria-hidden />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
             {/* Get Started Button */}
             <button
               type="button"
