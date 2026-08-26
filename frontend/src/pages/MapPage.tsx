@@ -4,7 +4,14 @@ import { EmptyState } from "@/components/orca/States";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
 import { COASTAL_BUFFER_KM, formatCoords } from "@/lib/orca/geo";
-import { GLOSSARY } from "@/lib/orca/reference";
+
+const GLOSSARY_ITEMS = [
+  { short: "PFZ", fullKey: "glossary.pfz.full" as const, plainKey: "glossary.pfz.plain" as const },
+  { short: "IMBL", fullKey: "glossary.imbl.full" as const, plainKey: "glossary.imbl.plain" as const },
+  { short: "SST", fullKey: "glossary.sst.full" as const, plainKey: "glossary.sst.plain" as const },
+  { short: "", fullKey: "glossary.wave.full" as const, plainKey: "glossary.wave.plain" as const },
+  { short: "", fullKey: "glossary.swell.full" as const, plainKey: "glossary.swell.plain" as const },
+];
 
 export default function MapPage() {
   const { t } = useI18n();
@@ -43,12 +50,12 @@ export default function MapPage() {
           <section className="mt-4 rounded-md border border-border bg-card p-4">
             <h2 className="text-sm font-semibold">{t("glossary.title")}</h2>
             <dl className="mt-2 space-y-3">
-              {GLOSSARY.map((g) => (
-                <div key={g.short}>
+              {GLOSSARY_ITEMS.map((g) => (
+                <div key={g.fullKey}>
                   <dt className="text-sm font-medium">
-                    {g.short} — {g.full}
+                    {g.short ? `${g.short} — ` : ""}{t(g.fullKey)}
                   </dt>
-                  <dd className="text-sm text-muted-foreground">{g.plain}</dd>
+                  <dd className="mt-0.5 text-sm text-muted-foreground">{t(g.plainKey)}</dd>
                 </div>
               ))}
             </dl>
@@ -62,3 +69,4 @@ export default function MapPage() {
     </AppShell>
   );
 }
+
