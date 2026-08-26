@@ -47,7 +47,7 @@ export default function DashboardPage() {
   return (
     <AppShell>
       <div className="space-y-5">
-        <h1 className="text-xl font-semibold">{t("nav.dashboard")}</h1>
+        <h1 className="text-xl font-semibold text-foreground">{t("nav.dashboard")}</h1>
 
         {/* Safety status */}
         {marine.isError ? (
@@ -60,16 +60,16 @@ export default function DashboardPage() {
 
         {/* Quick actions */}
         <section>
-          <h2 className="text-sm font-semibold">{t("quick.title")}</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("quick.title")}</h2>
           <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {QUICK.map(({ to, key, Icon }) => (
               <Link
                 key={key}
                 to={to}
-                className="flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-md border border-border bg-card px-2 py-3 text-center transition hover:bg-muted"
+                className="flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-md border border-border bg-card px-2 py-3 text-center transition hover:bg-muted shadow-xs"
               >
                 <Icon className="size-5 text-secondary" aria-hidden />
-                <span className="text-xs font-medium">{t(key)}</span>
+                <span className="text-xs font-medium text-foreground">{t(key)}</span>
               </Link>
             ))}
           </div>
@@ -84,7 +84,7 @@ export default function DashboardPage() {
         {/* Map preview */}
         <section className="space-y-2">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold">{t("map.title")}</h2>
+            <h2 className="text-sm font-semibold text-foreground">{t("map.title")}</h2>
             <Link
               to="/map"
               className="inline-flex items-center gap-1.5 text-xs font-medium text-secondary hover:underline"
@@ -99,11 +99,11 @@ export default function DashboardPage() {
         {/* Assistant CTA */}
         <Link
           to="/assistant"
-          className="flex items-center gap-3 rounded-md border border-border bg-card p-4 transition hover:bg-muted"
+          className="flex items-center gap-3 rounded-md border border-border bg-card p-4 transition hover:bg-muted shadow-xs"
         >
           <MessageSquare className="size-5 text-secondary" aria-hidden />
           <div className="min-w-0">
-            <p className="text-sm font-semibold">{t("chat.title")}</p>
+            <p className="text-sm font-semibold text-foreground">{t("chat.title")}</p>
             <p className="text-xs text-muted-foreground">{t("chat.subtitle")}</p>
           </div>
         </Link>

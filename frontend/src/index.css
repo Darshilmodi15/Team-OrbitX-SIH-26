@@ -5,7 +5,7 @@
 
 /*
  * ORCA Marine AI design system.
- * Maritime, operational, restrained. All colors are oklch tokens.
+ * Maritime, operational, accessible high-contrast tokens.
  */
 
 @theme inline {
@@ -56,87 +56,90 @@
   color-scheme: light;
   --radius: 0.375rem;
 
-  --background: oklch(0.984 0.004 240);
-  --foreground: oklch(0.21 0.045 250);
+  --background: #F8FAFC;
+  --foreground: #0F172A;
 
-  --surface: oklch(0.96 0.008 235);
-  --surface-foreground: oklch(0.21 0.045 250);
+  --surface: #F1F5F9;
+  --surface-foreground: #0F172A;
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.045 250);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.045 250);
+  --card: #FFFFFF;
+  --card-foreground: #0F172A;
+  --popover: #FFFFFF;
+  --popover-foreground: #0F172A;
 
   /* Deep navy */
-  --primary: oklch(0.32 0.075 252);
-  --primary-foreground: oklch(0.985 0.005 240);
+  --primary: #0F3254;
+  --primary-foreground: #F8FAFC;
 
   /* Marine teal */
-  --secondary: oklch(0.55 0.085 205);
-  --secondary-foreground: oklch(0.99 0.005 220);
+  --secondary: #0D9488;
+  --secondary-foreground: #FFFFFF;
 
-  --muted: oklch(0.955 0.008 235);
-  --muted-foreground: oklch(0.48 0.03 250);
+  --muted: #F1F5F9;
+  --muted-foreground: #64748B;
 
   /* Safety cyan */
-  --accent: oklch(0.72 0.11 210);
-  --accent-foreground: oklch(0.2 0.05 250);
+  --accent: #0284C7;
+  --accent-foreground: #FFFFFF;
 
-  --destructive: oklch(0.53 0.2 27);
-  --destructive-foreground: oklch(0.98 0.005 240);
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
 
-  --border: oklch(0.9 0.012 240);
-  --input: oklch(0.9 0.012 240);
-  --ring: oklch(0.55 0.085 205);
+  --border: #E2E8F0;
+  --input: #E2E8F0;
+  --ring: #0D9488;
 
-  --safe: oklch(0.53 0.13 152);
-  --safe-foreground: oklch(0.99 0.005 150);
-  --safe-surface: oklch(0.95 0.04 152);
+  --safe: #16A34A;
+  --safe-foreground: #FFFFFF;
+  --safe-surface: #DCFCE7;
 
-  --caution: oklch(0.68 0.15 72);
-  --caution-foreground: oklch(0.2 0.05 60);
-  --caution-surface: oklch(0.96 0.05 82);
+  --caution: #D97706;
+  --caution-foreground: #FFFFFF;
+  --caution-surface: #FEF3C7;
 
-  --danger: oklch(0.53 0.2 27);
-  --danger-foreground: oklch(0.99 0.005 20);
-  --danger-surface: oklch(0.95 0.04 27);
+  --danger: #DC2626;
+  --danger-foreground: #FFFFFF;
+  --danger-surface: #FEE2E2;
 
-  --chart-1: oklch(0.32 0.075 252);
-  --chart-2: oklch(0.55 0.085 205);
-  --chart-3: oklch(0.72 0.11 210);
-  --chart-4: oklch(0.68 0.15 72);
-  --chart-5: oklch(0.53 0.13 152);
+  --chart-1: #0F3254;
+  --chart-2: #0D9488;
+  --chart-3: #0284C7;
+  --chart-4: #D97706;
+  --chart-5: #16A34A;
 }
 
 .dark {
   color-scheme: dark;
-  --background: oklch(0.18 0.035 252);
-  --foreground: oklch(0.97 0.005 240);
-  --surface: oklch(0.23 0.04 252);
-  --surface-foreground: oklch(0.97 0.005 240);
-  --card: oklch(0.23 0.04 252);
-  --card-foreground: oklch(0.97 0.005 240);
-  --popover: oklch(0.23 0.04 252);
-  --popover-foreground: oklch(0.97 0.005 240);
-  --primary: oklch(0.72 0.11 210);
-  --primary-foreground: oklch(0.18 0.035 252);
-  --secondary: oklch(0.55 0.09 205);
-  --secondary-foreground: oklch(0.99 0.005 220);
-  --muted: oklch(0.28 0.04 252);
-  --muted-foreground: oklch(0.80 0.02 240);
-  --accent: oklch(0.65 0.1 210);
-  --accent-foreground: oklch(0.99 0.005 220);
-  --destructive: oklch(0.62 0.19 27);
-  --destructive-foreground: oklch(0.99 0.005 20);
-  --border: oklch(1 0 0 / 14%);
-  --input: oklch(1 0 0 / 18%);
-  --ring: oklch(0.65 0.1 210);
-  --safe: oklch(0.62 0.14 152);
-  --safe-surface: oklch(0.32 0.06 152);
-  --caution: oklch(0.74 0.15 75);
-  --caution-surface: oklch(0.34 0.07 75);
-  --danger: oklch(0.62 0.19 27);
-  --danger-surface: oklch(0.32 0.08 27);
+  --background: #071526;
+  --foreground: #F8FAFC;
+  --surface: #0D2238;
+  --surface-foreground: #F8FAFC;
+  --card: #0E2640;
+  --card-foreground: #F8FAFC;
+  --popover: #0E2640;
+  --popover-foreground: #F8FAFC;
+  --primary: #38BDF8;
+  --primary-foreground: #071526;
+  --secondary: #14B8A6;
+  --secondary-foreground: #041B2D;
+  --muted: #163657;
+  --muted-foreground: #CBD5E1;
+  --accent: #38BDF8;
+  --accent-foreground: #071526;
+  --destructive: #F87171;
+  --destructive-foreground: #071526;
+  --border: rgba(255, 255, 255, 0.14);
+  --input: rgba(255, 255, 255, 0.18);
+  --ring: #38BDF8;
+  --safe: #4ADE80;
+  --safe-foreground: #052E16;
+  --safe-surface: rgba(34, 197, 94, 0.16);
+  --caution: #FBBF24;
+  --caution-foreground: #451A03;
+  --caution-surface: rgba(245, 158, 11, 0.16);
+  --danger: #F87171;
+  --danger-foreground: #450A0A;
+  --danger-surface: rgba(239, 68, 68, 0.16);
 }
 
 @layer base {
@@ -180,8 +183,30 @@
   input::placeholder,
   textarea::placeholder {
     color: var(--color-muted-foreground);
-    opacity: 0.8;
+    opacity: 0.85;
   }
+}
+
+/* Explicit Dark Mode High-Contrast Rules */
+.dark h1,
+.dark h2,
+.dark h3,
+.dark h4,
+.dark h5,
+.dark h6 {
+  color: #F8FAFC !important;
+}
+
+.dark .text-muted-foreground {
+  color: #CBD5E1 !important;
+}
+
+.dark dl dt {
+  color: #F8FAFC !important;
+}
+
+.dark dl dd {
+  color: #CBD5E1 !important;
 }
 
 @utility orca-container {

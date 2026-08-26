@@ -23,7 +23,7 @@ export default function CoastMap({
   const markerRef = useRef<Marker | null>(null);
   const selectRef = useRef(onSelect);
   selectRef.current = onSelect;
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
 
   useEffect(() => {
     let disposed = false;
@@ -67,6 +67,29 @@ export default function CoastMap({
         weight: 1,
         fillOpacity: 0.06,
       }).addTo(map);
+
+      // Add Localized Coastal City Markers
+      try {
+        const { COASTAL_CITIES } = await import("@/data/maritimeData");
+        const { getLocalizedCityName } = await import("@/data/localizedGeo");
+        
+        COASTAL_CITIES.filter((c) => c.priority).forEach((city) => {
+          const localizedName = getLocalizedCityName(city.id, city.name, lang);
+          const cityIcon = L.divIcon({
+            className: "orca-city-pin",
+            html: `<div style="display:inline-flex;align-items:center;gap:3px;background:rgba(15,23,42,0.85);color:#fff;font-size:10px;font-weight:700;padding:1px 5px;border-radius:10px;border:1px solid rgba(255,255,255,0.4);white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,0.3);"><span style="width:4px;height:4px;border-radius:50%;background:#38bdf8;"></span>${localizedName}</div>`,
+            iconSize: [80, 20],
+            iconAnchor: [40, 10],
+          });
+          L.marker([city.lat, city.lon], { icon: cityIcon })
+            .addTo(map)
+            .on("click", () => {
+              selectRef.current?.({ lat: city.lat, lon: city.lon });
+            });
+        });
+      } catch {
+        /* ignore */
+      }
 
       if (interactive) {
         map.on("click", (e: { latlng: { lat: number; lng: number } }) => {

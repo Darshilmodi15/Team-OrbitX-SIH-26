@@ -1,5 +1,6 @@
 import React from 'react';
 import { INDIAN_PORTS, REGIONAL_LANGUAGES, TRANSLATIONS } from '../data/maritimeData';
+import { getLocalizedPort } from '../data/localizedGeo';
 import type { Port } from '../data/maritimeData';
 import { Globe, MapPin, ExternalLink, Activity, Cpu, Landmark } from 'lucide-react';
 
@@ -44,11 +45,14 @@ export const ControlBar: React.FC<ControlBarProps> = ({
               aria-label="Select Port Location"
               className="w-full h-9 bg-white text-slate-800 text-xs font-medium rounded-xl pl-9 pr-8 border border-slate-300 hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 shadow-xs cursor-pointer appearance-none transition whitespace-nowrap"
             >
-              {INDIAN_PORTS.map((port) => (
-                <option key={port.id} value={port.id}>
-                  {port.name} ({port.state})
-                </option>
-              ))}
+              {INDIAN_PORTS.map((port) => {
+                const loc = getLocalizedPort(port, currentLang);
+                return (
+                  <option key={port.id} value={port.id}>
+                    {loc.name} ({port.state})
+                  </option>
+                );
+              })}
             </select>
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[10px]">▼</span>
           </div>

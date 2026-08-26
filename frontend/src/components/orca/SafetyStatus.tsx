@@ -21,13 +21,13 @@ export function SafetyStatusCard({ level, note }: { level: SafetyLevel; note?: s
 
   return (
     <section className={cn("rounded-md border p-4", cls)} aria-live="polite">
-      <p className="text-xs font-medium uppercase tracking-wide opacity-80">{t("status.title")}</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-foreground/90">{t("status.title")}</p>
       <div className="mt-2 flex items-start gap-3">
         <Icon className="mt-0.5 size-7 shrink-0" aria-hidden />
         <div className="min-w-0">
-          <h2 className="text-xl font-semibold leading-tight">{t(label)}</h2>
-          <p className="mt-1 text-sm text-foreground/80">{t(desc)}</p>
-          {note && <p className="mt-1 text-xs text-foreground/70">{note}</p>}
+          <h2 className="text-xl font-bold leading-tight text-foreground">{t(label)}</h2>
+          <p className="mt-1 text-sm font-medium text-foreground/90">{t(desc)}</p>
+          {note && <p className="mt-1 text-xs text-foreground/80">{note}</p>}
         </div>
       </div>
     </section>

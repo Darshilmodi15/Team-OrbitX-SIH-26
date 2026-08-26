@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MapPin, Navigation, Compass, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { INDIAN_PORTS, type Port } from '../data/maritimeData';
+import { getLocalizedPort } from '../data/localizedGeo';
 import { validateLocation } from '../services/api';
 
 interface LocationPermissionModalProps {
@@ -12,6 +13,7 @@ interface LocationPermissionModalProps {
 export default function LocationPermissionModal({
   isOpen,
   onLocationApproved,
+  currentLang = 'en',
 }: LocationPermissionModalProps) {
   const [isLocating, setIsLocating] = useState(false);
   const [validationResult, setValidationResult] = useState<any | null>(null);
@@ -155,25 +157,32 @@ export default function LocationPermissionModal({
               Select Coastal Port
             </div>
             <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1">
-              {INDIAN_PORTS.map((port) => (
-                <button
-                  key={port.id}
-                  onClick={() => handleSelectPort(port)}
-                  className="w-full p-3 rounded-xl bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-300 text-left transition flex items-center justify-between text-xs cursor-pointer group"
-                >
-                  <div>
-                    <div className="font-semibold text-slate-800 group-hover:text-teal-800">
-                      {port.name}
+              {INDIAN_PORTS.map((port) => {
+                const localizedPort = getLocalizedPort(port, currentLang);
+                return (
+                  <button
+                    key={port.id}
+                    onClick={() => handleSelectPort(port)}
+                    className="w-full p-3 rounded-xl bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-300 text-left transition flex items-center justify-between text-xs cursor-pointer group"
+                  >
+                    <div>
+                      <div className="font-semibold text-slate-800 group-hover:text-teal-800 flex items-center gap-1.5">
+                        <span>⚓</span>
+                        <span>{localizedPort.name}</span>
+                        {localizedPort.name !== port.name && (
+                          <span className="text-[10px] text-slate-400 font-normal">({port.name})</span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">
+                        {port.state} · {port.lat.toFixed(2)}°N, {port.lon.toFixed(2)}°E
+                      </div>
                     </div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">
-                      {port.state} · {port.lat.toFixed(2)}°N, {port.lon.toFixed(2)}°E
-                    </div>
-                  </div>
-                  <span className="text-[11px] text-teal-600 opacity-0 group-hover:opacity-100 transition font-medium">
-                    Select →
-                  </span>
-                </button>
-              ))}
+                    <span className="text-[11px] text-teal-600 opacity-0 group-hover:opacity-100 transition font-medium">
+                      Select →
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
             <button

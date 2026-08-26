@@ -391,12 +391,13 @@ export default function MarineMap({
             </Marker>
           ))}
 
-        {/* ── 3. Maritime Geofences & Sovereign Boundaries ── */}
+        {/* ── 3. Maritime Geofences & Sovereign Boundaries (Localized) ── */}
         {showGeofences &&
           activeGeofences.map((g: any) => {
             if (!g.coordinates || g.coordinates.length < 3) return null;
             const color = g.risk_level === 'CRITICAL_DANGER' ? '#DC2626' : '#D97706';
             const positions: [number, number][] = g.coordinates.map((c: any) => [c[0], c[1]]);
+            const localizedGeo = getLocalizedGeofence(g, currentLang);
 
             return (
               <Polygon
@@ -411,39 +412,69 @@ export default function MarineMap({
                 }}
                 eventHandlers={{
                   click: () => {
-                    setSelectedHazard(g);
+                    setSelectedHazard({ ...g, ...localizedGeo });
                   },
                 }}
               >
                 <Tooltip direction="center" opacity={0.95}>
-                  <div className="text-xs font-sans font-bold p-1" style={{ color }}>
-                    ⚠️ {g.name}
+                  <div className="text-xs font-sans font-bold p-1 text-center" style={{ color }}>
+                    ⚠️ {localizedGeo.name}
                   </div>
                 </Tooltip>
               </Polygon>
             );
           })}
 
-        {/* ── 4. Indian Coastal Ports & Stations ── */}
+        {/* ── 4. Indian Coastal Cities & Towns (Localized Labels) ── */}
+        {showCities &&
+          COASTAL_CITIES.map((city) => {
+            const cityName = getLocalizedCityName(city.id, city.name, currentLang);
+            return (
+              <Marker
+                key={`city-${city.id}`}
+                position={[city.lat, city.lon]}
+                icon={createCityLabelIcon(cityName, city.priority)}
+                eventHandlers={{
+                  click: () => {
+                    handleUpdateUserLocation({ lat: city.lat, lon: city.lon });
+                  },
+                }}
+              >
+                <Tooltip direction="top" offset={[0, -12]} opacity={0.95}>
+                  <div className="text-[11px] font-sans font-bold text-slate-900 p-0.5">
+                    📍 {cityName} ({city.state})
+                  </div>
+                </Tooltip>
+              </Marker>
+            );
+          })}
+
+        {/* ── 5. Indian Coastal Ports & Stations (Localized) ── */}
         {showPorts &&
-          INDIAN_PORTS.map((port) => (
-            <Marker
-              key={port.id}
-              position={[port.lat, port.lon]}
-              icon={createPortMarkerIcon()}
-              eventHandlers={{
-                click: () => {
-                  handleUpdateUserLocation({ lat: port.lat, lon: port.lon });
-                },
-              }}
-            >
-              <Tooltip direction="bottom" offset={[0, 8]} opacity={0.9}>
-                <div className="text-[10px] font-sans font-bold text-slate-800 p-0.5">
-                  ⚓ {port.name}
-                </div>
-              </Tooltip>
-            </Marker>
-          ))}
+          INDIAN_PORTS.map((port) => {
+            const localizedPort = getLocalizedPort(port, currentLang);
+            return (
+              <Marker
+                key={port.id}
+                position={[port.lat, port.lon]}
+                icon={createPortMarkerIcon(localizedPort.name)}
+                eventHandlers={{
+                  click: () => {
+                    handleUpdateUserLocation({ lat: port.lat, lon: port.lon });
+                  },
+                }}
+              >
+                <Tooltip direction="bottom" offset={[0, 10]} opacity={0.95}>
+                  <div className="text-xs font-sans font-bold text-slate-900 p-1 max-w-[200px]">
+                    <p className="flex items-center gap-1 text-cyan-800">
+                      <span>⚓</span> {localizedPort.name}
+                    </p>
+                    <p className="text-[10px] text-slate-500 font-normal mt-0.5">{localizedPort.description}</p>
+                  </div>
+                </Tooltip>
+              </Marker>
+            );
+          })}
 
         {/* ── 5. Optional Weather Vector Arrows ── */}
         {showWeatherVectors && (
@@ -477,7 +508,11 @@ export default function MarineMap({
         <span className="tracking-wider">{dataFreshnessText}</span>
         <span className="text-slate-400 font-normal">|</span>
         <span className="text-teal-300 font-sans font-semibold">
-          {coastInfo.distanceKm.toFixed(1)} km from Coast
+          {currentLang === 'gu'
+            ? `${coastInfo.distanceKm.toFixed(1)} કિમી કિનારાથી`
+            : currentLang === 'hi'
+            ? `${coastInfo.distanceKm.toFixed(1)} किमी तट से`
+            : `${coastInfo.distanceKm.toFixed(1)} km from Coast`}
         </span>
       </div>
 
@@ -492,7 +527,7 @@ export default function MarineMap({
               : 'text-slate-300 hover:text-white'
           }`}
         >
-          Satellite
+          {currentLang === 'gu' ? 'સેટેલાઇટ' : currentLang === 'hi' ? 'सैटेलाइट' : 'Satellite'}
         </button>
         <button
           type="button"
@@ -503,7 +538,7 @@ export default function MarineMap({
               : 'text-slate-300 hover:text-white'
           }`}
         >
-          Nautical
+          {currentLang === 'gu' ? 'નોટિકલ' : currentLang === 'hi' ? 'नॉटिकल' : 'Nautical'}
         </button>
       </div>
 
@@ -551,11 +586,17 @@ export default function MarineMap({
 
       {/* Expandable Layer Manager Popout */}
       {showLayersMenu && (
-        <div className="absolute left-12 top-14 z-20 w-56 rounded-xl bg-slate-900/95 backdrop-blur-xl border border-slate-700 p-3 shadow-2xl text-xs text-white animate-scaleIn">
+        <div className="absolute left-12 top-14 z-20 w-60 rounded-xl bg-slate-900/95 backdrop-blur-xl border border-slate-700 p-3 shadow-2xl text-xs text-white animate-scaleIn">
           <div className="flex items-center justify-between pb-2 border-b border-slate-800 mb-3">
             <span className="font-bold text-slate-100 flex items-center gap-1.5">
               <Layers className="h-4 w-4 text-[#22d3ee]" />
-              <span>ORCA GIS Layers</span>
+              <span>
+                {currentLang === 'gu'
+                  ? 'ORCA નકશા સ્તરો'
+                  : currentLang === 'hi'
+                  ? 'ORCA मानचित्र परतें'
+                  : 'ORCA Map Layers'}
+              </span>
             </span>
             <button
               type="button"
@@ -576,7 +617,13 @@ export default function MarineMap({
             >
               <span className="flex items-center gap-2">
                 <Fish className="h-4 w-4 text-emerald-400" />
-                <span>Fishing Zones (PFZ)</span>
+                <span>
+                  {currentLang === 'gu'
+                    ? 'મત્સ્ય ઝોન (PFZ)'
+                    : currentLang === 'hi'
+                    ? 'मत्स्य क्षेत्र (PFZ)'
+                    : 'Fishing Zones (PFZ)'}
+                </span>
               </span>
               <span className="font-mono text-[10px] font-bold">{showPFZ ? 'ON' : 'OFF'}</span>
             </button>
@@ -590,7 +637,13 @@ export default function MarineMap({
             >
               <span className="flex items-center gap-2">
                 <ShieldAlert className="h-4 w-4 text-rose-400" />
-                <span>Geofences & IMBL</span>
+                <span>
+                  {currentLang === 'gu'
+                    ? 'સરહદો અને IMBL'
+                    : currentLang === 'hi'
+                    ? 'सीमाएं और IMBL'
+                    : 'Geofences & IMBL'}
+                </span>
               </span>
               <span className="font-mono text-[10px] font-bold">{showGeofences ? 'ON' : 'OFF'}</span>
             </button>
@@ -604,9 +657,35 @@ export default function MarineMap({
             >
               <span className="flex items-center gap-2">
                 <Compass className="h-4 w-4 text-cyan-400" />
-                <span>Coastal Ports & Harbors</span>
+                <span>
+                  {currentLang === 'gu'
+                    ? 'તટીય બંદરો (Ports)'
+                    : currentLang === 'hi'
+                    ? 'तटीय बंदरगाह'
+                    : 'Coastal Ports & Harbors'}
+                </span>
               </span>
               <span className="font-mono text-[10px] font-bold">{showPorts ? 'ON' : 'OFF'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowCities(!showCities)}
+              className={`w-full flex items-center justify-between p-2 rounded-xl transition cursor-pointer ${
+                showCities ? 'bg-amber-950/70 border border-amber-500/40 text-amber-300' : 'bg-slate-800/60 text-slate-400'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-amber-400" />
+                <span>
+                  {currentLang === 'gu'
+                    ? 'શહેરોના નામો (Cities)'
+                    : currentLang === 'hi'
+                    ? 'तटीय शहर'
+                    : 'Coastal Cities & Towns'}
+                </span>
+              </span>
+              <span className="font-mono text-[10px] font-bold">{showCities ? 'ON' : 'OFF'}</span>
             </button>
 
             <button
@@ -618,7 +697,13 @@ export default function MarineMap({
             >
               <span className="flex items-center gap-2">
                 <Wind className="h-4 w-4 text-sky-400" />
-                <span>Wind Vectors (Opt-in)</span>
+                <span>
+                  {currentLang === 'gu'
+                    ? 'પવન વેક્ટર'
+                    : currentLang === 'hi'
+                    ? 'पवन दिशा'
+                    : 'Wind Vectors'}
+                </span>
               </span>
               <span className="font-mono text-[10px] font-bold">{showWeatherVectors ? 'ON' : 'OFF'}</span>
             </button>

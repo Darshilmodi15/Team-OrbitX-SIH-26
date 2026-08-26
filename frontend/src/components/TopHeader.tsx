@@ -1,6 +1,7 @@
 import React from 'react';
 import { ShieldCheck, ShieldAlert, AlertTriangle, Bell, MapPin, Globe, Settings, ChevronLeft, Landmark } from 'lucide-react';
 import { INDIAN_PORTS, REGIONAL_LANGUAGES, TRANSLATIONS } from '../data/maritimeData';
+import { getLocalizedPort } from '../data/localizedGeo';
 import type { WeatherMetrics, Port } from '../data/maritimeData';
 
 interface TopHeaderProps {
@@ -121,11 +122,14 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
               aria-label="Select Port"
               className="h-8 bg-white text-slate-700 text-[11px] font-medium rounded-lg pl-7 pr-6 border border-slate-200 hover:border-slate-300 focus:outline-none focus:border-teal-500 cursor-pointer appearance-none transition max-w-[180px]"
             >
-              {INDIAN_PORTS.map((port) => (
-                <option key={port.id} value={port.id}>
-                  {port.name}
-                </option>
-              ))}
+              {INDIAN_PORTS.map((port) => {
+                const loc = getLocalizedPort(port, currentLang);
+                return (
+                  <option key={port.id} value={port.id}>
+                    {loc.name}
+                  </option>
+                );
+              })}
             </select>
           </div>
         )}

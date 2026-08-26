@@ -9,6 +9,7 @@ import {
   Compass,
 } from 'lucide-react';
 import { INDIAN_PORTS, type Port } from '../data/maritimeData';
+import { getLocalizedPort } from '../data/localizedGeo';
 import { validateLocation, updateUserLocation } from '../services/api';
 import type { LocationCoords } from '../context/AppContext';
 import { getStrings } from '../i18n';
@@ -39,11 +40,15 @@ export default function LocationSelectorModal({
 
   if (!isOpen) return null;
 
-  const filteredPorts = INDIAN_PORTS.filter(
-    (port) =>
-      port.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      port.state.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredPorts = INDIAN_PORTS.filter((port) => {
+    const loc = getLocalizedPort(port, currentLang);
+    const q = searchTerm.toLowerCase().trim();
+    return (
+      port.name.toLowerCase().includes(q) ||
+      loc.name.toLowerCase().includes(q) ||
+      port.state.toLowerCase().includes(q)
+    );
+  });
 
   const handleGpsDetect = () => {
     if (!navigator.geolocation) {
@@ -171,6 +176,7 @@ export default function LocationSelectorModal({
         <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 min-h-[160px] max-h-[220px]">
           {filteredPorts.map((port) => {
             const isSelected = selectedPort.id === port.id;
+            const localizedPort = getLocalizedPort(port, currentLang);
             return (
               <button
                 key={port.id}
@@ -186,7 +192,13 @@ export default function LocationSelectorModal({
                 }`}
               >
                 <div>
-                  <p className="font-bold text-slate-900">{port.name}</p>
+                  <p className="font-bold text-slate-900 flex items-center gap-1.5">
+                    <span>⚓</span>
+                    <span>{localizedPort.name}</span>
+                    {localizedPort.name !== port.name && (
+                      <span className="text-[10px] text-slate-400 font-normal">({port.name})</span>
+                    )}
+                  </p>
                   <p className="text-[11px] text-slate-500 font-mono">
                     {port.state} • {port.lat.toFixed(2)}°N, {port.lon.toFixed(2)}°E
                   </p>

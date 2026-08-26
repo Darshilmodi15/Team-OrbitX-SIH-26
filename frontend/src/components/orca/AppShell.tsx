@@ -65,10 +65,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
         {location?.label && (
-          <div className="border-t border-border bg-surface">
+          <div className="border-t border-border bg-surface text-surface-foreground">
             <div className="orca-container flex h-9 items-center justify-between gap-2 text-xs">
-              <span className="truncate text-surface-foreground">{location.label}</span>
-              <Link to="/location" className="shrink-0 font-medium text-secondary underline-offset-2 hover:underline">
+              <span className="truncate font-medium text-foreground">{location.label}</span>
+              <Link to="/location" className="shrink-0 font-semibold text-secondary hover:text-secondary/80 underline-offset-2 hover:underline">
                 {t("loc.change")}
               </Link>
             </div>
