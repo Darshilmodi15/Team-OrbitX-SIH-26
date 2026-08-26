@@ -5,6 +5,7 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from app.agents.boundary_agent import check_marine_boundary_evidence
 from app.agents.geospatial_agent import analyze_geospatial_context
 from app.agents.hazard_agent import detect_proactive_hazards
 from app.agents.intent_agent import COASTAL_PORT_COORDS, parse_intent
@@ -26,6 +27,7 @@ from app.data.weather.incois import IncoisWeatherProvider
 from app.data.weather.mock import MockWeatherProvider
 from app.models.agent_models import (
     AgentResult,
+    BoundaryEvidence,
     EvidenceBundle,
     GeofenceZoneModel,
     HazardAlertEvidence,
@@ -56,9 +58,11 @@ from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifecycle manager: ensures database schema exists and initial seed data is loaded."""
+    """Lifecycle manager: ensures database schema exists, seeds baseline data, and runs periodic INCOIS ingestion."""
+    import asyncio
     import logging
     import threading
+    from app.services.ingestion.incois_ingestion_service import continuous_incois_ingestion_loop
     logger = logging.getLogger("orca_lifespan")
     
     def _background_init_and_seed():
@@ -74,8 +78,20 @@ async def lifespan(app: FastAPI):
     # Launch background thread so uvicorn can bind to the port immediately without timing out
     init_thread = threading.Thread(target=_background_init_and_seed, daemon=True)
     init_thread.start()
+
+    # Launch continuous background INCOIS ingestion task
+    ingestion_task = asyncio.create_task(
+        continuous_incois_ingestion_loop(provider=weather_provider)
+    )
     
     yield
+
+    # Clean shutdown of background ingestion
+    ingestion_task.cancel()
+    try:
+        await ingestion_task
+    except asyncio.CancelledError:
+        pass
 
 
 app = FastAPI(
@@ -218,6 +234,7 @@ class QueryResponse(BaseModel):
     route: Optional[RouteEvidence] = Field(default=None, description="Recommended safe navigational route")
     geofences: Optional[List[GeofenceZoneModel]] = Field(default=None, description="Active maritime boundary evaluations")
     alerts: Optional[List[HazardAlertEvidence]] = Field(default=None, description="Active proactive hazard alerts")
+    boundary: Optional[BoundaryEvidence] = Field(default=None, description="Marine Regions EEZ boundary evaluation")
     simulation: Optional[SimulationEvidence] = Field(default=None, description="What-if simulation results if requested")
     connectivity_mode: Optional[str] = Field(default="LIVE", description="Network mode ('LIVE', 'CACHED', 'DEGRADED', 'OFFLINE')")
     location: Optional[Dict[str, Any]] = Field(default=None, description="Vessel or resolved location coordinates")
@@ -258,6 +275,7 @@ class ChatResponse(BaseModel):
     route: Optional[Dict[str, Any]] = None
     geofences: Optional[List[Dict[str, Any]]] = None
     alerts: Optional[List[Dict[str, Any]]] = None
+    boundary: Optional[Dict[str, Any]] = None
     simulation: Optional[Dict[str, Any]] = None
     connectivity_mode: Optional[str] = "LIVE"
     location: Optional[Dict[str, Any]] = None
@@ -564,6 +582,7 @@ def _process_orca_query(
     needs_geospatial = any(t.agent == "geospatial_agent" for t in plan.tasks)
     needs_route = any(t.agent == "route_agent" for t in plan.tasks)
     needs_hazard = any(t.agent == "hazard_agent" for t in plan.tasks)
+    needs_boundary = any(t.agent == "boundary_agent" for t in plan.tasks) or detected_intent == "marine_boundary" or any(k in english_question.lower() for k in ["eez", "exclusive economic zone", "maritime boundary", "territorial water", "international water"])
     needs_sim = any(t.agent == "simulation_agent" for t in plan.tasks)
 
     weather_evidence: Optional[WeatherEvidence] = None
@@ -572,6 +591,7 @@ def _process_orca_query(
     route_evidence: Optional[RouteEvidence] = None
     geofence_list: List[GeofenceZoneModel] = []
     alert_list: List[HazardAlertEvidence] = []
+    boundary_evidence: Optional[BoundaryEvidence] = None
     simulation_evidence: Optional[SimulationEvidence] = None
     executed_tasks: List[str] = []
 
@@ -750,6 +770,23 @@ def _process_orca_query(
             f"Evidence (simulation_agent): evaluated counterfactual scenario ({simulation_evidence.parameter_modified}: {simulation_evidence.baseline_value} -> {simulation_evidence.simulated_value}). Impact: {simulation_evidence.impact_summary}."
         )
 
+    # 5g. Boundary Agent (Marine Regions EEZ)
+    if needs_boundary:
+        boundary_evidence = check_marine_boundary_evidence(lat=active_lat, lon=active_lon)
+        sources_used.append(boundary_evidence.source)
+        executed_tasks.append("boundary_agent:check_marine_boundary")
+        agent_results.append(
+            AgentResult(
+                agent="boundary_agent",
+                action="check_marine_boundary",
+                success=True,
+                evidence=boundary_evidence.model_dump(),
+            )
+        )
+        reasoning.append(
+            f"Evidence (boundary_agent): {boundary_evidence.status_message} (source: {boundary_evidence.source}, {boundary_evidence.dataset_version})."
+        )
+
     # Determine Connectivity Mode
     connectivity_mode = "LIVE"
     if weather_evidence:
@@ -768,6 +805,7 @@ def _process_orca_query(
         route=route_evidence,
         geofences=geofence_list,
         alerts=alert_list,
+        boundary=boundary_evidence,
         simulation=simulation_evidence,
         location_lat=active_lat,
         location_lon=active_lon,
@@ -885,7 +923,19 @@ def _process_orca_query(
             f"- **Scenario Impact**: {sim.impact_summary}"
         )
 
-    if not evidence_bundle.weather and not evidence_bundle.pfz_zones and not evidence_bundle.route:
+    # Section F: Marine Boundary & Exclusive Economic Zone (EEZ)
+    if evidence_bundle.boundary:
+        b = evidence_bundle.boundary
+        status_icon = "✅" if b.inside_eez else "🚨"
+        dist_str = f" ({b.distance_to_boundary_km:.1f} km from boundary limit)" if b.distance_to_boundary_km is not None else ""
+        answer_parts.append(
+            f"🌐 **Marine Boundary & Exclusive Economic Zone (EEZ)**:\n"
+            f"- **Status**: {status_icon} {b.status_message}{dist_str}\n"
+            f"- **Jurisdiction**: {b.country} ({b.zone_name or 'Exclusive Economic Zone'})\n"
+            f"- **Data Provenance**: {b.source} ({b.dataset_version})"
+        )
+
+    if not evidence_bundle.weather and not evidence_bundle.pfz_zones and not evidence_bundle.route and not evidence_bundle.boundary:
         answer_parts.append(
             "ORCA Marine AI is standing by. You can ask for navigational safety assessments (e.g., 'Is it safe to sail today?'), potential fishing zones (e.g., 'Where is the nearest PFZ?'), safe routes (e.g., 'Suggest the safest route to Zone Alpha'), or what-if marine simulations."
         )
@@ -921,6 +971,7 @@ def _process_orca_query(
         "route": route_evidence.model_dump() if route_evidence else None,
         "geofences": [g.model_dump() for g in geofence_list] if geofence_list else None,
         "alerts": [a.model_dump() for a in alert_list] if alert_list else None,
+        "boundary": boundary_evidence.model_dump() if boundary_evidence else None,
         "simulation": simulation_evidence.model_dump() if simulation_evidence else None,
         "connectivity_mode": connectivity_mode,
         "location": {"lat": active_lat, "lon": active_lon, "name": location_hint},
@@ -953,6 +1004,7 @@ def handle_query(request: QueryRequest) -> QueryResponse:
         route=result.get("route"),
         geofences=result.get("geofences"),
         alerts=result.get("alerts"),
+        boundary=result.get("boundary"),
         simulation=result.get("simulation"),
         connectivity_mode=result.get("connectivity_mode", "LIVE"),
         location=result.get("location"),
@@ -990,6 +1042,7 @@ def handle_chat(request: ChatRequest) -> ChatResponse:
         route=result.get("route"),
         geofences=result.get("geofences"),
         alerts=result.get("alerts"),
+        boundary=result.get("boundary"),
         simulation=result.get("simulation"),
         connectivity_mode=result.get("connectivity_mode", "LIVE"),
         location=result.get("location"),

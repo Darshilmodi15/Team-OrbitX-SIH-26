@@ -18,6 +18,7 @@ Classify the user's question into one of the following intent types:
 - "what_if_simulation": Counterfactual scenario (e.g., 'What if wave height increases by 1m?')
 - "hazard_alerts": Proactive hazard, high wave, or cyclone warnings
 - "geofence_check": Maritime boundary, IMBL, or MPA proximity
+- "marine_boundary": Maritime boundary, EEZ limit, international waters check
 - "safety_check": Pure marine safety evaluation (e.g., 'Is it safe to sail today?')
 - "nearest_pfz": Pure PFZ fishing spot discovery
 - "weather_conditions": Marine meteorological / wave / wind inquiry
@@ -38,6 +39,7 @@ VALID_INTENTS = {
     "what_if_simulation",
     "hazard_alerts",
     "geofence_check",
+    "marine_boundary",
     "safety_check",
     "nearest_pfz",
     "weather_conditions",
@@ -155,14 +157,21 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
             **entities,
         }
 
-    # 5. Geofence Check
+    # 5. Marine Boundary / EEZ Check
+    if any(k in q_lower for k in ["eez", "exclusive economic zone", "maritime boundary", "territorial water", "territorial waters", "international waters"]):
+        return {
+            "intent": "marine_boundary",
+            **entities,
+        }
+
+    # 6. Geofence Check
     if any(k in q_lower for k in ["geofence", "imbl", "border", "boundary", "restricted waters", "mpa", "protected area"]):
         return {
             "intent": "geofence_check",
             **entities,
         }
 
-    # 6. Safety Check
+    # 7. Safety Check
     if any(k in q_lower for k in ["safe", "safety", "risk", "danger", "can i sail", "can i fish", "ok to go", "advisory"]):
         return {
             "intent": "safety_check",

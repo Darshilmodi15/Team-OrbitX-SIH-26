@@ -87,6 +87,11 @@ class Planner:
             add_task("risk_agent", "assess_risk", required=True)
             add_task("simulation_agent", "run_simulation", required=True)
 
+        elif intent == "marine_boundary":
+            add_task("boundary_agent", "check_marine_boundary", required=True)
+            add_task("geospatial_agent", "calculate_distance", required=True)
+            add_task("hazard_agent", "detect_hazards", required=True)
+
         elif intent == "hazard_alerts":
             add_task("weather_agent", "get_marine_conditions", required=True)
             add_task("hazard_agent", "detect_hazards", required=True)

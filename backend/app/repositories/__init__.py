@@ -275,8 +275,40 @@ class MarineObservationRepository:
         risk_level: str = "SAFE",
         source: str = "INCOIS_OSF_WW3",
         resolution_method: str = "exact",
+        deduplicate_window_sec: int = 600,
     ) -> MarineObservation:
         obs_time = timestamp or datetime.now(timezone.utc)
+        if deduplicate_window_sec > 0:
+            window = timedelta(seconds=deduplicate_window_sec)
+            recent = db.query(MarineObservation).filter(
+                MarineObservation.region_cell == region_cell,
+                MarineObservation.timestamp.between(obs_time - window, obs_time + window)
+            ).first()
+            if recent:
+                recent.wave_height_m = wave_height_m
+                recent.wind_speed_kmh = wind_speed_kmh
+                if wave_period_s is not None:
+                    recent.wave_period_s = wave_period_s
+                if wave_direction_deg is not None:
+                    recent.wave_direction_deg = wave_direction_deg
+                if wind_direction_deg is not None:
+                    recent.wind_direction_deg = wind_direction_deg
+                if wind_gust_kmh is not None:
+                    recent.wind_gust_kmh = wind_gust_kmh
+                if cloud_cover_percent is not None:
+                    recent.cloud_cover_percent = cloud_cover_percent
+                if visibility_km is not None:
+                    recent.visibility_km = visibility_km
+                if precipitation_mm is not None:
+                    recent.precipitation_mm = precipitation_mm
+                if sst_c is not None:
+                    recent.sst_c = sst_c
+                recent.risk_level = risk_level
+                recent.source = source
+                recent.resolution_method = resolution_method
+                db.flush()
+                return recent
+
         obs = MarineObservation(
             id=str(uuid.uuid4()),
             latitude=latitude,

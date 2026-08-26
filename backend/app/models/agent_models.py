@@ -162,6 +162,19 @@ class AgentResult(BaseModel):
     error: Optional[str] = Field(default=None, description="Error message if the operation failed")
 
 
+class BoundaryEvidence(BaseModel):
+    """Structured marine boundary evaluation produced by the Boundary Agent."""
+    inside_eez: bool = Field(..., description="Whether vessel is inside the EEZ boundary")
+    distance_to_boundary_km: Optional[float] = Field(default=None, description="Distance to nearest boundary edge in km")
+    geofence_status: str = Field(..., description="Geofence classification status")
+    country: Optional[str] = Field(default=None, description="Country owning the EEZ")
+    zone_name: Optional[str] = Field(default=None, description="Name of the maritime zone")
+    mrgid: Optional[int] = Field(default=None, description="Marine Regions Geographic Identifier")
+    status_message: str = Field(..., description="Human-readable boundary status message")
+    source: str = Field(default="Marine Regions / Flanders Marine Institute (VLIZ)", description="Boundary data provenance")
+    dataset_version: str = Field(default="World EEZ v12", description="Dataset version identifier")
+
+
 class EvidenceBundle(BaseModel):
     """Unified collection of all structured evidence collected during query execution."""
     weather: Optional[WeatherEvidence] = Field(default=None, description="Weather evidence if collected")
@@ -170,6 +183,7 @@ class EvidenceBundle(BaseModel):
     route: Optional[RouteEvidence] = Field(default=None, description="Safe navigational route advisory if planned")
     geofences: List[GeofenceZoneModel] = Field(default_factory=list, description="Relevant geofence boundaries evaluated")
     alerts: List[HazardAlertEvidence] = Field(default_factory=list, description="Active proactive hazard alerts")
+    boundary: Optional[BoundaryEvidence] = Field(default=None, description="Marine boundary and EEZ evaluation")
     simulation: Optional[SimulationEvidence] = Field(default=None, description="What-if simulation results if requested")
     location_lat: float = Field(..., description="Inquiry latitude coordinate")
     location_lon: float = Field(..., description="Inquiry longitude coordinate")
@@ -186,19 +200,6 @@ class LanguageIdentificationResult(BaseModel):
     detection_status: str = Field(default="SARVAM_DETECTED", description="Status tier ('SARVAM_DETECTED', 'FALLBACK_DETECTED')")
     short_code: str = Field(default="en", description="2-letter ISO 639-1 code (e.g. 'gu', 'hi', 'mr', 'en')")
     language_name: str = Field(default="English", description="Human-readable language name")
-
-
-class BoundaryEvidence(BaseModel):
-    """Structured marine boundary evaluation produced by the Boundary Agent."""
-    inside_eez: bool = Field(..., description="Whether vessel is inside the EEZ boundary")
-    distance_to_boundary_km: Optional[float] = Field(default=None, description="Distance to nearest boundary edge in km")
-    geofence_status: str = Field(..., description="Geofence classification status")
-    country: Optional[str] = Field(default=None, description="Country owning the EEZ")
-    zone_name: Optional[str] = Field(default=None, description="Name of the maritime zone")
-    mrgid: Optional[int] = Field(default=None, description="Marine Regions Geographic Identifier")
-    status_message: str = Field(..., description="Human-readable boundary status message")
-    source: str = Field(default="Marine Regions / Flanders Marine Institute (VLIZ)", description="Boundary data provenance")
-    dataset_version: str = Field(default="World EEZ v12", description="Dataset version identifier")
 
 
 class GeofenceItem(BaseModel):

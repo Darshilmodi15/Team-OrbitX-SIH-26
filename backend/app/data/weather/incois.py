@@ -325,8 +325,43 @@ class IncoisWeatherProvider(WeatherProvider):
             if "warning" not in stale_copy:
                 stale_copy["warning"] = "Live INCOIS service unreachable. Showing cached forecast."
             return stale_copy
+        # Step 5: Secondary provider fallback (Open-Meteo) before declaring unavailable
+        try:
+            from app.data.weather.open_meteo import OpenMeteoWeatherProvider
+            open_meteo = OpenMeteoWeatherProvider(timeout_seconds=self.timeout_sec)
+            om_data = open_meteo.get_weather(lat=lat, lon=lon, date=date)
+            if om_data and not om_data.get("is_mock", False):
+                om_data["cache_status"] = "live"
+                om_res = self.cache.set(
+                    lat=lat,
+                    lon=lon,
+                    data=om_data,
+                    forecast_time=om_data.get("forecast_time"),
+                    source="open_meteo_marine_api",
+                )
+                try:
+                    from app.db.session import get_db_context
+                    from app.repositories import MarineObservationRepository
+                    with get_db_context() as db:
+                        MarineObservationRepository.record_observation(
+                            db=db,
+                            latitude=lat,
+                            longitude=lon,
+                            region_cell=om_res.get("region_cell", f"{lat:.3f}_{lon:.3f}"),
+                            wave_height_m=om_data.get("wave_height_m", 0.0),
+                            wind_speed_kmh=om_data.get("wind_speed_kmh", 0.0),
+                            wind_direction_deg=om_data.get("wind_direction_deg"),
+                            risk_level="SAFE" if om_data.get("wave_height_m", 0) < 1.8 else ("CAUTION" if om_data.get("wave_height_m", 0) < 2.8 else "UNSAFE"),
+                            source="Open-Meteo",
+                            resolution_method="open_meteo_marine_api",
+                        )
+                except Exception as db_err:
+                    logger.debug(f"Observation persistence skipped for Open-Meteo fallback: {db_err}")
+                return om_res
+        except Exception as om_err:
+            logger.debug(f"Open-Meteo fallback skipped: {om_err}")
 
-        # Step 5: No data available — Return explicit data-unavailable record (NEVER fake values)
+        # Step 6: No data available — Return explicit data-unavailable record (NEVER fake values)
         return {
             "location": {"lat": lat, "lon": lon},
             "grid_lat": None,

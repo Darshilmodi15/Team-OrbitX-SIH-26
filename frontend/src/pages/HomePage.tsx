@@ -1,32 +1,40 @@
-
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, Waves, MessageSquare, Bell } from 'lucide-react';
+import { OceanWavesCanvas } from '@/components/orca/OceanWavesCanvas';
 
 export default function HomePage() {
   const navigate = useNavigate();
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F7F9FC] font-body">
-      {/* Hero Section */}
-      <section className="bg-[#1e3a5f] text-white px-8 py-20 flex flex-col items-start justify-center">
-        <div className="max-w-4xl mx-auto w-full">
-          <p className="text-sm font-semibold tracking-wider text-teal-400 mb-4 uppercase">
+      {/* Hero Section with Animated Ocean Waves */}
+      <section className="relative isolate overflow-hidden bg-[#0a1b2e] text-white px-8 py-20 flex flex-col items-start justify-center min-h-[440px]">
+        <div className="absolute inset-0 -z-10">
+          <OceanWavesCanvas
+            className="w-full h-full"
+            interactive={true}
+            showParticles={true}
+            showFoamCrests={true}
+          />
+        </div>
+        <div className="max-w-4xl mx-auto w-full relative z-10">
+          <p className="text-sm font-semibold tracking-wider text-teal-300 mb-4 uppercase drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)]">
             National Coastal Safety & Decision Intelligence Platform
           </p>
-          <h1 className="text-5xl font-bold mb-6 font-display">ORCA Marine AI</h1>
-          <p className="text-lg text-slate-300 max-w-2xl mb-10 leading-relaxed">
+          <h1 className="text-5xl font-bold mb-6 font-display drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]">ORCA Marine AI</h1>
+          <p className="text-lg text-slate-200/90 max-w-2xl mb-10 leading-relaxed drop-shadow-[0_1px_5px_rgba(0,0,0,0.5)]">
             Real-time coastal intelligence, marine safety alerts, weather awareness and AI-assisted decision support for India's coastal communities.
           </p>
           <div className="flex gap-4">
             <button 
               onClick={() => navigate('/dashboard')}
-              className="bg-teal-600 hover:bg-teal-700 text-white font-medium py-3 px-8 rounded transition-colors cursor-pointer"
+              className="bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold py-3 px-8 rounded transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-lg shadow-teal-950/40"
             >
               Get Started
             </button>
             <button 
               onClick={() => navigate('/dashboard')}
-              className="bg-transparent hover:bg-white/10 border border-white/30 text-white font-medium py-3 px-8 rounded transition-colors cursor-pointer"
+              className="bg-white/10 hover:bg-white/20 border border-white/30 backdrop-blur-sm text-white font-medium py-3 px-8 rounded transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
             >
               Explore Platform
             </button>

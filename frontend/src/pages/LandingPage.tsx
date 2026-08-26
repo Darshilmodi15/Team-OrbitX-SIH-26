@@ -12,6 +12,7 @@ import {
 import { OrcaLogo } from "@/components/orca/Logo";
 import { LANGUAGES, useI18n, type LangCode } from "@/lib/orca/i18n";
 import { useAppContext } from "@/context/AppContext";
+import { OceanWavesCanvas } from "@/components/orca/OceanWavesCanvas";
 import { cn } from "@/lib/utils";
 
 const FEATURES = [
@@ -58,19 +59,29 @@ export default function LandingPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      {/* Hero */}
-      <section className="relative isolate bg-primary px-4 pt-6 pb-16 text-primary-foreground md:pt-8 md:pb-24">
+      {/* Hero with Animated Ocean Waves */}
+      <section className="relative isolate overflow-hidden bg-[#0a1b2e] px-4 pt-6 pb-16 text-white md:pt-8 md:pb-24 min-h-[500px] flex flex-col justify-between">
+        <div className="absolute inset-0 -z-10">
+          <OceanWavesCanvas
+            className="w-full h-full"
+            interactive={true}
+            showParticles={true}
+            showFoamCrests={true}
+            speedMultiplier={1}
+          />
+        </div>
+
         {/* Top-Right Language Selector inside Hero */}
-        <div className="mx-auto flex max-w-5xl justify-end pb-2 sm:pb-4">
+        <div className="mx-auto flex w-full max-w-5xl justify-end pb-2 sm:pb-4 relative z-20">
           <div ref={dropdownRef} className="relative inline-block text-left">
             <button
               type="button"
               onClick={() => setDropdownOpen(!dropdownOpen)}
               aria-expanded={dropdownOpen}
               aria-haspopup="listbox"
-              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-primary-foreground/30 bg-primary-foreground/10 px-3.5 text-xs font-medium text-primary-foreground backdrop-blur-sm transition-colors hover:bg-primary-foreground/20 cursor-pointer shadow-sm sm:text-sm"
+              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-white/30 bg-white/10 px-3.5 text-xs font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/20 cursor-pointer shadow-sm sm:text-sm"
             >
-              <Globe className="size-3.5 text-secondary shrink-0 sm:size-4" aria-hidden />
+              <Globe className="size-3.5 text-teal-300 shrink-0 sm:size-4" aria-hidden />
               <span className="font-semibold">{activeLanguage.native}</span>
               <ChevronDown
                 className={cn(
@@ -119,21 +130,18 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div className="absolute inset-0 -z-10 overflow-hidden opacity-20 pointer-events-none">
-          <svg viewBox="0 0 800 400" preserveAspectRatio="none" className="h-full w-full">
-            <path d="M0,200 Q200,80 400,200 T800,200 V400 H0Z" fill="currentColor" opacity="0.15" />
-            <path d="M0,240 Q200,140 400,240 T800,240 V400 H0Z" fill="currentColor" opacity="0.1" />
-          </svg>
-        </div>
-        <div className="mx-auto max-w-4xl text-center">
-          <OrcaLogo className="mx-auto size-16" />
-          <h1 className="mt-6 text-3xl font-bold tracking-tight md:text-5xl">
+        {/* Hero Content */}
+        <div className="mx-auto max-w-4xl text-center relative z-10 my-auto">
+          <div className="inline-block drop-shadow-[0_0_15px_rgba(45,212,191,0.35)]">
+            <OrcaLogo className="mx-auto size-16 drop-shadow-md" />
+          </div>
+          <h1 className="mt-6 text-3xl font-bold tracking-tight md:text-5xl text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]">
             {t("app.name")}
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-base text-primary-foreground/80 md:text-lg">
+          <p className="mx-auto mt-4 max-w-2xl text-base text-teal-100/90 md:text-lg font-medium drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]">
             {t("app.tagline")}
           </p>
-          <p className="mx-auto mt-3 max-w-xl text-sm text-primary-foreground/60">
+          <p className="mx-auto mt-3 max-w-xl text-sm text-slate-200/80 drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)]">
             {t("app.desc")}
           </p>
 
@@ -143,7 +151,7 @@ export default function LandingPage() {
             <button
               type="button"
               onClick={handleGetStarted}
-              className="inline-flex min-h-12 w-full cursor-pointer items-center justify-center rounded-md bg-secondary px-8 text-sm font-semibold text-secondary-foreground shadow-lg transition hover:brightness-110 sm:w-auto"
+              className="inline-flex min-h-12 w-full cursor-pointer items-center justify-center rounded-md bg-teal-500 hover:bg-teal-400 px-8 text-sm font-semibold text-slate-950 shadow-lg shadow-teal-900/30 transition-all hover:scale-[1.02] active:scale-[0.98] sm:w-auto"
             >
               {t("cta.getStarted")}
             </button>
@@ -151,12 +159,14 @@ export default function LandingPage() {
             {/* Explore Platform Button */}
             <Link
               to="/dashboard"
-              className="inline-flex min-h-12 w-full items-center justify-center rounded-md border border-primary-foreground/30 px-8 text-sm font-semibold text-primary-foreground transition hover:bg-primary-foreground/10 sm:w-auto"
+              className="inline-flex min-h-12 w-full items-center justify-center rounded-md border border-white/30 bg-white/10 backdrop-blur-sm px-8 text-sm font-semibold text-white transition-all hover:bg-white/20 hover:border-white/50 hover:scale-[1.02] active:scale-[0.98] sm:w-auto"
             >
               {t("cta.explore")}
             </Link>
           </div>
         </div>
+
+        <div className="h-2" />
       </section>
 
       {/* Features */}
@@ -186,5 +196,3 @@ export default function LandingPage() {
     </div>
   );
 }
-
-

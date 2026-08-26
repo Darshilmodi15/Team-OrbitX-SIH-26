@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/react";
 import { I18nProvider } from "@/lib/orca/i18n";
 import { SessionProvider } from "@/lib/orca/session";
 import { AppProvider } from "./context/AppContext";
@@ -39,8 +40,10 @@ export default function App() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>
+          <Analytics />
         </SessionProvider>
       </I18nProvider>
     </AppProvider>
   );
 }
+
