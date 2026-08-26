@@ -188,6 +188,10 @@
 }
 
 /* Explicit Dark Mode High-Contrast Rules */
+.dark {
+  color: #F8FAFC;
+}
+
 .dark h1,
 .dark h2,
 .dark h3,
@@ -207,6 +211,16 @@
 
 .dark dl dd {
   color: #CBD5E1 !important;
+}
+
+.dark button,
+.dark a {
+  color: inherit;
+}
+
+.dark .bg-card,
+.dark .bg-surface {
+  color: #F8FAFC;
 }
 
 @utility orca-container {
