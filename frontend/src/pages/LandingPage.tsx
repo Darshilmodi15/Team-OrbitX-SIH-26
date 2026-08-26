@@ -59,8 +59,8 @@ export default function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       {/* Hero */}
-      <section className="relative isolate overflow-hidden bg-primary px-4 py-16 text-primary-foreground md:py-24">
-        <div className="absolute inset-0 -z-10 opacity-20">
+      <section className="relative isolate bg-primary px-4 py-16 text-primary-foreground md:py-24">
+        <div className="absolute inset-0 -z-10 overflow-hidden opacity-20 pointer-events-none">
           <svg viewBox="0 0 800 400" preserveAspectRatio="none" className="h-full w-full">
             <path d="M0,200 Q200,80 400,200 T800,200 V400 H0Z" fill="currentColor" opacity="0.15" />
             <path d="M0,240 Q200,140 400,240 T800,240 V400 H0Z" fill="currentColor" opacity="0.1" />
@@ -103,7 +103,7 @@ export default function LandingPage() {
               {dropdownOpen && (
                 <div
                   role="listbox"
-                  className="absolute left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 bottom-full mb-2 sm:bottom-auto sm:top-full sm:mt-2 z-50 max-h-72 w-56 overflow-y-auto rounded-lg border border-border bg-card p-1 text-card-foreground shadow-2xl"
+                  className="absolute left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 top-full mt-2 z-50 w-64 max-h-[80vh] sm:max-h-none overflow-y-auto sm:overflow-visible rounded-lg border border-slate-200 bg-white p-1.5 text-slate-900 shadow-2xl ring-1 ring-black/10"
                 >
                   {LANGUAGES.map((l) => {
                     const isSelected = (selectedLang || lang) === l.code;
@@ -115,18 +115,20 @@ export default function LandingPage() {
                         aria-selected={isSelected}
                         onClick={() => handleLanguageSelect(l.code)}
                         className={cn(
-                          "flex w-full cursor-pointer items-center justify-between rounded-md px-3 py-2 text-sm text-left transition-colors hover:bg-muted",
-                          isSelected && "bg-secondary/15 font-semibold text-secondary",
+                          "flex w-full cursor-pointer items-center justify-between rounded-md px-3 py-2 text-sm text-left transition-colors",
+                          isSelected
+                            ? "bg-teal-50 font-semibold text-teal-800"
+                            : "text-slate-700 hover:bg-slate-100 hover:text-slate-900",
                         )}
                       >
-                        <div className="flex flex-col">
-                          <span className="font-medium text-foreground">{l.native}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-slate-900">{l.native}</span>
                           {l.code !== "en" && (
-                            <span className="text-[11px] text-muted-foreground">{l.english}</span>
+                            <span className="text-xs text-slate-500">({l.english})</span>
                           )}
                         </div>
                         {isSelected && (
-                          <Check className="size-4 shrink-0 text-secondary" aria-hidden />
+                          <Check className="size-4 shrink-0 text-teal-600" aria-hidden />
                         )}
                       </button>
                     );
