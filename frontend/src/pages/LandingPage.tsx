@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Anchor,
   Check,
+  ChevronDown,
   CloudSun,
   Globe,
   MessageSquare,
@@ -25,23 +26,33 @@ export default function LandingPage() {
   const { handleSelectLang } = useAppContext();
   const navigate = useNavigate();
 
-  const [selectedLang, setSelectedLang] = useState<LangCode | null>(lang || "en");
-  const [error, setError] = useState<string | null>(null);
+  const [selectedLang, setSelectedLang] = useState<LangCode>(lang || "en");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const activeLanguage = LANGUAGES.find((l) => l.code === (selectedLang || lang)) || LANGUAGES[0];
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleLanguageSelect = (code: LangCode) => {
     setSelectedLang(code);
-    setError(null);
+    setDropdownOpen(false);
     setLang(code);
     handleSelectLang(code);
   };
 
   const handleGetStarted = () => {
-    if (!selectedLang) {
-      setError("Please select your language first.");
-      return;
-    }
-    setLang(selectedLang);
-    handleSelectLang(selectedLang);
+    const chosen = selectedLang || lang || "en";
+    setLang(chosen);
+    handleSelectLang(chosen);
     navigate("/dashboard");
   };
 
@@ -67,60 +78,64 @@ export default function LandingPage() {
             {t("app.desc")}
           </p>
 
-          {/* Compact Language Selector */}
-          <div className="mx-auto mt-8 max-w-3xl rounded-xl border border-primary-foreground/15 bg-primary-foreground/5 p-4 backdrop-blur-xs">
-            <div className="flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-primary-foreground/80 sm:text-sm">
-              <Globe className="size-4 text-secondary" aria-hidden />
-              <span>{t("lang.title")}</span>
-            </div>
+          {/* Controls: Compact Language Dropdown + CTA Buttons */}
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            {/* Compact Language Dropdown */}
+            <div ref={dropdownRef} className="relative inline-block text-left">
+              <button
+                type="button"
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                aria-expanded={dropdownOpen}
+                aria-haspopup="listbox"
+                className="inline-flex min-h-12 items-center gap-2 rounded-md border border-primary-foreground/30 bg-primary-foreground/10 px-4 text-sm font-medium text-primary-foreground backdrop-blur-sm transition-colors hover:bg-primary-foreground/20 cursor-pointer shadow-sm"
+              >
+                <Globe className="size-4 text-secondary shrink-0" aria-hidden />
+                <span className="font-semibold">{activeLanguage.native}</span>
+                <ChevronDown
+                  className={cn(
+                    "size-3.5 opacity-80 transition-transform duration-200",
+                    dropdownOpen && "rotate-180",
+                  )}
+                  aria-hidden
+                />
+              </button>
 
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
-              {LANGUAGES.map((l) => {
-                const isSelected = selectedLang === l.code;
-                return (
-                  <button
-                    key={l.code}
-                    type="button"
-                    onClick={() => handleLanguageSelect(l.code)}
-                    aria-pressed={isSelected}
-                    className={cn(
-                      "inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all sm:px-3.5 sm:py-1.5 sm:text-sm",
-                      isSelected
-                        ? "scale-105 bg-secondary font-semibold text-secondary-foreground shadow-md ring-1 ring-secondary"
-                        : "border border-primary-foreground/15 bg-primary-foreground/10 text-primary-foreground/80 hover:bg-primary-foreground/20 hover:text-primary-foreground",
-                    )}
-                  >
-                    {isSelected && (
-                      <Check className="size-3.5 text-secondary-foreground" aria-hidden />
-                    )}
-                    <span>{l.native}</span>
-                    {l.code !== "en" && (
-                      <span
+              {dropdownOpen && (
+                <div
+                  role="listbox"
+                  className="absolute left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 bottom-full mb-2 sm:bottom-auto sm:top-full sm:mt-2 z-50 max-h-72 w-56 overflow-y-auto rounded-lg border border-border bg-card p-1 text-card-foreground shadow-2xl"
+                >
+                  {LANGUAGES.map((l) => {
+                    const isSelected = (selectedLang || lang) === l.code;
+                    return (
+                      <button
+                        key={l.code}
+                        type="button"
+                        role="option"
+                        aria-selected={isSelected}
+                        onClick={() => handleLanguageSelect(l.code)}
                         className={cn(
-                          "text-[10px] opacity-75",
-                          isSelected ? "text-secondary-foreground" : "text-primary-foreground/60",
+                          "flex w-full cursor-pointer items-center justify-between rounded-md px-3 py-2 text-sm text-left transition-colors hover:bg-muted",
+                          isSelected && "bg-secondary/15 font-semibold text-secondary",
                         )}
                       >
-                        ({l.english})
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+                        <div className="flex flex-col">
+                          <span className="font-medium text-foreground">{l.native}</span>
+                          {l.code !== "en" && (
+                            <span className="text-[11px] text-muted-foreground">{l.english}</span>
+                          )}
+                        </div>
+                        {isSelected && (
+                          <Check className="size-4 shrink-0 text-secondary" aria-hidden />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
-            {error && (
-              <p
-                role="alert"
-                className="mt-3 inline-block rounded-md bg-destructive/90 px-3 py-1 text-xs font-medium text-destructive-foreground shadow-sm"
-              >
-                {error}
-              </p>
-            )}
-          </div>
-
-          {/* CTA Buttons */}
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            {/* Get Started Button */}
             <button
               type="button"
               onClick={handleGetStarted}
@@ -128,6 +143,8 @@ export default function LandingPage() {
             >
               {t("cta.getStarted")}
             </button>
+
+            {/* Explore Platform Button */}
             <Link
               to="/dashboard"
               className="inline-flex min-h-12 w-full items-center justify-center rounded-md border border-primary-foreground/30 px-8 text-sm font-semibold text-primary-foreground transition hover:bg-primary-foreground/10 sm:w-auto"
@@ -165,4 +182,5 @@ export default function LandingPage() {
     </div>
   );
 }
+
 
