@@ -15,6 +15,16 @@ function getApiBaseUrl(): string {
   if (url && !url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('/')) {
     url = `https://${url}`;
   }
+  // Auto-resolve Render service slugs that lack .onrender.com (e.g. https://orca-backend-ycue -> https://orca-backend-ycue.onrender.com)
+  try {
+    const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
+    if (parsed.hostname && !parsed.hostname.includes('.') && parsed.hostname !== 'localhost') {
+      parsed.hostname = `${parsed.hostname}.onrender.com`;
+      url = parsed.origin;
+    }
+  } catch {
+    // Keep original if unparseable
+  }
   return url.replace(/\/+$/, '');
 }
 

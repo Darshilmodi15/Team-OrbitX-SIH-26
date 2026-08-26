@@ -1,81 +1,54 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useGlobalContext } from '../context/GlobalContext';
-import { Check } from 'lucide-react';
-
-const LANGUAGES = [
-  { code: 'en', native: 'English', english: 'English' },
-  { code: 'hi', native: 'हिन्दी', english: 'Hindi' },
-  { code: 'gu', native: 'ગુજરાતી', english: 'Gujarati' },
-  { code: 'mr', native: 'मराठी', english: 'Marathi' },
-  { code: 'ta', native: 'தமிழ்', english: 'Tamil' },
-  { code: 'te', native: 'తెలుగు', english: 'Telugu' },
-  { code: 'ml', native: 'മലയാളം', english: 'Malayalam' },
-  { code: 'bn', native: 'বাংলা', english: 'Bengali' },
-  { code: 'kn', native: 'ಕನ್ನಡ', english: 'Kannada' },
-  { code: 'or', native: 'ଓଡ଼ିଆ', english: 'Odia' },
-  { code: 'pa', native: 'ਪੰਜਾਬੀ', english: 'Punjabi' },
-];
+import { Link, useNavigate } from "react-router-dom";
+import { Check } from "lucide-react";
+import { OrcaLogo } from "@/components/orca/Logo";
+import { LANGUAGES, useI18n } from "@/lib/orca/i18n";
+import { cn } from "@/lib/utils";
 
 export default function LanguagePage() {
+  const { lang, setLang, t } = useI18n();
   const navigate = useNavigate();
-  const { currentLang, handleSelectLang } = useGlobalContext();
-  const [selected, setSelected] = useState(currentLang);
-
-  const handleContinue = () => {
-    handleSelectLang(selected);
-    navigate('/auth');
-  };
 
   return (
-    <div className="min-h-screen bg-[#F7F9FC] flex flex-col items-center pt-24 pb-12 px-6">
-      <div className="w-12 h-12 bg-[#1e3a5f] rounded-full flex items-center justify-center mb-8 shadow-sm">
-        <span className="text-white font-bold text-xl">⚓</span>
-      </div>
-      
-      <h1 className="text-3xl font-bold text-slate-900 mb-2 font-display">Choose your language</h1>
-      <p className="text-slate-500 mb-10">The entire application will use the language you select.</p>
+    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 py-8">
+      <OrcaLogo className="size-9" />
+      <h1 className="mt-5 text-2xl font-semibold">{t("lang.title")}</h1>
+      <p className="mt-1.5 text-sm text-muted-foreground">{t("lang.subtitle")}</p>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-4xl mb-12">
-        {LANGUAGES.map((lang) => {
-          const isSelected = selected === lang.code;
-          return (
+      <ul className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {LANGUAGES.map((l) => (
+          <li key={l.code}>
             <button
-              key={lang.code}
-              onClick={() => setSelected(lang.code)}
-              className={`p-4 rounded-lg border text-left relative flex flex-col justify-center transition-all cursor-pointer ${
-                isSelected 
-                  ? 'border-teal-600 bg-teal-50/30 shadow-sm' 
-                  : 'border-slate-200 bg-white hover:border-slate-300 shadow-sm hover:shadow'
-              }`}
-            >
-              <span className={`text-lg font-semibold ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>
-                {lang.native}
-              </span>
-              <span className={`text-sm ${isSelected ? 'text-slate-600' : 'text-slate-500'}`}>
-                {lang.english}
-              </span>
-              {isSelected && (
-                <Check className="absolute right-4 top-1/2 -translate-y-1/2 text-teal-600 w-5 h-5" />
+              type="button"
+              onClick={() => setLang(l.code)}
+              aria-pressed={l.code === lang}
+              className={cn(
+                "flex min-h-16 w-full flex-col items-start justify-center gap-0.5 rounded-md border border-border bg-card px-3 py-2 text-left transition-colors hover:bg-muted",
+                l.code === lang && "border-secondary bg-secondary/10",
               )}
+            >
+              <span className="flex w-full items-center justify-between gap-2">
+                <span className="truncate text-sm font-semibold">{l.native}</span>
+                {l.code === lang && <Check className="size-4 shrink-0 text-secondary" aria-hidden />}
+              </span>
+              <span className="truncate text-xs text-muted-foreground">{l.english}</span>
             </button>
-          );
-        })}
-      </div>
+          </li>
+        ))}
+      </ul>
 
-      <div className="flex items-center gap-6 w-full max-w-4xl">
-        <button 
-          onClick={handleContinue}
-          className="flex-1 bg-[#1e3a5f] hover:bg-[#152e4d] text-white font-medium py-3 px-8 rounded-lg transition-colors cursor-pointer"
+      <div className="mt-8 flex flex-col gap-2 sm:flex-row">
+        <button
+          className="flex min-h-12 flex-1 items-center justify-center rounded-md bg-secondary text-sm font-semibold text-secondary-foreground transition hover:brightness-110"
+          onClick={() => navigate("/auth")}
         >
-          Continue
+          {t("cta.continue")}
         </button>
-        <button 
-          onClick={() => navigate(-1)}
-          className="text-slate-600 hover:text-slate-900 font-medium px-4 cursor-pointer"
+        <Link
+          to="/"
+          className="flex min-h-12 items-center justify-center rounded-md px-6 text-sm font-medium text-muted-foreground transition hover:bg-muted"
         >
-          Back
-        </button>
+          {t("cta.back")}
+        </Link>
       </div>
     </div>
   );

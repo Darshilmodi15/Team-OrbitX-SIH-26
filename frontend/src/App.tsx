@@ -1,44 +1,46 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AppProvider, useAppContext } from './context/AppContext';
-import LandingPage from './pages/LandingPage';
-import DashboardPage from './pages/DashboardPage';
-import AuthPage from './pages/AuthPage';
-import LocationPage from './pages/LocationPage';
-import TermsPage from './pages/TermsPage';
-import PrivacyPage from './pages/PrivacyPage';
-import OnboardingFlow from './components/OnboardingFlow';
-
-function AppRoutes() {
-  const { hasCompletedOnboarding } = useAppContext();
-
-  return (
-    <Routes>
-      {/* Root Route: If onboarding completed, go to Landing or Dashboard; otherwise Onboarding flow */}
-      <Route
-        path="/"
-        element={
-          hasCompletedOnboarding ? <LandingPage /> : <OnboardingFlow />
-        }
-      />
-      <Route path="/onboarding" element={<OnboardingFlow />} />
-      <Route path="/dashboard" element={<DashboardPage />} />
-      <Route path="/home" element={<Navigate to="/dashboard" replace />} />
-      <Route path="/auth" element={<AuthPage />} />
-      <Route path="/location" element={<LocationPage />} />
-      <Route path="/terms" element={<TermsPage />} />
-      <Route path="/privacy" element={<PrivacyPage />} />
-      {/* Fallback route */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  );
-}
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { I18nProvider } from "@/lib/orca/i18n";
+import { SessionProvider } from "@/lib/orca/session";
+import { AppProvider } from "./context/AppContext";
+import LandingPage from "./pages/LandingPage";
+import LanguagePage from "./pages/LanguagePage";
+import AuthPage from "./pages/AuthPage";
+import LocationPage from "./pages/LocationPage";
+import DashboardPage from "./pages/DashboardPage";
+import MapPage from "./pages/MapPage";
+import AssistantPage from "./pages/AssistantPage";
+import AlertsPage from "./pages/AlertsPage";
+import ServicesPage from "./pages/ServicesPage";
+import SettingsPage from "./pages/SettingsPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import TermsPage from "./pages/TermsPage";
 
 export default function App() {
   return (
     <AppProvider>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
+      <I18nProvider>
+        <SessionProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/language" element={<LanguagePage />} />
+              <Route path="/auth" element={<AuthPage />} />
+              <Route path="/location" element={<LocationPage />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/home" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/map" element={<MapPage />} />
+              <Route path="/assistant" element={<AssistantPage />} />
+              <Route path="/alerts" element={<AlertsPage />} />
+              <Route path="/services" element={<ServicesPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/terms" element={<TermsPage />} />
+              {/* Fallback route */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </SessionProvider>
+      </I18nProvider>
     </AppProvider>
   );
 }
