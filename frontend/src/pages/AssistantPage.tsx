@@ -4,8 +4,11 @@ import {
   Check,
   Compass,
   Copy,
+  Loader2,
   MessageSquare,
   MessageSquarePlus,
+  Mic,
+  MicOff,
   PanelLeftClose,
   PanelLeftOpen,
   Send,
@@ -15,6 +18,7 @@ import {
   Waves,
   ShieldCheck,
   AlertTriangle,
+  X,
 } from "lucide-react";
 import { AppShell } from "@/components/orca/AppShell";
 import { useI18n } from "@/lib/orca/i18n";
@@ -22,6 +26,7 @@ import { useSession } from "@/lib/orca/session";
 import { useMarine } from "@/lib/orca/use-marine";
 import { answerQuestion } from "@/lib/orca/assistant";
 import { useSafetyLabel } from "@/components/orca/SafetyStatus";
+import { transcribeVoiceAudio } from "@/services/api";
 import type { ChatMessage } from "@/lib/orca/types";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +57,20 @@ function saveThreads(threads: ChatThread[]) {
   }
 }
 
+const LANG_BCP47: Record<string, string> = {
+  en: "en-IN",
+  hi: "hi-IN",
+  gu: "gu-IN",
+  mr: "mr-IN",
+  ta: "ta-IN",
+  te: "te-IN",
+  ml: "ml-IN",
+  bn: "bn-IN",
+  kn: "kn-IN",
+  or: "or-IN",
+  pa: "pa-IN",
+};
+
 export default function AssistantPage() {
   const { t, lang } = useI18n();
   const { location } = useSession();
@@ -67,6 +86,14 @@ export default function AssistantPage() {
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [input, setInput] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Voice Speech-to-Text State
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const speechRecognitionRef = useRef<any>(null);
+
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -154,6 +181,102 @@ export default function AssistantPage() {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  }
+
+  /* ==========================================================================
+     Voice Recognition & Speech-to-Text Controller
+     ========================================================================== */
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/wav" });
+        setIsTranscribing(true);
+        try {
+          // Call Sarvam AI STT
+          const result = await transcribeVoiceAudio(audioBlob, lang || "auto");
+          if (result && result.transcript) {
+            setInput((prev) => (prev ? `${prev} ${result.transcript}` : result.transcript));
+          }
+        } catch (err) {
+          console.warn("Backend STT fallback to Web Speech:", err);
+          handleBrowserSpeechFallback();
+        } finally {
+          setIsTranscribing(false);
+          setIsRecording(false);
+          stream.getTracks().forEach((trk) => trk.stop());
+        }
+      };
+
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+    } catch (err) {
+      console.warn("Microphone hardware error or denied, using Web Speech fallback:", err);
+      handleBrowserSpeechFallback();
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      mediaRecorderRef.current.stop();
+    } else {
+      setIsRecording(false);
+    }
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.stop();
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  function handleBrowserSpeechFallback() {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Voice input requires microphone permission on a supported browser.");
+      setIsRecording(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = LANG_BCP47[lang] || "en-IN";
+      recognition.interimResults = false;
+
+      recognition.onstart = () => setIsRecording(true);
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+          setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
+        }
+      };
+      recognition.onerror = () => setIsRecording(false);
+      recognition.onend = () => setIsRecording(false);
+      recognition.start();
+      speechRecognitionRef.current = recognition;
+    } catch {
+      setIsRecording(false);
+    }
+  }
+
+  function toggleVoice() {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
   }
 
   const suggestions = [
@@ -363,6 +486,28 @@ export default function AssistantPage() {
             <div ref={endRef} />
           </div>
 
+          {/* Voice Recording Status Toast */}
+          {(isRecording || isTranscribing) && (
+            <div className="border-t border-teal-500/30 bg-teal-950/40 px-4 py-2 text-xs flex items-center justify-between backdrop-blur animate-pulse">
+              <div className="flex items-center gap-2 text-teal-300">
+                <span className="size-2.5 rounded-full bg-red-500 animate-ping" />
+                <span>
+                  {isTranscribing
+                    ? "Transcribing voice audio..."
+                    : `Listening in ${LANG_BCP47[lang] || "selected language"}... (Click Mic to Finish)`}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={stopRecording}
+                className="inline-flex items-center gap-1 text-red-400 hover:text-red-300 font-semibold cursor-pointer px-2 py-0.5 rounded border border-red-500/30 bg-red-500/10"
+              >
+                <X className="size-3.5" />
+                <span>Cancel</span>
+              </button>
+            </div>
+          )}
+
           {/* Bottom Docked ChatGPT-Style Input */}
           <div className="border-t border-border bg-card/90 p-3 sm:p-4 backdrop-blur">
             <div className="mx-auto max-w-3xl space-y-2">
@@ -382,7 +527,7 @@ export default function AssistantPage() {
                 </div>
               )}
 
-              {/* Input Box */}
+              {/* Input Box with Microphone and Send Button */}
               <form
                 className="flex items-end gap-2 rounded-xl border border-border bg-surface p-2 shadow-inner focus-within:border-teal-500 focus-within:ring-1 focus-within:ring-teal-500 transition-all"
                 onSubmit={(e) => {
@@ -406,6 +551,31 @@ export default function AssistantPage() {
                   className="max-h-32 min-h-10 flex-1 resize-none bg-transparent px-2.5 py-2 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground outline-none ring-0"
                 />
 
+                {/* Microphone Button */}
+                <button
+                  type="button"
+                  onClick={toggleVoice}
+                  title={isRecording ? "Stop recording" : "Speak in your language"}
+                  className={cn(
+                    "flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-lg border transition-all active:scale-95",
+                    isRecording
+                      ? "border-red-500 bg-red-500/20 text-red-400 animate-pulse shadow-md shadow-red-500/20"
+                      : isTranscribing
+                      ? "border-amber-500 bg-amber-500/20 text-amber-400"
+                      : "border-border bg-card text-teal-400 hover:bg-muted hover:text-teal-300 shadow-xs",
+                  )}
+                  aria-label="Voice input"
+                >
+                  {isTranscribing ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : isRecording ? (
+                    <MicOff className="size-4 text-red-400" />
+                  ) : (
+                    <Mic className="size-4" />
+                  )}
+                </button>
+
+                {/* Send Button */}
                 <button
                   type="submit"
                   disabled={!input.trim()}
