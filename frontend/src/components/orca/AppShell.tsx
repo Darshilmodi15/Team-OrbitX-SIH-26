@@ -10,7 +10,6 @@ import {
 import type { ReactNode } from "react";
 import { OrcaWordmark } from "./Logo";
 import { LanguageMenu } from "./LanguageMenu";
-import { ThemeToggle } from "./ThemeToggle";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
 import { cn } from "@/lib/utils";
@@ -53,7 +52,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="flex shrink-0 items-center gap-1.5">
-            <ThemeToggle className="border-border bg-card text-foreground hover:bg-muted hover:text-foreground" />
             <LanguageMenu />
             <Link
               to="/settings"
