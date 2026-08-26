@@ -24,29 +24,28 @@ export default function App() {
         <I18nProvider>
           <SessionProvider>
             <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/language" element={<LanguagePage />} />
-              <Route path="/auth" element={<AuthPage />} />
-              <Route path="/location" element={<LocationPage />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/home" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/map" element={<MapPage />} />
-              <Route path="/assistant" element={<AssistantPage />} />
-              <Route path="/alerts" element={<AlertsPage />} />
-              <Route path="/services" element={<ServicesPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/privacy" element={<PrivacyPage />} />
-              <Route path="/terms" element={<TermsPage />} />
-              {/* Fallback route */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </BrowserRouter>
-          <Analytics />
-        </SessionProvider>
-      </I18nProvider>
-    </AppProvider>
-  </ThemeProvider>
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/language" element={<LanguagePage />} />
+                <Route path="/auth" element={<AuthPage />} />
+                <Route path="/location" element={<LocationPage />} />
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/home" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/map" element={<MapPage />} />
+                <Route path="/assistant" element={<AssistantPage />} />
+                <Route path="/alerts" element={<AlertsPage />} />
+                <Route path="/services" element={<ServicesPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/terms" element={<TermsPage />} />
+                {/* Fallback route */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </BrowserRouter>
+            <Analytics />
+          </SessionProvider>
+        </I18nProvider>
+      </AppProvider>
+    </ThemeProvider>
   );
 }
-

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from "react";
 
 export type Theme = "light" | "dark" | "system";
 export type ResolvedTheme = "light" | "dark";
@@ -6,6 +6,7 @@ export type ResolvedTheme = "light" | "dark";
 interface ThemeContextValue {
   theme: Theme;
   resolvedTheme: ResolvedTheme;
+  isDark: boolean;
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
 }
@@ -22,11 +23,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return stored;
       }
     } catch {}
-    return "dark"; // Default to dark maritime navy for ORCA Marine AI
+    return "light";
   });
 
   const [systemDark, setSystemDark] = useState(() => {
-    if (typeof window === "undefined") return true;
+    if (typeof window === "undefined") return false;
     return window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
 
@@ -40,31 +41,34 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const resolvedTheme: ResolvedTheme =
     theme === "system" ? (systemDark ? "dark" : "light") : theme;
 
+  const isDark = resolvedTheme === "dark";
+
   useEffect(() => {
     const root = document.documentElement;
-    if (resolvedTheme === "dark") {
+    if (isDark) {
       root.classList.add("dark");
     } else {
       root.classList.remove("dark");
     }
-  }, [resolvedTheme]);
+  }, [isDark]);
 
-  const setTheme = (newTheme: Theme) => {
+  const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme);
     try {
       localStorage.setItem(STORAGE_KEY, newTheme);
     } catch {}
-  };
+  }, []);
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     setTheme(resolvedTheme === "dark" ? "light" : "dark");
-  };
+  }, [resolvedTheme, setTheme]);
 
-  return (
-    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme, toggleTheme }}>
-      {children}
-    </ThemeContext.Provider>
+  const value = useMemo(
+    () => ({ theme, resolvedTheme, isDark, setTheme, toggleTheme }),
+    [theme, resolvedTheme, isDark, setTheme, toggleTheme]
   );
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 };
 
 export const useTheme = () => {
