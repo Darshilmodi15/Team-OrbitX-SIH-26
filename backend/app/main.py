@@ -226,7 +226,10 @@ class Location(BaseModel):
 
 class QueryRequest(BaseModel):
     location: Location
-    date: str = Field(..., description="Date of forecast / inquiry (e.g. 'YYYY-MM-DD')")
+    date: Optional[str] = Field(
+        default_factory=lambda: dt_date.today().isoformat(),
+        description="Date of forecast / inquiry (e.g. 'YYYY-MM-DD')",
+    )
     question: str = Field(..., description="User question or operational query")
     language: Optional[str] = Field(default="auto", description="Source language ('auto', 'gu', 'hi', 'en', etc.)")
     session_id: Optional[str] = Field(default=None, description="Optional session ID for multi-turn state")
@@ -507,9 +510,10 @@ def _process_orca_query(
     sources_used: List[str] = []
     agent_results: List[AgentResult] = []
 
-    # Step 1: Detect or resolve language
-    if not requested_lang or requested_lang.lower() == "auto":
-        lid_res = bhashini_service.identify_language(question_raw, session_id=session_id)
+    # Step 1: Detect or resolve language using Language Priority Rule
+    # Priority 1: Direct analysis of user input text (native Indic script or Romanized Indic)
+    lid_res = bhashini_service.identify_language(question_raw, session_id=session_id)
+    if lid_res.short_code != "en":
         detected_lang = lid_res.short_code
         lang_name = lid_res.language_name
         if lid_res.provider == "sarvam":
@@ -519,13 +523,22 @@ def _process_orca_query(
             )
         else:
             reasoning.append(
-                f"Language Layer (Fallback): Identified language as '{lang_name}' ({lid_res.language_code}, script: {lid_res.script_code}) [status: {lid_res.detection_status}]."
+                f"Language Layer (Script/Romanized Analysis): Identified query language as '{lang_name}' ({lid_res.language_code}, script: {lid_res.script_code}) [status: {lid_res.detection_status}]."
             )
     else:
-        detected_lang = requested_lang.lower().split("-")[0]
-        lang_name = SUPPORTED_LANGUAGES.get(detected_lang, detected_lang.upper())
-        if session_id:
-            bhashini_service.set_session_language(session_id, detected_lang)
+        # Priority 2: If user asked in dashboard-selected language (and not 'auto' or 'en')
+        if requested_lang and requested_lang.lower() not in ("auto", "en"):
+            detected_lang = requested_lang.lower().split("-")[0]
+            lang_name = SUPPORTED_LANGUAGES.get(detected_lang, detected_lang.upper())
+            if session_id:
+                bhashini_service.set_session_language(session_id, detected_lang)
+            reasoning.append(
+                f"Dashboard Preference: Using selected language '{lang_name}' for response."
+            )
+        else:
+            detected_lang = "en"
+            lang_name = "English"
+            reasoning.append("Language Layer: Processing query in English.")
 
     sources_used.append("bhashini_multilingual_service")
     sources_used.append("sarvam_ai_language_service")
@@ -546,8 +559,8 @@ def _process_orca_query(
             f"Bhashini Multilingual Layer: Processed native English query: '{english_question}'."
         )
 
-    # Step 3: Intent Classification & Entity Extraction
-    intent_res = parse_intent(english_question)
+    # Step 3: Intent Classification & Entity Extraction (with multi-turn context resolution)
+    intent_res = parse_intent(english_question, history=history)
     sources_used.append("intent_agent")
     detected_intent = intent_res.get("intent", "general")
     location_hint = intent_res.get("location_hint")
@@ -964,6 +977,11 @@ def _process_orca_query(
         target_lang=detected_lang,
         history=history,
     )
+    if recommendations and "Operational Recommendations, Evidence & Reasoning" not in synthesized_answer:
+        rec_md = RecommendationReasoningEngine.format_recommendations_markdown(recommendations)
+        if rec_md:
+            synthesized_answer = f"{synthesized_answer}\n\n{rec_md}"
+
     reasoning.append("Synthesized dynamic conversational response based on multi-agent evidence and context.")
 
     # Step 7: Indic translation if needed and not already native script

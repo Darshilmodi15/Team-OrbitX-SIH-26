@@ -386,22 +386,23 @@ export default function QueryInput({
         </div>
       )}
 
-      {/* Quick Prompts */}
-      <div className="mb-2 flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none">
-        <span className="flex items-center gap-0.5 shrink-0 text-[9px] font-mono font-bold uppercase tracking-wider text-slate-400">
+      {/* Quick Prompts Horizontal Carousel */}
+      <div className="mb-2 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+        <span className="flex items-center gap-1 shrink-0 text-[10px] font-mono font-bold uppercase tracking-wider text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100">
           <Sparkles className="h-2.5 w-2.5 text-[#0D9488]" />
+          <span>INQUIRIES</span>
         </span>
-        {quickPrompts.slice(0, 3).map((prompt, idx) => (
+        {quickPrompts.map((prompt, idx) => (
           <button
             key={idx}
             type="button"
             onClick={() => handleSendPrompt(prompt.query)}
             disabled={isLoading}
-            title={prompt.label}
-            className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600 hover:border-[#0D9488] hover:bg-teal-50 hover:text-teal-800 transition shrink-0 cursor-pointer disabled:opacity-50"
+            title={prompt.query}
+            className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-700 hover:border-[#0D9488] hover:bg-teal-50 hover:text-teal-900 transition shrink-0 cursor-pointer disabled:opacity-50 active:scale-95 shadow-2xs"
           >
             <span className="text-xs">{prompt.icon}</span>
-            <span>{prompt.label}</span>
+            <span className="whitespace-nowrap">{prompt.label}</span>
           </button>
         ))}
       </div>

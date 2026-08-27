@@ -290,22 +290,58 @@ def _clean_json_text(raw_text: str) -> str:
     return raw_text
 
 
-def parse_intent(question: str) -> Dict[str, Any]:
+def parse_intent(question: str, history: Optional[List[Dict[str, str]]] = None) -> Dict[str, Any]:
     """
-    Classifies user question into structured intent and extracts marine entities.
+    Classifies user question into structured intent and extracts marine entities,
+    resolving multi-turn context and follow-up references.
     """
     entities = _extract_entities_heuristically(question)
-    gemini_key = os.getenv("GEMINI_API_KEY")
 
+    # Multi-turn context resolution: inherit location and intent context from history if follow-up
+    prev_location = None
+    prev_intent = None
+    if history:
+        for turn in reversed(history[-4:]):
+            txt = turn.get("text", "")
+            prev_ent = _extract_entities_heuristically(txt)
+            if not prev_location and prev_ent.get("location_hint"):
+                prev_location = prev_ent.get("location_hint")
+                entities["location_hint"] = entities["location_hint"] or prev_location
+                entities["resolved_coords"] = entities["resolved_coords"] or prev_ent.get("resolved_coords")
+            if not prev_intent and turn.get("role") == "user":
+                prev_intent = _fallback_intent(txt).get("intent")
+
+    # Handle elliptical follow-ups like "What about tomorrow?", "Is that dangerous?", "Why?", "How far?"
+    q_low = question.lower().strip()
+    if any(q_low.startswith(p) or q_low == p for p in ["what about tomorrow", "and tomorrow", "what about udya", "kale shu", "kal kya"]):
+        entities["time_hint"] = "tomorrow"
+        base_res = _fallback_intent(question)
+        if base_res["intent"] == "general":
+            base_res["intent"] = prev_intent or "weather_conditions"
+        base_res.update(entities)
+        return base_res
+
+    if any(k in q_low for k in ["is that dangerous", "why is that", "why dangerous", "is it risky"]):
+        base_res = _fallback_intent(question)
+        base_res["intent"] = "safety_check"
+        base_res.update(entities)
+        return base_res
+
+    gemini_key = os.getenv("GEMINI_API_KEY")
     if gemini_key:
         try:
             from google import genai
             client = genai.Client(api_key=gemini_key)
+            prompt_content = question
+            if history:
+                history_summary = "\n".join([f"{h.get('role')}: {h.get('text')}" for h in history[-3:]])
+                prompt_content = f"Previous conversation context:\n{history_summary}\n\nCurrent User Query: {question}"
+
             for model_name in ["gemini-2.0-flash", "gemini-1.5-flash"]:
                 try:
                     response = client.models.generate_content(
                         model=model_name,
-                        contents=question,
+                        contents=prompt_content,
                         config={"system_instruction": SYSTEM_PROMPT},
                     )
                     raw_text = _clean_json_text(response.text)
@@ -327,4 +363,5 @@ def parse_intent(question: str) -> Dict[str, Any]:
             pass
 
     return _fallback_intent(question)
+
 

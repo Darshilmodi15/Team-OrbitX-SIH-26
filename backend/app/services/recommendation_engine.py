@@ -517,6 +517,24 @@ class RecommendationReasoningEngine:
 
         return recommendations
 
+    @classmethod
+    def format_recommendations_markdown(cls, recs: List[OperationalRecommendation]) -> str:
+        """Formats recommendations with evidence and reasoning trace into structured markdown."""
+        if not recs:
+            return ""
+        lines = [
+            "### ⚓ Operational Recommendations, Evidence & Reasoning Derivation\n"
+        ]
+        for r in recs:
+            icon = "🚨" if r.priority == "CRITICAL" else ("⚠️" if r.priority == "HIGH" else "ℹ️")
+            lines.append(f"#### {icon} {r.title} [{r.priority} Priority | {int(r.confidence_score * 100)}% Confidence]")
+            lines.append(f"**Action Directive**: {r.directive}\n")
+            lines.append("**Supporting Evidence**:")
+            for ev in r.supporting_evidence:
+                lines.append(f"• {ev}")
+            lines.append(f"\n**Step-by-Step Deductive Reasoning**:\n{r.reasoning}\n")
+        return "\n".join(lines)
+
     @staticmethod
     def _deg_to_cardinal(deg: Optional[float]) -> str:
         if deg is None:
