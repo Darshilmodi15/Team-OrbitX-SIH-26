@@ -14,6 +14,7 @@ class WeatherEvidence(BaseModel):
     wind_direction_deg: Optional[float] = Field(default=None, description="Wind direction in degrees (0-360)")
     wind_direction_cardinal: Optional[str] = Field(default=None, description="Wind direction cardinal compass (e.g. 'WSW')")
     temperature_c: Optional[float] = Field(default=None, description="Sea surface or ambient temperature in Celsius")
+    sea_surface_temperature_c: Optional[float] = Field(default=None, description="Sea surface temperature in Celsius")
     visibility_km: Optional[float] = Field(default=None, description="Visibility in kilometers")
     forecast_time: Optional[str] = Field(default=None, description="Source forecast / observation timestamp")
     retrieval_time: Optional[str] = Field(default=None, description="Data retrieval timestamp")
@@ -175,6 +176,78 @@ class BoundaryEvidence(BaseModel):
     dataset_version: str = Field(default="World EEZ v12", description="Dataset version identifier")
 
 
+class TideInfo(BaseModel):
+    """Structured tidal forecast information."""
+    high_tide_time: Optional[str] = Field(default=None, description="Time of primary high tide (e.g. '04:45 AM')")
+    high_tide_height_m: Optional[float] = Field(default=None, description="High tide height in meters")
+    low_tide_time: Optional[str] = Field(default=None, description="Time of primary low tide (e.g. '11:15 AM')")
+    low_tide_height_m: Optional[float] = Field(default=None, description="Low tide height in meters")
+    secondary_high_tide_time: Optional[str] = Field(default=None, description="Time of secondary high tide (e.g. '17:30 PM')")
+    secondary_high_tide_height_m: Optional[float] = Field(default=None, description="Secondary high tide height in meters")
+    tidal_phase: str = Field(default="Spring Tide", description="Tidal phase ('Spring Tide', 'Neap Tide', 'Transitional')")
+    tidal_range_m: Optional[float] = Field(default=None, description="Difference between high and low tide in meters")
+    source: str = Field(default="INCOIS Tidal Harmonic Predictions & Survey of India", description="Tidal data provenance")
+
+
+class OceanAnalyticsEvidence(BaseModel):
+    """Structured satellite ocean color and thermal front analytics."""
+    region_name: str = Field(..., description="Coastal region analyzed")
+    mean_chlorophyll_mg_m3: float = Field(..., description="Mean Chlorophyll-a density in mg/m3")
+    mean_sst_c: float = Field(..., description="Sea Surface Temperature in Celsius")
+    optimal_sst_range: str = Field(default="26.5°C - 28.8°C", description="Optimal SST range for pelagic aggregation")
+    upwelling_index: str = Field(default="MODERATE", description="Coastal upwelling intensity index")
+    thermal_front_detected: bool = Field(default=True, description="Whether an active thermal front gradient is detected")
+    thermal_front_description: str = Field(..., description="Detailed description of thermal front and chlorophyll bloom")
+    favorable_sectors: List[Dict[str, Any]] = Field(default_factory=list, description="Specific sectors showing high chlorophyll & favorable SST")
+    satellite_source: str = Field(default="ISRO Oceansat-3 OCM & INSAT-3D Thermal Imager", description="Satellite data provenance")
+    summary: str = Field(..., description="Executive ocean analytics summary")
+
+
+class EcologyEvidence(BaseModel):
+    """Structured marine ecological analysis explaining fish productivity trends."""
+    region_name: str = Field(..., description="Coastal sector evaluated")
+    decline_severity: str = Field(default="MODERATE_TO_HIGH", description="Productivity decline severity tier")
+    sst_anomaly: str = Field(..., description="Sea Surface Temperature anomaly compared to historical baseline")
+    chlorophyll_trend: str = Field(..., description="Phytoplankton / chlorophyll-a trend")
+    overfishing_pressure: str = Field(..., description="Fishing intensity and juvenile exploitation status")
+    primary_causes: List[str] = Field(default_factory=list, description="Key environmental and anthropogenic drivers of decline")
+    recommendations: List[str] = Field(default_factory=list, description="Actionable recovery and sustainable management recommendations")
+    analysis_summary: str = Field(..., description="Detailed explanatory text")
+    source: str = Field(default="ORCA Marine Ecological Reasoning Engine & CMFRI/INCOIS Oceanographic Synthesis", description="Data provenance")
+
+
+class ZoneAvoidanceItem(BaseModel):
+    """Specific zone or sector flagged for avoidance."""
+    zone_name: str = Field(..., description="Name of the fishing zone, sector, or restricted area")
+    category: str = Field(..., description="Hazard or restriction category ('WEATHER_HAZARD', 'IMBL', 'MPA', 'SECURITY', 'PFZ_RESTRICTION')")
+    avoidance_level: str = Field(default="WARNING", description="Avoidance urgency ('CRITICAL', 'WARNING', 'CAUTION')")
+    reason: str = Field(..., description="Specific physical or regulatory reason for avoidance")
+    recommended_action: str = Field(..., description="Recommended navigational or operational action")
+
+
+class ZoneAvoidanceEvidence(BaseModel):
+    """Structured evaluation of zones to avoid due to hazards or geofencing."""
+    overall_avoidance_status: str = Field(default="ALL_ZONES_CLEAR", description="Status ('CRITICAL_AVOIDANCE', 'CAUTION_REQUIRED', 'ALL_ZONES_CLEAR')")
+    avoided_zones: List[ZoneAvoidanceItem] = Field(default_factory=list, description="List of specific zones to avoid")
+    safe_alternative_zones: List[Dict[str, Any]] = Field(default_factory=list, description="Recommended safe alternative fishing zones")
+    summary: str = Field(..., description="Summary advisory for avoidance")
+    source: str = Field(default="ORCA Multi-Agent Hazard & Geofencing Avoidance Engine", description="Provenance")
+
+
+class OperationalRecommendation(BaseModel):
+    """Structured, reliable operational recommendation backed by supporting evidence and deductive reasoning."""
+    id: str = Field(..., description="Unique recommendation identifier (e.g. 'REC-SAF-01', 'REC-PFZ-01')")
+    category: str = Field(..., description="Operational domain ('SAFETY', 'FISHING', 'NAVIGATION', 'GEOFENCE', 'ECOLOGY', 'HAZARD', 'TIDAL', 'SIMULATION')")
+    title: str = Field(..., description="Clear, concise recommendation headline")
+    directive: str = Field(..., description="Imperative actionable instruction for mariner / operator")
+    priority: str = Field(default="MEDIUM", description="Urgency priority tier ('CRITICAL', 'HIGH', 'MEDIUM', 'INFO')")
+    confidence_score: float = Field(default=0.95, description="Confidence / reliability score from 0.0 to 1.0")
+    reliability_tier: str = Field(default="AUTHORITATIVE_VERIFIED", description="Reliability grade ('AUTHORITATIVE_VERIFIED', 'MODEL_DERIVED', 'CACHED_ESTIMATE', 'ADVISORY')")
+    supporting_evidence: List[str] = Field(default_factory=list, description="Specific quantitative observations, thresholds, and data points supporting this recommendation")
+    reasoning: str = Field(..., description="Deductive step-by-step physical, regulatory, or ecological reasoning used to derive this recommendation")
+    source: str = Field(default="orca_recommendation_reasoning_engine", description="Generating agent or engine provenance")
+
+
 class EvidenceBundle(BaseModel):
     """Unified collection of all structured evidence collected during query execution."""
     weather: Optional[WeatherEvidence] = Field(default=None, description="Weather evidence if collected")
@@ -185,6 +258,11 @@ class EvidenceBundle(BaseModel):
     alerts: List[HazardAlertEvidence] = Field(default_factory=list, description="Active proactive hazard alerts")
     boundary: Optional[BoundaryEvidence] = Field(default=None, description="Marine boundary and EEZ evaluation")
     simulation: Optional[SimulationEvidence] = Field(default=None, description="What-if simulation results if requested")
+    ocean_analytics: Optional[OceanAnalyticsEvidence] = Field(default=None, description="Ocean color and SST thermal front analytics")
+    ecology: Optional[EcologyEvidence] = Field(default=None, description="Fish productivity decline ecological diagnostics")
+    zone_avoidance: Optional[ZoneAvoidanceEvidence] = Field(default=None, description="Hazard and geofence zone avoidance evaluation")
+    tide: Optional[TideInfo] = Field(default=None, description="Tidal height and timing predictions")
+    recommendations: List[OperationalRecommendation] = Field(default_factory=list, description="Reliable operational recommendations with supporting evidence and reasoning")
     location_lat: float = Field(..., description="Inquiry latitude coordinate")
     location_lon: float = Field(..., description="Inquiry longitude coordinate")
     date: str = Field(..., description="Inquiry forecast date string")

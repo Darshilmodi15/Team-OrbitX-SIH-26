@@ -48,6 +48,19 @@ export interface PFZEvidenceItem {
   is_mock?: boolean;
 }
 
+export interface OperationalRecommendation {
+  id: string;
+  category: string;
+  title: string;
+  directive: string;
+  priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'INFO';
+  confidence_score: number;
+  reliability_tier?: string;
+  supporting_evidence: string[];
+  reasoning: string;
+  source?: string;
+}
+
 export interface MessageItem {
   id: string;
   sender: 'user' | 'assistant';
@@ -58,6 +71,23 @@ export interface MessageItem {
   plan?: unknown;
   reasoning?: string[];
   sources_used?: string[];
+  recommendations?: OperationalRecommendation[];
+  route?: any;
+  alerts?: any[];
+  simulation?: any;
+  boundary?: any;
+  ocean_analytics?: any;
+  ecology?: any;
+  zone_avoidance?: any;
+  tide?: any;
+  connectivity_mode?: string;
+  highlightTarget?: {
+    lat: number;
+    lon: number;
+    title: string;
+    type: string;
+    zoom?: number;
+  };
 }
 
 export type SafetyLevel = 'safe' | 'caution' | 'dangerous' | 'emergency' | 'unknown';

@@ -69,9 +69,15 @@ export interface MessageItem {
   plan?: any;
   reasoning?: string[];
   sources_used?: string[];
+  recommendations?: any[];
   route?: any;
   alerts?: any[];
   simulation?: any;
+  boundary?: any;
+  ocean_analytics?: any;
+  ecology?: any;
+  zone_avoidance?: any;
+  tide?: any;
   connectivity_mode?: string;
   highlightTarget?: HighlightedMapTarget;
 }
@@ -652,9 +658,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
           plan: response.plan,
           reasoning: response.reasoning,
           sources_used: response.sources_used,
+          recommendations: response.recommendations,
           route: response.route,
           alerts: response.alerts,
           simulation: response.simulation,
+          boundary: response.boundary,
+          ocean_analytics: response.ocean_analytics,
+          ecology: response.ecology,
+          zone_avoidance: response.zone_avoidance,
+          tide: response.tide,
           connectivity_mode: response.connectivity_mode || 'LIVE',
           highlightTarget,
         };

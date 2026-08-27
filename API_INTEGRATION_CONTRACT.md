@@ -199,6 +199,47 @@ This document serves as the binding integration contract between the **Frontend 
 
 ---
 
+### 💡 Journey 5: Reliable Operational Recommendations & Reasoning Derivation
+- **Endpoint**: `GET /api/recommendations`
+- **Query Parameters**: `lat` (float), `lon` (float), `date` (YYYY-MM-DD), `question` (string, optional)
+- **Purpose**: Delivers structured, reliable operational recommendations categorized across domains (`SAFETY`, `FISHING`, `NAVIGATION`, `GEOFENCE`, `ECOLOGY`, `HAZARD`, `TIDAL`), each complete with quantitative supporting evidence and step-by-step reasoning derivation.
+- **Response Payload (`200 OK`)**:
+  ```json
+  {
+    "location": { "lat": 18.9220, "lon": 72.8347 },
+    "date": "2026-08-27",
+    "recommendations": [
+      {
+        "id": "REC-SAF-01",
+        "category": "SAFETY",
+        "title": "Vessel Departure Clearance: Optimal Marine Conditions",
+        "directive": "Normal fishing and navigation operations are cleared to proceed. Maintain standard safety protocols, pre-departure engine checks, and active GPS positioning.",
+        "priority": "MEDIUM",
+        "confidence_score": 0.96,
+        "reliability_tier": "AUTHORITATIVE_VERIFIED",
+        "supporting_evidence": [
+          "Significant Wave Height (Hs): 0.85m (Within safe limits <= 1.50m)",
+          "Sustained Wind Speed: 18.0 km/h (Gentle/Moderate breeze <= 40.0 km/h)",
+          "Wave Period: 8.0s (Laminar swell profile)",
+          "Forecast Condition: 'Clear'",
+          "Authoritative Source: INCOIS_OSF_WW3"
+        ],
+        "reasoning": "1. Multi-vector physics check: Wave height (0.85m) and sustained wind (18.0 km/h) are within safe navigation envelopes.\n2. Hydrodynamic stability: No steep wave chop or squall turbulence detected.\n3. Risk classification: SAFE TO VENTURE across all 4 maritime vectors.\n4. Actionable directive: Vessel departures cleared under standard maritime protocols.",
+        "source": "orca_marine_risk_engine"
+      }
+    ],
+    "evidence_summary": {
+      "weather": { ... },
+      "risk_level": "safe",
+      "nearest_pfz": [ ... ]
+    },
+    "reasoning_trace": [ ... ],
+    "sources_used": [ ... ]
+  }
+  ```
+
+---
+
 ## 🔒 3. Authentication Headers
 
 When a user registers or logs in via `/api/auth/register` or `/api/auth/login`, the backend returns an access token. Include this token in all subsequent protected requests:

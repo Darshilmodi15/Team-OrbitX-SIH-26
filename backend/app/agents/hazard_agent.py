@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timezone
+from datetime import datetime, timezone
 from typing import List, Optional
 from app.data.geofence import evaluate_vessel_geofences
 from app.models.agent_models import HazardAlertEvidence, WeatherEvidence
@@ -72,16 +72,55 @@ def detect_proactive_hazards(
                 )
             )
 
-        if 'storm' in fc:
+        if 'storm' in fc or 'cyclone' in fc:
             alerts.append(
                 HazardAlertEvidence(
-                    id=f'alert-storm-{round(lat, 2)}-{round(lon, 2)}',
+                    id=f'alert-cyclone-{round(lat, 2)}-{round(lon, 2)}',
                     severity='critical',
-                    title='CRITICAL: Severe Squall / Storm Cell Detected',
-                    message='Authoritative forecasts indicate active cyclonic/storm disturbance in operational quadrant.',
+                    title='CRITICAL: Cyclone / Severe Squall Alert',
+                    message='IMD/INCOIS Earth Observation models indicate cyclonic circulation / squally weather in this quadrant. Total suspension of artisanal fishing advised.',
                     location_desc=f'{location_name} ({lat:.2f}N, {lon:.2f}E)',
                     timestamp=now_iso,
                     source=weather.source,
+                    freshness='LIVE' if weather.cache_status == 'live' else 'CACHED',
+                )
+            )
+            alerts.append(
+                HazardAlertEvidence(
+                    id=f'alert-lightning-{round(lat, 2)}-{round(lon, 2)}',
+                    severity='critical',
+                    title='CRITICAL: Severe Lightning & Convective Squall Alert',
+                    message='Intense lightning strikes and sudden localized wind gusts detected in convective marine cloud clusters. Stay clear of exposed open decks.',
+                    location_desc=f'{location_name} ({lat:.2f}N, {lon:.2f}E)',
+                    timestamp=now_iso,
+                    source=weather.source,
+                    freshness='LIVE' if weather.cache_status == 'live' else 'CACHED',
+                )
+            )
+        elif 'rain' in fc:
+            alerts.append(
+                HazardAlertEvidence(
+                    id=f'alert-lightning-adv-{round(lat, 2)}-{round(lon, 2)}',
+                    severity='warning',
+                    title='WARNING: Thunderstorm & Lightning Advisory',
+                    message='Isolated thundercloud development observed. Mariners advised to monitor VHF Channel 16 for sudden squalls.',
+                    location_desc=f'{location_name} ({lat:.2f}N, {lon:.2f}E)',
+                    timestamp=now_iso,
+                    source=weather.source,
+                    freshness='LIVE' if weather.cache_status == 'live' else 'CACHED',
+                )
+            )
+
+        if weather.wave_period_s and weather.wave_period_s >= 13.0 and wave_h >= 1.5:
+            alerts.append(
+                HazardAlertEvidence(
+                    id=f'alert-swell-surge-{round(lat, 2)}-{round(lon, 2)}',
+                    severity='warning',
+                    title='WARNING: Long-Period Swell Surge (Kallakkadal) Alert',
+                    message=f'Long-period ocean swell ({weather.wave_period_s:.1f}s) may cause sudden high wave surges and coastal inundation along low-lying coastlines.',
+                    location_desc=f'{location_name} ({lat:.2f}N, {lon:.2f}E)',
+                    timestamp=now_iso,
+                    source='INCOIS Swell Surge Early Warning System',
                     freshness='LIVE' if weather.cache_status == 'live' else 'CACHED',
                 )
             )

@@ -125,13 +125,14 @@ export default function ChatMessage({ message }: ChatMessageProps) {
           </div>
         )}
 
-        {/* Attached Evidence & Metrics Panel */}
+        {/* Attached Evidence, Recommendations & Metrics Panel */}
         <EvidencePanel
           weather={message.weather}
           riskLevel={message.risk_level}
           plan={message.plan}
           reasoning={message.reasoning}
           sourcesUsed={message.sources_used}
+          recommendations={message.recommendations}
           route={message.route}
           alerts={message.alerts}
           simulation={message.simulation}

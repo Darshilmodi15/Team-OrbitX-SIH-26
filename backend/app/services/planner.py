@@ -82,6 +82,24 @@ class Planner:
             add_task("geospatial_agent", "calculate_distance", required=True)
             add_task("route_agent", "plan_safe_route", required=True)
 
+        elif intent == "chlorophyll_sst_analytics":
+            add_task("weather_agent", "get_marine_conditions", required=True)
+            add_task("ocean_analytics_agent", "analyze_chlorophyll_sst", required=True)
+            add_task("pfz_agent", "find_nearest_zones", required=True)
+            add_task("geospatial_agent", "calculate_distance", required=True)
+
+        elif intent == "fish_productivity_decline":
+            add_task("ocean_analytics_agent", "analyze_productivity_decline", required=True)
+            add_task("weather_agent", "get_marine_conditions", required=True)
+            add_task("pfz_agent", "find_nearest_zones", required=False)
+
+        elif intent == "zone_avoidance":
+            add_task("weather_agent", "get_marine_conditions", required=True)
+            add_task("hazard_agent", "detect_hazards", required=True)
+            add_task("geospatial_agent", "calculate_distance", required=True)
+            add_task("pfz_agent", "find_nearest_zones", required=True)
+            add_task("ocean_analytics_agent", "evaluate_zone_avoidance", required=True)
+
         elif intent == "what_if_simulation":
             add_task("weather_agent", "get_marine_conditions", required=True)
             add_task("risk_agent", "assess_risk", required=True)

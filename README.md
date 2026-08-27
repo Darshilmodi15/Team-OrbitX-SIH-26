@@ -565,7 +565,7 @@ The frontend dashboard will be live at `http://localhost:5173`.
 
 ## 🧪 Testing & Quality Assurance
 
-The ORCA backend contains a comprehensive test suite of **145 unit and integration tests** verifying contracts, agent planners, multilingual translation, voice endpoints, geofences, INCOIS providers, emergency distress routing, and admin diagnostics.
+The ORCA backend contains a comprehensive test suite of **222 unit and integration tests** (100% passing) verifying multi-agent planning, ISRO satellite ocean analytics, PFZ discovery, 4-vector risk assessment, VLIZ EEZ boundary ray-casting, multilingual translations across 11 Indic languages, proactive hazard alerts, and the reliable recommendations & reasoning engine.
 
 ```bash
 # Run all backend tests
@@ -575,31 +575,48 @@ python3 -m pytest
 
 ```
 ============================= test session starts ==============================
-collected 145 items
+platform darwin -- Python 3.14.4, pytest-9.0.3, pluggy-1.6.0
+rootdir: /Users/darshilmodi/Desktop/ORCA/backend
+configfile: pytest.ini
+testpaths: tests
+collected 222 items
 
-tests/test_admin_and_historical.py .......                               [  4%]
-tests/test_agent_contracts.py .....                                      [  8%]
-tests/test_auth.py .......                                               [ 13%]
-tests/test_bhashini.py ............                                      [ 21%]
-tests/test_chat.py .......                                               [ 26%]
-tests/test_emergency.py ........                                         [ 31%]
-tests/test_geofence.py ......                                            [ 35%]
-tests/test_government.py .........                                       [ 42%]
-tests/test_incois_provider.py ........                                   [ 47%]
-tests/test_incois_query.py .....                                         [ 51%]
-tests/test_location_validation.py .......                                [ 55%]
-tests/test_marine_boundaries.py ..........                               [ 62%]
-tests/test_marine_cache.py ....                                          [ 65%]
-tests/test_marine_endpoints.py .....                                     [ 68%]
-tests/test_notifications.py .......                                      [ 73%]
-tests/test_pfz_api.py ..                                                 [ 75%]
-tests/test_planner.py ......                                             [ 79%]
-tests/test_query.py ......                                               [ 83%]
-tests/test_risk_engine.py ......                                         [ 87%]
-tests/test_sarvam_language.py .............                              [ 96%]
+tests/test_admin_and_historical.py .......                               [  3%]
+tests/test_agent_contracts.py .....                                      [  5%]
+tests/test_auth.py .......                                               [  8%]
+tests/test_bhashini.py ............                                      [ 13%]
+tests/test_chat.py .......                                               [ 17%]
+tests/test_database.py ..........                                        [ 21%]
+tests/test_demo_scenario.py ....                                         [ 23%]
+tests/test_emergency.py ........                                         [ 27%]
+tests/test_geofence.py ......                                            [ 29%]
+tests/test_geofence_agent.py ....                                        [ 31%]
+tests/test_government.py .........                                       [ 35%]
+tests/test_hazard_agent.py ...                                           [ 36%]
+tests/test_historical_observations.py ...                                [ 38%]
+tests/test_incois_provider.py ........                                   [ 41%]
+tests/test_incois_query.py .....                                         [ 44%]
+tests/test_ingestion_service.py ..                                       [ 45%]
+tests/test_location_validation.py .......                                [ 48%]
+tests/test_marine_boundaries.py ..........                               [ 52%]
+tests/test_marine_cache.py ....                                          [ 54%]
+tests/test_marine_endpoints.py .....                                     [ 56%]
+tests/test_notifications.py .......                                      [ 59%]
+tests/test_ocean_analytics_and_isro_queries.py .............             [ 65%]
+tests/test_pfz_api.py ..                                                 [ 66%]
+tests/test_planner.py ......                                             [ 69%]
+tests/test_query.py ......                                               [ 72%]
+tests/test_recommendations_and_reasoning.py .........                    [ 76%]
+tests/test_resilient_cache.py .......                                    [ 79%]
+tests/test_risk_engine.py ......                                         [ 81%]
+tests/test_route_agent.py ..                                             [ 82%]
+tests/test_sarvam_language.py .............                              [ 88%]
+tests/test_sarvam_lid.py ..............                                  [ 95%]
+tests/test_sarvam_live.py ....                                           [ 96%]
+tests/test_simulation_agent.py ..                                        [ 97%]
 tests/test_weather_provider.py .....                                     [100%]
 
-============================= 145 passed in 18.13s =============================
+================== 222 passed, 1 warning in 145.41s (0:02:25) ==================
 ```
 
 ---
