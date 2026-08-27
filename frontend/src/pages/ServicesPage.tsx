@@ -3,13 +3,14 @@ import { PhoneCall, Share2 } from "lucide-react";
 import { AppShell } from "@/components/orca/AppShell";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
-import { EMERGENCY_SERVICES } from "@/lib/orca/reference";
+import { getEmergencyServices } from "@/lib/orca/reference";
 import { formatCoords } from "@/lib/orca/geo";
 
 export default function ServicesPage() {
-  const { t } = useI18n();
+  const { lang, t } = useI18n();
   const { location } = useSession();
   const [copied, setCopied] = useState(false);
+  const services = getEmergencyServices(lang);
 
   async function shareLocation() {
     if (!location) return;
@@ -55,7 +56,7 @@ export default function ServicesPage() {
       </div>
 
       <ul className="mt-4 space-y-3">
-        {EMERGENCY_SERVICES.map((s) => (
+        {services.map((s) => (
           <li key={s.id} className="rounded-md border border-border bg-card text-card-foreground p-4 shadow-xs">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">

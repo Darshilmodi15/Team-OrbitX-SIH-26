@@ -597,11 +597,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       setError(null);
 
+      // Detect transliterated input: user selected a non-English language
+      // but typed in Latin/Roman script (e.g. "Kale bahar nikali shakay?" for Gujarati)
+      let processedQuestion = questionText;
+      const langNames: Record<string, string> = {
+        gu: 'Gujarati', hi: 'Hindi', mr: 'Marathi', ta: 'Tamil', te: 'Telugu',
+        ml: 'Malayalam', bn: 'Bengali', kn: 'Kannada', or: 'Odia', pa: 'Punjabi',
+      };
+
+      if (currentLang !== 'en' && langNames[currentLang]) {
+        // Check if text is predominantly Latin/ASCII (transliterated)
+        const latinChars = questionText.replace(/[\s\d\p{P}\p{S}]/gu, '');
+        const isLatinScript = latinChars.length > 0 && /^[a-zA-Z]+$/.test(latinChars);
+
+        if (isLatinScript) {
+          // The user typed in Roman script but their language is non-English
+          // Add a transliteration context hint for the backend LLM
+          processedQuestion = `[User is writing in ${langNames[currentLang]} language using English/Roman alphabet (transliterated). Please understand this as ${langNames[currentLang]} and respond in ${langNames[currentLang]} script.] ${questionText}`;
+        }
+      }
+
       try {
         const response = await queryORCA({
           location: userLocation,
           date: currentDate,
-          question: questionText,
+          question: processedQuestion,
           language: currentLang,
         });
 

@@ -107,6 +107,15 @@ function getWeather(code: number | null | undefined, lang: string): string {
 const KEYWORDS = {
   safety: [
     "safe", "safety", "fishing", "go out", "boat", "sail",
+    "kale", "bahar", "nikali", "shakay", "nikli", "javay", "machhimari", "dariya", "dariyama", "safe chhe", "safe che",
+    "kya kal", "ja sakte", "machhli", "samundar", "surakshit", "safe hai",
+    "udya", "baher", "jata", "yeil", "safe ahe",
+    "naalai", "kadalukku", "pogalama", "meen",
+    "repu", "vellavacha", "chepalu",
+    "naale", "pokamo", "matsyam",
+    "jawa jabe", "mach",
+    "hogabahuda", "meenu",
+    "jaipariba", "machha",
     "सुरक्षित", "सुरक्षा", "मछली", "समुद्र", "नाव", "जाना",
     "સલામત", "સુરક્ષિત", "માછીમારી", "દરિયો", "બોટ", "જવું",
     "सुरक्षित", "सुरक्षा", "मासेमारी", "समुद्र", "बोट", "जावे",
@@ -363,13 +372,31 @@ function formatConditions(ctx: AssistantContext, lang: string): string {
   }
 
   const parts: string[] = [];
-  const waveUnit = lang === "gu" ? "મીટર મોજાં" : lang === "hi" ? "मीटर लहरें" : lang === "mr" ? "मीटर लाटा" : lang === "ta" ? "மீட்டர் அலைகள்" : "m wave";
-  const windUnit = lang === "gu" ? "કિમી/કલાક પવન" : lang === "hi" ? "किमी/घंटा हवा" : lang === "mr" ? "किमी/तास वारा" : lang === "ta" ? "கிமீ/மணி காற்று" : "km/h wind";
+  const waveUnit: Record<string, string> = {
+    en: "m wave height", hi: "मीटर लहर ऊंचाई", gu: "મીટર મોજાંની ઊંચાઈ", mr: "मीटर लाटांची उंची",
+    ta: "மீட்டர் அலை உயரம்", te: "మీటర్ల అలల ఎత్తు", ml: "മീറ്റർ തിരമാല ഉയരം", bn: "মিটার ঢেউয়ের উচ্চতা",
+    kn: "ಮೀಟರ್ ಅಲೆಗಳ ಎತ್ತರ", or: "ମିଟର ତରଙ୍ଗ ଉଚ୍ଚତା", pa: "ਮੀਟਰ ਲਹਿਰਾਂ ਦੀ ਉਚਾਈ",
+  };
+  const windUnit: Record<string, string> = {
+    en: "km/h wind", hi: "किमी/घंटा हवा", gu: "કિમી/કલાક પવન", mr: "किमी/तास वारा",
+    ta: "கிமீ/மணி காற்று", te: "కిమీ/గం గాలి", ml: "കി.മീ/മണിക്കൂർ കാറ്റ്", bn: "কিমি/ঘণ্টা বাতাস",
+    kn: "ಕಿಮೀ/ಗಂ ಗಾಳಿ", or: "କିମି/ଘଣ୍ଟା ପବନ", pa: "ਕਿਲੋਮੀਟਰ/ਘੰਟਾ ਹਵਾ",
+  };
+  const visUnit: Record<string, string> = {
+    en: "km visibility", hi: "किमी दृश्यता", gu: "કિમી દૃશ્યતા", mr: "किमी दृश्यमानता",
+    ta: "கிமீ பார்வைத்திறன்", te: "కిమీ దృశ్యమానత", ml: "കി.മീ കാഴ്ച പരിധി", bn: "কিমি দৃশ্যমানতা",
+    kn: "ಕಿಮೀ ಗೋಚರತೆ", or: "କିମି ଦୃଶ୍ୟମାନତା", pa: "ਕਿਲੋਮੀਟਰ ਦਿੱਖ",
+  };
+  const seaUnit: Record<string, string> = {
+    en: "°C sea temp", hi: "°C समुद्र तापमान", gu: "°C દરિયાઈ તાપમાન", mr: "°C सागरी तापमान",
+    ta: "°C கடல் வெப்பநிலை", te: "°C సముద్ర ఉష్ణోగ్రత", ml: "°C കടൽ താപനില", bn: "°C সমুদ্র তাপমাত্রা",
+    kn: "°C ಸಾಗರ ತಾಪಮಾನ", or: "°C ସମୁଦ୍ର ତାପମାତ୍ରା", pa: "°C ਸਮੁੰਦਰੀ ਤਾਪਮਾਨ",
+  };
 
-  if (c.waveHeightM != null) parts.push(`${c.waveHeightM.toFixed(1)} ${waveUnit}`);
-  if (c.windSpeedKmh != null) parts.push(`${Math.round(c.windSpeedKmh)} ${windUnit} (${getCompass(c.windDirectionDeg, lang)})`);
-  if (c.visibilityKm != null) parts.push(`${c.visibilityKm} km visibility`);
-  if (c.seaTemperatureC != null) parts.push(`${c.seaTemperatureC.toFixed(1)}°C sea`);
+  if (c.waveHeightM != null) parts.push(`${c.waveHeightM.toFixed(1)} ${waveUnit[lang] || waveUnit.en}`);
+  if (c.windSpeedKmh != null) parts.push(`${Math.round(c.windSpeedKmh)} ${windUnit[lang] || windUnit.en} (${getCompass(c.windDirectionDeg, lang)})`);
+  if (c.visibilityKm != null) parts.push(`${c.visibilityKm} ${visUnit[lang] || visUnit.en}`);
+  if (c.seaTemperatureC != null) parts.push(`${c.seaTemperatureC.toFixed(1)} ${seaUnit[lang] || seaUnit.en}`);
 
   return parts.join(", ");
 }

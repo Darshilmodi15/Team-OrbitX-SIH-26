@@ -10,6 +10,34 @@ interface QueryInputProps {
   currentLang?: string;
 }
 
+/**
+ * Picks the best supported audio MIME type for MediaRecorder.
+ * Browsers typically support webm/opus or ogg/opus, NOT wav.
+ */
+function getPreferredMimeType(): string {
+  const candidates = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/ogg;codecs=opus',
+    'audio/ogg',
+    'audio/mp4',
+  ];
+  for (const mime of candidates) {
+    if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(mime)) {
+      return mime;
+    }
+  }
+  return ''; // Let browser pick default
+}
+
+/** Maps MIME type to a sensible file extension for the backend. */
+function mimeToExtension(mime: string): string {
+  if (mime.includes('webm')) return 'webm';
+  if (mime.includes('ogg')) return 'ogg';
+  if (mime.includes('mp4')) return 'mp4';
+  return 'wav';
+}
+
 export default function QueryInput({
   onSendMessage,
   isLoading,
@@ -19,10 +47,14 @@ export default function QueryInput({
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [transcriptPending, setTranscriptPending] = useState<string | null>(null);
+  const [micError, setMicError] = useState<string | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recordedMimeRef = useRef<string>('audio/webm');
+  const browserRecognitionRef = useRef<any>(null);
+  const browserTranscriptRef = useRef<string>('');
 
   const t = getStrings(currentLang);
   const quickPrompts = getQuickPrompts(currentLang);
@@ -34,6 +66,34 @@ export default function QueryInput({
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
     }
   }, [input]);
+
+  // Clean up recording and recognition on unmount
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch {
+          // ignore
+        }
+      }
+      if (browserRecognitionRef.current) {
+        try {
+          browserRecognitionRef.current.stop();
+        } catch {
+          // ignore
+        }
+      }
+    };
+  }, []);
+
+  // Auto-dismiss mic error after 6 seconds
+  useEffect(() => {
+    if (micError) {
+      const timer = setTimeout(() => setMicError(null), 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [micError]);
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -78,10 +138,70 @@ export default function QueryInput({
 
   const startRecording = async () => {
     setTranscriptPending(null);
+    setMicError(null);
+    browserTranscriptRef.current = '';
+
+    // Initialize Web Speech API for real-time concurrent recognition
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      try {
+        const recognition = new SpeechRecognition();
+        const langCodes: Record<string, string> = {
+          gu: 'gu-IN',
+          hi: 'hi-IN',
+          mr: 'mr-IN',
+          ta: 'ta-IN',
+          ml: 'ml-IN',
+          te: 'te-IN',
+          bn: 'bn-IN',
+          kn: 'kn-IN',
+          or: 'or-IN',
+          en: 'en-IN',
+          pa: 'pa-IN',
+          as: 'as-IN',
+          ur: 'ur-IN',
+        };
+        recognition.lang = langCodes[currentLang] || 'en-IN';
+        recognition.interimResults = true;
+        recognition.continuous = true;
+        recognition.maxAlternatives = 1;
+
+        recognition.onresult = (event: any) => {
+          let accumulated = '';
+          for (let i = 0; i < event.results.length; i++) {
+            accumulated += event.results[i][0].transcript;
+          }
+          if (accumulated.trim()) {
+            browserTranscriptRef.current = accumulated.trim();
+          }
+        };
+
+        recognition.onerror = (err: any) => {
+          console.debug('Browser speech recognition notice:', err);
+        };
+
+        recognition.start();
+        browserRecognitionRef.current = recognition;
+      } catch (speechErr) {
+        console.debug('Browser speech recognition startup notice:', speechErr);
+      }
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
-      const recorder = new MediaRecorder(stream);
+
+      // Pick the best supported MIME type (browsers produce webm/opus, NOT wav)
+      const preferredMime = getPreferredMimeType();
+      recordedMimeRef.current = preferredMime || 'audio/webm';
+
+      const recorderOptions: MediaRecorderOptions = {};
+      if (preferredMime) {
+        recorderOptions.mimeType = preferredMime;
+      }
+
+      const recorder = new MediaRecorder(stream, recorderOptions);
 
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -90,17 +210,47 @@ export default function QueryInput({
       };
 
       recorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        // Stop browser speech recognition
+        if (browserRecognitionRef.current) {
+          try {
+            browserRecognitionRef.current.stop();
+          } catch {
+            // ignore
+          }
+        }
+
+        const actualMime = recorder.mimeType || recordedMimeRef.current || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: actualMime });
+
+        if (audioBlob.size < 100 && !browserTranscriptRef.current) {
+          setMicError('Recording too short. Please speak clearly for at least 1-2 seconds.');
+          setIsRecording(false);
+          stream.getTracks().forEach((trk) => trk.stop());
+          return;
+        }
+
         setIsTranscribing(true);
         try {
-          // Call Sarvam AI Saaras v3 STT
-          const result = await transcribeVoiceAudio(audioBlob, currentLang || 'auto');
-          if (result && result.transcript) {
+          const ext = mimeToExtension(actualMime);
+          const result = await transcribeVoiceAudio(audioBlob, currentLang || 'auto', `recording.${ext}`);
+
+          if (result && result.transcript && !result.is_mock) {
             setTranscriptPending(result.transcript);
+          } else if (browserTranscriptRef.current) {
+            // Browser speech recognized live input accurately
+            setTranscriptPending(browserTranscriptRef.current);
+          } else if (result && result.transcript) {
+            setTranscriptPending(result.transcript);
+          } else {
+            setMicError('Could not understand speech audio. Please speak clearly and try again.');
           }
         } catch (err) {
-          console.warn('Sarvam STT fallback to Web Speech:', err);
-          handleBrowserSpeechFallback();
+          console.warn('Backend STT failed, using live browser transcript fallback:', err);
+          if (browserTranscriptRef.current) {
+            setTranscriptPending(browserTranscriptRef.current);
+          } else {
+            setMicError('Voice transcription could not be completed. Please speak clearly or check microphone.');
+          }
         } finally {
           setIsTranscribing(false);
           setIsRecording(false);
@@ -108,59 +258,46 @@ export default function QueryInput({
         }
       };
 
-      recorder.start();
+      recorder.start(250); // collect chunks every 250ms
       mediaRecorderRef.current = recorder;
       setIsRecording(true);
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Microphone permission or hardware error:', err);
-      handleBrowserSpeechFallback();
+      if (browserRecognitionRef.current) {
+        try {
+          browserRecognitionRef.current.stop();
+        } catch {
+          // ignore
+        }
+      }
+      setIsRecording(false);
+
+      if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
+        setMicError('Microphone permission denied. Please allow mic access in your browser settings.');
+      } else if (err?.name === 'NotFoundError') {
+        setMicError('No microphone found. Please connect a microphone and try again.');
+      } else {
+        setMicError('Could not access microphone. Please check browser permissions.');
+      }
     }
   };
 
   const stopRecording = () => {
+    if (browserRecognitionRef.current) {
+      try {
+        browserRecognitionRef.current.stop();
+      } catch {
+        // ignore
+      }
+    }
+
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
+      try {
+        mediaRecorderRef.current.stop();
+      } catch {
+        setIsRecording(false);
+      }
     } else {
-      setIsRecording(false);
-    }
-  };
-
-  const handleBrowserSpeechFallback = () => {
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert('Voice recording requires microphone permissions on a supported browser.');
-      return;
-    }
-
-    try {
-      const recognition = new SpeechRecognition();
-      const langCodes: Record<string, string> = {
-        gu: 'gu-IN',
-        hi: 'hi-IN',
-        mr: 'mr-IN',
-        ta: 'ta-IN',
-        ml: 'ml-IN',
-        te: 'te-IN',
-        bn: 'bn-IN',
-        kn: 'kn-IN',
-        or: 'or-IN',
-        en: 'en-IN',
-      };
-      recognition.lang = langCodes[currentLang] || 'en-IN';
-      recognition.interimResults = false;
-
-      recognition.onstart = () => setIsRecording(true);
-      recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        if (transcript) {
-          setTranscriptPending(transcript);
-        }
-      };
-      recognition.onerror = () => setIsRecording(false);
-      recognition.onend = () => setIsRecording(false);
-      recognition.start();
-    } catch {
       setIsRecording(false);
     }
   };
@@ -192,6 +329,23 @@ export default function QueryInput({
         <div className="mb-2.5 flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-800">
           <span className="h-3 w-3 animate-spin rounded-full border-2 border-teal-600 border-t-transparent" />
           <span>Transcribing speech through Sarvam AI Saaras v3...</span>
+        </div>
+      )}
+
+      {/* Mic Error Banner */}
+      {micError && (
+        <div className="mb-2.5 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <div className="flex items-center gap-2 font-semibold">
+            <span>⚠️</span>
+            <span>{micError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setMicError(null)}
+            className="text-amber-600 hover:text-amber-800 cursor-pointer"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
         </div>
       )}
 

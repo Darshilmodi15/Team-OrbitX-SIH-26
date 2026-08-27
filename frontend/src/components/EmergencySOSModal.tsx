@@ -71,25 +71,25 @@ export default function EmergencySOSModal({
 
   const emergencyHelplines = [
     {
-      agency: 'Indian Coast Guard (MRCC Maritime SAR)',
+      agency: t.sosCoastGuard,
       phone: '1554',
       alt: '+91-11-23384934',
       radio: 'VHF Ch 16 / 2182 kHz',
-      coverage: 'National EEZ Waters',
+      coverage: t.sosNationalEez,
     },
     {
-      agency: 'Coastal Security Police (CSP)',
+      agency: t.sosCsp,
       phone: '1093',
       alt: '112',
       radio: 'VHF Channel 16',
-      coverage: 'All 10 Coastal States',
+      coverage: t.sosAllCoastalStates,
     },
     {
-      agency: 'National Disaster Response Force (NDRF)',
+      agency: t.sosNdrf,
       phone: '1078',
       alt: '+91-11-24363260',
       radio: 'Disaster Emergency',
-      coverage: 'Cyclone & Surge Rescue',
+      coverage: t.sosCycloneRescue,
     },
   ];
 
@@ -107,7 +107,7 @@ export default function EmergencySOSModal({
                 {t.sosTitle}
               </h3>
               <p className="text-xs text-slate-500">
-                Direct Search & Rescue (SAR) Dispatch
+                {t.sosDirectSar}
               </p>
             </div>
           </div>
@@ -127,7 +127,7 @@ export default function EmergencySOSModal({
             <div className="rounded-xl border border-red-200 bg-red-50/80 p-3.5 text-xs text-red-900 leading-relaxed">
               <div className="flex items-center gap-2 font-bold text-red-950 mb-1">
                 <AlertTriangle className="h-4 w-4 text-red-600" />
-                <span>Emergency Distress Notice</span>
+                <span>{t.sosDistressNotice}</span>
               </div>
               <p>{t.sosWarning}</p>
             </div>
@@ -135,13 +135,13 @@ export default function EmergencySOSModal({
             {/* Vessel Coordinates Confirmation */}
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-medium">GPS Distress Coordinates:</span>
+                <span className="text-slate-500 font-medium">{t.sosGpsCoordinates}:</span>
                 <span className="font-mono font-bold text-slate-900">
                   {userLocation.lat.toFixed(4)}°N, {userLocation.lon.toFixed(4)}°E
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-medium">Assigned Maritime SAR Sector:</span>
+                <span className="text-slate-500 font-medium">{t.sosSarSector}:</span>
                 <span className="font-semibold text-[#0D9488]">
                   {userLocation.lon > 78.5 ? 'MRCC Chennai (Bay of Bengal)' : 'MRCC Mumbai (Arabian Sea)'}
                 </span>
@@ -153,7 +153,7 @@ export default function EmergencySOSModal({
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Vessel Name
+                    {t.sosVesselName}
                   </label>
                   <input
                     type="text"
@@ -164,7 +164,7 @@ export default function EmergencySOSModal({
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Crew on Board
+                    {t.sosCrewOnBoard}
                   </label>
                   <input
                     type="number"
@@ -177,19 +177,19 @@ export default function EmergencySOSModal({
 
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  Nature of Maritime Distress
+                  {t.sosDistressNature}
                 </label>
                 <select
                   value={emergencyNature}
                   onChange={(e) => setEmergencyNature(e.target.value)}
                   className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800"
                 >
-                  <option value="Engine Failure / Adrift at Sea">Engine Failure / Adrift at Sea</option>
-                  <option value="Capsize / Taking on Water">Capsize / Taking on Water (Sinking)</option>
-                  <option value="Medical Emergency on Board">Medical Emergency on Board</option>
-                  <option value="Severe Weather / Cyclone Squall">Severe Weather / Cyclone Squall</option>
-                  <option value="Man Overboard (MOB)">Man Overboard (MOB)</option>
-                  <option value="Collision / Grounding">Collision / Vessel Grounding</option>
+                  <option value="Engine Failure / Adrift at Sea">{t.sosEngineFailure}</option>
+                  <option value="Capsize / Taking on Water">{t.sosCapsizeSinking}</option>
+                  <option value="Medical Emergency on Board">{t.sosMedicalEmergency}</option>
+                  <option value="Severe Weather / Cyclone Squall">{t.sosSevereWeather}</option>
+                  <option value="Man Overboard (MOB)">{t.sosManOverboard}</option>
+                  <option value="Collision / Grounding">{t.sosCollision}</option>
                 </select>
               </div>
             </div>
@@ -201,7 +201,7 @@ export default function EmergencySOSModal({
               className="w-full rounded-xl bg-red-600 py-3 text-sm font-extrabold text-white shadow-md hover:bg-red-700 active:scale-95 transition cursor-pointer flex items-center justify-center gap-2"
             >
               <Radio className="h-4 w-4 animate-pulse" />
-              <span>PROCEED TO TRANSMIT SOS BEACON</span>
+              <span>{t.sosProceedTransmit}</span>
             </button>
           </div>
         )}
@@ -212,14 +212,13 @@ export default function EmergencySOSModal({
             <div className="rounded-xl border border-red-300 bg-red-100/90 p-4 text-center">
               <ShieldAlert className="h-10 w-10 text-red-600 mx-auto mb-2 animate-bounce" />
               <h4 className="font-display text-base font-black text-red-950">
-                FINAL CONFIRMATION REQUIRED
+                {t.sosFinalConfirmation}
               </h4>
               <p className="text-xs text-red-800 mt-1">
-                You are about to transmit an official GMDSS MAYDAY distress broadcast with position{' '}
+                {t.sosFinalConfirmDesc}{' '}
                 <strong className="font-mono">
-                  {userLocation.lat.toFixed(4)}°N, {userLocation.lon.toFixed(4)}°E
-                </strong>{' '}
-                to MRCC and Coast Guard helicopters/ships.
+                  ({userLocation.lat.toFixed(4)}°N, {userLocation.lon.toFixed(4)}°E)
+                </strong>
               </p>
             </div>
 
@@ -229,7 +228,7 @@ export default function EmergencySOSModal({
                 onClick={() => setStep('standby')}
                 className="flex-1 rounded-lg border border-slate-300 bg-slate-100 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-200 transition cursor-pointer"
               >
-                Cancel
+                {t.sosCancel}
               </button>
               <button
                 type="button"
@@ -238,11 +237,11 @@ export default function EmergencySOSModal({
                 className="flex-1 rounded-lg bg-red-600 py-2.5 text-xs font-black text-white shadow-md hover:bg-red-700 active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5"
               >
                 {isSubmitting ? (
-                  <span>DISPATCHING BEACON...</span>
+                  <span>{t.sosDispatching}</span>
                 ) : (
                   <>
                     <Send className="h-4 w-4" />
-                    <span>TRANSMIT MAYDAY NOW</span>
+                    <span>{t.sosTransmitNow}</span>
                   </>
                 )}
               </button>
@@ -256,17 +255,17 @@ export default function EmergencySOSModal({
             <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-center">
               <CheckCircle2 className="h-10 w-10 text-emerald-600 mx-auto mb-1.5" />
               <h4 className="font-display text-base font-extrabold text-emerald-950">
-                DISTRESS BEACON DISPATCHED
+                {t.sosBeaconDispatched}
               </h4>
               <p className="text-xs text-emerald-800 mt-0.5">
-                Assigned to <strong>{dispatchResult?.assigned_mrcc || 'MRCC Operations'}</strong>. Stay with vessel. Maintain radio silence on VHF Channel 16.
+                Assigned to <strong>{dispatchResult?.assigned_mrcc || 'MRCC Operations'}</strong>. {t.sosBeaconDispatchedDesc}
               </p>
             </div>
 
             {/* Generated MAYDAY Transcript */}
             <div className="rounded-lg border border-slate-200 bg-slate-900 p-3 text-xs text-slate-100 font-mono space-y-1">
               <p className="text-emerald-400 font-bold">
-                [GMDSS TRANSCRIPT DISPATCHED]
+                [{t.sosGmdssTranscript}]
               </p>
               <p className="leading-relaxed whitespace-pre-wrap">
                 {dispatchResult?.mayday_message ||
@@ -279,7 +278,7 @@ export default function EmergencySOSModal({
               onClick={onClose}
               className="w-full rounded-lg bg-[#0A2540] py-2.5 text-xs font-bold text-white shadow-xs hover:bg-[#081D33] transition cursor-pointer"
             >
-              Return to Command Dashboard
+              {t.sosReturnDashboard}
             </button>
           </div>
         )}
@@ -287,7 +286,7 @@ export default function EmergencySOSModal({
         {/* ─── Emergency Telephone Directory ─── */}
         <div className="mt-5 border-t border-slate-100 pt-4">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2.5">
-            Verified Maritime Search & Rescue Helplines
+            {t.sosHelplineTitle}
           </p>
 
           <div className="space-y-2">
@@ -307,7 +306,7 @@ export default function EmergencySOSModal({
                   className="flex items-center gap-1 rounded-md bg-[#0D9488] px-3 py-1.5 font-bold text-white shadow-2xs hover:bg-[#0F766E] transition cursor-pointer"
                 >
                   <Phone className="h-3.5 w-3.5" />
-                  <span>Call {item.phone}</span>
+                  <span>{t.sosCallPrefix} {item.phone}</span>
                 </a>
               </div>
             ))}

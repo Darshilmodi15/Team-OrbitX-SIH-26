@@ -29,7 +29,7 @@ const num = (v: number | null, unit: string, digits = 1) =>
   v == null ? "\u2014" : `${v.toFixed(digits)} ${unit}`;
 
 export function MarineConditions({ data }: { data: MarineSnapshot }) {
-  const { t } = useI18n();
+  const { lang, t } = useI18n();
   const mins = Math.max(0, Math.round((Date.now() - data.fetchedAt) / 60000));
 
   return (
@@ -51,13 +51,13 @@ export function MarineConditions({ data }: { data: MarineSnapshot }) {
           value={
             data.windSpeedKmh == null
               ? "\u2014"
-              : `${Math.round(data.windSpeedKmh)} km/h ${compassDirection(data.windDirectionDeg)}`
+              : `${Math.round(data.windSpeedKmh)} km/h ${compassDirection(data.windDirectionDeg, lang)}`
           }
         />
         <Metric Icon={Eye} label={t("marine.visibility")} value={num(data.visibilityKm, "km")} />
         <Metric Icon={Thermometer} label={t("marine.sst")} value={num(data.seaTemperatureC, "\u00b0C")} />
         <Metric Icon={Gauge} label={t("marine.period")} value={num(data.wavePeriodS, "s", 0)} />
-        <Metric Icon={CloudSun} label={t("marine.weather")} value={describeWeather(data.weatherCode)} />
+        <Metric Icon={CloudSun} label={t("marine.weather")} value={describeWeather(data.weatherCode, lang)} />
       </div>
     </section>
   );

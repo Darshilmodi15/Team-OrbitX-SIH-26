@@ -12,6 +12,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 SYSTEM_PROMPT = """You are an intent classification assistant for ORCA Marine AI.
+You must understand operational maritime queries in English, Indian native scripts (Gujarati, Hindi, Tamil, Telugu, Malayalam, Marathi, Bengali, Kannada, Odia, Punjabi), and Romanized/transliterated Indian languages (e.g. 'Kale bahar nikali shakay?' means 'Can we go out to sea tomorrow? / Is it safe to sail tomorrow?').
+
 Classify the user's question into one of the following intent types:
 - "combined_pfz_safety": User wants to find PFZ AND check safety / route (e.g., 'Find nearest PFZ and tell me if it is safe tomorrow morning')
 - "safe_route": User asks for safe navigation route to a zone or PFZ considering weather and sea-state conditions
@@ -22,14 +24,14 @@ Classify the user's question into one of the following intent types:
 - "zone_avoidance": Inquiry into which fishing zones or sectors to avoid due to hazardous sea conditions or geofencing / boundary restrictions
 - "geofence_check": Maritime boundary, IMBL, or MPA proximity
 - "marine_boundary": Maritime boundary, EEZ limit, international waters check
-- "safety_check": Pure marine safety evaluation (e.g., 'Is it safe to venture into the sea tomorrow morning?')
+- "safety_check": Pure marine safety evaluation (e.g., 'Is it safe to venture into the sea tomorrow morning?', 'Kale bahar nikali shakay?')
 - "nearest_pfz": Pure PFZ fishing spot discovery (e.g., 'Where is the nearest Potential Fishing Zone today?')
 - "weather_conditions": Marine meteorological, tide, wave, wind, swell, or sea state inquiry
 - "general": General informational query or greeting
 
 Extract:
-- "location_hint": Mentioned port / place / region name (e.g., 'Dahanu', 'Mumbai', 'Veraval', 'Kochi', 'Gujarat', 'Maharashtra', 'Palk Bay') or null
-- "time_hint": Temporal reference (e.g., 'tomorrow morning', 'afternoon', 'today') or null
+- "location_hint": Mentioned port / place / region name (e.g., 'Dahanu', 'Mumbai', 'Veraval', 'Satpati', 'Kochi', 'Gujarat', 'Maharashtra', 'Palk Bay') or null
+- "time_hint": Temporal reference (e.g., 'tomorrow morning', 'tomorrow', 'afternoon', 'today', 'kale') or null
 - "simulation_delta_wave": Float meters or null
 - "simulation_delta_wind": Float km/h or null
 
@@ -107,15 +109,15 @@ def _extract_entities_heuristically(question: str) -> Dict[str, Any]:
 
     # Time hint
     time_hint = None
-    if "tomorrow morning" in q_lower:
+    if "tomorrow morning" in q_lower or "kale savare" in q_lower or "kal subah" in q_lower:
         time_hint = "tomorrow morning"
-    elif "tomorrow" in q_lower:
+    elif any(k in q_lower for k in ["tomorrow", "kale", "kal", "udya", "naalai", "repu", "naale", "kali", "kaale", "aavtikaale"]):
         time_hint = "tomorrow"
-    elif "this afternoon" in q_lower or "afternoon" in q_lower:
+    elif "this afternoon" in q_lower or "afternoon" in q_lower or "bapore" in q_lower or "dopahar" in q_lower:
         time_hint = "afternoon"
-    elif "tonight" in q_lower:
+    elif "tonight" in q_lower or "aaje raatre" in q_lower or "aaj raat" in q_lower:
         time_hint = "tonight"
-    elif "today" in q_lower:
+    elif any(k in q_lower for k in ["today", "aaje", "aaj", "aaji", "innaiku", "ee roju", "innu"]):
         time_hint = "today"
 
     # Simulation delta extraction
@@ -185,16 +187,16 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
         }
 
     # 5. Combined PFZ + Safety / Killer demo intent
-    has_pfz = any(k in q_lower for k in ["pfz", "fishing zone", "fish zone", "fishing spot", "fishing spots", "fish"])
-    has_safety_or_route = any(k in q_lower for k in ["safe", "safety", "route", "tomorrow", "weather", "suitable"])
-    has_explicit_route = any(k in q_lower for k in ["route", "safest route", "navigation corridor", "how to reach", "path"])
+    has_pfz = any(k in q_lower for k in ["pfz", "fishing zone", "fish zone", "fishing spot", "fishing spots", "fish", "machhimari", "machhli", "meen", "chepalu", "matsyam", "machha"])
+    has_safety_or_route = any(k in q_lower for k in ["safe", "safety", "route", "tomorrow", "weather", "suitable", "kale", "kal", "udya", "naalai", "repu"])
+    has_explicit_route = any(k in q_lower for k in ["route", "safest route", "navigation corridor", "how to reach", "path", "rasto"])
 
     if has_pfz and has_safety_or_route and has_explicit_route:
         return {
             "intent": "combined_pfz_safety",
             **entities,
         }
-    if has_pfz and ("safe" in q_lower or "safety" in q_lower or "tomorrow" in q_lower or "suitable" in q_lower):
+    if has_pfz and ("safe" in q_lower or "safety" in q_lower or "tomorrow" in q_lower or "suitable" in q_lower or "kale" in q_lower or "kal" in q_lower):
         return {
             "intent": "combined_pfz_safety",
             **entities,
@@ -211,7 +213,7 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
     if any(k in q_lower for k in [
         "lightning", "cyclone", "cyclones", "hazard", "hazards", "alert", "alerts",
         "warning", "cyclone alert", "high wave alert", "lightning alert", "storm alert",
-        "thunderstorm", "depression alert"
+        "thunderstorm", "depression alert", "toofan", "tufan", "chetavani"
     ]):
         return {
             "intent": "hazard_alerts",
@@ -219,7 +221,10 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
         }
 
     # 8. Marine Boundary / EEZ Check
-    if any(k in q_lower for k in ["eez", "exclusive economic zone", "maritime boundary", "territorial water", "territorial waters", "international waters"]):
+    if any(k in q_lower for k in [
+        "eez", "exclusive economic zone", "maritime boundary", "territorial water",
+        "territorial waters", "international waters", "sarhad", "simarekha"
+    ]):
         return {
             "intent": "marine_boundary",
             **entities,
@@ -232,15 +237,23 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
             **entities,
         }
 
-    # 10. Safety Check
-    if any(k in q_lower for k in ["safe", "safety", "risk", "danger", "can i sail", "can i fish", "ok to go", "advisory"]):
+    # 10. Safety Check (including Romanized / Transliterated queries like "Kale bahar nikali shakay?")
+    if any(k in q_lower for k in [
+        "safe", "safety", "risk", "danger", "can i sail", "can i fish", "ok to go", "advisory",
+        "bahar nikali", "nikali shakay", "nikli shakay", "dariya ma javay", "javay", "ja sakte",
+        "kya kal", "baher jata yeil", "pogalama", "vellavacha", "pokamo", "jawa jabe", "hogabahuda",
+        "jaipariba", "safe chhe", "safe che", "safe ahe", "surakshit", "salamati", "suraksha"
+    ]):
         return {
             "intent": "safety_check",
             **entities,
         }
 
     # 11. Nearest PFZ
-    if any(k in q_lower for k in ["pfz", "fishing zone", "fish zone", "nearest fish", "catch fish", "tuna", "mackerel", "pomfret"]):
+    if any(k in q_lower for k in [
+        "pfz", "fishing zone", "fish zone", "nearest fish", "catch fish", "tuna", "mackerel", "pomfret",
+        "machhimari", "machhli", "meen", "chepalu", "matsyam", "machha"
+    ]):
         return {
             "intent": "nearest_pfz",
             **entities,
@@ -250,7 +263,9 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
     if any(k in q_lower for k in [
         "weather", "wind", "winds", "wave", "waves", "wave height", "wind speed", "wind direction",
         "forecast", "temp", "temperature", "rain", "storm", "sea condition", "swell", "sea state",
-        "tide", "tides", "high tide", "low tide", "tidal"
+        "tide", "tides", "high tide", "low tide", "tidal",
+        "havaman", "mausam", "hawaaman", "panipaga", "abohawa", "pavan", "hawa", "vara", "kaatru",
+        "gali", "kaattu", "moja", "moju", "lat", "lata", "alai", "alalu", "thiramala", "dheu"
     ]):
         return {
             "intent": "weather_conditions",

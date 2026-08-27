@@ -84,6 +84,7 @@ export default function AssistantPage() {
   });
 
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState<boolean>(false);
   const [input, setInput] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -123,6 +124,7 @@ export default function AssistantPage() {
     };
     setThreads((prev) => [newThread, ...prev]);
     setActiveThreadId(newId);
+    setMobileDrawerOpen(false);
     setInput("");
     inputRef.current?.focus();
   }
@@ -187,10 +189,48 @@ export default function AssistantPage() {
      Voice Recognition & Speech-to-Text Controller
      ========================================================================== */
   async function startRecording() {
+    // Start concurrent SpeechRecognition if supported
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    let liveBrowserTranscript = "";
+
+    if (SpeechRecognition) {
+      try {
+        const recognition = new SpeechRecognition();
+        recognition.lang = LANG_BCP47[lang] || "en-IN";
+        recognition.interimResults = true;
+        recognition.continuous = true;
+
+        recognition.onresult = (event: any) => {
+          let full = "";
+          for (let i = 0; i < event.results.length; i++) {
+            full += event.results[i][0].transcript;
+          }
+          if (full.trim()) {
+            liveBrowserTranscript = full.trim();
+          }
+        };
+        recognition.onerror = () => {};
+        recognition.start();
+        speechRecognitionRef.current = recognition;
+      } catch {
+        // ignore
+      }
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
-      const recorder = new MediaRecorder(stream);
+
+      let mimeType = "audio/webm;codecs=opus";
+      if (typeof MediaRecorder !== "undefined") {
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "";
+        }
+      }
+
+      const recorderOptions: MediaRecorderOptions = mimeType ? { mimeType } : {};
+      const recorder = new MediaRecorder(stream, recorderOptions);
 
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -199,17 +239,33 @@ export default function AssistantPage() {
       };
 
       recorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/wav" });
+        if (speechRecognitionRef.current) {
+          try {
+            speechRecognitionRef.current.stop();
+          } catch {
+            // ignore
+          }
+        }
+
+        const actualMime = recorder.mimeType || "audio/webm";
+        const audioBlob = new Blob(audioChunksRef.current, { type: actualMime });
         setIsTranscribing(true);
+
         try {
           // Call Sarvam AI STT
           const result = await transcribeVoiceAudio(audioBlob, lang || "auto");
-          if (result && result.transcript) {
+          if (result && result.transcript && !result.is_mock) {
+            setInput((prev) => (prev ? `${prev} ${result.transcript}` : result.transcript));
+          } else if (liveBrowserTranscript) {
+            setInput((prev) => (prev ? `${prev} ${liveBrowserTranscript}` : liveBrowserTranscript));
+          } else if (result && result.transcript) {
             setInput((prev) => (prev ? `${prev} ${result.transcript}` : result.transcript));
           }
         } catch (err) {
           console.warn("Backend STT fallback to Web Speech:", err);
-          handleBrowserSpeechFallback();
+          if (liveBrowserTranscript) {
+            setInput((prev) => (prev ? `${prev} ${liveBrowserTranscript}` : liveBrowserTranscript));
+          }
         } finally {
           setIsTranscribing(false);
           setIsRecording(false);
@@ -217,21 +273,19 @@ export default function AssistantPage() {
         }
       };
 
-      recorder.start();
+      recorder.start(250);
       mediaRecorderRef.current = recorder;
       setIsRecording(true);
     } catch (err) {
-      console.warn("Microphone hardware error or denied, using Web Speech fallback:", err);
-      handleBrowserSpeechFallback();
+      console.warn("Microphone hardware error or denied:", err);
+      if (!speechRecognitionRef.current) {
+        alert("Voice input requires microphone permission on a supported browser.");
+        setIsRecording(false);
+      }
     }
   }
 
   function stopRecording() {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-      mediaRecorderRef.current.stop();
-    } else {
-      setIsRecording(false);
-    }
     if (speechRecognitionRef.current) {
       try {
         speechRecognitionRef.current.stop();
@@ -239,34 +293,13 @@ export default function AssistantPage() {
         // ignore
       }
     }
-  }
-
-  function handleBrowserSpeechFallback() {
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Voice input requires microphone permission on a supported browser.");
-      setIsRecording(false);
-      return;
-    }
-
-    try {
-      const recognition = new SpeechRecognition();
-      recognition.lang = LANG_BCP47[lang] || "en-IN";
-      recognition.interimResults = false;
-
-      recognition.onstart = () => setIsRecording(true);
-      recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        if (transcript) {
-          setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
-        }
-      };
-      recognition.onerror = () => setIsRecording(false);
-      recognition.onend = () => setIsRecording(false);
-      recognition.start();
-      speechRecognitionRef.current = recognition;
-    } catch {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch {
+        setIsRecording(false);
+      }
+    } else {
       setIsRecording(false);
     }
   }
@@ -288,14 +321,40 @@ export default function AssistantPage() {
 
   return (
     <AppShell>
-      <div className="flex h-[calc(100vh-8.5rem)] w-full overflow-hidden rounded-xl border border-border bg-card shadow-lg">
-        {/* Left ChatGPT-Style Sidebar */}
+      <div className="relative flex h-[calc(100dvh-13rem)] sm:h-[calc(100vh-8.5rem)] w-full overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+        {/* Mobile Backdrop Overlay */}
+        {mobileDrawerOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs md:hidden"
+            onClick={() => setMobileDrawerOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
+        {/* Left ChatGPT-Style Sidebar (Drawer on mobile, collapsible on desktop) */}
         <aside
           className={cn(
-            "flex flex-col border-r border-border bg-surface/80 transition-all duration-300 ease-in-out",
-            sidebarOpen ? "w-64 sm:w-72" : "w-0 overflow-hidden border-r-0",
+            "flex flex-col border-r border-border bg-card md:bg-surface/80 transition-all duration-300 ease-in-out",
+            // Mobile Drawer Positioning
+            "fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] shadow-2xl md:static md:z-auto md:max-w-none md:shadow-none",
+            mobileDrawerOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+            // Desktop Sidebar Collapsible Width
+            sidebarOpen ? "md:w-64 lg:w-72" : "md:w-0 md:overflow-hidden md:border-r-0",
           )}
         >
+          {/* Mobile Drawer Header */}
+          <div className="flex items-center justify-between border-b border-border p-3 md:hidden">
+            <span className="text-xs font-bold text-foreground">Conversations</span>
+            <button
+              type="button"
+              onClick={() => setMobileDrawerOpen(false)}
+              className="cursor-pointer rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="Close menu"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+
           {/* Top New Chat Button */}
           <div className="p-3">
             <button
@@ -324,7 +383,10 @@ export default function AssistantPage() {
                 return (
                   <div
                     key={th.id}
-                    onClick={() => setActiveThreadId(th.id)}
+                    onClick={() => {
+                      setActiveThreadId(th.id);
+                      setMobileDrawerOpen(false);
+                    }}
                     className={cn(
                       "group flex w-full cursor-pointer items-center justify-between rounded-md px-3 py-2 text-xs font-medium transition-colors",
                       isActive
@@ -358,30 +420,56 @@ export default function AssistantPage() {
         </aside>
 
         {/* Right Main Chat Panel */}
-        <section className="flex flex-1 flex-col overflow-hidden bg-background">
+        <section className="flex flex-1 min-w-0 w-full flex-col overflow-hidden bg-background">
           {/* Chat Header */}
-          <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-card/60 px-4 backdrop-blur">
-            <div className="flex items-center gap-2.5">
+          <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-card/60 px-3 sm:px-4 backdrop-blur">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              {/* Mobile Conversations Drawer Trigger */}
+              <button
+                type="button"
+                onClick={() => setMobileDrawerOpen(true)}
+                className="cursor-pointer rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:hidden"
+                title="Open conversations"
+                aria-label="Open conversations"
+              >
+                <MessageSquare className="size-4 text-teal-400" />
+              </button>
+
+              {/* Desktop Sidebar Toggle Button */}
               <button
                 type="button"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="cursor-pointer rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="hidden cursor-pointer rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:inline-flex"
                 title={sidebarOpen ? "Collapse sidebar" : "Open sidebar"}
+                aria-label={sidebarOpen ? "Collapse sidebar" : "Open sidebar"}
               >
                 {sidebarOpen ? <PanelLeftClose className="size-4" /> : <PanelLeftOpen className="size-4" />}
               </button>
-              <div className="min-w-0">
+
+              <div className="min-w-0 flex-1">
                 <h1 className="truncate text-xs sm:text-sm font-bold text-foreground">
                   {currentThread.title}
                 </h1>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
               <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-teal-500/10 border border-teal-500/20 px-2.5 py-0.5 text-[11px] font-medium text-teal-400">
                 <Bot className="size-3" />
                 Live Ocean LLM
               </span>
+
+              {/* Mobile Quick New Chat Button */}
+              <button
+                type="button"
+                onClick={createNewThread}
+                className="inline-flex cursor-pointer items-center gap-1 rounded-md bg-teal-500/15 border border-teal-500/30 px-2 py-1 text-xs font-semibold text-teal-400 hover:bg-teal-500/25 transition md:hidden"
+                title="New Chat"
+              >
+                <MessageSquarePlus className="size-3.5" />
+                <span className="text-[11px]">New</span>
+              </button>
+
               {currentThread.messages.length > 0 && (
                 <button
                   type="button"
@@ -391,6 +479,7 @@ export default function AssistantPage() {
                     );
                   }}
                   className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition hover:bg-muted hover:text-red-400"
+                  title="Clear chat"
                 >
                   <Trash2 className="size-3" />
                   <span className="hidden sm:inline">Clear</span>
@@ -400,24 +489,24 @@ export default function AssistantPage() {
           </header>
 
           {/* Conversation Stream */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
             {currentThread.messages.length === 0 ? (
               /* ChatGPT-Style Empty State */
-              <div className="mx-auto flex h-full max-w-xl flex-col items-center justify-center text-center">
-                <div className="flex size-14 items-center justify-center rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-400 shadow-md">
-                  <Bot className="size-7" />
+              <div className="mx-auto flex h-full max-w-xl flex-col items-center justify-center text-center px-1 py-4">
+                <div className="flex size-12 sm:size-14 items-center justify-center rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-400 shadow-md">
+                  <Bot className="size-6 sm:size-7" />
                 </div>
-                <h2 className="mt-4 text-xl font-bold text-foreground">{t("chat.title")}</h2>
+                <h2 className="mt-3 sm:mt-4 text-lg sm:text-xl font-bold text-foreground">{t("chat.title")}</h2>
                 <p className="mt-1 max-w-md text-xs sm:text-sm text-muted-foreground">{t("chat.subtitle")}</p>
 
                 {/* 4 Interactive Starting Cards */}
-                <div className="mt-8 grid w-full grid-cols-1 sm:grid-cols-2 gap-2.5 text-left">
+                <div className="mt-6 sm:mt-8 grid w-full grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 text-left">
                   {suggestions.map(({ label, icon: Icon }) => (
                     <button
                       key={label}
                       type="button"
                       onClick={() => ask(label)}
-                      className="group flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-3.5 text-xs font-medium text-foreground transition-all hover:border-teal-500/50 hover:bg-muted shadow-xs active:scale-[0.98]"
+                      className="group flex cursor-pointer items-start gap-2.5 sm:gap-3 rounded-lg border border-border bg-card p-3 sm:p-3.5 text-xs font-medium text-foreground transition-all hover:border-teal-500/50 hover:bg-muted shadow-xs active:scale-[0.98]"
                     >
                       <Icon className="mt-0.5 size-4 shrink-0 text-teal-400 group-hover:scale-110 transition-transform" />
                       <span className="leading-snug">{label}</span>
@@ -428,7 +517,7 @@ export default function AssistantPage() {
             ) : (
               /* Message Bubbles */
               currentThread.messages.map((m) => (
-                <div key={m.id} className="flex gap-3">
+                <div key={m.id} className="flex gap-2.5 sm:gap-3">
                   {/* Avatar */}
                   <div
                     className={cn(
@@ -471,7 +560,7 @@ export default function AssistantPage() {
 
                     <div
                       className={cn(
-                        "rounded-lg p-3.5 text-xs sm:text-sm leading-relaxed whitespace-pre-line shadow-xs",
+                        "rounded-lg p-3 sm:p-3.5 text-xs sm:text-sm leading-relaxed whitespace-pre-line break-words shadow-xs",
                         m.role === "user"
                           ? "bg-secondary text-secondary-foreground font-medium"
                           : "border border-border bg-card text-foreground",
@@ -488,19 +577,19 @@ export default function AssistantPage() {
 
           {/* Voice Recording Status Toast */}
           {(isRecording || isTranscribing) && (
-            <div className="border-t border-teal-500/30 bg-teal-950/40 px-4 py-2 text-xs flex items-center justify-between backdrop-blur animate-pulse">
-              <div className="flex items-center gap-2 text-teal-300">
-                <span className="size-2.5 rounded-full bg-red-500 animate-ping" />
-                <span>
+            <div className="border-t border-teal-500/30 bg-teal-950/40 px-3 sm:px-4 py-2 text-xs flex items-center justify-between backdrop-blur animate-pulse">
+              <div className="flex items-center gap-2 text-teal-300 min-w-0">
+                <span className="size-2.5 shrink-0 rounded-full bg-red-500 animate-ping" />
+                <span className="truncate">
                   {isTranscribing
                     ? "Transcribing voice audio..."
-                    : `Listening in ${LANG_BCP47[lang] || "selected language"}... (Click Mic to Finish)`}
+                    : `Listening in ${LANG_BCP47[lang] || "selected language"}...`}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={stopRecording}
-                className="inline-flex items-center gap-1 text-red-400 hover:text-red-300 font-semibold cursor-pointer px-2 py-0.5 rounded border border-red-500/30 bg-red-500/10"
+                className="shrink-0 inline-flex items-center gap-1 text-red-400 hover:text-red-300 font-semibold cursor-pointer px-2 py-0.5 rounded border border-red-500/30 bg-red-500/10 text-xs"
               >
                 <X className="size-3.5" />
                 <span>Cancel</span>
@@ -508,18 +597,18 @@ export default function AssistantPage() {
             </div>
           )}
 
-          {/* Bottom Docked ChatGPT-Style Input */}
-          <div className="border-t border-border bg-card/90 p-3 sm:p-4 backdrop-blur">
+          {/* Bottom Docked Input */}
+          <div className="border-t border-border bg-card/95 p-2.5 sm:p-4 backdrop-blur">
             <div className="mx-auto max-w-3xl space-y-2">
               {/* Quick suggestion chips */}
               {currentThread.messages.length > 0 && (
-                <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar touch-pan-x">
                   {suggestions.map(({ label }) => (
                     <button
                       key={label}
                       type="button"
                       onClick={() => ask(label)}
-                      className="cursor-pointer shrink-0 rounded-full border border-border bg-surface px-3 py-1 text-[11px] font-medium text-foreground transition hover:bg-muted hover:border-teal-500/40 shadow-xs"
+                      className="cursor-pointer shrink-0 rounded-full border border-border bg-surface px-2.5 sm:px-3 py-1 text-[11px] font-medium text-foreground transition hover:bg-muted hover:border-teal-500/40 shadow-xs whitespace-nowrap"
                     >
                       {label}
                     </button>
@@ -529,7 +618,7 @@ export default function AssistantPage() {
 
               {/* Input Box with Microphone and Send Button */}
               <form
-                className="flex items-end gap-2 rounded-xl border border-border bg-surface p-2 shadow-inner focus-within:border-teal-500 focus-within:ring-1 focus-within:ring-teal-500 transition-all"
+                className="flex items-end gap-1.5 sm:gap-2 rounded-xl border border-border bg-surface p-1.5 sm:p-2 shadow-inner focus-within:border-teal-500 focus-within:ring-1 focus-within:ring-teal-500 transition-all"
                 onSubmit={(e) => {
                   e.preventDefault();
                   ask(input);
@@ -548,7 +637,7 @@ export default function AssistantPage() {
                   rows={1}
                   placeholder={t("chat.placeholder")}
                   aria-label={t("chat.placeholder")}
-                  className="max-h-32 min-h-10 flex-1 resize-none bg-transparent px-2.5 py-2 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground outline-none ring-0"
+                  className="max-h-28 sm:max-h-32 min-h-9 sm:min-h-10 flex-1 resize-none bg-transparent px-2 sm:px-2.5 py-1.5 sm:py-2 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground outline-none ring-0"
                 />
 
                 {/* Microphone Button */}
@@ -557,7 +646,7 @@ export default function AssistantPage() {
                   onClick={toggleVoice}
                   title={isRecording ? "Stop recording" : "Speak in your language"}
                   className={cn(
-                    "flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-lg border transition-all active:scale-95",
+                    "flex size-9 sm:size-10 shrink-0 cursor-pointer items-center justify-center rounded-lg border transition-all active:scale-95",
                     isRecording
                       ? "border-red-500 bg-red-500/20 text-red-400 animate-pulse shadow-md shadow-red-500/20"
                       : isTranscribing
@@ -579,14 +668,14 @@ export default function AssistantPage() {
                 <button
                   type="submit"
                   disabled={!input.trim()}
-                  className="flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold shadow-md transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex size-9 sm:size-10 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold shadow-md transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                   aria-label={t("chat.send")}
                 >
                   <Send className="size-4" />
                 </button>
               </form>
 
-              <p className="text-center text-[10px] text-muted-foreground">
+              <p className="text-center text-[10px] text-muted-foreground hidden sm:block">
                 ORCA Marine AI is grounded on live oceanographic sensors. Always follow official VHF maritime advisories.
               </p>
             </div>

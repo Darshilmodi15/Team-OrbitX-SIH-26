@@ -105,7 +105,7 @@ export default function LandingPage() {
           {/* Mission Tag / Status */}
           <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full border border-teal-500/30 bg-teal-950/40 text-[11px] font-mono font-medium text-teal-300 tracking-wider backdrop-blur-md">
             <Radio className="size-3 text-teal-400 animate-pulse" />
-            <span>NATIONAL COASTAL SAFETY NETWORK</span>
+            <span className="uppercase">{t("land.network")}</span>
           </div>
 
           {/* Top-Right Language & Theme Controls */}
@@ -218,15 +218,15 @@ export default function LandingPage() {
           <div className="mt-8 pt-6 border-t border-slate-800/80 flex flex-wrap items-center justify-center gap-4 sm:gap-8 text-[11px] font-mono text-slate-400 uppercase tracking-wider">
             <span className="flex items-center gap-1.5">
               <span className="size-1.5 rounded-full bg-teal-400" />
-              7,516 KM Coastline
+              {t("land.coastline")}
             </span>
             <span className="flex items-center gap-1.5">
               <span className="size-1.5 rounded-full bg-teal-400" />
-              11 Indian Languages
+              {t("land.languages")}
             </span>
             <span className="flex items-center gap-1.5">
               <span className="size-1.5 rounded-full bg-teal-400" />
-              Real-Time Marine Radar
+              {t("land.radar")}
             </span>
           </div>
         </div>
@@ -238,10 +238,10 @@ export default function LandingPage() {
       <section className="orca-container py-12 sm:py-16">
         <div className="mb-8 text-center sm:text-left">
           <p className="text-xs font-mono font-semibold uppercase tracking-widest text-secondary">
-            OPERATIONAL CAPABILITIES
+            {t("land.capabilities")}
           </p>
           <h2 className="mt-1 text-xl sm:text-2xl font-bold text-foreground">
-            Integrated Coastal Intelligence Architecture
+            {t("land.architecture")}
           </h2>
         </div>
 

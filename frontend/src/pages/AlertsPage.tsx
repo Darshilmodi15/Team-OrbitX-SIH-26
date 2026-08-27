@@ -14,10 +14,10 @@ const TONE = {
 } as const;
 
 export default function AlertsPage() {
-  const { t } = useI18n();
+  const { lang, t } = useI18n();
   const { location } = useSession();
   const marine = useMarine(location?.coords ?? null);
-  const alerts = deriveAdvisories(marine.data ?? null);
+  const alerts = deriveAdvisories(marine.data ?? null, lang);
 
   return (
     <AppShell>

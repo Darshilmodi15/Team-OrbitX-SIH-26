@@ -201,13 +201,27 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
+      let processedQuestion = question;
+      const langNames: Record<string, string> = {
+        gu: 'Gujarati', hi: 'Hindi', mr: 'Marathi', ta: 'Tamil', te: 'Telugu',
+        ml: 'Malayalam', bn: 'Bengali', kn: 'Kannada', or: 'Odia', pa: 'Punjabi',
+      };
+
+      if (currentLang !== 'en' && langNames[currentLang]) {
+        const latinChars = question.replace(/[\s\d\p{P}\p{S}]/gu, '');
+        const isLatinScript = latinChars.length > 0 && /^[a-zA-Z]+$/.test(latinChars);
+        if (isLatinScript) {
+          processedQuestion = `[User is writing in ${langNames[currentLang]} language using English/Roman alphabet (transliterated). Please understand this as ${langNames[currentLang]} and respond in ${langNames[currentLang]} script.] ${question}`;
+        }
+      }
+
       const payload: any = {
         location: {
           lat: userLocation.lat,
           lon: userLocation.lon,
         },
         date: currentDate,
-        question: question,
+        question: processedQuestion,
         language: currentLang,
       };
 

@@ -246,14 +246,28 @@ export async function fetchGeofences(lat?: number, lon?: number): Promise<any | 
    Sarvam AI Voice & Speech APIs
    ========================================================================== */
 
-export async function transcribeVoiceAudio(audioBlob: Blob, language: string = 'auto'): Promise<{
+export async function transcribeVoiceAudio(
+  audioBlob: Blob,
+  language: string = 'auto',
+  filename?: string
+): Promise<{
   transcript: string;
   language: string;
+  language_code?: string;
+  language_name?: string;
   english_transcript: string;
   source: string;
+  is_mock?: boolean;
 }> {
+  let ext = 'webm';
+  if (audioBlob.type.includes('ogg')) ext = 'ogg';
+  else if (audioBlob.type.includes('mp4')) ext = 'mp4';
+  else if (audioBlob.type.includes('wav')) ext = 'wav';
+  else if (audioBlob.type.includes('webm')) ext = 'webm';
+
+  const finalFilename = filename || `recording.${ext}`;
   const formData = new FormData();
-  formData.append('file', audioBlob, 'recording.wav');
+  formData.append('file', audioBlob, finalFilename);
   formData.append('language', language);
 
   const response = await fetch(`${API_BASE_URL}/api/voice/transcribe`, {
