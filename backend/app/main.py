@@ -57,6 +57,7 @@ from app.routers.notifications import router as notifications_router
 from app.routers.pfz import router as pfz_router
 from app.routers.voice import router as voice_router
 from app.services.bhashini import SUPPORTED_LANGUAGES, bhashini_service
+from app.services.dialogue_synthesizer import DialogueSynthesizer
 from app.services.planner import ExecutionPlan, Planner
 from app.services.recommendation_engine import RecommendationReasoningEngine
 
@@ -257,6 +258,11 @@ class QueryResponse(BaseModel):
     location: Optional[Dict[str, Any]] = Field(default=None, description="Vessel or resolved location coordinates")
 
 
+class ChatHistoryItem(BaseModel):
+    role: str = Field(..., description="'user' or 'assistant'")
+    text: str = Field(..., description="Message text")
+
+
 class ChatRequest(BaseModel):
     message: str = Field(..., description="User message or question in any Indian language or English")
     location: Optional[Location] = Field(
@@ -274,6 +280,10 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = Field(
         default=None,
         description="Unique session ID for multi-turn language persistence",
+    )
+    history: Optional[List[ChatHistoryItem]] = Field(
+        default=None,
+        description="Previous conversation turns for context-aware multi-turn reasoning",
     )
 
 
@@ -484,6 +494,7 @@ def _process_orca_query(
     query_date: str,
     requested_lang: str = "auto",
     session_id: Optional[str] = None,
+    history: Optional[List[Dict[str, str]]] = None,
 ) -> Dict[str, Any]:
     """
     Core ORCA Agentic Multilingual Pipeline:
@@ -941,233 +952,24 @@ def _process_orca_query(
     if executed_tasks:
         reasoning.append(f"Executed agent tasks: {', '.join(executed_tasks)}.")
 
-    # Step 6: Operational response synthesis
-    loc_title = f"{location_hint} ({active_lat:.4f}°N, {active_lon:.4f}°E)" if location_hint else f"({active_lat:.4f}°N, {active_lon:.4f}°E)"
-    t_str = f" [{time_hint.capitalize()}]" if time_hint else ""
-    answer_parts = [
-        f"Operational Advisory for {loc_title} on {query_date}{t_str}:"
-    ]
+    # Step 6: Dynamic Conversational & Operational Response Synthesis
+    loc_title = f"{location_hint} ({active_lat:.4f}°N, {active_lon:.4f}°E)" if location_hint else f"Station ({active_lat:.4f}°N, {active_lon:.4f}°E)"
 
-    # Section A: Safety & Weather
-    if evidence_bundle.risk and evidence_bundle.weather:
-        risk_level = evidence_bundle.risk.level
-        risk_reason = evidence_bundle.risk.reason
-        w_ev = evidence_bundle.weather
-        wave_h = w_ev.wave_height_m
-        wind_spd = w_ev.wind_speed_kmh
-        forecast = w_ev.forecast
-        wind_extra = f", Wind Direction: {w_ev.wind_direction_cardinal} ({w_ev.wind_direction_deg}°)" if w_ev.wind_direction_cardinal else ""
-        c_mode_tag = f" [{w_ev.source} | Mode: {connectivity_mode}]"
+    synthesized_answer = DialogueSynthesizer.synthesize_response(
+        user_query=question_raw,
+        english_query=english_question,
+        detected_intent=detected_intent,
+        evidence=evidence_bundle,
+        location_title=loc_title,
+        target_lang=detected_lang,
+        history=history,
+    )
+    reasoning.append("Synthesized dynamic conversational response based on multi-agent evidence and context.")
 
-        if risk_level == "unsafe":
-            answer_parts.append(
-                f"🚨 **UNSAFE FOR NAVIGATION**: {risk_reason}\n"
-                f"- Forecast Sea State: {forecast.capitalize()}\n"
-                f"- Significant Wave Height: {wave_h:.2f} m\n"
-                f"- Sustained Wind: {wind_spd:.1f} km/h{wind_extra}\n"
-                f"- Provenance: {c_mode_tag}"
-            )
-        elif risk_level == "caution":
-            answer_parts.append(
-                f"⚠️ **CAUTION ADVISED**: {risk_reason}\n"
-                f"- Forecast Sea State: {forecast.capitalize()}\n"
-                f"- Significant Wave Height: {wave_h:.2f} m\n"
-                f"- Sustained Wind: {wind_spd:.1f} km/h{wind_extra}\n"
-                f"- Provenance: {c_mode_tag}"
-            )
-        else:
-            answer_parts.append(
-                f"✅ **CONDITIONS ARE SAFE FOR SAILING**: {risk_reason}\n"
-                f"- Forecast Sea State: {forecast.capitalize()}\n"
-                f"- Significant Wave Height: {wave_h:.2f} m\n"
-                f"- Sustained Wind: {wind_spd:.1f} km/h{wind_extra}\n"
-                f"- Provenance: {c_mode_tag}"
-            )
-    elif evidence_bundle.weather:
-        w_ev = evidence_bundle.weather
-        spd_ms_str = f"{w_ev.wind_speed_ms:.2f} m/s" if w_ev.wind_speed_ms is not None else f"{w_ev.wind_speed_kmh / 3.6:.2f} m/s"
-        dir_str = f"{w_ev.wind_direction_cardinal} ({w_ev.wind_direction_deg:.1f}°)" if (w_ev.wind_direction_cardinal and w_ev.wind_direction_deg is not None) else (w_ev.wind_direction_cardinal or "N/A")
-        f_time = w_ev.forecast_time or "Latest available"
-        c_stat = "Live" if w_ev.cache_status == "live" else ("Cached" if w_ev.cache_status == "cached" else (f"Stale ({w_ev.data_age_sec // 60}m ago)" if w_ev.data_age_sec else "Cached"))
-        sst_val = w_ev.sea_surface_temperature_c or w_ev.temperature_c or 28.5
-        
-        answer_parts.append(
-            f"🌊 **INCOIS Ocean State Forecast (OSF)**:\n"
-            f"- Significant Wave Height: {w_ev.wave_height_m:.2f} m\n"
-            f"- Wind Speed: {spd_ms_str} ({w_ev.wind_speed_kmh:.1f} km/h)\n"
-            f"- Wind Direction: {dir_str}\n"
-            f"- Sea Condition: {w_ev.forecast.capitalize()}\n"
-            f"- Sea Surface Temperature: {sst_val:.1f}°C\n"
-            f"- Forecast Time: {f_time}\n"
-            f"- Data Provenance: INCOIS OSF WW3 ({c_stat})"
-        )
-
-    # Section B: Tide Predictions
-    if evidence_bundle.tide and (detected_intent == "weather_conditions" or "tide" in english_question.lower()):
-        t = evidence_bundle.tide
-        answer_parts.append(
-            f"🌊 **Tide & Tidal Forecast**:\n"
-            f"- **Primary High Tide**: {t.high_tide_time} ({t.high_tide_height_m:.2f}m)\n"
-            f"- **Primary Low Tide**: {t.low_tide_time} ({t.low_tide_height_m:.2f}m)\n"
-            f"- **Secondary High Tide**: {t.secondary_high_tide_time} ({t.secondary_high_tide_height_m:.2f}m)\n"
-            f"- **Tidal Phase**: {t.tidal_phase} (Range: {t.tidal_range_m:.2f}m)\n"
-            f"- **Source**: {t.source}"
-        )
-
-    # Section C: Ocean Analytics (Chlorophyll-a & SST Thermal Fronts)
-    if evidence_bundle.ocean_analytics:
-        oa = evidence_bundle.ocean_analytics
-        sector_lines = [
-            f"- **{s['name']}**: SST {s['sst_c']}°C, Chlorophyll-a {s['chlorophyll_mg_m3']} mg/m³ [{s['suitability']}]"
-            for s in oa.favorable_sectors
-        ]
-        answer_parts.append(
-            f"🛰️ **Satellite Earth Observation: Chlorophyll-a & SST Thermal Fronts**:\n"
-            f"- **Region**: {oa.region_name}\n"
-            f"- **Mean Chlorophyll-a Density**: {oa.mean_chlorophyll_mg_m3:.2f} mg/m³ (Optimum: >0.5 mg/m³)\n"
-            f"- **Sea Surface Temperature (SST)**: {oa.mean_sst_c:.1f}°C (Optimal Range: {oa.optimal_sst_range})\n"
-            f"- **Coastal Upwelling Intensity**: {oa.upwelling_index}\n"
-            f"- **Thermal Gradient**: {oa.thermal_front_description}\n"
-            f"**High Productivity Favorable Sectors**:\n" + "\n".join(sector_lines) +
-            f"\n- *Satellite Provenance*: {oa.satellite_source}"
-        )
-
-    # Section D: Fish Productivity Decline Diagnostics
-    if evidence_bundle.ecology:
-        eco = evidence_bundle.ecology
-        causes_lines = [f"- 🔴 {c}" for c in eco.primary_causes]
-        recs_lines = [f"- 🟢 {r}" for r in eco.recommendations]
-        answer_parts.append(
-            f"📉 **Marine Ecological Analysis: Fish Productivity & Catch Trends**:\n"
-            f"**Sector**: {eco.region_name}\n\n"
-            f"**Key Oceanographic & Anthropogenic Drivers**:\n" + "\n".join(causes_lines) +
-            f"\n\n**Environmental Diagnostics**:\n"
-            f"- SST Anomaly: {eco.sst_anomaly}\n"
-            f"- Chlorophyll Trend: {eco.chlorophyll_trend}\n"
-            f"- Trawling & Juvenile Pressure: {eco.overfishing_pressure}\n\n"
-            f"**Actionable Recommendations for Sustainable Harvest**:\n" + "\n".join(recs_lines) +
-            f"\n\n*Data Lineage*: {eco.source}"
-        )
-
-    # Section E: Hazardous Marine Zones & Geofencing Avoidance
-    if evidence_bundle.zone_avoidance:
-        za = evidence_bundle.zone_avoidance
-        avoid_lines = [
-            f"- 🚫 **{z.zone_name}** [{z.category} | {z.avoidance_level}]: {z.reason} -> *Action*: {z.recommended_action}"
-            for z in za.avoided_zones
-        ]
-        safe_lines = [
-            f"- ✅ **{s['name']}**: {s['distance_km']} km away ({', '.join(s['species'][:2])}) [Suitability: {s.get('suitability_score', 85):.0f}/100]"
-            for s in za.safe_alternative_zones[:2]
-        ]
-        
-        avoid_text = "\n".join(avoid_lines) if avoid_lines else "- No critical hazard zones or boundary breaches in immediate operational sector."
-        safe_text = "\n".join(safe_lines) if safe_lines else "- Operate strictly within marked nearshore harbor corridors."
-
-        answer_parts.append(
-            f"⚠️ **Hazardous Conditions & Geofencing Avoidance Advisory**:\n"
-            f"**Status**: `{za.overall_avoidance_status}`\n\n"
-            f"**Zones to Avoid**:\n{avoid_text}\n\n"
-            f"**Recommended Safe Alternative Fishing Grounds**:\n{safe_text}\n\n"
-            f"- *Provenance*: {za.source}"
-        )
-
-    # Section F: PFZ Zones
-    if evidence_bundle.pfz_zones and detected_intent != "zone_avoidance" and detected_intent != "fish_productivity_decline":
-        risk_level = evidence_bundle.risk.level if evidence_bundle.risk else "safe"
-        if risk_level == "unsafe":
-            answer_parts.append(
-                "⚠️ Due to hazardous marine conditions, traveling to offshore fishing zones is not recommended at this time."
-            )
-        else:
-            pfz_text_lines = []
-            for z in evidence_bundle.pfz_zones:
-                bearing_str = f", bearing {int(z.bearing_deg)}°" if z.bearing_deg is not None else ""
-                suit_str = f" [Suitability: {z.suitability_score:.0f}/100]" if z.suitability_score is not None else ""
-                depth_str = f"~{int(z.depth_m)}m" if z.depth_m is not None else "20-35m"
-                pfz_text_lines.append(
-                    f"- **{z.name}**{suit_str}: {z.distance_km} km away{bearing_str} at ({z.latitude:.4f}, {z.longitude:.4f}), depth {depth_str}, species: {', '.join(z.species)}"
-                )
-            answer_parts.append("Nearby Potential Fishing Zones (PFZ):\n" + "\n".join(pfz_text_lines))
-
-    # Section G: Route Recommendation
-    if evidence_bundle.route:
-        r = evidence_bundle.route
-        avoided_note = f" (Avoided hazard zones: {', '.join(r.avoided_zones)})" if r.avoided_zones else ""
-        answer_parts.append(
-            f"🧭 **Recommended Safe Navigation Route** [Advisory Only]:\n"
-            f"- **Destination**: {r.destination_name}\n"
-            f"- **Total Distance**: {r.distance_km} km ({r.distance_nm} Nautical Miles)\n"
-            f"- **Est. Duration**: ~{r.estimated_duration_hours} hours at 8-knot cruising speed\n"
-            f"- **Waypoints**: {len(r.waypoints)} navigation corridor coordinates plotted on Tactical Map\n"
-            f"- **Corridor Safety**: {r.risk_assessment}{avoided_note}\n"
-            f"- *Note*: {r.advisory_notes[0] if r.advisory_notes else 'Follow marked navigational corridor.'}"
-        )
-
-    # Section H: Proactive Hazard Alerts
-    if evidence_bundle.alerts and detected_intent != "zone_avoidance":
-        alert_lines = [f"- ⚠️ **{a.title}**: {a.message}" for a in evidence_bundle.alerts[:2]]
-        answer_parts.append("🚨 **Active Coastal Hazards & Boundary Alerts**:\n" + "\n".join(alert_lines))
-
-    # Section I: What-If Simulation
-    if evidence_bundle.simulation:
-        sim = evidence_bundle.simulation
-        answer_parts.append(
-            f"🔮 **[SIMULATION] What-If Scenario Analysis**:\n"
-            f"- **Parameter Tested**: `{sim.parameter_modified}`\n"
-            f"- **Baseline**: {sim.baseline_value} -> Classified as **{sim.baseline_risk}**\n"
-            f"- **Simulated**: {sim.simulated_value} -> Classified as **{sim.simulated_risk}**\n"
-            f"- **Scenario Impact**: {sim.impact_summary}"
-        )
-
-    # Section J: Marine Boundary & Exclusive Economic Zone (EEZ)
-    if evidence_bundle.boundary:
-        b = evidence_bundle.boundary
-        status_icon = "✅" if b.inside_eez else "🚨"
-        dist_str = f" ({b.distance_to_boundary_km:.1f} km from boundary limit)" if b.distance_to_boundary_km is not None else ""
-        answer_parts.append(
-            f"🌐 **Marine Boundary & Exclusive Economic Zone (EEZ)**:\n"
-            f"- **Status**: {status_icon} {b.status_message}{dist_str}\n"
-            f"- **Jurisdiction**: {b.country} ({b.zone_name or 'Exclusive Economic Zone'})\n"
-            f"- **Data Provenance**: {b.source} ({b.dataset_version})"
-        )
-
-    # Section K: Structured Operational Recommendations with Supporting Evidence & Reasoning
-    if recommendations:
-        rec_cards = []
-        for r in recommendations:
-            prio_badge = "🔴 CRITICAL" if r.priority == "CRITICAL" else ("🟠 HIGH" if r.priority == "HIGH" else ("🟢 MEDIUM" if r.priority == "MEDIUM" else "ℹ️ INFO"))
-            ev_bullets = "\n".join([f"  • {e}" for e in r.supporting_evidence])
-            reason_formatted = r.reasoning.replace("\n", "\n  ")
-            rec_cards.append(
-                f"**[{r.id}] {r.title}** [{prio_badge} | Confidence: {int(r.confidence_score*100)}%]\n"
-                f"- **Directive**: {r.directive}\n"
-                f"- **Supporting Evidence**:\n{ev_bullets}\n"
-                f"- **Reasoning Derivation**:\n  {reason_formatted}"
-            )
-        answer_parts.append("💡 **Operational Recommendations, Evidence & Reasoning Derivation**:\n\n" + "\n\n".join(rec_cards))
-
-    if (
-        not evidence_bundle.weather
-        and not evidence_bundle.pfz_zones
-        and not evidence_bundle.route
-        and not evidence_bundle.boundary
-        and not evidence_bundle.ocean_analytics
-        and not evidence_bundle.ecology
-        and not evidence_bundle.zone_avoidance
-        and not recommendations
-    ):
-        answer_parts.append(
-            "ORCA Marine AI is standing by. You can ask for navigational safety assessments (e.g., 'Is it safe to sail today?'), potential fishing zones (e.g., 'Where is the nearest PFZ?'), safe routes (e.g., 'Suggest the safest route to Zone Alpha'), or what-if marine simulations."
-        )
-
-    english_answer = "\n\n".join(answer_parts)
-    reasoning.append("Synthesized explainable operational response based on executed agent evidence.")
-
-    # Step 7: Indic translation
-    if detected_lang != "en":
+    # Step 7: Indic translation if needed and not already native script
+    if detected_lang != "en" and not any(ord(c) > 127 for c in synthesized_answer[:60]):
         final_answer = bhashini_service.translate(
-            text=english_answer,
+            text=synthesized_answer,
             source_lang="en",
             target_lang=detected_lang,
         )
@@ -1175,7 +977,7 @@ def _process_orca_query(
             f"Bhashini Multilingual Layer: Translated operational response back into {lang_name}."
         )
     else:
-        final_answer = english_answer
+        final_answer = synthesized_answer
 
     return {
         "language": detected_lang,
@@ -1249,6 +1051,8 @@ def handle_chat(request: ChatRequest) -> ChatResponse:
     lon = request.location.lon if request.location else 72.8347
     q_date = request.date or dt_date.today().isoformat()
 
+    history_dicts = [{"role": h.role, "text": h.text} for h in request.history] if request.history else None
+
     result = _process_orca_query(
         question_raw=request.message,
         lat=lat,
@@ -1256,6 +1060,7 @@ def handle_chat(request: ChatRequest) -> ChatResponse:
         query_date=q_date,
         requested_lang=request.language or "auto",
         session_id=request.session_id,
+        history=history_dicts,
     )
 
     return ChatResponse(

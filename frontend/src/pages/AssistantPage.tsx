@@ -27,7 +27,7 @@ import { useSession } from "@/lib/orca/session";
 import { useMarine } from "@/lib/orca/use-marine";
 import { answerQuestion } from "@/lib/orca/assistant";
 import { useSafetyLabel } from "@/components/orca/SafetyStatus";
-import { transcribeVoiceAudio } from "@/services/api";
+import { transcribeVoiceAudio, sendChatMessage } from "@/services/api";
 import type { ChatMessage } from "@/lib/orca/types";
 import { cn } from "@/lib/utils";
 
@@ -88,6 +88,7 @@ export default function AssistantPage() {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState<boolean>(false);
   const [input, setInput] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isThinking, setIsThinking] = useState(false);
 
   // Voice Speech-to-Text State
   const [isRecording, setIsRecording] = useState(false);
@@ -113,7 +114,7 @@ export default function AssistantPage() {
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [currentThread.messages.length]);
+  }, [currentThread.messages.length, isThinking]);
 
   function createNewThread() {
     const newId = `thread_${Date.now()}`;
@@ -139,21 +140,14 @@ export default function AssistantPage() {
     }
   }
 
-  function ask(text: string) {
+  async function ask(text: string) {
     const question = text.trim();
-    if (!question) return;
+    if (!question || isThinking) return;
 
     const now = Date.now();
-    const reply = answerQuestion(question, {
-      location: location ?? null,
-      bundle: marine.data ?? null,
-      levelLabel,
-      lang,
-    });
-
     const userMsg: ChatMessage = { id: `u_${now}`, role: "user", text: question, at: now };
-    const botMsg: ChatMessage = { id: `a_${now + 1}`, role: "assistant", text: reply, at: now + 1 };
 
+    // Update UI immediately with user's message
     setThreads((prev) => {
       const idx = prev.findIndex((th) => th.id === activeThreadId);
       if (idx >= 0) {
@@ -163,7 +157,7 @@ export default function AssistantPage() {
           ...updated[idx],
           title: isFirst ? (question.length > 28 ? `${question.slice(0, 28)}...` : question) : updated[idx].title,
           updatedAt: now,
-          messages: [...updated[idx].messages, userMsg, botMsg],
+          messages: [...updated[idx].messages, userMsg],
         };
         return updated;
       } else {
@@ -171,13 +165,74 @@ export default function AssistantPage() {
           id: activeThreadId,
           title: question.length > 28 ? `${question.slice(0, 28)}...` : question,
           updatedAt: now,
-          messages: [userMsg, botMsg],
+          messages: [userMsg],
         };
         return [newThread, ...prev];
       }
     });
 
     setInput("");
+    setIsThinking(true);
+
+    let reply = "";
+    try {
+      // Gather past turns for multi-turn conversational reasoning
+      const historyTurns = currentThread.messages.slice(-6).map((m) => ({
+        role: m.role,
+        text: m.text,
+      }));
+
+      const res = await sendChatMessage({
+        message: question,
+        location: location ? { lat: location.coords.lat, lon: location.coords.lon } : { lat: 18.9220, lon: 72.8347 },
+        date: new Date().toISOString().split("T")[0],
+        language: lang || "auto",
+        session_id: activeThreadId,
+        history: historyTurns,
+      });
+
+      if (res && res.answer) {
+        reply = res.answer;
+      }
+    } catch {
+      // High-fidelity fallback to dynamic reasoning assistant
+      reply = answerQuestion(question, {
+        location: location ?? null,
+        bundle: marine.data ?? null,
+        levelLabel,
+        lang,
+        history: currentThread.messages.map((m) => ({ role: m.role, text: m.text })),
+      });
+    }
+
+    if (!reply) {
+      reply = answerQuestion(question, {
+        location: location ?? null,
+        bundle: marine.data ?? null,
+        levelLabel,
+        lang,
+        history: currentThread.messages.map((m) => ({ role: m.role, text: m.text })),
+      });
+    }
+
+    const botNow = Date.now();
+    const botMsg: ChatMessage = { id: `a_${botNow}`, role: "assistant", text: reply, at: botNow };
+
+    setThreads((prev) => {
+      const idx = prev.findIndex((th) => th.id === activeThreadId);
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = {
+          ...updated[idx],
+          updatedAt: botNow,
+          messages: [...updated[idx].messages, botMsg],
+        };
+        return updated;
+      }
+      return prev;
+    });
+
+    setIsThinking(false);
   }
 
   function handleCopy(text: string, id: string) {
@@ -577,6 +632,23 @@ export default function AssistantPage() {
                 </div>
               ))
             )}
+
+            {/* AI Thinking / Telemetry Analysis Pulse Bubble */}
+            {isThinking && (
+              <div className="flex gap-2.5 sm:gap-3 animate-fade-in">
+                <div className="flex size-7.5 sm:size-8 shrink-0 items-center justify-center rounded-lg border border-teal-500/30 bg-teal-500/10 shadow-xs">
+                  <OrcaLogo className="size-5 sm:size-5.5 shrink-0 animate-pulse" />
+                </div>
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <span className="text-xs font-bold text-teal-400">ORCA Marine Intelligence</span>
+                  <div className="flex items-center gap-2.5 rounded-lg border border-teal-500/20 bg-teal-950/20 p-3 sm:p-3.5 text-xs text-muted-foreground shadow-xs">
+                    <Loader2 className="size-3.5 shrink-0 animate-spin text-teal-400" />
+                    <span>Analyzing live oceanographic telemetry and calculating safety parameters...</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div ref={endRef} />
           </div>
 
@@ -612,8 +684,9 @@ export default function AssistantPage() {
                     <button
                       key={label}
                       type="button"
+                      disabled={isThinking}
                       onClick={() => ask(label)}
-                      className="cursor-pointer shrink-0 rounded-full border border-border bg-surface px-2.5 sm:px-3 py-1 text-[11px] font-medium text-foreground transition hover:bg-muted hover:border-teal-500/40 shadow-xs whitespace-nowrap"
+                      className="cursor-pointer shrink-0 rounded-full border border-border bg-surface px-2.5 sm:px-3 py-1 text-[11px] font-medium text-foreground transition hover:bg-muted hover:border-teal-500/40 shadow-xs whitespace-nowrap disabled:opacity-40 disabled:pointer-events-none"
                     >
                       {label}
                     </button>
@@ -632,6 +705,7 @@ export default function AssistantPage() {
                 <textarea
                   ref={inputRef}
                   value={input}
+                  disabled={isThinking}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
@@ -642,16 +716,17 @@ export default function AssistantPage() {
                   rows={1}
                   placeholder={t("chat.placeholder")}
                   aria-label={t("chat.placeholder")}
-                  className="max-h-28 sm:max-h-32 min-h-9 sm:min-h-10 flex-1 resize-none bg-transparent px-2 sm:px-2.5 py-1.5 sm:py-2 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground outline-none ring-0"
+                  className="max-h-28 sm:max-h-32 min-h-9 sm:min-h-10 flex-1 resize-none bg-transparent px-2 sm:px-2.5 py-1.5 sm:py-2 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground outline-none ring-0 disabled:opacity-50"
                 />
 
                 {/* Microphone Button */}
                 <button
                   type="button"
+                  disabled={isThinking}
                   onClick={toggleVoice}
                   title={isRecording ? "Stop recording" : "Speak in your language"}
                   className={cn(
-                    "flex size-9 sm:size-10 shrink-0 cursor-pointer items-center justify-center rounded-lg border transition-all active:scale-95",
+                    "flex size-9 sm:size-10 shrink-0 cursor-pointer items-center justify-center rounded-lg border transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed",
                     isRecording
                       ? "border-red-500 bg-red-500/20 text-red-400 animate-pulse shadow-md shadow-red-500/20"
                       : isTranscribing
@@ -672,11 +747,15 @@ export default function AssistantPage() {
                 {/* Send Button */}
                 <button
                   type="submit"
-                  disabled={!input.trim()}
+                  disabled={!input.trim() || isThinking}
                   className="flex size-9 sm:size-10 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold shadow-md transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                   aria-label={t("chat.send")}
                 >
-                  <Send className="size-4" />
+                  {isThinking ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Send className="size-4" />
+                  )}
                 </button>
               </form>
 

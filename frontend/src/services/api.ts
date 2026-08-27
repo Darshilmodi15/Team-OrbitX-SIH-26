@@ -38,6 +38,54 @@ export interface QueryPayload {
   session_id?: string;
 }
 
+export interface ChatMessagePayload {
+  message: string;
+  location?: { lat: number; lon: number };
+  date?: string;
+  language?: string;
+  session_id?: string;
+  history?: Array<{ role: string; text: string }>;
+}
+
+export async function sendChatMessage(payload: ChatMessagePayload) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: payload.message,
+        location: payload.location || { lat: 18.9220, lon: 72.8347 },
+        date: payload.date || new Date().toISOString().split('T')[0],
+        language: payload.language || 'auto',
+        session_id: payload.session_id,
+        history: payload.history,
+      }),
+    });
+
+    if (!response.ok) {
+      let errorMsg = `Server error (${response.status})`;
+      try {
+        const errorData = await response.json();
+        if (errorData.detail) {
+          errorMsg = typeof errorData.detail === 'string' ? errorData.detail : JSON.stringify(errorData.detail);
+        }
+      } catch {
+        // Fallback to generic message
+      }
+      throw new Error(errorMsg);
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    if (error.name === 'TypeError' && error.message?.includes('fetch')) {
+      throw new Error('Unable to reach ORCA backend. Please ensure the backend server is running at ' + API_BASE_URL);
+    }
+    throw error;
+  }
+}
+
 export async function queryORCA(payload: QueryPayload) {
   try {
     const response = await fetch(`${API_BASE_URL}/query`, {
