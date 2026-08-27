@@ -1,16 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { Map as LeafletMap, Marker, Circle, Polyline } from "leaflet";
 import { useI18n } from "@/lib/orca/i18n";
 import { useMarine } from "@/lib/orca/use-marine";
 import { COASTAL_BUFFER_KM, INDIA_BOUNDS, type Coords } from "@/lib/orca/geo";
-import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronUp, Radio } from "lucide-react";
 
 /**
- * Lightweight India-focused Leaflet map with Marine Intelligence Visualization:
- * - PFZ (Potential Fishing Zone) active hotspot & marker
- * - IMBL (International Maritime Boundary Line) boundary polyline & marker
- * - Live in-map Marine Intelligence HUD (SST, Wave Height, Ocean Swell, PFZ, IMBL)
+ * Tactical Marine GIS Map with Satellite / Satellite-Hybrid Base Layer:
+ * - Esri World Satellite Imagery base layer
+ * - Coastal & Marine reference boundaries layer
+ * - PFZ (Potential Fishing Zone) active hotspot circle & interactive pin
+ * - IMBL (International Maritime Boundary Line) dashed boundary polyline & pin
+ * - User GPS coastal circle and priority coastal city pins
  */
 export default function CoastMap({
   center,
@@ -35,22 +35,12 @@ export default function CoastMap({
   selectRef.current = onSelect;
   const { t, lang } = useI18n();
 
-  // Retrieve live marine conditions or fall back to high-fidelity defaults
+  // Retrieve marine conditions for popup tooltips
   const { data: marine } = useMarine(center);
-  const [isOverlayExpanded, setIsOverlayExpanded] = useState(true);
-
   const sst =
     marine?.current.seaTemperatureC != null
       ? `${marine.current.seaTemperatureC.toFixed(1)}°C`
       : "29.4°C";
-  const waveHeight =
-    marine?.current.waveHeightM != null
-      ? `${marine.current.waveHeightM.toFixed(1)} m`
-      : "0.7 m";
-  const wavePeriod =
-    marine?.current.wavePeriodS != null
-      ? `${marine.current.wavePeriodS.toFixed(0)} s`
-      : "3 s";
 
   useEffect(() => {
     let disposed = false;
@@ -75,10 +65,24 @@ export default function CoastMap({
         minZoom: 4,
       });
 
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 16,
-        attribution: "\u00a9 OpenStreetMap",
-      }).addTo(map);
+      // ─── 1. Satellite Base Layer (Esri World Imagery) ───
+      L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        {
+          maxZoom: 18,
+          attribution:
+            "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and GIS User Community",
+        }
+      ).addTo(map);
+
+      // ─── 2. Satellite-Hybrid Coastal Borders & Places Overlay ───
+      L.tileLayer(
+        "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+        {
+          maxZoom: 18,
+          opacity: 0.75,
+        }
+      ).addTo(map);
 
       // User Vessel Pin
       const icon = L.divIcon({
@@ -98,10 +102,10 @@ export default function CoastMap({
         radius: COASTAL_BUFFER_KM * 1000,
         color: "oklch(0.55 0.085 205)",
         weight: 1,
-        fillOpacity: 0.06,
+        fillOpacity: 0.08,
       }).addTo(map);
 
-      // ─── 1. PFZ (Potential Fishing Zone) Visual Layer ───
+      // ─── 3. PFZ (Potential Fishing Zone) Visual Layer ───
       const pfzLat = center.lat + 0.05;
       const pfzLon = center.lon < 78 ? center.lon - 0.28 : center.lon + 0.28;
 
@@ -109,14 +113,14 @@ export default function CoastMap({
         radius: 12000,
         color: "#10b981",
         fillColor: "#10b981",
-        fillOpacity: 0.2,
+        fillOpacity: 0.22,
         weight: 2,
         dashArray: "4, 4",
       }).addTo(map);
 
       const pfzIcon = L.divIcon({
         className: "orca-pfz-pin",
-        html: `<div style="display:inline-flex;align-items:center;gap:4px;background:rgba(6,78,59,0.94);color:#34d399;font-size:10px;font-weight:700;padding:2px 7px;border-radius:12px;border:1.5px solid #10b981;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.4);cursor:pointer;"><span style="width:6px;height:6px;border-radius:50%;background:#34d399;box-shadow:0 0 6px #34d399;"></span>🐟 PFZ</div>`,
+        html: `<div style="display:inline-flex;align-items:center;gap:4px;background:rgba(6,78,59,0.94);color:#34d399;font-size:10px;font-weight:700;padding:2px 7px;border-radius:12px;border:1.5px solid #10b981;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.5);cursor:pointer;"><span style="width:6px;height:6px;border-radius:50%;background:#34d399;box-shadow:0 0 6px #34d399;"></span>🐟 PFZ</div>`,
         iconSize: [90, 22],
         iconAnchor: [45, 11],
       });
@@ -132,7 +136,7 @@ export default function CoastMap({
         )
         .addTo(map);
 
-      // ─── 2. IMBL (International Maritime Boundary Line) Visual Layer ───
+      // ─── 4. IMBL (International Maritime Boundary Line) Visual Layer ───
       const isWestCoast = center.lon < 78;
       const imblCoords: [number, number][] = isWestCoast
         ? [
@@ -150,12 +154,12 @@ export default function CoastMap({
         color: "#ef4444",
         weight: 3,
         dashArray: "8, 8",
-        opacity: 0.85,
+        opacity: 0.9,
       }).addTo(map);
 
       const imblIcon = L.divIcon({
         className: "orca-imbl-pin",
-        html: `<div style="display:inline-flex;align-items:center;gap:4px;background:rgba(127,29,29,0.94);color:#fca5a5;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;border:1.5px dashed #ef4444;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.4);cursor:pointer;"><span style="width:6px;height:6px;border-radius:50%;background:#ef4444;box-shadow:0 0 6px #ef4444;"></span>🚨 IMBL</div>`,
+        html: `<div style="display:inline-flex;align-items:center;gap:4px;background:rgba(127,29,29,0.94);color:#fca5a5;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;border:1.5px dashed #ef4444;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.5);cursor:pointer;"><span style="width:6px;height:6px;border-radius:50%;background:#ef4444;box-shadow:0 0 6px #ef4444;"></span>🚨 IMBL</div>`,
         iconSize: [95, 22],
         iconAnchor: [47, 11],
       });
@@ -172,7 +176,7 @@ export default function CoastMap({
         )
         .addTo(map);
 
-      // Localized Coastal City Markers
+      // ─── 5. Localized Coastal City Markers ───
       try {
         const { COASTAL_CITIES } = await import("@/data/maritimeData");
         const { getLocalizedCityName } = await import("@/data/localizedGeo");
@@ -181,7 +185,7 @@ export default function CoastMap({
           const localizedName = getLocalizedCityName(city.id, city.name, lang);
           const cityIcon = L.divIcon({
             className: "orca-city-pin",
-            html: `<div style="display:inline-flex;align-items:center;gap:3px;background:rgba(15,23,42,0.85);color:#fff;font-size:10px;font-weight:700;padding:1px 5px;border-radius:10px;border:1px solid rgba(255,255,255,0.4);white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,0.3);"><span style="width:4px;height:4px;border-radius:50%;background:#38bdf8;"></span>${localizedName}</div>`,
+            html: `<div style="display:inline-flex;align-items:center;gap:3px;background:rgba(15,23,42,0.88);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;border:1px solid rgba(255,255,255,0.5);white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.4);"><span style="width:4px;height:4px;border-radius:50%;background:#38bdf8;"></span>${localizedName}</div>`,
             iconSize: [80, 20],
             iconAnchor: [40, 10],
           });
@@ -244,114 +248,11 @@ export default function CoastMap({
 
   return (
     <div
+      ref={el}
       style={{ height }}
-      className="relative w-full overflow-hidden rounded-md border border-border shadow-xs"
-    >
-      {/* Leaflet Map Target Div */}
-      <div
-        ref={el}
-        className="h-full w-full"
-        role="application"
-        aria-label={t("map.title")}
-      />
-
-      {/* In-Map Marine Intelligence & 5 Key Terms Overlay */}
-      <div className="pointer-events-auto absolute bottom-2 right-2 z-[400] max-w-[270px] sm:max-w-[310px] rounded-lg border border-slate-700/80 bg-slate-950/90 p-2 sm:p-2.5 text-xs text-slate-100 shadow-xl backdrop-blur-md transition-all">
-        {/* Overlay Header */}
-        <div className="flex items-center justify-between gap-2 border-b border-slate-700/70 pb-1.5 mb-1.5">
-          <div className="flex items-center gap-1.5">
-            <span className="flex size-2 rounded-full bg-teal-400 animate-pulse" />
-            <span className="font-bold text-[10.5px] uppercase tracking-wider text-teal-300">
-              Marine Intelligence
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setIsOverlayExpanded((prev) => !prev)}
-            className="flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] font-mono font-bold text-teal-400 hover:bg-slate-800 transition cursor-pointer"
-            aria-label="Toggle Marine Intelligence Overlay"
-          >
-            <span>Live Data</span>
-            {isOverlayExpanded ? (
-              <ChevronDown className="size-3" />
-            ) : (
-              <ChevronUp className="size-3" />
-            )}
-          </button>
-        </div>
-
-        {isOverlayExpanded && (
-          <div className="space-y-1">
-            {/* 1. PFZ — Potential Fishing Zone */}
-            <div className="flex items-center justify-between gap-1.5 rounded bg-slate-900/80 px-2 py-1 border border-slate-800/90">
-              <div className="flex items-center gap-1.5 truncate">
-                <span className="size-2 rounded-full bg-emerald-400 shrink-0" />
-                <span className="font-bold text-emerald-300">PFZ</span>
-                <span className="text-[10px] text-slate-400 truncate">
-                  ({t("glossary.pfz.full")})
-                </span>
-              </div>
-              <span className="shrink-0 text-[9.5px] font-mono font-bold text-emerald-400 bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-700">
-                Hotspot Active
-              </span>
-            </div>
-
-            {/* 2. IMBL — International Maritime Boundary Line */}
-            <div className="flex items-center justify-between gap-1.5 rounded bg-slate-900/80 px-2 py-1 border border-slate-800/90">
-              <div className="flex items-center gap-1.5 truncate">
-                <span className="size-2 rounded-full bg-red-500 shrink-0" />
-                <span className="font-bold text-red-400">IMBL</span>
-                <span className="text-[10px] text-slate-400 truncate">
-                  ({t("glossary.imbl.full")})
-                </span>
-              </div>
-              <span className="shrink-0 text-[9.5px] font-mono font-bold text-red-400 bg-red-950/60 px-1.5 py-0.2 rounded border border-red-700">
-                Boundary Line
-              </span>
-            </div>
-
-            {/* 3. SST — Sea Surface Temperature */}
-            <div className="flex items-center justify-between gap-1.5 rounded bg-slate-900/80 px-2 py-1 border border-slate-800/90">
-              <div className="flex items-center gap-1.5 truncate">
-                <span className="text-amber-400 text-xs">🌡️</span>
-                <span className="font-bold text-slate-200">SST</span>
-                <span className="text-[10px] text-slate-400 truncate">
-                  ({t("glossary.sst.full")})
-                </span>
-              </div>
-              <span className="shrink-0 text-[11px] font-mono font-extrabold text-amber-300">
-                {sst}
-              </span>
-            </div>
-
-            {/* 4. Significant Wave Height */}
-            <div className="flex items-center justify-between gap-1.5 rounded bg-slate-900/80 px-2 py-1 border border-slate-800/90">
-              <div className="flex items-center gap-1.5 truncate">
-                <span className="text-cyan-400 text-xs">🌊</span>
-                <span className="font-semibold text-slate-200 truncate">
-                  {t("glossary.wave.full")}
-                </span>
-              </div>
-              <span className="shrink-0 text-[11px] font-mono font-extrabold text-cyan-300">
-                {waveHeight}
-              </span>
-            </div>
-
-            {/* 5. Ocean Swell */}
-            <div className="flex items-center justify-between gap-1.5 rounded bg-slate-900/80 px-2 py-1 border border-slate-800/90">
-              <div className="flex items-center gap-1.5 truncate">
-                <span className="text-indigo-400 text-xs">⏱️</span>
-                <span className="font-semibold text-slate-200 truncate">
-                  {t("glossary.swell.full")}
-                </span>
-              </div>
-              <span className="shrink-0 text-[11px] font-mono font-extrabold text-indigo-300">
-                {wavePeriod}
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+      className="w-full overflow-hidden rounded-md border border-border shadow-xs"
+      role="application"
+      aria-label={t("map.title")}
+    />
   );
 }
