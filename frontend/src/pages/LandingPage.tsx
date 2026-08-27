@@ -14,7 +14,6 @@ import {
 import { OrcaLogo } from "@/components/orca/Logo";
 import { LANGUAGES, useI18n, type LangCode } from "@/lib/orca/i18n";
 import { useAppContext } from "@/context/AppContext";
-import { OceanWavesCanvas } from "@/components/orca/OceanWavesCanvas";
 import { ThemeToggle } from "@/components/orca/ThemeToggle";
 import { cn } from "@/lib/utils";
 
@@ -88,9 +87,16 @@ export default function LandingPage() {
     <div className="flex min-h-screen flex-col bg-background text-foreground selection:bg-teal-500/30">
       {/* Hero Section — Government/Defence Grade Maritime Command */}
       <section className="relative isolate overflow-hidden bg-[#071526] px-4 pt-4 pb-12 sm:pt-6 sm:pb-20 md:pt-8 md:pb-24 min-h-[580px] sm:min-h-[560px] md:min-h-[600px] flex flex-col justify-between border-b border-slate-800">
-        {/* Defence-Grade Bathymetric Waves & Grid Canvas */}
-        <div className="absolute inset-0 -z-10">
-          <OceanWavesCanvas className="w-full h-full" interactive={true} speedMultiplier={1} />
+        {/* Realistic High-Resolution Ocean Photography Background */}
+        <div className="absolute inset-0 -z-10 overflow-hidden">
+          <img
+            src="/hero-ocean.jpg"
+            alt="Deep Ocean Maritime Surveillance Background"
+            className="w-full h-full object-cover object-center"
+          />
+          {/* Professional Deep Navy Gradient & Vignette Overlay for High Legibility */}
+          <div className="absolute inset-0 bg-[#071526]/75 mix-blend-multiply" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#071526]/90 via-[#071526]/60 to-[#071526]" />
         </div>
 
         {/* Top Command Bar inside Hero */}
