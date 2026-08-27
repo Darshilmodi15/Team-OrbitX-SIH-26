@@ -1,14 +1,14 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Laptop, Moon, Sun } from "lucide-react";
 import { AppShell } from "@/components/orca/AppShell";
-import { LANGUAGES, useI18n } from "@/lib/orca/i18n";
+import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
 import { useTheme } from "@/lib/orca/theme";
 import { formatCoords } from "@/lib/orca/geo";
 import { cn } from "@/lib/utils";
 
 export default function SettingsPage() {
-  const { t, lang, setLang } = useI18n();
+  const { t } = useI18n();
   const { theme, setTheme } = useTheme();
   const { user, location, signOut } = useSession();
   const navigate = useNavigate();
@@ -64,30 +64,6 @@ export default function SettingsPage() {
             <span>{t("theme.system")}</span>
           </button>
         </div>
-      </section>
-
-      {/* Language Section */}
-      <section className="mt-4 rounded-md border border-border bg-card p-4 shadow-xs">
-        <h2 className="text-sm font-semibold text-foreground">{t("lang.title")}</h2>
-        <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {LANGUAGES.map((l) => (
-            <li key={l.code}>
-              <button
-                type="button"
-                onClick={() => setLang(l.code)}
-                aria-pressed={l.code === lang}
-                className={cn(
-                  "min-h-11 w-full cursor-pointer rounded-md border border-border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted shadow-xs",
-                  l.code === lang
-                    ? "border-secondary bg-secondary/20 text-secondary font-bold"
-                    : "bg-card text-foreground hover:text-foreground"
-                )}
-              >
-                {l.native}
-              </button>
-            </li>
-          ))}
-        </ul>
       </section>
 
       {/* Location Section */}
