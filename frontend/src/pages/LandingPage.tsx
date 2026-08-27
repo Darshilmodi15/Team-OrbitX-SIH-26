@@ -86,17 +86,18 @@ export default function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground selection:bg-teal-500/30">
       {/* Hero Section — Government/Defence Grade Maritime Command with Light Ocean Sea */}
-      <section className="relative isolate overflow-hidden bg-[#0A2540] px-4 pt-4 pb-12 sm:pt-6 sm:pb-20 md:pt-8 md:pb-24 min-h-[580px] sm:min-h-[560px] md:min-h-[600px] flex flex-col justify-between border-b border-border">
-        {/* Realistic High-Resolution Light Ocean Photography Background with Gentle Wave Swell Motion */}
+      <section className="relative isolate overflow-hidden bg-[#06182C] px-4 pt-4 pb-12 sm:pt-6 sm:pb-20 md:pt-8 md:pb-24 min-h-[580px] sm:min-h-[560px] md:min-h-[600px] flex flex-col justify-between border-b border-border">
+        {/* Realistic Edge-to-Edge Ocean Photography Background (No Sky Gap) with Gentle Wave Swell Motion */}
         <div className="absolute inset-0 -z-10 overflow-hidden">
           <img
-            src="/hero-light-ocean.jpg"
+            src="/hero-ocean-surface.jpg"
             alt="Real Coastal Sea Surface and Ocean Waters"
             className="w-full h-full object-cover object-center animate-ocean-swell will-change-transform scale-105"
           />
-          {/* Subtle Navy-to-Transparent Gradient Overlay for High Text Contrast while keeping the Light Blue Ocean Surface Bright */}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#06182C]/75 via-[#06182C]/35 to-[#06182C]/80" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#06182C]/20 via-transparent to-[#06182C]/60" />
+          {/* Professional Navy Readability Overlay: Preserves bright turquoise waves while ensuring high text contrast */}
+          <div className="absolute inset-0 bg-[#06182C]/45 mix-blend-multiply" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#06182C]/80 via-[#06182C]/40 to-[#06182C]/85" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#06182C]/30 via-transparent to-[#06182C]/65" />
         </div>
 
         {/* Top Command Bar inside Hero */}
