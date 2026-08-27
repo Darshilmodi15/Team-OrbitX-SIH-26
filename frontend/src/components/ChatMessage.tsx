@@ -17,6 +17,7 @@ import type { MessageItem } from '../context/AppContext';
 import { useAppContext } from '../context/AppContext';
 import EvidencePanel from './EvidencePanel';
 import { OrcaLogo } from './orca/Logo';
+import { MarkdownRenderer } from './orca/MarkdownRenderer';
 
 interface ChatMessageProps {
   message: MessageItem;
@@ -99,8 +100,8 @@ export default function ChatMessage({ message }: ChatMessageProps) {
         )}
 
         {/* Text Message Content */}
-        <div className="text-xs sm:text-sm leading-relaxed text-slate-800 whitespace-pre-wrap font-sans">
-          {message.text}
+        <div className="text-xs sm:text-sm leading-relaxed text-slate-800 break-words font-sans">
+          <MarkdownRenderer content={message.text} />
         </div>
 
         {/* Highlight Map Action if response targeted a specific zone */}

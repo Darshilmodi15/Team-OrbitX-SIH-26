@@ -28,6 +28,7 @@ import { useMarine } from "@/lib/orca/use-marine";
 import { answerQuestion } from "@/lib/orca/assistant";
 import { useSafetyLabel } from "@/components/orca/SafetyStatus";
 import { transcribeVoiceAudio, sendChatMessage } from "@/services/api";
+import { MarkdownRenderer } from "@/components/orca/MarkdownRenderer";
 import type { ChatMessage } from "@/lib/orca/types";
 import { cn } from "@/lib/utils";
 
@@ -620,13 +621,17 @@ export default function AssistantPage() {
 
                     <div
                       className={cn(
-                        "rounded-lg p-3 sm:p-3.5 text-xs sm:text-sm leading-relaxed whitespace-pre-line break-words shadow-xs",
+                        "rounded-lg p-3 sm:p-3.5 text-xs sm:text-sm leading-relaxed break-words shadow-xs",
                         m.role === "user"
-                          ? "bg-secondary text-secondary-foreground font-medium"
+                          ? "bg-secondary text-secondary-foreground font-medium whitespace-pre-wrap"
                           : "border border-border bg-card text-foreground",
                       )}
                     >
-                      {m.text}
+                      {m.role === "user" ? (
+                        m.text
+                      ) : (
+                        <MarkdownRenderer content={m.text} />
+                      )}
                     </div>
                   </div>
                 </div>
