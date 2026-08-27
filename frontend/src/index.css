@@ -241,3 +241,20 @@
   font-family: var(--font-sans);
   z-index: 0;
 }
+
+/* Subtle Natural Ocean Wave Swell Motion */
+@keyframes ocean-gentle-swell {
+  0% {
+    transform: scale(1.02) translate(0%, 0%);
+  }
+  50% {
+    transform: scale(1.05) translate(-0.8%, -0.5%);
+  }
+  100% {
+    transform: scale(1.02) translate(0%, 0%);
+  }
+}
+
+.animate-ocean-swell {
+  animation: ocean-gentle-swell 16s ease-in-out infinite alternate;
+}
