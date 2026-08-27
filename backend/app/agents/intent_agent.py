@@ -3,10 +3,11 @@ Intent classification and Entity Extraction agent for ORCA Marine AI.
 Classifies user operational marine queries and extracts locations, temporal hints,
 and simulation parameters.
 """
+from __future__ import annotations
 import json
 import os
 import re
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from dotenv import load_dotenv
 
 load_dotenv()

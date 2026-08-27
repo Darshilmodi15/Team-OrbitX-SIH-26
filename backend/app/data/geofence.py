@@ -1,4 +1,4 @@
-﻿import math
+import math
 from typing import List, Tuple
 from app.models.agent_models import GeofenceZoneModel
 

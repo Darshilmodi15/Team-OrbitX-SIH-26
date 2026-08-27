@@ -1,4 +1,4 @@
-﻿from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional
 from app.agents.risk_agent import assess_risk
 from app.models.agent_models import RiskEvidence, SimulationEvidence, WeatherEvidence
 

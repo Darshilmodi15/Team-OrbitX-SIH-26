@@ -1,4 +1,4 @@
-﻿import math
+import math
 from typing import Any, Dict, List, Tuple
 from app.data.geofence import evaluate_vessel_geofences, haversine_km
 from app.models.agent_models import GeofenceZoneModel

@@ -1,4 +1,4 @@
-﻿import unittest
+import unittest
 from app.agents.geospatial_agent import analyze_geospatial_context, calculate_bearing
 from app.data.geofence import evaluate_vessel_geofences, point_in_polygon
 

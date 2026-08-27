@@ -1,4 +1,4 @@
-﻿import unittest
+import unittest
 from app.agents.route_agent import plan_safe_marine_route
 from app.models.agent_models import WeatherEvidence
 

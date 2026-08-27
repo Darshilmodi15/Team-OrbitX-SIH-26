@@ -1,4 +1,4 @@
-﻿from typing import List, Optional
+from typing import List, Optional
 from app.data.geofence import evaluate_vessel_geofences, haversine_km, point_in_polygon
 from app.models.agent_models import RouteEvidence, RouteWaypoint, WeatherEvidence
 

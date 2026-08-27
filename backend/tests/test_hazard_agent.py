@@ -1,4 +1,4 @@
-﻿import unittest
+import unittest
 from app.agents.hazard_agent import detect_proactive_hazards
 from app.models.agent_models import WeatherEvidence
 

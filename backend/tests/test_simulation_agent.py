@@ -1,4 +1,4 @@
-﻿import unittest
+import unittest
 from app.agents.risk_agent import assess_risk
 from app.agents.simulation_agent import run_what_if_simulation
 from app.models.agent_models import WeatherEvidence
