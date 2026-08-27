@@ -374,9 +374,26 @@ function formatConditions(ctx: AssistantContext, lang: string): string {
   return parts.join(", ");
 }
 
+function detectQuestionLanguage(text: string, fallback: string): LangCode {
+  if (/[\u0A80-\u0AFF]/.test(text)) return "gu"; // Gujarati
+  if (/[\u0B80-\u0BFF]/.test(text)) return "ta"; // Tamil
+  if (/[\u0C00-\u0C7F]/.test(text)) return "te"; // Telugu
+  if (/[\u0D00-\u0D7F]/.test(text)) return "ml"; // Malayalam
+  if (/[\u0980-\u09FF]/.test(text)) return "bn"; // Bengali
+  if (/[\u0C80-\u0CFF]/.test(text)) return "kn"; // Kannada
+  if (/[\u0B00-\u0B7F]/.test(text)) return "or"; // Odia
+  if (/[\u0A00-\u0A7F]/.test(text)) return "pa"; // Punjabi
+  if (/[\u0900-\u097F]/.test(text)) {
+    if (/आहे|नाही|काय|करावे|सांगा|मासेमारी/i.test(text)) return "mr";
+    return "hi"; // Hindi / Devanagari
+  }
+  const l = fallback || "en";
+  return (COMPASS_DIRECTIONS[l] ? l : "en") as LangCode;
+}
+
 export function answerQuestion(question: string, ctx: AssistantContext): string {
-  const l = (ctx.lang as string) || "en";
-  const lang = (COMPASS_DIRECTIONS[l] ? l : "en") as LangCode;
+  const fallback = (ctx.lang as string) || "en";
+  const lang = detectQuestionLanguage(question, fallback);
   const q = question.trim();
 
   // Empty Question
