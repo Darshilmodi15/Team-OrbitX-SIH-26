@@ -14,7 +14,7 @@ const GLOSSARY_ITEMS = [
 ];
 
 export default function MapPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { location } = useSession();
 
   return (
@@ -46,11 +46,11 @@ export default function MapPage() {
               </li>
               <li className="flex items-center gap-2">
                 <span className="size-3 rounded-full border-2 border-dashed border-emerald-500 bg-emerald-500/20 shrink-0" aria-hidden />
-                <span>PFZ — {t("glossary.pfz.full")}</span>
+                <span>{lang === "en" ? "PFZ — " : ""}{t("glossary.pfz.full")}</span>
               </li>
               <li className="flex items-center gap-2">
                 <span className="h-0.5 w-4 border-t-2 border-dashed border-red-500 shrink-0" aria-hidden />
-                <span>IMBL — {t("glossary.imbl.full")}</span>
+                <span>{lang === "en" ? "IMBL — " : ""}{t("glossary.imbl.full")}</span>
               </li>
             </ul>
           </section>
@@ -61,7 +61,7 @@ export default function MapPage() {
               {GLOSSARY_ITEMS.map((g) => (
                 <div key={g.fullKey}>
                   <dt className="text-sm font-semibold text-foreground">
-                    {g.short ? `${g.short} — ` : ""}{t(g.fullKey)}
+                    {g.short && lang === "en" ? `${g.short} — ` : ""}{t(g.fullKey)}
                   </dt>
                   <dd className="mt-0.5 text-sm text-muted-foreground">{t(g.plainKey)}</dd>
                 </div>
