@@ -48,14 +48,28 @@ function write(key: string, value: unknown) {
   }
 }
 
+const DEFAULT_LOCATION: LocationInfo = {
+  coords: { lat: 21.1702, lon: 72.8311 },
+  label: "Surat",
+  admin: "Gujarat",
+  distanceToCoastKm: 16,
+  area: "coastal",
+  source: "manual",
+};
+
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<OrcaUser | null>(null);
-  const [location, setLocationState] = useState<LocationInfo | null>(null);
+  const [location, setLocationState] = useState<LocationInfo | null>(() => {
+    return read<LocationInfo>(LOC_KEY) ?? DEFAULT_LOCATION;
+  });
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     setUser(read<OrcaUser>(USER_KEY));
-    setLocationState(read<LocationInfo>(LOC_KEY));
+    const stored = read<LocationInfo>(LOC_KEY);
+    if (stored) {
+      setLocationState(stored);
+    }
     setReady(true);
   }, []);
 
