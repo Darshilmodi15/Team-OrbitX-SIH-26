@@ -440,17 +440,33 @@ def detect_romanized_indic(text: str) -> Optional[Tuple[str, str, str]]:
     if not tokens:
         return None
 
-    scores: Dict[str, int] = {lang: 0 for lang in ROMANIZED_INDIC_LEXICONS}
+    scores: Dict[str, float] = {lang: 0.0 for lang in ROMANIZED_INDIC_LEXICONS}
+
+    # Distinctive grammatical markers with higher weights
+    unique_markers = {
+        "gu": {"che", "chhe", "cho", "chho", "aaje", "kale", "shaku", "shakay", "machhimari", "vistar", "daryo", "dariya", "daryama", "vadholu", "vavazodu", "vatavaran", "ketlo", "ketli"},
+        "hi": {"hai", "hain", "kaisa", "kaisi", "kaise", "rahega", "rahegi", "rahenge", "machhli", "pakadne", "sakta", "sakte", "sakti", "hoon", "samundar", "lahar", "lahare"},
+        "mr": {"aahe", "aahet", "kasa", "kasi", "kase", "masemari", "samudrat", "vara", "lata", "kuthe", "sanga", "shakto", "shakte"},
+        "ta": {"irukku", "irukkum", "meenpidi", "meenpidikka", "kaatru", "alai", "alaigal", "puyal", "enga", "sollunga", "pogalama"},
+        "te": {"unnadi", "undi", "chepala", "chepalu", "alalu", "thufanu", "ekkada", "cheppandi", "vellavacha"},
+        "ml": {"aano", "undo", "meenpidutham", "thiramala", "chuzhalikkaattu", "evide", "parayamo", "pokamo"},
+        "bn": {"aache", "dhorar", "shomudro", "shomudre", "dheu", "jhor", "kothay", "bolun", "jabe"},
+        "kn": {"idhe", "ide", "meenugarike", "samudradalli", "alegalu", "birusali", "elli", "heli", "hogabahuda"},
+        "or": {"achhi", "dhariba", "samudrare", "pabana", "bipajjanka", "kouthi", "kuhantu"},
+        "pa": {"hovega", "machhi", "fadna", "lehran", "toofan", "kithe", "dasso", "sakda", "sakde"},
+    }
 
     for token in tokens:
         for lang, data in ROMANIZED_INDIC_LEXICONS.items():
             if token in data["words"]:
-                scores[lang] += 1
+                # Award 2.0 points for unique grammar markers, 1.0 for general vocab
+                weight = 2.0 if (lang in unique_markers and token in unique_markers[lang]) else 1.0
+                scores[lang] += weight
 
     best_lang, best_score = max(scores.items(), key=lambda x: x[1])
 
-    # Threshold: at least 1 distinct Indic grammar/vocabulary marker in short queries, or 2 in longer queries
-    required_score = 1 if len(tokens) <= 5 else 2
+    # Threshold: at least 1 distinct Indic grammar/vocabulary marker in short queries, or 1.5 in longer queries
+    required_score = 1.0 if len(tokens) <= 5 else 1.5
     if best_score >= required_score:
         data = ROMANIZED_INDIC_LEXICONS[best_lang]
         return best_lang, data["script"], data["name"]
@@ -514,11 +530,11 @@ class BhashiniService:
         session_id: Optional[str] = None,
     ) -> LanguageIdentificationResult:
         """
-        Identifies the language and script of the input text.
+        Identifies the language and script of the input text using a strict layered approach:
         
         Priority:
         1. Sarvam AI Language Identification (/text-lid) if configured
-        2. Fast Deterministic Unicode Script Character Frequency Analyzer (100% accurate for Indian scripts)
+        2. Fast Deterministic Unicode Script Character Frequency Analyzer (100% accurate for native Indian scripts)
         3. Romanized Indic & Code-Mixing Pattern Recognizer (for Hindi/Gujarati/Marathi/etc. typed in Latin script)
         4. Multi-turn session language context (if session_id provided)
         5. Default to 'en-IN' / 'en' (English)
@@ -536,7 +552,7 @@ class BhashiniService:
 
         cleaned_text = text.strip()
 
-        # 1. Primary: Try Sarvam Language Identification API
+        # 1. Primary: Try Sarvam Language Identification API if configured
         if self.sarvam_service and self.sarvam_service.is_configured:
             sarvam_res = self.sarvam_service.identify_language(cleaned_text)
             if sarvam_res is not None:
@@ -597,7 +613,7 @@ class BhashiniService:
                 language_name=lang_name,
             )
 
-        # 2.5. Romanized Indic & Code-Mixing Detection (Latin script input for Indian languages)
+        # 3. Romanized Indic & Code-Mixing Detection (Latin script input for Indian languages)
         romanized_res = detect_romanized_indic(cleaned_text)
         if romanized_res:
             rom_lang, rom_script, rom_name = romanized_res
@@ -614,7 +630,7 @@ class BhashiniService:
                 language_name=rom_name,
             )
 
-        # 3. Session Language Store (for Latin/ASCII queries in existing regional sessions)
+        # 4. Session Language Store (for Latin/ASCII queries in existing regional sessions)
         if session_id and session_id in self._session_languages:
             session_lang = self._session_languages[session_id]
             full_code = SHORT_CODE_TO_SARVAM.get(session_lang, f"{session_lang}-IN")
@@ -628,7 +644,7 @@ class BhashiniService:
                 language_name=SUPPORTED_LANGUAGES.get(session_lang, "English"),
             )
 
-        # 4. Default to English (en-IN / en)
+        # 5. Default to English (en-IN / en)
         return LanguageIdentificationResult(
             language_code="en-IN",
             script_code="Latn",
@@ -820,75 +836,74 @@ class BhashiniService:
         if target_lang == "en":
             q = text.lower().strip()
 
-            # 1. Wind speed & direction
+            # 1. Safety tomorrow / future sailing / fishing clearance
+            tomorrow_words = ["કાલે", "આવતીકાલે", "આવતીકાલ", "કલ", "कल", "उद्या", "நாளை", "రేపు", "നാളെ", "কাল", "kale", "kal", "udya", "naalai", "repu", "naale", "tomorrow", "subah", "savaar", "morning"]
+            action_words = ["સુરક્ષિત", "સલામત", "જાઉં", "જવું", "જવાય", "જઈ", "માછીમારી", "सुरक्षित", "जाना", "जा", "सकता", "मछली", "पकड़ने", "safe", "fishing", "machli", "machhimari", "karva", "karvu", "shaku", "shakay", "weather", "kaisa", "kevu"]
+            if any(k in q for k in tomorrow_words) and any(s in q for s in action_words):
+                return "Is it safe to venture into the sea tomorrow morning?"
+
+            # 2. Wind speed, direction & breeze
             if any(k in q for k in [
                 "પવન", "હવા", "વારા", "காற்று", "గాలి", "കാറ്റ്", "বাতাস", "pavan", "hawa",
-                "vara", "kaatru", "gaali", "kaattu", "wind speed", "breeze"
+                "vara", "kaatru", "gaali", "kaattu", "wind speed", "wind direction", "breeze", "wind"
             ]):
-                return "What is the wind speed and direction near my location?"
+                return "What is the wind speed, wave height, and marine weather condition near my location?"
 
-            # 2. Wave height & swell period
+            # 3. Wave height & swell period
             if any(k in q for k in [
                 "મોજાં", "મોજા", "મોજુ", "તરંગ", "लहरें", "लहर", "लाटा", "लाट", "அலை", "అలలు",
-                "തിരമാല", "ঢেউ", "moja", "moju", "leher", "leherein", "lata", "alai", "alalu", "wave height", "swell"
+                "തിരമാല", "ঢেউ", "moja", "moju", "leher", "leherein", "lata", "alai", "alalu", "wave height", "swell", "wave", "waves"
             ]):
                 return "What is the wave height and swell condition near my location?"
 
-            # 3. Tide timings & forecast
+            # 4. Sea Surface Temperature (SST) & Thermal Fronts
+            if any(k in q for k in [
+                "sst", "sea surface temperature", "sea temperature", "water temperature", "thermal front",
+                "તાપમાન", "तापमान", "குளோரோபில்", "chlorophyll", "chlorophyll-a"
+            ]):
+                return "What is the Sea Surface Temperature (SST) and chlorophyll concentration near my location?"
+
+            # 5. Distance to Coast / Maritime Boundary / EEZ
+            if any(k in q for k in [
+                "સરહદ", "સીમા", "તટ", "સીમારેખા", "सीमा", "तट", "எல்லை", "తీరం", "border", "boundary",
+                "imbl", "eez", "coast", "territorial", "sarhad", "seema", "kinaro", "tat", "how far", "distance to"
+            ]):
+                return "How far am I from the EEZ boundary and am I inside Indian territorial waters?"
+
+            # 6. Tide timings & forecast
             if any(k in q for k in [
                 "ભરતી", "ઓટ", "જ્વાર", "ज्वार", "भाटा", "भरती", "ओहोटी", "வேலியேற்றம்", "వరద",
                 "വേലിയേറ്റം", "জোয়ার", "ভাটা", "bharti", "jwar", "tide", "high tide", "low tide"
             ]):
                 return "What are the tide, weather, and sea conditions near my fishing location?"
 
-            # 4. Proactive Hazard, Lightning & Cyclone Alerts
+            # 7. Proactive Hazard, Lightning & Cyclone Alerts
             if any(k in q for k in [
-                "વાવાઝોડું", "વીજળી", "તોફાન", "तूफान", "बिजली", "चक्रवात", "वादळ", "पुயல்", "மின்னல்",
+                "વાવાઝોડું", "વીજળી", "તોફાન", "तूफान", "बिजली", "चक्रवात", "वादळ", "புயல்", "மின்னல்",
                 "తుఫాను", "മിന്നൽ", "ঝড়", "vavazodu", "vijli", "toofan", "bijli", "cyclone", "wadal", "alert", "warning"
             ]):
                 return "Are there any lightning or cyclone alerts in my area?"
 
-            # 5. Chlorophyll concentration & SST thermal fronts
-            if any(k in q for k in [
-                "ક્લોરોફિલ", "તાપમાન", "કલોરોફિલ", "क्लोरोफिल", "तापमान", "குளோரோபில்", "chlorophyll",
-                "sst", "thermal front", "sea surface temperature"
-            ]):
-                return "Which regions show high chlorophyll concentration and favourable sea surface temperature?"
-
-            # 6. Safest Navigational Route
+            # 8. Safest Navigational Route
             if any(k in q for k in [
                 "રસ્તો", "માર્ગ", "मार्ग", "दिशा", "வழித்தடம்", "route", "rasto", "marga", "safest route",
                 "navigation path", "corridor"
             ]):
                 return "What is the safest route for a fishing vessel considering weather and sea-state conditions?"
 
-            # 7. Fish Productivity Decline Ecological Analysis
+            # 9. Fish Productivity Decline Ecological Analysis
             if any(k in q for k in [
                 "ઘટાડો", "કમી", "ગિરાવટ", "घट", "गिरावट", "कम", "குறைவு", "decline", "ghatado", "kami",
                 "ghat", "productivity decline", "fish declined"
             ]):
                 return "Why has fish productivity declined in a particular coastal region?"
 
-            # 8. Zones to Avoid & Geofencing Avoidance
+            # 10. Zones to Avoid & Geofencing Avoidance
             if any(k in q for k in [
                 "ટાળવા", "બચવું", "જોખમી ઝોન", "बचना", "निषिद्ध", "खतरनाक", "தவிர்க்க", "avoid",
-                "avoided", "prohibited zone", "talva", "bachna"
+                "avoided", "prohibited zone", "talva", "bachna", "zones to avoid"
             ]):
                 return "Which fishing zones should be avoided due to hazardous marine conditions or geofencing restrictions?"
-
-            # 9. Safety tomorrow morning / future
-            if any(k in q for k in [
-                "કાલે", "આવતીકાલે", "આવતીકાલ", "કલ", "कल", "उद्या", "நாளை", "రేపు", "നാളെ", "কাল",
-                "kale", "kal", "udya", "naalai", "repu", "naale", "tomorrow"
-            ]) and any(s in q for s in ["સુરક્ષિત", "સલામત", "જાઉં", "જવું", "सुरक्षित", "जाना", "जा", "safe", "fishing", "machli", "machhimari"]):
-                return "Is it safe to venture into the sea tomorrow morning?"
-
-            # 10. Distance to Coast / Territorial Waters / EEZ
-            if any(k in q for k in [
-                "સરહદ", "સીમા", "તટ", "સીમારેખા", "सीमा", "तट", "எல்லை", "తీరం", "border", "boundary",
-                "imbl", "eez", "coast", "territorial", "sarhad", "seema", "kinaro", "tat"
-            ]):
-                return "How far am I from the coast and am I inside Indian territorial waters?"
 
             # 11. Emergency Breakdown / Distress / SOS
             if any(k in q for k in [
@@ -904,20 +919,20 @@ class BhashiniService:
             ]):
                 return "Which government schemes and fisheries subsidies are available for coastal fishermen?"
 
-            # 13. General Safety Clearance
+            # 13. Nearest Potential Fishing Zone (PFZ)
+            if any(k in q for k in [
+                "પીએફઝેડ", "મત્સ્ય", "માછીમારી", "ઝોન", "મછલી", "मछली", "मत्स्य", "मासेमारी", "மீன்பிடி",
+                "చేపల", "മത്സ്യബന്ധന", "মাছ", "pfz", "machhli", "machhimari", "masemari", "meen",
+                "fishing zone", "catch fish", "nearest", "kya che", "kahan hai", "closest"
+            ]):
+                return "Where is the nearest Potential Fishing Zone (PFZ) today?"
+
+            # 14. General Safety Clearance
             if any(k in q for k in [
                 "સુરક્ષિત", "સલામત", "સલામતી", "જવાય", "જવું", "सुरक्षित", "सुरक्षा", "जाना", "जाऊं",
                 "safe", "safety", "surakshit", "salamat", "sailing", "go to sea"
             ]):
                 return "Is it safe to go to sea for fishing near my location today?"
-
-            # 14. Nearest Potential Fishing Zone (PFZ)
-            if any(k in q for k in [
-                "પીએફઝેડ", "મત્સ્ય", "માછીમારી", "ઝોન", "મછલી", "मछली", "मत्स्य", "मासेमारी", "மீன்பிடி",
-                "చేపల", "മത്സ്യബന്ധന", "মাছ", "pfz", "machhli", "machhimari", "masemari", "meen",
-                "fishing zone", "catch fish"
-            ]):
-                return "Where is the nearest Potential Fishing Zone (PFZ) today?"
 
             return text
 
@@ -935,14 +950,25 @@ class BhashiniService:
         
         Pipeline:
         1. Identity check (source == target)
-        2. Live Bhashini NMT (MeitY ULCA / Dhruva API)
-        3. Gemini NMT Fallback
-        4. Maritime Rule-based Domain Fallback
+        2. Sarvam AI Mayura v1 Translation (if SARVAM_API_KEY configured)
+        3. Live Bhashini NMT (MeitY ULCA / Dhruva API)
+        4. Gemini NMT Fallback
+        5. Maritime Rule-based Domain Fallback
         """
         if not text or not text.strip() or source_lang == target_lang:
             return text
 
-        # 1. Try Live Bhashini NMT API if credentials are present
+        # 1. Try Sarvam AI Mayura v1 Translation if configured
+        try:
+            from app.services.language import language_service
+            if language_service and language_service.is_configured:
+                sarvam_trans = language_service.translate(text, source_lang, target_lang)
+                if sarvam_trans and sarvam_trans.strip() and sarvam_trans != text:
+                    return sarvam_trans.strip()
+        except Exception as s_err:
+            logger.debug(f"Sarvam translation attempt failed: {s_err}")
+
+        # 2. Try Live Bhashini NMT API if credentials are present
         if self.is_configured:
             config = self._get_pipeline_config(source_lang, target_lang)
             if config:
@@ -950,12 +976,12 @@ class BhashiniService:
                 if result:
                     return result
 
-        # 2. Try Gemini NMT Fallback
+        # 3. Try Gemini NMT Fallback
         gemini_result = self._translate_with_gemini(text, source_lang, target_lang)
         if gemini_result:
             return gemini_result
 
-        # 3. Fallback to Maritime domain translation
+        # 4. Fallback to Maritime domain translation
         return self._translate_with_dictionary(text, source_lang, target_lang)
 
 

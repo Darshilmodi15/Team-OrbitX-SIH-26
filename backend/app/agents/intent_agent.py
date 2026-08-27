@@ -210,9 +210,9 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
 
     # 5. Zone Avoidance (Hazards / Geofencing Avoidance)
     if any(k in q_lower for k in [
-        "avoided", "should be avoided", "zones to avoid", "avoid fishing", "avoid due to",
-        "hazardous marine conditions or geofencing", "geofencing restrictions", "prohibited zone",
-        "where not to fish", "dangerous zones"
+        "avoided", "should be avoided", "zones to avoid", "zone to avoid", "which zone", "which zones", "where not to fish",
+        "avoid fishing", "avoid due to", "hazardous marine conditions or geofencing", "geofencing restrictions",
+        "prohibited zone", "dangerous zones", "zones should i avoid", "zone should i avoid"
     ]):
         return {
             "intent": "zone_avoidance",
@@ -223,7 +223,8 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
     if any(k in q_lower for k in [
         "chlorophyll", "chlorophyll concentration", "sea surface temperature", "favourable sea surface",
         "favorable sea surface", "favorable sst", "favourable sst", "thermal front", "thermal fronts",
-        "ocean color", "chlorophyll-a", "sst and chlorophyll", "chlorophyll and sst"
+        "ocean color", "chlorophyll-a", "sst and chlorophyll", "chlorophyll and sst", "sst near", "sst",
+        "water temperature", "sea temperature"
     ]):
         return {
             "intent": "chlorophyll_sst_analytics",
@@ -240,7 +241,7 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
             "intent": "combined_pfz_safety",
             **entities,
         }
-    if has_pfz and ("safe" in q_lower or "safety" in q_lower or "tomorrow" in q_lower or "suitable" in q_lower or "kale" in q_lower or "kal" in q_lower):
+    if has_pfz and ("safe" in q_lower or "safety" in q_lower or "tomorrow" in q_lower or "suitable" in q_lower or "kale" in q_lower or "kal" in q_lower or "aaje" in q_lower):
         return {
             "intent": "combined_pfz_safety",
             **entities,
@@ -268,7 +269,8 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
     if any(k in q_lower for k in [
         "eez", "exclusive economic zone", "maritime boundary", "territorial water",
         "territorial waters", "international waters", "sarhad", "simarekha", "coast",
-        "distance to coast", "how far from coast", "inside indian", "inside territorial"
+        "distance to coast", "how far from coast", "how far am i", "inside indian", "inside territorial",
+        "boundary", "border", "far from the eez"
     ]):
         return {
             "intent": "marine_boundary",
@@ -276,7 +278,7 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
         }
 
     # 11. Geofence Check
-    if any(k in q_lower for k in ["geofence", "imbl", "border", "boundary", "restricted waters", "mpa", "protected area"]):
+    if any(k in q_lower for k in ["geofence", "imbl", "border", "restricted waters", "mpa", "protected area"]):
         return {
             "intent": "geofence_check",
             **entities,
@@ -287,7 +289,8 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
         "safe", "safety", "risk", "danger", "can i sail", "can i fish", "ok to go", "advisory",
         "bahar nikali", "nikali shakay", "nikli shakay", "dariya ma javay", "javay", "ja sakte",
         "kya kal", "baher jata yeil", "pogalama", "vellavacha", "pokamo", "jawa jabe", "hogabahuda",
-        "jaipariba", "safe chhe", "safe che", "safe ahe", "surakshit", "salamati", "suraksha"
+        "jaipariba", "safe chhe", "safe che", "safe ahe", "surakshit", "salamati", "suraksha",
+        "can i go", "is it safe", "safe to go", "safe tomorrow"
     ]):
         return {
             "intent": "safety_check",
@@ -297,7 +300,7 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
     # 13. Nearest PFZ
     if any(k in q_lower for k in [
         "pfz", "fishing zone", "fish zone", "nearest fish", "catch fish", "tuna", "mackerel", "pomfret",
-        "machhimari", "machhli", "meen", "chepalu", "matsyam", "machha"
+        "machhimari", "machhli", "meen", "chepalu", "matsyam", "machha", "closest to me", "closest"
     ]):
         return {
             "intent": "nearest_pfz",
@@ -308,7 +311,7 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
     if any(k in q_lower for k in [
         "weather", "wind", "winds", "wave", "waves", "wave height", "wind speed", "wind direction",
         "forecast", "temp", "temperature", "rain", "storm", "sea condition", "swell", "sea state",
-        "tide", "tides", "high tide", "low tide", "tidal",
+        "tide", "tides", "high tide", "low tide", "tidal", "what are the waves",
         "havaman", "mausam", "hawaaman", "panipaga", "abohawa", "pavan", "hawa", "vara", "kaatru",
         "gali", "kaattu", "moja", "moju", "lat", "lata", "alai", "alalu", "thiramala", "dheu"
     ]):

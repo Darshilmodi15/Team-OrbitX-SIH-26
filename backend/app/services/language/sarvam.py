@@ -147,6 +147,40 @@ class SarvamLanguageProvider(LanguageProvider):
         if not self.is_configured:
             return self._fallback_translate(text, src_iso, tgt_iso)
 
+        # Handle chunking if text exceeds 750 characters (Sarvam Mayura v1 has 1000 char per-request limit)
+        if len(text) > 750:
+            paragraphs = text.split("\n\n")
+            translated_paragraphs = []
+            current_chunk = []
+            current_len = 0
+
+            for p in paragraphs:
+                if len(p) > 750:
+                    sub_lines = p.split("\n")
+                    for line in sub_lines:
+                        if current_len + len(line) > 650 and current_chunk:
+                            chunk_text = "\n".join(current_chunk)
+                            translated_paragraphs.append(self.translate(chunk_text, source_lang, target_lang))
+                            current_chunk = [line]
+                            current_len = len(line)
+                        else:
+                            current_chunk.append(line)
+                            current_len += len(line) + 1
+                elif current_len + len(p) > 650 and current_chunk:
+                    chunk_text = "\n\n".join(current_chunk)
+                    translated_paragraphs.append(self.translate(chunk_text, source_lang, target_lang))
+                    current_chunk = [p]
+                    current_len = len(p)
+                else:
+                    current_chunk.append(p)
+                    current_len += len(p) + 2
+
+            if current_chunk:
+                chunk_text = "\n\n".join(current_chunk)
+                translated_paragraphs.append(self.translate(chunk_text, source_lang, target_lang))
+
+            return "\n\n".join(translated_paragraphs)
+
         url = f"{self.base_url}/translate"
         payload = {
             "input": text,
@@ -219,9 +253,9 @@ class SarvamLanguageProvider(LanguageProvider):
         Endpoint: POST /speech-to-text (multipart/form-data)
         """
         if not self.is_configured:
-            logger.info("Sarvam STT requested without active API key. Returning synthetic transcript.")
+            logger.info("Sarvam STT requested without active API key.")
             return {
-                "transcript": "Is it safe to go fishing near Mumbai port today?",
+                "transcript": "",
                 "language_code": to_sarvam_code(language_code or "en"),
                 "detected_iso": language_code or "en",
                 "source": "sarvam_mock_stt",
@@ -266,7 +300,7 @@ class SarvamLanguageProvider(LanguageProvider):
             logger.warning(f"Sarvam STT request failed: {err}")
 
         return {
-            "transcript": "Is it safe to sail today?",
+            "transcript": "",
             "language_code": to_sarvam_code(language_code or "en"),
             "detected_iso": language_code or "en",
             "source": "sarvam_fallback_stt",

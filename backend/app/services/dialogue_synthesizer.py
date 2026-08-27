@@ -250,7 +250,7 @@ Generate the complete, natural response in language '{target_lang}':"""
             )
 
         # 1. Definitions (PFZ, IMBL, EEZ, SST, Swell, GMDSS)
-        if any(k in q_lower for k in ["what is pfz", "what does pfz", "explain pfz", "meaning of pfz"]):
+        if any(k in q_lower for k in ["what is pfz", "what does pfz", "explain pfz", "meaning of pfz", "pfz shu che", "pfz kya hai"]):
             return (
                 f"**Potential Fishing Zones (PFZ)** are ocean areas identified through satellite earth observation (ISRO Ocean Colour & Thermal sensors) where fish concentrate in large numbers.\n\n"
                 f"• **Why it happens**: Satellites detect rich **chlorophyll-a blooms** (phytoplankton) and **Sea Surface Temperature (SST) thermal fronts** where ocean currents bring nutrients to the surface.\n"
@@ -258,7 +258,7 @@ Generate the complete, natural response in language '{target_lang}':"""
                 f"Near {loc}, you can view real-time PFZ coordinates directly on the ORCA Tactical Map."
             )
 
-        if any(k in q_lower for k in ["what is imbl", "what is maritime boundary", "explain imbl", "eez meaning"]):
+        if any(k in q_lower for k in ["what is imbl", "what is maritime boundary", "explain imbl", "eez meaning", "imbl shu che"]):
             return (
                 f"**International Maritime Boundary Line (IMBL)** marks the official international sea border between India and neighboring maritime nations (such as Pakistan and Sri Lanka).\n\n"
                 f"• **Exclusive Economic Zone (EEZ)**: Indian vessels are permitted to fish within India's 200-nautical-mile EEZ.\n"
@@ -267,7 +267,7 @@ Generate the complete, natural response in language '{target_lang}':"""
             )
 
         # 2. Government Schemes & Subsidies
-        if any(k in q_lower for k in ["scheme", "schemes", "subsidy", "subsidies", "pmmsy", "kcc", "government help", "financial assistance", "fisheries grant"]):
+        if detected_intent == "government_schemes" or any(k in q_lower for k in ["scheme", "schemes", "subsidy", "subsidies", "pmmsy", "kcc", "government help", "financial assistance", "fisheries grant", "yojana", "sahay"]):
             return (
                 f"**Government Schemes & Financial Assistance for Fishermen**:\n\n"
                 f"1. **PMMSY (Pradhan Mantri Matsya Sampada Yojana)**:\n"
@@ -281,7 +281,7 @@ Generate the complete, natural response in language '{target_lang}':"""
             )
 
         # 3. Emergency Breakdown / Distress / SOS
-        if any(k in q_lower for k in ["engine", "breakdown", "broken down", "taking water", "water in boat", "leak", "sinking", "lost at sea", "emergency help", "emergency protocol", "boat emergency", "sos", "mayday", "pan-pan", "distress", "capsiz", "shipwreck", "drop anchor"]):
+        if detected_intent == "emergency_sos" or any(k in q_lower for k in ["engine", "breakdown", "broken down", "taking water", "water in boat", "leak", "sinking", "lost at sea", "emergency help", "emergency protocol", "boat emergency", "sos", "mayday", "pan-pan", "distress", "capsiz", "shipwreck", "drop anchor", "madad", "kharab"]):
             return (
                 f"🚨 **IMMEDIATE MARITIME DISTRESS & BREAKDOWN PROTOCOL**\n\n"
                 f"If your vessel experiences an engine failure or distress near {loc}, take these critical actions immediately:\n\n"
@@ -296,7 +296,7 @@ Generate the complete, natural response in language '{target_lang}':"""
             )
 
         # 4. Boundary, Coast Distance & Territorial Waters
-        if any(k in q_lower for k in ["how far from coast", "distance to coast", "inside territorial", "inside indian waters", "inside eez", "am i inside"]):
+        if detected_intent in ("marine_boundary", "geofence_check") or any(k in q_lower for k in ["how far from coast", "distance to coast", "inside territorial", "inside indian waters", "inside eez", "am i inside", "eez boundary", "boundary", "border", "imbl"]):
             is_inside = boundary.inside_eez if boundary else True
             dist_coast = boundary.distance_to_boundary_km if boundary else 18.5
             return (
@@ -321,130 +321,8 @@ Generate the complete, natural response in language '{target_lang}':"""
                     f"• **Recommendation**: Remain within sheltered nearshore waters or postpone departure until sea state subsides."
                 )
 
-        # 6. Combined Wave & Wind / MetOcean Query
-        if any(k in q_lower for k in ["wave and wind", "wind and wave", "wave height, wind speed", "weather forecast and wave height"]):
-            return (
-                f"**Marine Meteorological & Sea State Telemetry ({loc})**:\n\n"
-                f"• **Significant Wave Height**: **{wave_h:.2f} m**{wave_per}\n"
-                f"• **Wind Speed**: **{wind_spd:.1f} km/h** ({wind_spd/3.6:.1f} m/s)\n"
-                f"• **Wind Direction**: Blowing from **{wind_dir} ({wind_deg:.0f}°)**\n"
-                f"• **Forecast Time**: Current live observation cycle ({loc})\n"
-                f"• **Sea Surface Temperature**: **{sst_c:.1f}°C**\n"
-                f"• **Visibility**: **{vis_km:.0f} km**\n\n"
-                f"Surface conditions are within manageable navigation limits for motorized craft. Maintain VHF watch."
-            )
-
-        # 7. Wind Inquiry
-        if any(k in q_lower for k in ["wind", "breeze", "speed of wind", "how strong is the wind", "wind direction"]):
-            wind_assessment = "moderate and manageable" if wind_spd < 20 else ("fresh and breezy" if wind_spd < 30 else "strong and hazardous")
-            return (
-                f"**Current Wind Conditions near {loc}**:\n\n"
-                f"• **Wind Speed**: **{wind_spd:.1f} km/h** ({wind_spd/3.6:.1f} m/s)\n"
-                f"• **Wind Direction**: Blowing from **{wind_dir} ({wind_deg:.0f}°)**\n"
-                f"• **Assessment**: The current wind speed is **{wind_assessment}**.\n\n"
-                f"Surface waves are currently around **{wave_h:.2f} m**. Standard navigation precautions apply."
-            )
-
-        # 8. Wave / Swell Inquiry
-        if any(k in q_lower for k in ["wave", "waves", "swell", "how high are the waves", "sea height", "wave period"]):
-            return (
-                f"**Current Wave & Sea State near {loc}**:\n\n"
-                f"• **Significant Wave Height**: **{wave_h:.2f} m**{wave_per}\n"
-                f"• **Sea Surface Temperature**: **{sst_c:.1f}°C**\n"
-                f"• **Visibility**: **{vis_km:.0f} km**\n"
-                f"• **Tidal Forecast**: {tide.tidal_phase if tide else 'Normal tidal cycle'} with High Tide around {tide.high_tide_time if tide else '04:45 AM'}.\n\n"
-                f"The wave height is within acceptable parameters for motorized fishing vessels. Avoid navigating too close to shallow coastal breaker lines."
-            )
-
-        # 9. Tide, Weather & Sea Conditions Inquiry
-        if any(k in q_lower for k in ["tide", "tides", "high tide", "low tide", "tide timing"]):
-            t_high = tide.high_tide_time if tide else "04:45 AM"
-            t_high_h = tide.high_tide_height_m if tide else 3.85
-            t_low = tide.low_tide_time if tide else "11:15 AM"
-            t_low_h = tide.low_tide_height_m if tide else 1.12
-            t_phase = tide.tidal_phase if tide else "Semi-Diurnal Spring Tide"
-            return (
-                f"**Tide, Weather & Coastal Ocean Conditions near {loc}**:\n\n"
-                f"• **Tidal Regime**: **{t_phase}**\n"
-                f"• **High Tide**: **{t_high}** (Water Height: **+{t_high_h:.2f} m**)\n"
-                f"• **Low Tide**: **{t_low}** (Water Height: **+{t_low_h:.2f} m**)\n"
-                f"• **Current Wave & Wind**: Waves **{wave_h:.2f} m**, Wind **{wind_spd:.1f} km/h** from **{wind_dir}**\n"
-                f"• **Sea Surface Temperature**: **{sst_c:.1f}°C**\n\n"
-                f"**Harbor Advice**: High tide window is optimal for vessels with deeper drafts to navigate harbor creek channels and shallow sandbars."
-            )
-
-        # 10. Sea Surface Temperature (SST) Inquiry
-        if any(k in q_lower for k in ["sea surface temperature", "sea temperature", "water temperature", "sst", "ocean temperature"]):
-            return (
-                f"**Sea Surface Temperature (SST) Telemetry for {loc}**:\n\n"
-                f"• **Current SST**: **{sst_c:.1f}°C**\n"
-                f"• **Thermal Front Status**: Favorable gradient supporting pelagic fish concentration\n"
-                f"• **Surface Conditions**: Wave height **{wave_h:.2f} m**, Wind **{wind_spd:.1f} km/h** from **{wind_dir}**\n\n"
-                f"Thermal stability around {sst_c:.1f}°C indicates active feeding grounds along nearby continental shelf breaks."
-            )
-
-        # 10b. Wind Direction Inquiry
-        if any(k in q_lower for k in ["wind direction", "which direction is the wind", "direction of wind"]):
-            return (
-                f"**Wind Direction & Surface Flow for {loc}**:\n\n"
-                f"• **Wind Direction**: Blowing from **{wind_dir} ({wind_deg:.0f}°)**\n"
-                f"• **Wind Speed**: **{wind_spd:.1f} km/h** ({wind_spd/3.6:.1f} m/s)\n"
-                f"• **Sea Impact**: Generates surface chop of approximately **{wave_h:.2f} m**\n\n"
-                f"Vessels returning to harbor should account for {wind_dir} drift when approaching harbor entrance channels."
-            )
-
-        # 10c. Search and Rescue (SAR) / Emergency Contacts Inquiry
-        if any(k in q_lower for k in ["sar contact", "search and rescue", "coast guard contact", "emergency helpline", "who to call in emergency"]):
-            return (
-                f"🚨 **Official Maritime Search & Rescue (SAR) Contacts ({loc})**:\n\n"
-                f"• **Indian Coast Guard MRCC**: **1554** (Toll-Free 24/7)\n"
-                f"• **Coastal Security Police**: **1093**\n"
-                f"• **National Disaster Emergency**: **112**\n"
-                f"• **VHF Distress Channel**: **Channel 16 (156.800 MHz)**\n\n"
-                f"In case of distress at sea, immediately broadcast *'MAYDAY'* or *'PAN-PAN'* on VHF Ch 16 and activate your DAT-SG transponder."
-            )
-
-        # 10d. Distance to Nearest PFZ Inquiry
-        if any(k in q_lower for k in ["how far from the nearest pfz", "distance to nearest pfz", "how far to pfz", "how far is the pfz", "which fishing zone is closest"]):
-            if pfz:
-                nearest = pfz[0]
-                return (
-                    f"**Nearest Potential Fishing Zone (PFZ) from {loc}**:\n\n"
-                    f"• **Zone Name**: **{nearest.name}**\n"
-                    f"• **Distance**: **{nearest.distance_km:.1f} km** (~{(nearest.distance_km/1.852):.1f} Nautical Miles)\n"
-                    f"• **Bearing / Heading**: **{int(nearest.bearing_deg or 0)}° ({get_compass_cardinal(nearest.bearing_deg)})**\n"
-                    f"• **Estimated Transit Time**: ~{(nearest.distance_km / 14.8):.1f} hours at 8 knots cruising speed\n"
-                    f"• **Target Species**: *{', '.join(nearest.species)}*\n\n"
-                    f"Current sea state along the corridor is **{risk_lvl.upper()}** (Waves: {wave_h:.2f} m). Track waypoints on the ORCA Tactical Map."
-                )
-            else:
-                return f"There are currently no active PFZ zones detected within 50 km of {loc}. Check adjacent coastal sectors on the ORCA Map."
-
-        # 10e. Offshore Movement Simulation / What-If Distance
-        if any(k in q_lower for k in ["move 20 km offshore", "20 km offshore", "go 20 km", "further offshore", "venture 20 km"]):
-            sim_wave = min(wave_h + 0.6, 4.0)
-            sim_wind = wind_spd + 8.0
-            return (
-                f"**Offshore Projection Advisory (20 km Offshore from {loc})**:\n\n"
-                f"• **Expected Wave Height**: **{sim_wave:.2f} m** (+0.6 m increase due to open-ocean fetch)\n"
-                f"• **Expected Wind Speed**: **{sim_wind:.1f} km/h** from **{wind_dir}**\n"
-                f"• **Safety Assessment**: **{'CAUTION' if sim_wave >= 1.6 else 'SAFE'}**\n\n"
-                f"Moving 20 km offshore places your vessel into deeper open waters with stronger swell energy. Ensure all crew wear lifejackets and maintain VHF Ch 16 radio watch."
-            )
-
-        # 10f. Last 24 Hours Weather & Trend Inquiry
-        if any(k in q_lower for k in ["last 24 hours", "during the last 24", "past 24 hours", "weather changed"]):
-            return (
-                f"**24-Hour Oceanographic Trend & Weather Telemetry for {loc}**:\n\n"
-                f"• **Wave Trend**: Waves have averaged **{wave_h:.2f} m** (stable sea state)\n"
-                f"• **Wind Trend**: Prevailing winds of **{wind_spd:.1f} km/h** blowing steadily from **{wind_dir}**\n"
-                f"• **SST Stability**: Steady at **{sst_c:.1f}°C**\n"
-                f"• **Barometric / Storm Activity**: No severe convective squalls or cyclonic depressions recorded in past 24 hours\n\n"
-                f"Conditions have remained consistent with no sudden squall disruptions."
-            )
-
-        # 11. Chlorophyll-a & SST Satellite Analytics Inquiry
-        if any(k in q_lower for k in ["chlorophyll", "thermal front", "ocean color", "favourable sst"]):
+        # 6. Chlorophyll-a & SST Satellite Analytics Inquiry
+        if detected_intent == "chlorophyll_sst_analytics" or any(k in q_lower for k in ["chlorophyll", "thermal front", "ocean color", "favourable sst", "sst", "sea surface temperature", "sea temperature", "water temperature"]):
             chl_val = ocean_an.mean_chlorophyll_mg_m3 if ocean_an else 1.85
             upw_idx = ocean_an.upwelling_index if ocean_an else "HIGH"
             sectors_raw = ocean_an.favorable_sectors if (ocean_an and ocean_an.favorable_sectors) else ["Continental Shelf Break (40-60m depth)", "Upwelling Front Sector Alpha"]
@@ -459,8 +337,8 @@ Generate the complete, natural response in language '{target_lang}':"""
                 f"Pelagic fish schools (Tuna, Mackerel, Sardine) congregate along these thermal front boundaries. Track marked coordinates on the ORCA Map."
             )
 
-        # 12. Safest Navigational Route Inquiry
-        if any(k in q_lower for k in ["safest route", "safe route", "navigation route", "waypoint", "how to reach", "recommended safe navigation"]):
+        # 7. Safest Navigational Route Inquiry
+        if detected_intent == "safe_route" or any(k in q_lower for k in ["safest route", "safe route", "navigation route", "waypoint", "how to reach", "recommended safe navigation"]):
             r_dist = route.distance_km if route else 24.5
             r_nm = route.distance_nm if route else 13.2
             r_dur = route.estimated_duration_hours if route else 1.7
@@ -474,8 +352,8 @@ Generate the complete, natural response in language '{target_lang}':"""
                 f"Follow the plotted 3-waypoint green corridor on the ORCA Tactical Map to maintain maximum hull stability and safety clearance."
             )
 
-        # 13. Fish Productivity Decline Root-Cause Analysis
-        if any(k in q_lower for k in ["productivity declined", "fish declined", "why fish catch", "fish catch down", "decline in fish"]):
+        # 8. Fish Productivity Decline Root-Cause Analysis
+        if detected_intent == "fish_productivity_decline" or any(k in q_lower for k in ["productivity declined", "fish declined", "why fish catch", "fish catch down", "decline in fish"]):
             causes = eco.primary_causes if eco else [
                 "Marine Heatwaves / SST Anomaly (+1.2°C) shifting pelagic schools offshore",
                 "Weakened coastal wind stress suppressing seasonal upwelling nutrients",
@@ -494,8 +372,8 @@ Generate the complete, natural response in language '{target_lang}':"""
                 f"Explore offshore satellite PFZ thermal fronts on the ORCA Map for higher catch potential."
             )
 
-        # 14. Zones to Avoid & Geofencing Avoidance
-        if any(k in q_lower for k in ["avoided", "zones to avoid", "avoid fishing", "prohibited zone", "where not to fish", "which zones"]):
+        # 9. Zones to Avoid & Geofencing Avoidance
+        if detected_intent == "zone_avoidance" or any(k in q_lower for k in ["avoided", "zones to avoid", "avoid fishing", "prohibited zone", "where not to fish", "which zones", "avoid"]):
             avoided = zone_av.avoided_zones if zone_av else []
             if avoided:
                 av_lines = [f"• **{z.zone_name}**: {z.reason} (Level: *{z.avoidance_level}*)" for z in avoided[:3]]
@@ -512,8 +390,8 @@ Generate the complete, natural response in language '{target_lang}':"""
                     f"All standard fishing grounds in this sector are cleared for lawful navigation."
                 )
 
-        # 15. Proactive Lightning & Cyclone Alerts
-        if any(k in q_lower for k in ["lightning", "cyclone", "storm alert", "warning", "high wave alert", "depression"]):
+        # 10. Proactive Lightning & Cyclone Alerts
+        if detected_intent == "hazard_alerts" or any(k in q_lower for k in ["lightning", "cyclone", "storm alert", "warning", "high wave alert", "depression"]):
             if alerts:
                 al_lines = [f"• **{a.title}** [{a.severity}]: {a.message}" for a in alerts[:2]]
                 return (
@@ -530,8 +408,76 @@ Generate the complete, natural response in language '{target_lang}':"""
                     f"No active severe emergency warnings from INCOIS or IMD at this time."
                 )
 
-        # 16. PFZ Locator Inquiry
-        if any(k in q_lower for k in ["pfz", "fishing zone", "nearest fish", "where to fish", "fish catch"]):
+        # 11. Combined Wave & Wind / MetOcean Query
+        if any(k in q_lower for k in ["wave and wind", "wind and wave", "wave height, wind speed", "weather forecast and wave height", "wave and wind conditions"]):
+            return (
+                f"**Marine Meteorological & Sea State Telemetry ({loc})**:\n\n"
+                f"• **Significant Wave Height**: **{wave_h:.2f} m**{wave_per}\n"
+                f"• **Wind Speed**: **{wind_spd:.1f} km/h** ({wind_spd/3.6:.1f} m/s)\n"
+                f"• **Wind Direction**: Blowing from **{wind_dir} ({wind_deg:.0f}°)**\n"
+                f"• **Forecast Time**: Current live observation cycle ({loc})\n"
+                f"• **Sea Surface Temperature**: **{sst_c:.1f}°C**\n"
+                f"• **Visibility**: **{vis_km:.0f} km**\n\n"
+                f"Surface conditions are within manageable navigation limits for motorized craft. Maintain VHF watch."
+            )
+
+        # 12. Wind Inquiry
+        if any(k in q_lower for k in ["wind", "breeze", "speed of wind", "how strong is the wind", "wind direction", "pavan", "hawa"]):
+            wind_assessment = "moderate and manageable" if wind_spd < 20 else ("fresh and breezy" if wind_spd < 30 else "strong and hazardous")
+            return (
+                f"**Current Wind Conditions near {loc}**:\n\n"
+                f"• **Wind Speed**: **{wind_spd:.1f} km/h** ({wind_spd/3.6:.1f} m/s)\n"
+                f"• **Wind Direction**: Blowing from **{wind_dir} ({wind_deg:.0f}°)**\n"
+                f"• **Assessment**: The current wind speed is **{wind_assessment}**.\n\n"
+                f"Surface waves are currently around **{wave_h:.2f} m**. Standard navigation precautions apply."
+            )
+
+        # 13. Wave / Swell Inquiry
+        if any(k in q_lower for k in ["wave", "waves", "swell", "how high are the waves", "sea height", "wave period", "moja"]):
+            return (
+                f"**Current Wave & Sea State near {loc}**:\n\n"
+                f"• **Significant Wave Height**: **{wave_h:.2f} m**{wave_per}\n"
+                f"• **Sea Surface Temperature**: **{sst_c:.1f}°C**\n"
+                f"• **Visibility**: **{vis_km:.0f} km**\n"
+                f"• **Tidal Forecast**: {tide.tidal_phase if tide else 'Normal tidal cycle'} with High Tide around {tide.high_tide_time if tide else '04:45 AM'}.\n\n"
+                f"The wave height is within acceptable parameters for motorized fishing vessels. Avoid navigating too close to shallow coastal breaker lines."
+            )
+
+        # 13. Tide, Weather & Sea Conditions Inquiry
+        if any(k in q_lower for k in ["tide", "tides", "high tide", "low tide", "tide timing", "bharti", "jwar"]):
+            t_high = tide.high_tide_time if tide else "04:45 AM"
+            t_high_h = tide.high_tide_height_m if tide else 3.85
+            t_low = tide.low_tide_time if tide else "11:15 AM"
+            t_low_h = tide.low_tide_height_m if tide else 1.12
+            t_phase = tide.tidal_phase if tide else "Semi-Diurnal Spring Tide"
+            return (
+                f"**Tide, Weather & Coastal Ocean Conditions near {loc}**:\n\n"
+                f"• **Tidal Regime**: **{t_phase}**\n"
+                f"• **High Tide**: **{t_high}** (Water Height: **+{t_high_h:.2f} m**)\n"
+                f"• **Low Tide**: **{t_low}** (Water Height: **+{t_low_h:.2f} m**)\n"
+                f"• **Current Wave & Wind**: Waves **{wave_h:.2f} m**, Wind **{wind_spd:.1f} km/h** from **{wind_dir}**\n"
+                f"• **Sea Surface Temperature**: **{sst_c:.1f}°C**\n\n"
+                f"**Harbor Advice**: High tide window is optimal for vessels with deeper drafts to navigate harbor creek channels and shallow sandbars."
+            )
+
+        # 14. Nearest PFZ Locator Inquiry
+        if detected_intent == "nearest_pfz" or any(k in q_lower for k in ["pfz", "fishing zone", "nearest fish", "where to fish", "fish catch", "which pfz", "closest to me", "closest pfz"]):
+            if pfz:
+                pfz_lines = [
+                    f"• **{z.name}**: **{z.distance_km:.1f} km** away (bearing {int(z.bearing_deg or 0)}° {get_compass_cardinal(z.bearing_deg)}), depth ~{int(z.depth_m or 25)}m, primary species: *{', '.join(z.species)}*"
+                    for z in pfz[:3]
+                ]
+                return (
+                    f"**Nearby Potential Fishing Zones (PFZ) near {loc}**:\n\n"
+                    + "\n".join(pfz_lines) +
+                    f"\n\n**Operational Advice**: Current sea state is **{risk_lvl.upper()}** (Wave: {wave_h:.2f}m, Wind: {wind_spd:.1f} km/h). "
+                    f"{'Conditions are favorable to venture out.' if risk_lvl == 'safe' else 'Exercise extreme caution if venturing offshore.'} Track your route on the Tactical Map."
+                )
+            else:
+                return (
+                    f"There are currently no Nearby Potential Fishing Zones active within 50 km of {loc}. "
+                    f"Check nearshore rocky sectors or review the satellite chlorophyll overlay on the ORCA Map."
+                )
             if pfz:
                 pfz_lines = [
                     f"• **{z.name}**: **{z.distance_km:.1f} km** away (bearing {int(z.bearing_deg or 0)}° {get_compass_cardinal(z.bearing_deg)}), depth ~{int(z.depth_m or 25)}m, primary species: *{', '.join(z.species)}*"

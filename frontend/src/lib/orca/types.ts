@@ -48,11 +48,34 @@ export type EmergencyService = {
   source: string;
 };
 
+export type ChatEvidence = {
+  sources?: string[];
+  reasoning?: string[];
+  risk_level?: string | null;
+  weather?: any;
+  nearest_pfz?: any[];
+  boundary?: any;
+  route?: any;
+  alerts?: any[];
+  simulation?: any;
+  ocean_analytics?: any;
+  ecology?: any;
+  zone_avoidance?: any;
+  tide?: any;
+  recommendations?: any[];
+  connectivity_mode?: string;
+  language?: string;
+  language_name?: string;
+  plan?: any;
+  location?: any;
+};
+
 export type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   text: string;
   at: number;
+  evidence?: ChatEvidence | null;
 };
 
 export type UserRole = "user" | "government" | "admin";

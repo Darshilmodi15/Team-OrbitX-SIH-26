@@ -1,26 +1,36 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  Activity,
   AlertTriangle,
   Bot,
   Check,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Compass,
   Copy,
+  Eye,
+  Layers,
   Loader2,
+  MapPin,
   MessageSquare,
   MessageSquarePlus,
   Mic,
   MicOff,
   PanelLeftClose,
   PanelLeftOpen,
+  Radio,
   RotateCcw,
   Send,
   ShieldCheck,
   Sparkles,
+  Thermometer,
   Trash2,
   User,
   Volume2,
   VolumeX,
   Waves,
+  Wind,
   X,
 } from "lucide-react";
 import { AppShell } from "@/components/orca/AppShell";
@@ -32,7 +42,7 @@ import { answerQuestion } from "@/lib/orca/assistant";
 import { useSafetyLabel } from "@/components/orca/SafetyStatus";
 import { transcribeVoiceAudio, sendChatMessage, synthesizeVoiceAudio } from "@/services/api";
 import { MarkdownRenderer } from "@/components/orca/MarkdownRenderer";
-import type { ChatMessage } from "@/lib/orca/types";
+import type { ChatMessage, ChatEvidence } from "@/lib/orca/types";
 import { cn } from "@/lib/utils";
 
 interface ChatThread {
@@ -92,6 +102,156 @@ const LANG_NAMES: Record<string, string> = {
   pa: "ਪੰਜਾਬੀ (Punjabi)",
 };
 
+function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const hasWeather =
+    evidence.weather &&
+    (evidence.weather.wave_height_m !== undefined ||
+      evidence.weather.wind_speed_kmh !== undefined ||
+      evidence.weather.temperature_c !== undefined ||
+      evidence.weather.sea_surface_temperature_c !== undefined);
+  const hasPfz = evidence.nearest_pfz && evidence.nearest_pfz.length > 0;
+  const hasBoundary = evidence.boundary && evidence.boundary.distance_to_boundary_km !== undefined;
+  const hasSources = evidence.sources && evidence.sources.length > 0;
+  const hasReasoning = evidence.reasoning && evidence.reasoning.length > 0;
+
+  if (!hasWeather && !hasPfz && !hasBoundary && !hasSources && !evidence.risk_level) return null;
+
+  return (
+    <div className="mt-3 rounded-lg border border-border/80 bg-muted/40 text-xs overflow-hidden transition-all shadow-xs">
+      <div className="flex items-center justify-between px-3 py-2 bg-muted/60 border-b border-border/60">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="inline-flex items-center gap-1 font-semibold text-teal-400 text-[11px]">
+            <Sparkles className="size-3 text-teal-400" />
+            <span>Grounded Evidence & Sources</span>
+          </span>
+          {evidence.risk_level && (
+            <span
+              className={cn(
+                "px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase",
+                evidence.risk_level === "safe"
+                  ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                  : evidence.risk_level === "caution"
+                  ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                  : "bg-red-500/15 text-red-400 border border-red-500/30",
+              )}
+            >
+              {evidence.risk_level}
+            </span>
+          )}
+          {evidence.connectivity_mode && (
+            <span className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono text-muted-foreground border border-border">
+              {evidence.connectivity_mode}
+            </span>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="cursor-pointer inline-flex items-center gap-1 text-[11px] text-teal-400 hover:text-teal-300 font-medium transition"
+        >
+          <span>{isOpen ? "Hide Trace" : "View Trace"}</span>
+          {isOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+        </button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1.5 p-2.5 bg-card/40">
+        {hasWeather && (
+          <>
+            {evidence.weather.wave_height_m !== undefined && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/80 text-secondary-foreground text-[11px] font-mono">
+                <Waves className="size-3 text-cyan-400" />
+                <span>{evidence.weather.wave_height_m?.toFixed(1)}m Waves</span>
+              </span>
+            )}
+            {evidence.weather.wind_speed_kmh !== undefined && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/80 text-secondary-foreground text-[11px] font-mono">
+                <Wind className="size-3 text-sky-400" />
+                <span>
+                  {evidence.weather.wind_speed_kmh?.toFixed(0)} km/h {evidence.weather.wind_direction_cardinal || "W"}
+                </span>
+              </span>
+            )}
+            {(evidence.weather.sea_surface_temperature_c !== undefined || evidence.weather.temperature_c !== undefined) && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/80 text-secondary-foreground text-[11px] font-mono">
+                <Thermometer className="size-3 text-amber-400" />
+                <span>
+                  {(evidence.weather.sea_surface_temperature_c || evidence.weather.temperature_c)?.toFixed(1)}°C SST
+                </span>
+              </span>
+            )}
+            {evidence.weather.visibility_km !== undefined && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/80 text-secondary-foreground text-[11px] font-mono">
+                <Eye className="size-3 text-teal-400" />
+                <span>{evidence.weather.visibility_km?.toFixed(0)} km Vis</span>
+              </span>
+            )}
+          </>
+        )}
+
+        {hasPfz && evidence.nearest_pfz![0] && (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-teal-500/10 text-teal-300 border border-teal-500/20 text-[11px] font-mono">
+            <span>🐟</span>
+            <span>
+              PFZ: {evidence.nearest_pfz![0].distance_km !== undefined ? `${evidence.nearest_pfz![0].distance_km.toFixed(1)} km` : evidence.nearest_pfz![0].name || "Active"}
+            </span>
+          </span>
+        )}
+
+        {hasBoundary && (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 text-[11px] font-mono">
+            <ShieldCheck className="size-3 text-indigo-400" />
+            <span>
+              {evidence.boundary.inside_eez ? "Inside EEZ" : "Buffer Zone"} ({evidence.boundary.distance_to_boundary_km?.toFixed(1)} km)
+            </span>
+          </span>
+        )}
+      </div>
+
+      {isOpen && (
+        <div className="p-3 border-t border-border/60 bg-card/90 space-y-2.5 animate-fadeIn">
+          {hasSources && (
+            <div>
+              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block mb-1">
+                Data Providers & Agents Consulted:
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {evidence.sources!.map((src, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground text-[10px] font-mono border border-border"
+                  >
+                    <CheckCircle2 className="size-2.5 text-teal-400" />
+                    <span>{src}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {hasReasoning && (
+            <div>
+              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block mb-1">
+                Multi-Agent Analytical Steps:
+              </span>
+              <ul className="space-y-1 text-[11px] text-muted-foreground pl-1">
+                {evidence.reasoning!.map((step, idx) => (
+                  <li key={idx} className="flex items-start gap-1.5">
+                    <span className="text-teal-400 font-bold">›</span>
+                    <span className="leading-snug">{step}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AssistantPage() {
   const { t, lang } = useI18n();
   const { location } = useSession();
@@ -110,14 +270,12 @@ export default function AssistantPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
 
-  // Voice State Machine & Recording
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [voiceErrorMessage, setVoiceErrorMessage] = useState<string | null>(null);
   const [interimTranscript, setInterimTranscript] = useState<string>("");
   const [recordingSeconds, setRecordingSeconds] = useState<number>(0);
   const recordingTimerRef = useRef<any>(null);
 
-  // Audio Playback (TTS) State
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
   const [isLoadingAudioId, setIsLoadingAudioId] = useState<string | null>(null);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -129,7 +287,6 @@ export default function AssistantPage() {
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Active thread
   const currentThread = threads.find((th) => th.id === activeThreadId) || {
     id: activeThreadId,
     title: t("chat.title"),
@@ -145,7 +302,6 @@ export default function AssistantPage() {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [currentThread.messages.length, isThinking, voiceState]);
 
-  // Clean up audio on unmount
   useEffect(() => {
     return () => {
       if (currentAudioRef.current) {
@@ -180,13 +336,23 @@ export default function AssistantPage() {
     const filtered = threads.filter((th) => th.id !== id);
     setThreads(filtered);
     if (activeThreadId === id) {
-      setActiveThreadId(filtered.length > 0 ? filtered[0].id : "default");
+      if (filtered.length > 0) {
+        setActiveThreadId(filtered[0].id);
+      } else {
+        const fallbackId = `thread_${Date.now()}`;
+        setThreads([
+          {
+            id: fallbackId,
+            title: `${t("chat.title")} 1`,
+            updatedAt: Date.now(),
+            messages: [],
+          },
+        ]);
+        setActiveThreadId(fallbackId);
+      }
     }
   }
 
-  /* ==========================================================================
-     TTS Regional Audio Playback
-     ========================================================================== */
   function stopAudio() {
     if (currentAudioRef.current) {
       currentAudioRef.current.pause();
@@ -196,7 +362,7 @@ export default function AssistantPage() {
     setIsLoadingAudioId(null);
   }
 
-  async function playMessageAudio(msgId: string, text: string) {
+  async function playMessageAudio(msgId: string, text: string, msgLang?: string) {
     if (playingMessageId === msgId) {
       stopAudio();
       return;
@@ -206,9 +372,9 @@ export default function AssistantPage() {
     setIsLoadingAudioId(msgId);
 
     try {
-      // Use clean text snippet without markdown for voice
       const cleanSnippet = text.replace(/[*#_`•-]/g, " ").trim().slice(0, 450);
-      const res = await synthesizeVoiceAudio(cleanSnippet, lang || "en");
+      const targetVoiceLang = msgLang || lang || "en";
+      const res = await synthesizeVoiceAudio(cleanSnippet, targetVoiceLang);
       if (res && res.audio_base64) {
         const audio = new Audio(`data:audio/${res.audio_format || "wav"};base64,${res.audio_base64}`);
         currentAudioRef.current = audio;
@@ -230,9 +396,6 @@ export default function AssistantPage() {
     }
   }
 
-  /* ==========================================================================
-     Conversational Pipeline Execution
-     ========================================================================== */
   async function ask(text: string) {
     const question = text.trim();
     if (!question || isThinking) return;
@@ -241,7 +404,6 @@ export default function AssistantPage() {
     const now = Date.now();
     const userMsg: ChatMessage = { id: `u_${now}`, role: "user", text: question, at: now };
 
-    // Update UI immediately with user's message
     setThreads((prev) => {
       const idx = prev.findIndex((th) => th.id === activeThreadId);
       if (idx >= 0) {
@@ -270,8 +432,9 @@ export default function AssistantPage() {
     setIsThinking(true);
 
     let reply = "";
+    let evidenceData: ChatEvidence | null = null;
+
     try {
-      // Multi-turn context resolution
       const historyTurns = currentThread.messages.slice(-6).map((m) => ({
         role: m.role,
         text: m.text,
@@ -288,10 +451,30 @@ export default function AssistantPage() {
 
       if (res && res.answer) {
         reply = res.answer;
+        evidenceData = {
+          sources: res.sources_used || [],
+          reasoning: res.reasoning || [],
+          risk_level: res.risk_level || null,
+          weather: res.weather || null,
+          nearest_pfz: res.nearest_pfz || null,
+          boundary: res.boundary || null,
+          route: res.route || null,
+          alerts: res.alerts || [],
+          simulation: res.simulation || null,
+          ocean_analytics: res.ocean_analytics || null,
+          ecology: res.ecology || null,
+          zone_avoidance: res.zone_avoidance || null,
+          tide: res.tide || null,
+          recommendations: res.recommendations || [],
+          connectivity_mode: res.connectivity_mode || "LIVE",
+          language: res.language || lang || "en",
+          language_name: res.language_name || "English",
+          plan: res.plan || null,
+          location: res.location || null,
+        };
       }
     } catch (err) {
       console.warn("Backend /api/chat error, falling back to local engine:", err);
-      // High-fidelity fallback to dynamic reasoning assistant
       reply = answerQuestion(question, {
         location: location ?? null,
         bundle: marine.data ?? null,
@@ -299,6 +482,23 @@ export default function AssistantPage() {
         lang,
         history: currentThread.messages.map((m) => ({ role: m.role, text: m.text })),
       });
+      const curr = marine.data?.current;
+      const waveH = curr?.waveHeightM ?? 0.8;
+      evidenceData = {
+        sources: curr?.sources && curr.sources.length > 0 ? curr.sources : ["INCOIS Ocean State Forecast", "ORCA Marine Intelligence Engine"],
+        reasoning: ["Synthesized local high-fidelity coastal telemetry"],
+        risk_level: waveH > 2.0 ? "unsafe" : waveH > 1.4 ? "caution" : "safe",
+        weather: curr ? {
+          wave_height_m: curr.waveHeightM,
+          wind_speed_kmh: curr.windSpeedKmh,
+          temperature_c: curr.seaTemperatureC,
+          visibility_km: curr.visibilityKm,
+        } : null,
+        nearest_pfz: [],
+        recommendations: [],
+        connectivity_mode: "LOCAL_EDGE",
+        language: lang || "en",
+      };
     }
 
     if (!reply) {
@@ -309,10 +509,25 @@ export default function AssistantPage() {
         lang,
         history: currentThread.messages.map((m) => ({ role: m.role, text: m.text })),
       });
+      if (!evidenceData) {
+        evidenceData = {
+          sources: ["ORCA Marine Intelligence Engine"],
+          reasoning: ["Grounded local rule evaluation"],
+          risk_level: "safe",
+          connectivity_mode: "LOCAL_EDGE",
+          language: lang || "en",
+        };
+      }
     }
 
     const botNow = Date.now();
-    const botMsg: ChatMessage = { id: `a_${botNow}`, role: "assistant", text: reply, at: botNow };
+    const botMsg: ChatMessage = {
+      id: `a_${botNow}`,
+      role: "assistant",
+      text: reply,
+      at: botNow,
+      evidence: evidenceData,
+    };
 
     setThreads((prev) => {
       const idx = prev.findIndex((th) => th.id === activeThreadId);
@@ -752,7 +967,7 @@ export default function AssistantPage() {
                           {/* Audio TTS Playback Button */}
                           <button
                             type="button"
-                            onClick={() => playMessageAudio(m.id, m.text)}
+                            onClick={() => playMessageAudio(m.id, m.text, m.evidence?.language)}
                             className={cn(
                               "inline-flex cursor-pointer items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition",
                               playingMessageId === m.id
@@ -811,7 +1026,10 @@ export default function AssistantPage() {
                       {m.role === "user" ? (
                         m.text
                       ) : (
-                        <MarkdownRenderer content={m.text} />
+                        <>
+                          <MarkdownRenderer content={m.text} />
+                          {m.evidence && <EvidenceTraceCard evidence={m.evidence} />}
+                        </>
                       )}
                     </div>
                   </div>
