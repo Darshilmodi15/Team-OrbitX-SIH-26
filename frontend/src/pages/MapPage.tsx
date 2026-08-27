@@ -33,16 +33,24 @@ export default function MapPage() {
 
           <section className="mt-4 rounded-md border border-border bg-card p-4 shadow-xs">
             <h2 className="text-sm font-semibold text-foreground">{t("map.legend")}</h2>
-            <ul className="mt-2 space-y-2 text-sm text-card-foreground">
+            <ul className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-card-foreground">
               <li className="flex items-center gap-2">
-                <span className="size-3 rounded-full bg-secondary" aria-hidden />
+                <span className="size-3 rounded-full bg-secondary shrink-0" aria-hidden />
                 <span>{t("map.yourPin")}</span>
               </li>
               <li className="flex items-center gap-2">
-                <span className="size-3 rounded-full border-2 border-accent" aria-hidden />
+                <span className="size-3 rounded-full border-2 border-accent shrink-0" aria-hidden />
                 <span>
                   {t("map.coastalZone")} ({COASTAL_BUFFER_KM} km)
                 </span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="size-3 rounded-full border-2 border-dashed border-emerald-500 bg-emerald-500/20 shrink-0" aria-hidden />
+                <span>PFZ — {t("glossary.pfz.full")}</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="h-0.5 w-4 border-t-2 border-dashed border-red-500 shrink-0" aria-hidden />
+                <span>IMBL — {t("glossary.imbl.full")}</span>
               </li>
             </ul>
           </section>
