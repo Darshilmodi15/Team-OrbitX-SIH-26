@@ -54,27 +54,68 @@ MARITIME_TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "Potential Fishing Zones (PFZ)": "સંભવિત માછીમારી વિસ્તારો (PFZ)",
         "Potential Fishing Zone": "સંભવિત માછીમારી વિસ્તાર",
         "Due to hazardous marine conditions, traveling to fishing zones is not recommended at this time.": "જોખમી દરિયાઈ સ્થિતિને કારણે હાલમાં માછીમારી વિસ્તારોમાં જવાની ભલામણ કરવામાં આવતી નથી.",
+        "Marine Meteorological & Sea State Telemetry": "દરિયાઈ હવામાન અને સમુદ્ર સ્થિતિ ટેલિમેટ્રી",
         "Current Coastal Conditions": "વર્તમાન દરિયાકાંઠાની સ્થિતિ",
         "Current Wind Conditions": "વર્તમાન પવનની સ્થિતિ",
         "Current Wave & Sea State": "વર્તમાન મોજાં અને દરિયાની સ્થિતિ",
+        "Tide, Weather & Coastal Ocean Conditions": "ભરતી-ઓટ, હવામાન અને દરિયાઈ પરિસ્થિતિ",
+        "Sea Surface Temperature (SST) Telemetry": "સમુદ્ર સપાટીનું તાપમાન (SST) ટેલિમેટ્રી",
+        "Recommended Safe Navigation Route": "ભલામણ કરેલ સુરક્ષિત નેવિગેશન માર્ગ",
+        "Prohibited & High-Risk Marine Zones": "પ્રતિબંધિત અને ઉચ્ચ જોખમ ધરાવતા દરિયાઈ વિસ્તારો",
+        "Official Maritime Search & Rescue (SAR) Contacts": "સત્તાવાર દરિયાઈ શોધ અને બચાવ (SAR) સંપર્કો",
+        "Government Schemes & Financial Assistance": "સરકારી યોજનાઓ અને આર્થિક સહાય",
         "Recommended Precautions": "ભલામણ કરેલ સાવચેતીઓ",
+        "Operational Directive": "ઓપરેશનલ નિર્દેશ",
+        "Operational Advice": "ઓપરેશનલ સલાહ",
         "Significant Wave Height": "નોંધપાત્ર મોજાંઓની ઊંચાઈ",
         "Wave Height": "મોજાંઓની ઊંચાઈ",
         "Wind Speed & Direction": "પવનની ઝડપ અને દિશા",
         "Wind Speed": "પવનની ગતિ",
+        "Wind Direction": "પવનની દિશા",
         "Sea Surface Temperature": "સમુદ્ર સપાટીનું તાપમાન",
         "Tidal Forecast": "ભરતી-ઓટની આગાહી",
         "High Tide": "મોટી ભરતી",
         "Low Tide": "ઓટ",
         "Visibility": "દૃશ્યતા",
+        "Forecast Time": "આગાહી સમય",
         "Forecast": "હવામાન આગાહી",
         "Temperature": "તાપમાન",
+        "Blowing from": "તરફથી ફૂંકાય છે",
+        "Distance": "અંતર",
+        "Depth": "ઊંડાઈ",
+        "Bearing": "દિશામાન",
+        "Species": "પ્રજાતિઓ",
+        "Target Species": "મુખ્ય માછલીઓ",
+        "Indian Coast Guard": "ભારતીય કોસ્ટ ગાર્ડ",
+        "Coastal Security Police": "કોસ્ટલ સિક્યુરિટી પોલીસ",
+        "National Emergency": "રાષ્ટ્રીય કટોકટી",
+        "Channel 16": "ચેનલ ૧૬",
         "weather": "હવામાન",
         "safe": "સુરક્ષિત",
         "unsafe": "અસુરક્ષિત",
         "caution": "સાવચેતી",
+        "Safe": "સુરક્ષિત",
+        "Unsafe": "અસુરક્ષિત",
+        "Caution": "સાવચેતી",
+        "SAFE": "સુરક્ષિત",
+        "UNSAFE": "અસુરક્ષિત",
+        "CAUTION": "સાવચેતી",
         "Direction": "દિશા",
         "Assessment": "મૂલ્યાંકન",
+        "Conditions": "પરિસ્થિતિ",
+        "Fisherman": "માછીમાર",
+        "Fishermen": "માછીમારો",
+        "Fishing": "માછીમારી",
+        "Fish": "માછલી",
+        "Sea": "દરિયો",
+        "Ocean": "સમુદ્ર",
+        "Coast": "કાંઠો",
+        "Port": "બંદર",
+        "Harbor": "બંદર",
+        "Water": "પાણી",
+        "Wave": "મોજું",
+        "Waves": "મોજાં",
+        "Wind": "પવન",
         "North": "ઉત્તર",
         "South": "દક્ષિણ",
         "East": "પૂર્વ",
@@ -83,6 +124,8 @@ MARITIME_TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "South-East": "દક્ષિણ-પૂર્વ",
         "North-West": "ઉત્તર-પશ્ચિમ",
         "South-West": "દક્ષિણ-પશ્ચિમ",
+        "Tomorrow": "કાલે",
+        "Today": "આજે",
     },
     "hi": {
         "Operational Advisory": "परिचालन सलाह",
@@ -101,27 +144,68 @@ MARITIME_TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "Potential Fishing Zones (PFZ)": "संभावित मत्स्य क्षेत्र (PFZ)",
         "Potential Fishing Zone": "संभावित मत्स्य क्षेत्र",
         "Due to hazardous marine conditions, traveling to fishing zones is not recommended at this time.": "खतरनाक समुद्री परिस्थितियों के कारण वर्तमान में मछली पकड़ने के क्षेत्रों में जाने की सलाह नहीं दी जाती है।",
+        "Marine Meteorological & Sea State Telemetry": "समुद्री मौसम और समुद्र स्थिति टेलीमेट्री",
         "Current Coastal Conditions": "वर्तमान तटीय स्थिति",
         "Current Wind Conditions": "वर्तमान हवा की स्थिति",
         "Current Wave & Sea State": "वर्तमान लहरें और समुद्र की स्थिति",
+        "Tide, Weather & Coastal Ocean Conditions": "ज्वार-भाटा, मौसम और तटीय समुद्री स्थितियाँ",
+        "Sea Surface Temperature (SST) Telemetry": "समुद्र की सतह का तापमान (SST) टेलीमेट्री",
+        "Recommended Safe Navigation Route": "अनुशंसित सुरक्षित नेविगेशन मार्ग",
+        "Prohibited & High-Risk Marine Zones": "प्रतिबंधित और उच्च जोखिम वाले समुद्री क्षेत्र",
+        "Official Maritime Search & Rescue (SAR) Contacts": "आधिकारिक समुद्री खोज और बचाव (SAR) संपर्क",
+        "Government Schemes & Financial Assistance": "सरकारी योजनाएं और वित्तीय सहायता",
         "Recommended Precautions": "अनुशंसित सावधानियां",
+        "Operational Directive": "परिचालन निर्देश",
+        "Operational Advice": "परिचालन सलाह",
         "Significant Wave Height": "महत्वपूर्ण लहर ऊंचाई",
         "Wave Height": "तरंग ऊंचाई",
         "Wind Speed & Direction": "हवा की गति और दिशा",
         "Wind Speed": "हवा की गति",
+        "Wind Direction": "हवा की दिशा",
         "Sea Surface Temperature": "समुद्र की सतह का तापमान",
         "Tidal Forecast": "ज्वार-भाटा पूर्वानुमान",
         "High Tide": "उच्च ज्वार",
         "Low Tide": "निम्न ज्वार",
         "Visibility": "दृश्यता",
+        "Forecast Time": "पूर्वानुमान समय",
         "Forecast": "पूर्वानुमान",
         "Temperature": "तापमान",
+        "Blowing from": "की ओर से बह रही है",
+        "Distance": "दूरी",
+        "Depth": "गहराई",
+        "Bearing": "दिशा कोण",
+        "Species": "प्रजातियां",
+        "Target Species": "प्रमुख मछलियां",
+        "Indian Coast Guard": "भारतीय तटरक्षक बल (Coast Guard)",
+        "Coastal Security Police": "तटीय सुरक्षा पुलिस",
+        "National Emergency": "राष्ट्रीय आपातकालीन सेवा",
+        "Channel 16": "चैनल 16",
         "weather": "मौसम",
         "safe": "सुरक्षित",
         "unsafe": "असुरक्षित",
         "caution": "सावधानी",
+        "Safe": "सुरक्षित",
+        "Unsafe": "असुरक्षित",
+        "Caution": "सावधानी",
+        "SAFE": "सुरक्षित",
+        "UNSAFE": "असुरक्षित",
+        "CAUTION": "सावधानी",
         "Direction": "दिशा",
         "Assessment": "मूल्यांकन",
+        "Conditions": "परिस्थितियाँ",
+        "Fisherman": "मछुआरा",
+        "Fishermen": "मछुआरों",
+        "Fishing": "मछली पकड़ना",
+        "Fish": "मछली",
+        "Sea": "समुद्र",
+        "Ocean": "महासागर",
+        "Coast": "तट",
+        "Port": "बंदरगाह",
+        "Harbor": "हार्बर",
+        "Water": "पानी",
+        "Wave": "लहर",
+        "Waves": "लहरें",
+        "Wind": "हवा",
         "North": "उत्तर",
         "South": "दक्षिण",
         "East": "पूर्व",
@@ -130,6 +214,8 @@ MARITIME_TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "South-East": "दक्षिण-पूर्व",
         "North-West": "उत्तर-पश्चिम",
         "South-West": "दक्षिण-पश्चिम",
+        "Tomorrow": "कल",
+        "Today": "आज",
     },
     "mr": {
         "Operational Advisory": "कार्यकारी सल्ला",
@@ -244,7 +330,8 @@ ROMANIZED_INDIC_LEXICONS: Dict[str, Dict[str, Any]] = {
             "barish", "surakshit", "kharab", "khatra", "paas", "door", "kahan", "kidhar", "bataye", "batao", "kaunsa",
             "kaunsi", "hoga", "hogi", "chalo", "bolo", "mujhe", "kripya", "jaldi", "meri", "mera", "hamaare", "karna",
             "karne", "jaau", "jaunga", "jaungi", "karega", "rakhna", "dekho", "bataiye", "pata", "nazar", "aage",
-            "raat", "subah", "shaam", "dopahar", "hawaa", "paani", "kashti", "nauka", "machhuara", "machhuare"
+            "raat", "subah", "shaam", "dopahar", "hawaa", "paani", "kashti", "nauka", "machhuara", "machhuare", "machhuaron",
+            "dariya", "samudra", "machhi", "bahar", "nikal", "saku", "sakenge", "baat", "bata"
         },
         "script": "Deva",
         "name": "Hindi (हिन्दी)",
@@ -256,7 +343,8 @@ ROMANIZED_INDIC_LEXICONS: Dict[str, Dict[str, Any]] = {
             "moja", "moju", "mojan", "machhimari", "machhi", "daryo", "daryama", "daryani", "vadholu", "vavazodu", "vavazodun",
             "vijli", "surakshit", "salamati", "salamat", "kyan", "kyo", "kai", "batavo", "najeek", "najik", "dur",
             "maru", "tamaru", "ahiya", "tya", "hove", "karvu", "karva", "matsya", "vistar", "sahay", "bhavishya", "sthiti",
-            "savaar", "saanje", "bapore", "paani", "hodi", "machhimaro", "sarhad", "kathe"
+            "savaar", "saanje", "bapore", "paani", "hodi", "machhimaro", "sarhad", "kathe", "dariya", "dariyama", "javay",
+            "aavtikaale", "shakya", "nathi", "aave", "haji", "jase"
         },
         "script": "Gujr",
         "name": "Gujarati (ગુજરાતી)",
@@ -266,7 +354,8 @@ ROMANIZED_INDIC_LEXICONS: Dict[str, Dict[str, Any]] = {
             "kay", "mi", "udya", "aaj", "jau", "jaau", "shakto", "shakte", "shakto ka", "aahe", "aahet", "kiti",
             "kasa", "kasi", "kase", "mase", "masemari", "samudra", "samudrat", "samudrachi", "wara", "vara", "lata",
             "laata", "wadal", "vadal", "vij", "surakshit", "kuthe", "kontha", "sanga", "mahiti", "dya", "kadhi",
-            "asel", "hoti", "kara", "karaycha", "naka", "kinaryavar", "bhag", "sakal", "sandhyakal", "nauka", "boat"
+            "asel", "hoti", "kara", "karaycha", "naka", "kinaryavar", "bhag", "sakal", "sandhyakal", "nauka", "boat",
+            "jata", "yeil", "kaay", "nahit", "aamhi", "madat"
         },
         "script": "Deva",
         "name": "Marathi (मराठी)",
@@ -275,7 +364,8 @@ ROMANIZED_INDIC_LEXICONS: Dict[str, Dict[str, Any]] = {
         "words": {
             "enna", "naan", "naalai", "indru", "poga", "pogalama", "mudiyuma", "irukkum", "irukku", "evvalavu", "eppadi",
             "meen", "meenpidi", "meenpidikka", "kadal", "kaatru", "alai", "alaigal", "puyal", "paadhukaappu", "enga",
-            "sollu", "sollunga", "epdi", "illai", "aabathu", "thooram", "edam", "kalai", "maala"
+            "sollu", "sollunga", "epdi", "illai", "aabathu", "thooram", "edam", "kalai", "maala", "kadarkarai",
+            "pathukappu", "padagu", "kaalai", "mahabalipuram"
         },
         "script": "Taml",
         "name": "Tamil (தமிழ்)",
@@ -284,7 +374,7 @@ ROMANIZED_INDIC_LEXICONS: Dict[str, Dict[str, Any]] = {
         "words": {
             "emi", "nenu", "repu", "eeroju", "vellacha", "vellocha", "undi", "unnadi", "entha", "ela", "chepala",
             "chepalu", "samudhram", "samudramlo", "gaali", "alalu", "thufanu", "surakshitam", "ekkada", "cheppandi",
-            "epudu", "kaadu", "pramaadam", "duram", "chotu", "udayam", "saayanthram"
+            "epudu", "kaadu", "pramaadam", "duram", "chotu", "udayam", "saayanthram", "padava", "vellavacha", "cheppandi"
         },
         "script": "Telu",
         "name": "Telugu (తెలుగు)",
@@ -293,7 +383,8 @@ ROMANIZED_INDIC_LEXICONS: Dict[str, Dict[str, Any]] = {
         "words": {
             "entha", "njan", "naale", "innu", "pokan", "pokamo", "pattumo", "aano", "ethra", "engane", "meen",
             "meenpidutham", "kadal", "kadallekku", "kaattu", "thiramala", "chuzhalikkaattu", "surakshitham", "evide",
-            "parayu", "parayamo", "undo", "illa", "apakatam", "dooram", "sthanam", "ravile", "vaikitter"
+            "parayu", "parayamo", "undo", "illa", "apakatam", "dooram", "sthanam", "ravile", "vaikitter", "vallam",
+            "kadapurath"
         },
         "script": "Mlym",
         "name": "Malayalam (മലയാളം)",
@@ -302,10 +393,37 @@ ROMANIZED_INDIC_LEXICONS: Dict[str, Dict[str, Any]] = {
         "words": {
             "ki", "ami", "kaal", "aaj", "jete", "pari", "parbo", "aache", "koto", "kemon", "maach", "dhorar",
             "shomudro", "shomudre", "hawa", "dheu", "jhor", "bipod", "kothay", "bolo", "bolun", "hobe", "na",
-            "durrotto", "jaiga", "shokal", "shondha"
+            "durrotto", "jaiga", "shokal", "shondha", "nouka", "jaowa", "jabe"
         },
         "script": "Beng",
         "name": "Bengali (বাংলা)",
+    },
+    "kn": {
+        "words": {
+            "enu", "naanu", "naale", "ivathu", "hogabahuda", "hogalu", "ide", "idhe", "eshtu", "hege", "meenu",
+            "meenugarike", "samudra", "samudradalli", "gaali", "ale", "alegalu", "birusali", "surakshita", "elli",
+            "heli", "beku", "illa", "apaya", "doora", "sthala", "belagge", "sanje", "doni"
+        },
+        "script": "Knda",
+        "name": "Kannada (ಕನ್ನಡ)",
+    },
+    "or": {
+        "words": {
+            "kana", "mu", "kali", "aaji", "jaipariba", "jaibi", "achhi", "kete", "kemiti", "machha",
+            "dhariba", "samudra", "samudrare", "pabana", "dheu", "bhatya", "bipajjanka", "kouthi",
+            "kuhantu", "heba", "nahin", "dura", "sthana", "sakala", "sandhya", "danga"
+        },
+        "script": "Orya",
+        "name": "Odia (ଓଡ଼ିଆ)",
+    },
+    "pa": {
+        "words": {
+            "ki", "main", "kal", "ajj", "jaa", "sakda", "sakde", "haan", "hai", "kinna", "kiven", "machhi",
+            "fadna", "samundar", "hawa", "lehran", "toofan", "surakshit", "kithe", "dasso", "hovega", "naal",
+            "door", "thaan", "sawere", "shaam", "kisti", "bera"
+        },
+        "script": "Guru",
+        "name": "Punjabi (ਪੰਜਾਬੀ)",
     },
 }
 
@@ -663,22 +781,37 @@ class BhashiniService:
         )
 
         try:
-            from google import genai
-            client = genai.Client(api_key=gemini_key)
-            for model_name in ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"]:
+            try:
+                from google import genai
+                client = genai.Client(api_key=gemini_key)
+                for model_name in ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"]:
+                    try:
+                        response = client.models.generate_content(
+                            model=model_name,
+                            contents=prompt,
+                        )
+                        translated = response.text.strip()
+                        if translated:
+                            return translated
+                    except Exception:
+                        continue
+            except (ImportError, AttributeError):
                 try:
-                    response = client.models.generate_content(
-                        model=model_name,
-                        contents=prompt,
-                    )
-                    translated = response.text.strip()
-                    if translated:
-                        return translated
-                except Exception:
-                    continue
+                    import google.generativeai as gai
+                    gai.configure(api_key=gemini_key)
+                    for model_name in ["gemini-1.5-flash", "gemini-pro", "gemini-2.0-flash"]:
+                        try:
+                            model = gai.GenerativeModel(model_name)
+                            response = model.generate_content(prompt)
+                            translated = response.text.strip()
+                            if translated:
+                                return translated
+                        except Exception:
+                            continue
+                except Exception as gai_err:
+                    logger.warning(f"GenerativeAI SDK fallback translation failed: {gai_err}")
         except Exception as err:
             logger.warning(f"Gemini fallback translation failed: {err}")
-
 
         return None
 

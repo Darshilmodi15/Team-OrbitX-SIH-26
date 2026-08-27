@@ -1,5 +1,7 @@
 """FastAPI Application for ORCA Marine AI with Bhashini Multilingual Service."""
 from datetime import date as dt_date
+import os
+import re
 from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -513,9 +515,25 @@ def _process_orca_query(
     # Step 1: Detect or resolve language using Language Priority Rule
     # Priority 1: Direct analysis of user input text (native Indic script or Romanized Indic)
     lid_res = bhashini_service.identify_language(question_raw, session_id=session_id)
+    
+    # Check if the query is explicitly written in English
+    is_explicit_english = False
+    if lid_res.short_code == "en":
+        eng_words = set(re.findall(r"\b[a-zA-Z']+\b", question_raw.lower()))
+        common_eng = {
+            "what", "is", "the", "how", "far", "can", "i", "weather", "wind", "wave",
+            "safe", "where", "tell", "me", "are", "there", "any", "which", "should",
+            "help", "forecast", "sea", "ocean", "tide", "alert", "warning", "temperature",
+            "sst", "pfz", "route", "direction", "speed", "height", "today", "tomorrow"
+        }
+        if len(eng_words.intersection(common_eng)) >= 1:
+            is_explicit_english = True
+
     if lid_res.short_code != "en":
         detected_lang = lid_res.short_code
         lang_name = lid_res.language_name
+        if session_id:
+            bhashini_service.set_session_language(session_id, detected_lang)
         if lid_res.provider == "sarvam":
             sources_used.append("sarvam_language_identification")
             reasoning.append(
@@ -525,6 +543,12 @@ def _process_orca_query(
             reasoning.append(
                 f"Language Layer (Script/Romanized Analysis): Identified query language as '{lang_name}' ({lid_res.language_code}, script: {lid_res.script_code}) [status: {lid_res.detection_status}]."
             )
+    elif is_explicit_english:
+        detected_lang = "en"
+        lang_name = "English"
+        if session_id:
+            bhashini_service.set_session_language(session_id, "en")
+        reasoning.append("Language Layer: User query explicitly in English -> Responding in English.")
     else:
         # Priority 2: If user asked in dashboard-selected language (and not 'auto' or 'en')
         if requested_lang and requested_lang.lower() not in ("auto", "en"):
@@ -985,7 +1009,8 @@ def _process_orca_query(
     reasoning.append("Synthesized dynamic conversational response based on multi-agent evidence and context.")
 
     # Step 7: Indic translation if needed and not already native script
-    if detected_lang != "en" and not any(ord(c) > 127 for c in synthesized_answer[:60]):
+    has_native_indic = any(0x0900 <= ord(c) <= 0x0D7F for c in synthesized_answer)
+    if detected_lang != "en" and not has_native_indic:
         final_answer = bhashini_service.translate(
             text=synthesized_answer,
             source_lang="en",

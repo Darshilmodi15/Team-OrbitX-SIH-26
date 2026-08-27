@@ -60,33 +60,53 @@ COASTAL_PORT_COORDS: Dict[str, Dict[str, Any]] = {
     "palghar": {"lat": 19.7242, "lon": 72.0794, "name": "Satpati / Palghar"},
     "mumbai": {"lat": 18.9220, "lon": 72.8347, "name": "Mumbai Port"},
     "sassoon": {"lat": 18.9220, "lon": 72.8347, "name": "Mumbai Sassoon Dock"},
+    "alibaug": {"lat": 18.6414, "lon": 72.8722, "name": "Alibaug Coast"},
     "ratnagiri": {"lat": 16.9902, "lon": 73.3120, "name": "Ratnagiri Harbor"},
     "malvan": {"lat": 16.0500, "lon": 73.4600, "name": "Malvan Coastal Harbor"},
     "veraval": {"lat": 20.9000, "lon": 70.3667, "name": "Veraval Port"},
     "porbandar": {"lat": 21.6417, "lon": 69.6093, "name": "Porbandar Jetty"},
     "okha": {"lat": 22.4667, "lon": 69.0667, "name": "Okha Port"},
+    "dwarka": {"lat": 22.2442, "lon": 68.9685, "name": "Dwarka Coastal Sector"},
+    "mandvi": {"lat": 22.8167, "lon": 69.3667, "name": "Mandvi Port"},
+    "kandla": {"lat": 23.0000, "lon": 70.2167, "name": "Kandla Port"},
+    "mangrol": {"lat": 21.1200, "lon": 70.1200, "name": "Mangrol Port"},
+    "diu": {"lat": 20.7144, "lon": 70.9874, "name": "Diu Coastal Waters"},
+    "daman": {"lat": 20.3974, "lon": 72.8328, "name": "Daman Port"},
+    "jafarabad": {"lat": 20.8667, "lon": 71.3667, "name": "Jafarabad Harbor"},
     "gujarat": {"lat": 20.9000, "lon": 70.3667, "name": "Gujarat Coastal Sector"},
     "maharashtra": {"lat": 18.9220, "lon": 72.8347, "name": "Maharashtra Coastal Sector"},
     "goa": {"lat": 15.4989, "lon": 73.8278, "name": "Goa Coastal Sector"},
     "panaji": {"lat": 15.4989, "lon": 73.8278, "name": "Panaji Port"},
-    "kochi": {"lat": 9.9312, "lon": 76.2673, "name": "Kochi Harbor"},
-    "cochin": {"lat": 9.9312, "lon": 76.2673, "name": "Kochi Harbor"},
-    "kerala": {"lat": 9.9312, "lon": 76.2673, "name": "Kerala Coastal Sector"},
+    "vasco": {"lat": 15.3980, "lon": 73.8113, "name": "Mormugao / Vasco Port"},
+    "karwar": {"lat": 14.8000, "lon": 74.1333, "name": "Karwar Harbor"},
+    "udupi": {"lat": 13.3409, "lon": 74.7421, "name": "Malpe / Udupi Harbor"},
     "mangaluru": {"lat": 12.8596, "lon": 74.8364, "name": "Mangaluru Old Port"},
     "karnataka": {"lat": 12.8596, "lon": 74.8364, "name": "Karnataka Coastal Sector"},
+    "kochi": {"lat": 9.9312, "lon": 76.2673, "name": "Kochi Harbor"},
+    "cochin": {"lat": 9.9312, "lon": 76.2673, "name": "Kochi Harbor"},
+    "kollam": {"lat": 8.8932, "lon": 76.6141, "name": "Kollam Port"},
+    "kerala": {"lat": 9.9312, "lon": 76.2673, "name": "Kerala Coastal Sector"},
     "chennai": {"lat": 13.0827, "lon": 80.2707, "name": "Chennai Port"},
+    "tuticorin": {"lat": 8.7642, "lon": 78.1348, "name": "Thoothukudi / Tuticorin Port"},
     "rameswaram": {"lat": 9.2876, "lon": 79.3129, "name": "Rameswaram Port"},
     "pamban": {"lat": 9.2876, "lon": 79.3129, "name": "Rameswaram Pamban"},
+    "nagapattinam": {"lat": 10.7672, "lon": 79.8436, "name": "Nagapattinam Port"},
     "tamil nadu": {"lat": 9.2876, "lon": 79.3129, "name": "Tamil Nadu Coastal Sector"},
     "tamilnadu": {"lat": 9.2876, "lon": 79.3129, "name": "Tamil Nadu Coastal Sector"},
     "palk bay": {"lat": 9.5000, "lon": 79.2000, "name": "Palk Bay Sector"},
     "mannar": {"lat": 9.1000, "lon": 79.1000, "name": "Gulf of Mannar"},
     "vizag": {"lat": 17.6868, "lon": 83.2185, "name": "Visakhapatnam Port"},
     "visakhapatnam": {"lat": 17.6868, "lon": 83.2185, "name": "Visakhapatnam Port"},
+    "kakinada": {"lat": 16.9891, "lon": 82.2475, "name": "Kakinada Port"},
+    "machilipatnam": {"lat": 16.1875, "lon": 81.1389, "name": "Machilipatnam Coast"},
     "andhra": {"lat": 17.6868, "lon": 83.2185, "name": "Andhra Pradesh Coast"},
     "paradip": {"lat": 20.2644, "lon": 86.6710, "name": "Paradip Marine Harbor"},
+    "puri": {"lat": 19.8135, "lon": 85.8312, "name": "Puri Coastal Sector"},
+    "dhamra": {"lat": 20.8000, "lon": 86.9500, "name": "Dhamra Port"},
     "odisha": {"lat": 20.2644, "lon": 86.6710, "name": "Odisha Coastal Sector"},
     "gahirmatha": {"lat": 20.7500, "lon": 86.9500, "name": "Gahirmatha Sector"},
+    "digha": {"lat": 21.6266, "lon": 87.5075, "name": "Digha Coastal Harbor"},
+    "haldia": {"lat": 22.0667, "lon": 88.0667, "name": "Haldia Port"},
     "sundarbans": {"lat": 21.6000, "lon": 88.8000, "name": "Sundarbans Marine Buffer"},
     "bengal": {"lat": 21.6000, "lon": 88.8000, "name": "West Bengal Coast"},
     "port blair": {"lat": 11.6234, "lon": 92.7265, "name": "Port Blair Harbor"},
@@ -109,8 +129,10 @@ def _extract_entities_heuristically(question: str) -> Dict[str, Any]:
 
     # Time hint
     time_hint = None
-    if "tomorrow morning" in q_lower or "kale savare" in q_lower or "kal subah" in q_lower:
+    if "tomorrow morning" in q_lower or "kale savare" in q_lower or "kal subah" in q_lower or "sakal" in q_lower:
         time_hint = "tomorrow morning"
+    elif "tomorrow evening" in q_lower or "kale saanje" in q_lower or "kal shaam" in q_lower:
+        time_hint = "tomorrow evening"
     elif any(k in q_lower for k in ["tomorrow", "kale", "kal", "udya", "naalai", "repu", "naale", "kali", "kaale", "aavtikaale"]):
         time_hint = "tomorrow"
     elif "this afternoon" in q_lower or "afternoon" in q_lower or "bapore" in q_lower or "dopahar" in q_lower:
@@ -146,14 +168,35 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
     q_lower = question.lower()
     entities = _extract_entities_heuristically(question)
 
-    # 1. What-If Simulation
+    # 1. Emergency Breakdown / Distress / SOS
+    if any(k in q_lower for k in [
+        "engine", "breakdown", "broken down", "taking water", "water in boat", "leak", "sinking",
+        "lost at sea", "emergency", "mayday", "pan-pan", "distress", "capsiz", "shipwreck",
+        "drop anchor", "engine bagdi", "kharab", "madad", "help", "sar contact"
+    ]):
+        return {
+            "intent": "emergency_sos",
+            **entities,
+        }
+
+    # 2. Government Schemes & Financial Subsidies
+    if any(k in q_lower for k in [
+        "scheme", "schemes", "subsidy", "subsidies", "pmmsy", "kcc", "financial assistance",
+        "government help", "fisheries grant", "kisan credit", "insurance scheme", "yojana", "sahay"
+    ]):
+        return {
+            "intent": "government_schemes",
+            **entities,
+        }
+
+    # 3. What-If Simulation
     if any(k in q_lower for k in ["what if", "what happens if", "if wave", "if wind", "simulate", "scenario"]):
         return {
             "intent": "what_if_simulation",
             **entities,
         }
 
-    # 2. Fish Productivity Decline Analysis (Ecology)
+    # 4. Fish Productivity Decline Analysis (Ecology)
     if any(k in q_lower for k in [
         "productivity declined", "fish declined", "productivity decline", "decline in fish", "declined in",
         "why has fish", "why fish catch", "fish catch down", "fish catch reduced", "why fish declined",
@@ -164,7 +207,7 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
             **entities,
         }
 
-    # 3. Zone Avoidance (Hazards / Geofencing Avoidance)
+    # 5. Zone Avoidance (Hazards / Geofencing Avoidance)
     if any(k in q_lower for k in [
         "avoided", "should be avoided", "zones to avoid", "avoid fishing", "avoid due to",
         "hazardous marine conditions or geofencing", "geofencing restrictions", "prohibited zone",
@@ -175,7 +218,7 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
             **entities,
         }
 
-    # 4. Chlorophyll and SST Analytics
+    # 6. Chlorophyll and SST Analytics
     if any(k in q_lower for k in [
         "chlorophyll", "chlorophyll concentration", "sea surface temperature", "favourable sea surface",
         "favorable sea surface", "favorable sst", "favourable sst", "thermal front", "thermal fronts",
@@ -186,7 +229,7 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
             **entities,
         }
 
-    # 5. Combined PFZ + Safety / Killer demo intent
+    # 7. Combined PFZ + Safety / Killer demo intent
     has_pfz = any(k in q_lower for k in ["pfz", "fishing zone", "fish zone", "fishing spot", "fishing spots", "fish", "machhimari", "machhli", "meen", "chepalu", "matsyam", "machha"])
     has_safety_or_route = any(k in q_lower for k in ["safe", "safety", "route", "tomorrow", "weather", "suitable", "kale", "kal", "udya", "naalai", "repu"])
     has_explicit_route = any(k in q_lower for k in ["route", "safest route", "navigation corridor", "how to reach", "path", "rasto"])
@@ -202,14 +245,14 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
             **entities,
         }
 
-    # 6. Safe Route
+    # 8. Safe Route
     if has_explicit_route:
         return {
             "intent": "safe_route",
             **entities,
         }
 
-    # 7. Proactive Hazard & Lightning / Cyclone Alerts
+    # 9. Proactive Hazard & Lightning / Cyclone Alerts
     if any(k in q_lower for k in [
         "lightning", "cyclone", "cyclones", "hazard", "hazards", "alert", "alerts",
         "warning", "cyclone alert", "high wave alert", "lightning alert", "storm alert",
@@ -220,24 +263,25 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
             **entities,
         }
 
-    # 8. Marine Boundary / EEZ Check
+    # 10. Marine Boundary / EEZ / Coast Distance Check
     if any(k in q_lower for k in [
         "eez", "exclusive economic zone", "maritime boundary", "territorial water",
-        "territorial waters", "international waters", "sarhad", "simarekha"
+        "territorial waters", "international waters", "sarhad", "simarekha", "coast",
+        "distance to coast", "how far from coast", "inside indian", "inside territorial"
     ]):
         return {
             "intent": "marine_boundary",
             **entities,
         }
 
-    # 9. Geofence Check
+    # 11. Geofence Check
     if any(k in q_lower for k in ["geofence", "imbl", "border", "boundary", "restricted waters", "mpa", "protected area"]):
         return {
             "intent": "geofence_check",
             **entities,
         }
 
-    # 10. Safety Check (including Romanized / Transliterated queries like "Kale bahar nikali shakay?")
+    # 12. Safety Check (including Romanized / Transliterated queries like "Kale bahar nikali shakay?")
     if any(k in q_lower for k in [
         "safe", "safety", "risk", "danger", "can i sail", "can i fish", "ok to go", "advisory",
         "bahar nikali", "nikali shakay", "nikli shakay", "dariya ma javay", "javay", "ja sakte",
@@ -249,7 +293,7 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
             **entities,
         }
 
-    # 11. Nearest PFZ
+    # 13. Nearest PFZ
     if any(k in q_lower for k in [
         "pfz", "fishing zone", "fish zone", "nearest fish", "catch fish", "tuna", "mackerel", "pomfret",
         "machhimari", "machhli", "meen", "chepalu", "matsyam", "machha"
@@ -259,7 +303,7 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
             **entities,
         }
 
-    # 12. Weather & Tide Conditions
+    # 14. Weather & Tide Conditions
     if any(k in q_lower for k in [
         "weather", "wind", "winds", "wave", "waves", "wave height", "wind speed", "wind direction",
         "forecast", "temp", "temperature", "rain", "storm", "sea condition", "swell", "sea state",
@@ -272,7 +316,7 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
             **entities,
         }
 
-    # 13. General fallback
+    # 15. General fallback
     return {
         "intent": "general",
         **entities,

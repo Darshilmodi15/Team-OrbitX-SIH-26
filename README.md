@@ -6,29 +6,36 @@
 [![Vite](https://img.shields.io/badge/Vite-8.2-646CFF.svg?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC.svg?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![Leaflet](https://img.shields.io/badge/Leaflet-1.9-199900.svg?logo=leaflet&logoColor=white)](https://leafletjs.com/)
-[![Tests](https://img.shields.io/badge/Pytest-145%20Passed-brightgreen.svg?logo=pytest&logoColor=white)](https://pytest.org)
+[![Tests](https://img.shields.io/badge/Pytest-254%20Passed-brightgreen.svg?logo=pytest&logoColor=white)](https://pytest.org)
+[![Sarvam AI](https://img.shields.io/badge/Sarvam_AI-Voice_%26_Indic_AI-orange.svg)](https://sarvam.ai)
+[![INCOIS Live](https://img.shields.io/badge/INCOIS-Ocean_State_Forecast-blue.svg)](https://incois.gov.in)
+[![ISRO](https://img.shields.io/badge/ISRO-Satellite_Earth_Observation-purple.svg)](https://isro.gov.in)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**ORCA Marine AI** is an advanced autonomous maritime intelligence platform designed for artisanal fishermen, commercial mariners, coastal communities, and maritime authorities. It delivers real-time ocean state telemetry, decomposed 4-vector safety risk assessments, Potential Fishing Zone (PFZ) advisories, international maritime boundary geofencing, emergency SOS distress broadcasting, government policy circulars, and end-to-end regional voice and multilingual interaction across 10+ Indian coastal languages.
+**ORCA Marine AI** is a production-grade autonomous maritime intelligence platform and conversational copilot engineered for artisanal fishermen, commercial mariners, coastal communities, and maritime security agencies. Built on a deterministic **11-agent multi-agent architecture**, ORCA fuses real-time **INCOIS** ocean state forecasts, **ISRO** satellite ocean productivity telemetry, decomposed 4-vector safety risk assessments, **Potential Fishing Zone (PFZ)** advisories, **Flanders Marine Institute (VLIZ) World EEZ v12** boundaries & **IMBL geofencing**, 1-click **SOS distress broadcasting** with automated **IMO MAYDAY VHF Channel 16 generation**, government gazette circulars, and a regional voice & multilingual dialogue engine spanning **11 Indian coastal languages + English** with full **Romanized Indic script transliteration recognition**.
 
 ---
 
-## 🌟 Key Features & Capabilities
+## 🌟 Key Capabilities & Architectural Innovations
 
-- **🌊 Authoritative INCOIS Ocean State Forecast (OSF)**: Programmatic retrieval of Significant Wave Height ($HS$ in metres), Wind Speed ($UWND/VWND$ magnitude in $m/s$ and $km/h$), and Wind Direction (16-point cardinal & meteorological degrees) directly from the official **INCOIS NetCDF Subset Service (NCSS) / THREDDS catalog**.
-- **⚡ Low-Bandwidth Coastal Geospatial Cache**: Ultra-compact query payloads (~130–160 bytes) with 0.05° (~5.5 km) spatial grid binning and spiral coastal land-mask search, allowing nearby coastal vessels to reuse forecasts with sub-millisecond retrieval latencies.
-- **🛡️ Decomposed 4-Vector Marine Risk Engine**: Analyzes sea states across 4 independent vectors—Wave Height, Wind & Squall Risk, Storm Weather, and Swell Period—producing standardized operational tiers (`SAFE`, `CAUTION`, `UNSAFE`) tailored for small artisanal craft vs commercial trawlers.
+- **🌊 Authoritative INCOIS Ocean State Forecast (OSF)**: Programmatic retrieval of Significant Wave Height ($HS$ in metres), Wind Speed ($UWND/VWND$ magnitude in $m/s$ and $km/h$), and Wind Direction (16-point cardinal & meteorological degrees) directly from the official **INCOIS NetCDF Subset Service (NCSS) / THREDDS catalog** with Open-Meteo marine numerical fallback.
+- **🛰️ ISRO Satellite Earth Observation & Ocean Analytics**: Ingests Chlorophyll-a bloom densities ($mg/m^3$), Sea Surface Temperature (SST) thermal front gradients, upwelling indices, and Sea Surface Height Anomalies (SSHA) to track primary productivity and diagnose multi-factorial fish catch declines.
+- **🛡️ Decomposed 4-Vector Marine Risk Engine**: Analyzes sea states across 4 independent physical vectors—Significant Wave Height, Wind & Squall Risk, Swell Period ($T_p$), and Forecast Weather Severity—producing standardized operational safety tiers (`SAFE`, `CAUTION`, `UNSAFE`) calibrated for artisanal fiber crafts vs commercial trawlers.
 - **🗺️ Marine Boundaries & EEZ Integration (Marine Regions / VLIZ)**: Official Exclusive Economic Zone (EEZ) boundaries from Flanders Marine Institute (VLIZ) World EEZ v12 via Web Feature Service (WFS) with pure-Python ray-casting containment testing and automated geofence proximity monitoring.
-- **🐟 Potential Fishing Zones (PFZ) & Bathymetric Ecology**: Identifies thermal fronts, chlorophyll-a blooms, shelf breaks, and upwelling zones with distance/bearing calculations, depth estimates, and dominant target species (Kingfish, Seer Fish, Tuna, Mackerel, Sardines).
+- **🚧 Real-Time IMBL & MPA Buffer Geofencing**: Proactive monitoring of the International Maritime Boundary Line (IMBL - India/Pakistan/Sri Lanka) and Marine Protected Areas (MPAs like Gulf of Mannar, Malvan, Sundarbans) with tiered buffer warnings (`SAFE`, `WARNING`, `CRITICAL`) to prevent accidental international border crossings.
+- **🐟 Potential Fishing Zones (PFZ) & Bathymetric Ecology**: Identifies thermal fronts, chlorophyll-a blooms, shelf breaks, and upwelling zones with distance/bearing calculations, depth estimates, and dominant target species (Kingfish, Seer Fish, Tuna, Mackerel, Sardines, Pomfret).
 - **🎙️ Sarvam AI & Bhashini Voice & Multilingual Stack**:
   - **Speech-to-Text (STT)**: Sarvam Saaras v3 / v2 supporting speech in 22+ Indic languages + English.
   - **Text-to-Speech (TTS)**: Sarvam Bulbul v3 neural voice synthesis with authentic Indian voice personas (*Meera*, *Arvind*, *Kavya*, *Amartya*, *Ratan*, *Shashi*).
-  - **Neural Machine Translation (NMT)** & Language Identification across 10+ coastal languages (Hindi, Gujarati, Marathi, Tamil, Telugu, Malayalam, Bengali, Odia, Kannada, Punjabi).
-  - Dual fallback integration with Government of India **Bhashini** service.
-- **🚨 Maritime Emergency SOS & Coastal Distress Hub**: Instant one-click SOS distress broadcasting with GPS routing to Maritime Rescue Coordination Centres (**MRCC Mumbai, MRCC Chennai, MRCC Port Blair**), automated **IMO-standard MAYDAY VHF Channel 16 transmission script** generation, and 24x7 maritime helplines (Coast Guard 1554, Coastal Police 1093, NDRF 1078).
-- **📜 Government Circulars & Fisheries Policy Portal**: Interactive gazette notices, seasonal monsoon fishing ban advisories, PMMSY (Pradhan Mantri Matsya Sampada Yojana) subsidy schemes, transponder mandates, and official circular publishing.
-- **📊 Super Admin Diagnostics & Fleet Operations**: Real-time service health monitoring, upstream latencies (INCOIS, Open-Meteo, Sarvam AI, VLIZ), user fleet management with Role-Based Access Control (`USER`, `GOVERNMENT`, `SUPER_ADMIN`), and Before-vs-After historical oceanographic telemetry comparisons.
-- **🧭 Tactical GIS Dashboard (React 19 + Leaflet + Tailwind v4)**: Interactive nautical chart with multi-layer overlays (PFZ hotspots, EEZ boundary lines, international boundary buffer zones, Sea Surface Temperature heatmaps, chlorophyll distributions, wind barbs, wave vectors, vessel breadcrumbs), full reasoning trace inspection, and mobile bottom navigation.
+  - **Neural Machine Translation (NMT)** & Language Identification across 11 coastal languages (Gujarati, Hindi, Marathi, Tamil, Telugu, Malayalam, Bengali, Odia, Kannada, Punjabi, English).
+  - **Romanized Indic Language Recognition**: Automatic identification and native handling of Indian languages transliterated into Latin script (e.g. *"Kya main kal machhli pakadne ja sakta hoon?"*, *"shu hu kale machhimari karva jai shaku?"*, *"naalai meen pidikka pogalama?"*).
+  - **Language Priority Rule**: User input language dynamically overrides dashboard default on every conversational turn.
+  - **Dual Fallback Integration**: Resilient fallbacks between Sarvam AI, MeitY Bhashini, and domain-specific offline marine dictionaries.
+- **🚨 Maritime Emergency SOS & Search and Rescue (SAR) Hub**: Instant one-click SOS distress broadcasting with GPS routing to Maritime Rescue Coordination Centres (**MRCC Mumbai, MRCC Chennai, MRCC Port Blair**), automated **IMO-standard MAYDAY VHF Channel 16 transmission script** generation, and 24x7 maritime helplines (Coast Guard 1554, Coastal Police 1093, NDRF 1078, National Emergency 112).
+- **📜 Government Circulars & Fisheries Policy Portal**: Interactive gazette notices, seasonal monsoon fishing ban advisories, PMMSY (Pradhan Mantri Matsya Sampada Yojana) subsidy schemes, Kisan Credit Card (KCC) for fisheries, transponder mandates, and official circular publishing with Role-Based Access Control (`USER`, `GOVERNMENT`, `SUPER_ADMIN`).
+- **⚡ Low-Bandwidth Resilient Coastal Geospatial Cache**: Ultra-compact query payloads (~130–160 bytes) with 0.05° (~5.5 km) spatial grid binning and spiral coastal land-mask search, Redis caching with in-memory fallback, allowing nearby vessels on 2G/3G maritime edge connections to reuse forecasts with sub-millisecond retrieval latencies.
+- **🧭 Tactical GIS Dashboard & Responsive Web AppShell (React 19 + Vite 8 + Leaflet + Tailwind v4)**: Interactive nautical chart with multi-layer overlays (PFZ hotspots, EEZ boundary lines, international boundary buffer zones, SST heatmaps, chlorophyll distributions, wind barbs, wave vectors, vessel breadcrumbs), full reasoning trace inspection, ChatGPT-style AI Assistant with voice microphone input & audio playback, and mobile bottom navigation.
+- **📊 Super Admin Diagnostics & Fleet Operations**: Real-time service health monitoring, upstream latencies (INCOIS, Open-Meteo, Sarvam AI, VLIZ, Redis), user fleet management with RBAC, and Before-vs-After historical oceanographic telemetry comparisons.
 
 ---
 
@@ -36,10 +43,12 @@
 
 ```mermaid
 flowchart TD
-    subgraph Client["Frontend Tactical GIS Dashboard (React 19 + Vite + Leaflet)"]
+    subgraph Client["Frontend Tactical GIS Dashboard (React 19 + Vite 8 + Leaflet + Tailwind v4)"]
         UI[User Interface & Tactical Map]
-        VoiceInput[Voice Input / Microphone]
-        AudioOutput[Audio Playback / TTS]
+        AppShell[Responsive AppShell & Navigation]
+        VoiceInput[Voice Input / Microphone STT]
+        AudioOutput[Audio Playback / Bulbul TTS]
+        AssistantPanel[ChatGPT-Style AI Copilot Drawer]
         Modals[Emergency SOS / Govt Portal / Admin / Trace]
     end
 
@@ -52,37 +61,48 @@ flowchart TD
         RouterGovt["Government Portal Router (/api/government/*)"]
         RouterAdmin["Super Admin Router (/api/admin/*)"]
         RouterAuth["Auth & User Profile Router (/api/auth/*, /api/user/*)"]
+        RouterLoc["Location & Notifications Router (/api/location/*, /api/notifications/*)"]
     end
 
     subgraph Intelligence_Core["Multi-Agent Autonomous Orchestrator"]
-        LangLayer["Language Layer (Sarvam AI / Bhashini NMT & STT)"]
+        LangLayer["Language Layer (Sarvam Saaras STT, NMT, Romanized Indic Parser)"]
         IntentAgent["Intent Classification Agent (Gemini / Claude / Heuristic)"]
         Planner["Deterministic Task Planner (6 Operational Rules)"]
         
-        subgraph Specialized_Agents["Domain Specialist Agents"]
-            WeatherAgent["Weather Agent"]
-            RiskAgent["Risk Assessment Agent"]
-            PFZAgent["PFZ Advisory Agent"]
-            BoundaryAgent["Boundary & Geofence Agent"]
+        subgraph Specialized_Agents["11 Domain Specialist AI Agents"]
+            WeatherAgent["Weather Agent (INCOIS OSF / Open-Meteo)"]
+            RiskAgent["Risk Agent (4-Vector Marine Safety Matrix)"]
+            PFZAgent["PFZ Agent (Potential Fishing Zones & Bathymetry)"]
+            GeospatialAgent["Geospatial Agent (Geodetic Math & Distance)"]
+            BoundaryAgent["Boundary Agent (VLIZ World EEZ v12)"]
+            GeofenceAgent["Geofence Agent (IMBL & MPA Buffer Warnings)"]
+            HazardAgent["Hazard Agent (Proactive Storm / Swell / Surge Alerts)"]
+            OceanAnalyticsAgent["Ocean Analytics Agent (ISRO Chl-a & SST Fronts)"]
+            RouteAgent["Route Agent (Safe Navigational Waypoints)"]
+            SimulationAgent["Simulation Agent (Counterfactual Sea State Forecasts)"]
         end
         
-        Synthesizer["Response Synthesizer & Reasoning Engine"]
+        RecEngine["Reliable Recommendation & Reasoning Engine"]
+        Synthesizer["Contextual Dialogue Synthesizer & Deductive Reasoning"]
     end
 
     subgraph Data_Providers["Authoritative Data & External Services"]
         INCOIS["INCOIS OSF / THREDDS NCSS"]
-        OpenMeteo["Open-Meteo Marine API"]
+        ISRO["ISRO Satellite Ocean Telemetry"]
+        OpenMeteo["Open-Meteo Marine Numerical API"]
         VLIZ["Marine Regions / VLIZ World EEZ v12"]
         SarvamService["Sarvam AI (Saaras STT & Bulbul TTS)"]
         BhashiniService["Bhashini Multilingual Platform"]
-        LocalCache["Low-Bandwidth Geospatial Cache"]
-        GeoJSON["Local EEZ & Boundary GeoJSON Store"]
+        RedisCache["Low-Bandwidth Geospatial Cache (Redis / In-Memory)"]
+        GeoJSON["Local EEZ, IMBL & MPA GeoJSON Store"]
+        PostgreSQL["Database & Persistence (PostgreSQL / SQLite + Alembic)"]
     end
 
     %% Client to API
     UI -->|REST / JSON| RouterMain
     VoiceInput -->|Audio Bytes / Base64| RouterVoice
     RouterVoice -->|Audio Stream| AudioOutput
+    AssistantPanel -->|REST / JSON| RouterMain
     Modals -->|REST Endpoints| API_Gateway
 
     %% API to Intelligence Core
@@ -95,25 +115,29 @@ flowchart TD
     %% Agents to Data Providers
     WeatherAgent --> INCOIS
     WeatherAgent -.->|Fallback| OpenMeteo
-    WeatherAgent --> LocalCache
-    RiskAgent --> Specialized_Agents
-    PFZAgent --> LocalCache
+    WeatherAgent --> RedisCache
+    OceanAnalyticsAgent --> ISRO
+    RiskAgent --> WeatherAgent
+    PFZAgent --> RedisCache
     BoundaryAgent --> VLIZ
     BoundaryAgent --> GeoJSON
+    GeofenceAgent --> GeoJSON
     LangLayer --> SarvamService
     LangLayer -.->|Fallback| BhashiniService
+    API_Gateway --> PostgreSQL
 
     %% Synthesizer back to Response
-    Specialized_Agents --> Synthesizer
+    Specialized_Agents --> RecEngine
+    RecEngine --> Synthesizer
     Synthesizer --> LangLayer
     LangLayer --> RouterMain
 ```
 
 ---
 
-## 🤖 Multi-Agent Decision Framework
+## 🤖 11-Agent Collaborative Decision Framework
 
-ORCA operates on a deterministic, contract-driven multi-agent architecture where specialist agents collaborate to produce verifiable operational guidance.
+ORCA operates on a deterministic, contract-driven multi-agent architecture where specialist agents execute in parallel to produce verifiable operational guidance.
 
 ```mermaid
 sequenceDiagram
@@ -123,40 +147,49 @@ sequenceDiagram
     participant Lang as Sarvam AI Language Layer
     participant Intent as Intent Classification Agent
     participant Planner as Deterministic Planner
-    participant Weather as Weather Agent (INCOIS)
-    participant Risk as Marine Risk Engine
+    participant Weather as Weather Agent (INCOIS OSF)
+    participant Ocean as Ocean Analytics Agent (ISRO)
+    participant Risk as 4-Vector Risk Engine
     participant PFZ as PFZ Advisory Agent
-    participant Boundary as Boundary & Geofence Agent
-    participant Synth as Advisory Synthesizer
+    participant Geofence as Boundary & Geofence Agent
+    participant Route as Safe Route Agent
+    participant Rec as Recommendation Engine
+    participant Synth as Dialogue Synthesizer
 
-    Fisher->>API: Query in Regional Language (e.g. Gujarati/Tamil) or Voice
-    API->>Lang: Detect Language & Transcribe (Sarvam Saaras STT)
-    Lang-->>API: English Translation + Detected Language Code
-    API->>Intent: Parse Maritime Intent (Gemini / Heuristic)
-    Intent-->>API: Intent ('safety_check', 'nearest_pfz', 'boundary_check', etc.)
+    Fisher->>API: Query in Regional Language / Romanized / Voice ("kya main kal fishing ja sakta hoon?")
+    API->>Lang: Detect Language & Transcribe (Sarvam Saaras STT + Romanized Indic Analyzer)
+    Lang-->>API: English Translation ('Can I go fishing tomorrow?') + Detected Language ('hi')
+    API->>Intent: Parse Maritime Intent (safety_check, port_coords, time_offset)
+    Intent-->>API: Structured Intent + Resolved Coordinates
     API->>Planner: Generate ExecutionPlan(lat, lon, date, intent)
-    Planner-->>API: Structured Tasks List
+    Planner-->>API: Execution Tasks List
     
     par Parallel Evidence Retrieval
         API->>Weather: get_marine_conditions(lat, lon, date)
-        Weather-->>API: WeatherEvidence (Wave height, Wind speed/dir, SST, Tide)
-        API->>Boundary: check_marine_boundary_evidence(lat, lon)
-        Boundary-->>API: BoundaryEvidence (Inside EEZ, Distance to border, Geofence tier)
+        Weather-->>API: WeatherEvidence (Wave height: 1.05m, Wind: 20.1 km/h WSW, SST: 28.5°C)
+        API->>Ocean: analyze_chlorophyll_and_sst(lat, lon)
+        Ocean-->>API: OceanAnalyticsEvidence (Chl-a: 0.85 mg/m³, Thermal front: Strong)
+        API->>Geofence: evaluate_vessel_geofences(lat, lon)
+        Geofence-->>API: BoundaryEvidence (Inside Indian EEZ, 42 km to IMBL, SAFE)
     end
     
     API->>Risk: assess_risk(WeatherEvidence)
-    Risk-->>API: RiskEvidence (Verdict: SAFE / CAUTION / UNSAFE, 4-Vector scores)
+    Risk-->>API: RiskEvidence (Verdict: SAFE, 4-Vector scores: Wave=0.2, Wind=0.3, Weather=0.1, Swell=0.2)
     
     opt If Fishing Query or Safe Conditions
         API->>PFZ: get_pfz_zones_evidence(lat, lon)
-        PFZ-->>API: PFZEvidence (Hotspots, Bearing, Depth, Target Species)
+        PFZ-->>API: PFZEvidence (Shelf Break Zone D: 8.8 km, Bearing: 285°, Kingfish/Seer Fish)
+        API->>Route: plan_safe_route(start, destination, hazards)
+        Route-->>API: RouteEvidence (Waypoints, Distance: 8.8 km, Skirts shoals)
     end
     
-    API->>Synth: Synthesize Advisory + Reasoning Trace + Source Attribution
-    Synth-->>API: English Advisory
-    API->>Lang: Translate to Regional Indic Language (Sarvam NMT)
-    Lang-->>API: Localized Advisory Response (+ Audio if TTS requested)
-    API-->>Fisher: QueryResponse (Localized Text, Risk Tier, PFZ coords, Reasoning Trace)
+    API->>Rec: generate_recommendations(EvidenceBundle)
+    Rec-->>API: Evidence-backed Operational Recommendations + Reasoning Traces
+    API->>Synth: Synthesize Dialogue + Evidence Summary + Source Attributions
+    Synth-->>API: English Advisory Markdown
+    API->>Lang: Translate to Regional Indic Language (Sarvam NMT / Bulbul TTS)
+    Lang-->>API: Localized Advisory Response (+ Audio URL if TTS requested)
+    API-->>Fisher: QueryResponse (Native Script Text, Risk Tier, PFZ coords, Waypoints, Reasoning Trace)
 ```
 
 ---
@@ -165,159 +198,241 @@ sequenceDiagram
 
 ```
 ORCA/
-├── README.md                           # Main project documentation
+├── README.md                                   # Master project documentation
+├── API_INTEGRATION_CONTRACT.md                 # OpenAPI & data provider specifications
+├── FIELD_TESTING_GUIDE.md                      # Coastal field deployment & validation protocols
+├── SIH_DEMO_SCRIPT.md                          # Smart India Hackathon guided evaluation script
 ├── data/
 │   ├── geofences/
-│   │   └── india_maritime_boundaries.json   # Indian Maritime Boundaries & MPAs
+│   │   └── india_maritime_boundaries.json       # Indian Maritime Boundaries, IMBL & MPAs
 │   ├── marine_regions/
-│   │   └── eez_mrgid_8480.geojson           # VLIZ World EEZ v12 India GeoJSON cache
+│   │   └── eez_mrgid_8480.geojson               # VLIZ World EEZ v12 India GeoJSON cache
 │   └── pfz/
-│       └── pfz_maharashtra.json             # INCOIS-derived PFZ coordinates & species
+│       └── pfz_maharashtra.json                 # INCOIS-derived PFZ coordinates & target species
 ├── backend/
-│   ├── requirements.txt                # Python backend dependencies
-│   ├── benchmark_performance.py        # Latency & throughput benchmarking script
+│   ├── requirements.txt                        # Python backend dependencies
+│   ├── pytest.ini                              # Pytest configuration
+│   ├── alembic.ini                             # Alembic database migration config
+│   ├── benchmark_performance.py                # Latency & throughput benchmarking script
+│   ├── alembic/
+│   │   └── versions/
+│   │       └── 0001_initial_orca_schema.py      # SQLAlchemy schema migration
 │   ├── app/
 │   │   ├── __init__.py
-│   │   ├── main.py                     # FastAPI application & /query orchestrator
-│   │   ├── agents/                     # Specialist AI agents
+│   │   ├── main.py                             # FastAPI core application & /query orchestrator
+│   │   ├── agents/                             # 11 Domain Specialist AI Agents
 │   │   │   ├── __init__.py
-│   │   │   ├── boundary_agent.py       # VLIZ EEZ & boundary evaluation agent
-│   │   │   ├── geofence_agent.py       # Maritime zone & MPA geofence agent
-│   │   │   ├── intent_agent.py         # LLM & heuristic intent parser
-│   │   │   ├── pfz_agent.py            # Potential Fishing Zone evidence builder
-│   │   │   ├── risk_agent.py           # 4-Vector marine safety risk matrix engine
-│   │   │   └── weather_agent.py        # Weather evidence collector
-│   │   ├── data/                       # Providers & low-bandwidth caching
+│   │   │   ├── boundary_agent.py               # VLIZ EEZ & territorial boundary agent
+│   │   │   ├── geofence_agent.py               # IMBL & Marine Protected Area geofence agent
+│   │   │   ├── geospatial_agent.py             # Geodetic math & distance calculator
+│   │   │   ├── hazard_agent.py                 # Proactive marine hazard detection agent
+│   │   │   ├── intent_agent.py                 # Multilingual intent parser & entity resolver
+│   │   │   ├── ocean_analytics_agent.py        # ISRO Chlorophyll-a & SST front analytics agent
+│   │   │   ├── pfz_agent.py                    # Potential Fishing Zone evidence agent
+│   │   │   ├── risk_agent.py                   # Decomposed 4-vector marine safety risk engine
+│   │   │   ├── route_agent.py                  # Navigational waypoint routing agent
+│   │   │   ├── simulation_agent.py             # Counterfactual "what-if" sea state simulator
+│   │   │   └── weather_agent.py                # INCOIS OSF & ocean state collector
+│   │   ├── data/                               # Data providers & spatial caching
 │   │   │   ├── __init__.py
-│   │   │   ├── geofence/               # Spatial boundary providers
+│   │   │   ├── geofence/                       # Spatial boundary providers
 │   │   │   │   ├── base.py
-│   │   │   │   └── spatial_provider.py # Point-in-polygon containment engine
-│   │   │   ├── pfz/                    # Potential Fishing Zone data providers
+│   │   │   │   └── spatial_provider.py         # Point-in-polygon ray-casting engine
+│   │   │   ├── pfz/                            # Potential Fishing Zone data providers
 │   │   │   │   ├── base.py
-│   │   │   │   └── mock.py             # INCOIS PFZ dataset provider
-│   │   │   └── weather/                # Marine ocean state providers
-│   │   │       ├── base.py             # Abstract WeatherProvider interface
-│   │   │       ├── cache.py            # Low-bandwidth geospatial spatial-binning cache
-│   │   │       ├── incois.py           # Live INCOIS OSF NCSS / THREDDS provider
-│   │   │       ├── mock.py             # MockWeatherProvider for unit tests
-│   │   │       └── open_meteo.py       # Open-Meteo Marine API live provider
-│   │   ├── models/                     # Pydantic schema contracts
+│   │   │   │   └── mock.py                     # INCOIS PFZ dataset provider
+│   │   │   └── weather/                        # Marine ocean state providers
+│   │   │       ├── base.py                     # Abstract WeatherProvider interface
+│   │   │       ├── cache.py                    # 0.05° spatial-binning resilient cache
+│   │   │       ├── incois.py                   # Live INCOIS OSF NCSS / THREDDS provider
+│   │   │       ├── mock.py                     # MockWeatherProvider for unit tests
+│   │   │       └── open_meteo.py               # Open-Meteo Marine numerical model provider
+│   │   ├── db/                                 # Database connectivity & models
 │   │   │   ├── __init__.py
-│   │   │   ├── admin_models.py         # System health & historical comparison models
-│   │   │   ├── agent_models.py         # Structured evidence contracts & risk models
-│   │   │   ├── emergency_models.py     # SOS distress & emergency contact schemas
-│   │   │   ├── government_models.py    # Government circulars & document models
-│   │   │   ├── notification_models.py  # Safety notification & alert models
-│   │   │   └── user_models.py          # User profile, auth, & location models
-│   │   ├── routers/                    # Dedicated REST API routers
+│   │   │   ├── base.py
+│   │   │   ├── models.py                       # SQLAlchemy ORM entities
+│   │   │   └── session.py                      # Database engine & session maker
+│   │   ├── models/                             # Pydantic schema contracts
 │   │   │   ├── __init__.py
-│   │   │   ├── admin.py                # Super Admin diagnostics & user fleet management
-│   │   │   ├── auth.py                 # JWT authentication & user profile endpoints
-│   │   │   ├── emergency.py            # SOS distress broadcasting & MRCC routing
-│   │   │   ├── government.py           # Policy circulars & announcement management
-│   │   │   ├── location.py             # GPS coastal validation & coordinate updates
-│   │   │   ├── marine_boundaries.py    # VLIZ World EEZ v12 boundary endpoints
-│   │   │   ├── notifications.py        # Safety alerts & notification center
-│   │   │   ├── pfz.py                  # PFZ hotspot discovery & analytics
-│   │   │   └── voice.py                # Sarvam AI STT & TTS speech endpoints
-│   │   └── services/                   # Business logic & external service connectors
+│   │   │   ├── admin_models.py                 # System health & historical comparison models
+│   │   │   ├── agent_models.py                 # Structured evidence contracts & risk models
+│   │   │   ├── emergency_models.py             # SOS distress & emergency contact schemas
+│   │   │   ├── government_models.py            # Government circulars & policy document models
+│   │   │   ├── notification_models.py          # Safety notification & hazard alert models
+│   │   │   └── user_models.py                  # User profile, auth, & location models
+│   │   ├── routers/                            # Dedicated REST API routers
+│   │   │   ├── __init__.py
+│   │   │   ├── admin.py                        # Super Admin diagnostics & user fleet management
+│   │   │   ├── auth.py                         # JWT authentication & user profile endpoints
+│   │   │   ├── emergency.py                    # SOS distress broadcasting & MRCC routing
+│   │   │   ├── government.py                   # Policy circulars & announcement management
+│   │   │   ├── location.py                     # GPS coastal validation & coordinate updates
+│   │   │   ├── marine_boundaries.py            # VLIZ World EEZ v12 boundary endpoints
+│   │   │   ├── notifications.py                # Safety alerts & notification center
+│   │   │   ├── pfz.py                          # PFZ hotspot discovery & analytics
+│   │   │   └── voice.py                        # Sarvam AI STT & Bulbul TTS speech endpoints
+│   │   └── services/                           # Business logic & external service connectors
 │   │       ├── __init__.py
-│   │       ├── bhashini.py             # Bhashini multilingual translation service
-│   │       ├── marine_boundaries.py    # WFS client & ray-casting boundary engine
-│   │       ├── planner.py              # Deterministic 6-rule Multi-Agent Task Planner
-│   │       ├── admin/                  # Super Admin service
-│   │       ├── auth/                   # Password hashing & JWT token services
-│   │       ├── emergency/              # SOS distress coordinator & MAYDAY script engine
-│   │       ├── government/             # Policy documents & announcement repository
-│   │       ├── language/               # Sarvam AI Saaras STT, Bulbul TTS, & NMT
-│   │       ├── location/               # Geodetic validation & coastal distance calculator
-│   │       └── notifications/          # Automated safety alert evaluator
-│   └── tests/                          # Comprehensive Pytest test suite (145 tests)
+│   │       ├── bhashini.py                     # Bhashini multilingual translation service
+│   │       ├── dialogue_synthesizer.py         # Dynamic conversational dialogue synthesizer
+│   │       ├── marine_boundaries.py            # WFS client & ray-casting boundary engine
+│   │       ├── planner.py                      # Deterministic 6-rule Multi-Agent Task Planner
+│   │       ├── recommendation_engine.py        # Reliable recommendation reasoning engine
+│   │       ├── sarvam.py                       # Sarvam AI Saaras STT & Bulbul TTS service
+│   │       ├── admin/                          # Super Admin health monitoring service
+│   │       ├── auth/                           # Password hashing & JWT token service
+│   │       ├── emergency/                      # SOS coordinator & MAYDAY VHF script generator
+│   │       ├── government/                     # Policy circulars & document repository
+│   │       ├── ingestion/                      # INCOIS NetCDF ingestion & caching service
+│   │       ├── language/                       # Unified multilingual service layer
+│   │       ├── location/                       # Geodetic validation & coastal distance service
+│   │       └── notifications/                  # Automated safety alert evaluator
+│   └── tests/                                  # 36 Test Modules (254 Unit & Integration Tests)
 │       ├── test_admin_and_historical.py
 │       ├── test_agent_contracts.py
+│       ├── test_assistant_pipeline_comprehensive.py
 │       ├── test_auth.py
 │       ├── test_bhashini.py
 │       ├── test_chat.py
+│       ├── test_database.py
+│       ├── test_demo_scenario.py
 │       ├── test_emergency.py
 │       ├── test_geofence.py
+│       ├── test_geofence_agent.py
 │       ├── test_government.py
+│       ├── test_hazard_agent.py
+│       ├── test_historical_observations.py
 │       ├── test_incois_provider.py
 │       ├── test_incois_query.py
+│       ├── test_ingestion_service.py
 │       ├── test_location_validation.py
 │       ├── test_marine_boundaries.py
 │       ├── test_marine_cache.py
 │       ├── test_marine_endpoints.py
+│       ├── test_multilingual_assistant_upgrade.py
 │       ├── test_notifications.py
+│       ├── test_ocean_analytics_and_isro_queries.py
 │       ├── test_pfz_api.py
 │       ├── test_planner.py
 │       ├── test_query.py
+│       ├── test_recommendations_and_reasoning.py
+│       ├── test_resilient_cache.py
 │       ├── test_risk_engine.py
+│       ├── test_route_agent.py
 │       ├── test_sarvam_language.py
+│       ├── test_sarvam_lid.py
+│       ├── test_sarvam_live.py
+│       ├── test_simulation_agent.py
 │       └── test_weather_provider.py
-└── frontend/                           # React 19 + Vite + Leaflet + Tailwind CSS
+└── frontend/                                   # React 19 + Vite 8 + Leaflet + Tailwind CSS v4
     ├── package.json
     ├── vite.config.ts
     ├── src/
-    │   ├── App.tsx                     # Main layout, stage manager, & state hub
-    │   ├── i18n.ts                     # 11-language Indic localization dictionary
-    │   ├── types.ts                    # Frontend TypeScript interfaces
-    │   ├── components/                 # Tactical UI & modal components
-    │   │   ├── AgentTraceModal.tsx     # Full reasoning trace & source attribution inspector
-    │   │   ├── AuthModal.tsx           # User authentication & registration modal
-    │   │   ├── ChatPanel.tsx           # Multi-turn conversational drawer with voice & audio
-    │   │   ├── ControlBar.tsx          # Quick actions & port selector bar
-    │   │   ├── CurrentMarineStatusCard.tsx # Ocean state telemetry summary card
-    │   │   ├── EmergencySOSModal.tsx   # SOS distress broadcast modal & MAYDAY generator
-    │   │   ├── FishAnalyticsModal.tsx  # PFZ species distribution & bathymetry modal
-    │   │   ├── ForecastHorizonTimeline.tsx # Hourly forecast timeline (24h/48h)
-    │   │   ├── GisLayersPanel.tsx      # Multi-layer GIS overlay controls
-    │   │   ├── GovernmentPortalModal.tsx # Gazette notices & policy document viewer
-    │   │   ├── LandingPage.tsx         # Responsive landing hero with live ticker
-    │   │   ├── LanguageSelectorModal.tsx # Indic regional language selector
-    │   │   ├── LocationPermissionModal.tsx # GPS permission & coastal verification
-    │   │   ├── MarineMap.tsx           # Leaflet nautical chart with dynamic GIS layers
-    │   │   ├── MobileBottomNav.tsx     # Mobile bottom tab navigation
-    │   │   ├── NotificationCenterModal.tsx # Safety alerts center
-    │   │   ├── QuickPromptsGrid.tsx    # High-frequency operational prompt shortcuts
-    │   │   ├── SuperAdminModal.tsx     # Fleet management & historical telemetry comparison
-    │   │   ├── TerminologyExplainerModal.tsx # Oceanographic terminology glossary
-    │   │   └── TopHeader.tsx           # Global navigation header with live badges
+    │   ├── App.tsx                             # Application root, routing, & state hub
+    │   ├── main.tsx                            # React DOM entry point
+    │   ├── types.ts                            # Frontend TypeScript interface contracts
+    │   ├── i18n.ts                             # 11-language Indic localization dictionary
+    │   ├── context/                            # Global state management
+    │   │   ├── AppContext.tsx
+    │   │   └── GlobalContext.tsx
+    │   ├── pages/                              # Dedicated application views
+    │   │   ├── LandingPage.tsx                 # Government-grade landing hero with live ticker
+    │   │   ├── DashboardPage.tsx               # Tactical ocean state dashboard & telemetry
+    │   │   ├── MapPage.tsx                     # Full tactical GIS chart with multi-layer GIS
+    │   │   ├── AssistantPage.tsx               # ChatGPT-style maritime copilot with voice STT/TTS
+    │   │   ├── AlertsPage.tsx                  # Proactive maritime hazard & IMBL alerts
+    │   │   ├── ServicesPage.tsx                # Marine services, emergency SOS & policy circulars
+    │   │   ├── SettingsPage.tsx                # Vessel config, 11-language switcher & theme toggle
+    │   │   ├── LocationPage.tsx                # GPS coordinate picker & coastal validator
+    │   │   ├── AuthPage.tsx                    # User login, registration & role selector
+    │   │   ├── TermsPage.tsx                   # Terms of service & maritime advisory disclaimer
+    │   │   └── PrivacyPage.tsx                 # Privacy policy & data protection terms
+    │   ├── components/                         # Tactical UI & modal components
+    │   │   ├── AgentTraceModal.tsx             # Full reasoning trace & source attribution inspector
+    │   │   ├── AuthModal.tsx                   # User authentication & registration modal
+    │   │   ├── ChatPanel.tsx                   # Conversational drawer with audio recording & TTS
+    │   │   ├── ControlBar.tsx                  # Quick actions & port selector bar
+    │   │   ├── CurrentMarineStatusCard.tsx     # Ocean state telemetry summary card
+    │   │   ├── EmergencySOSModal.tsx           # SOS distress broadcast modal & MAYDAY generator
+    │   │   ├── FishAnalyticsModal.tsx          # PFZ species distribution & bathymetry modal
+    │   │   ├── ForecastHorizonTimeline.tsx     # Hourly forecast timeline (24h/48h)
+    │   │   ├── GisLayersPanel.tsx              # Multi-layer GIS overlay controls
+    │   │   ├── GovernmentPortalModal.tsx       # Gazette notices & policy document viewer
+    │   │   ├── LanguageSelectorModal.tsx       # Indic regional language selector modal
+    │   │   ├── LocationPermissionModal.tsx     # GPS permission & coastal verification
+    │   │   ├── MarineMap.tsx                   # Leaflet nautical chart with dynamic GIS layers
+    │   │   ├── MarineMetricsGrid.tsx           # Oceanographic telemetry grid
+    │   │   ├── MobileBottomNav.tsx             # Mobile bottom tab navigation
+    │   │   ├── NotificationCenterModal.tsx     # Safety alerts center modal
+    │   │   ├── QuickPromptsGrid.tsx            # High-frequency operational prompt shortcuts
+    │   │   ├── SuperAdminModal.tsx             # Fleet management & historical telemetry comparison
+    │   │   ├── TerminologyExplainerModal.tsx   # Oceanographic terminology glossary
+    │   │   └── TopHeader.tsx                   # Global navigation header with live badges
+    │   ├── components/orca/                    # ORCA AppShell design system components
+    │   │   ├── AppShell.tsx                    # Responsive navigation frame & header
+    │   │   ├── CoastMap.tsx                    # Coastal locator map
+    │   │   ├── Conditions.tsx                  # MetOcean conditions summary badge
+    │   │   ├── LanguageMenu.tsx                # Dropdown language selector
+    │   │   ├── Logo.tsx                        # Official ORCA brand logo
+    │   │   ├── MapPanel.tsx                    # Integrated map container
+    │   │   ├── MarkdownRenderer.tsx            # Formatted markdown renderer (headings, bold, lists)
+    │   │   ├── OceanWavesCanvas.tsx            # High-fidelity realistic ocean swell canvas
+    │   │   ├── SafetyStatus.tsx                # Operational safety badge
+    │   │   └── ThemeToggle.tsx                 # Dark/light mode switcher
+    │   ├── lib/orca/                           # Utility libraries & custom React hooks
+    │   │   ├── assistant.ts                    # Assistant messaging helpers
+    │   │   ├── alerts.ts                       # Safety alerts logic
+    │   │   ├── geo.ts                          # Geodesic calculation utilities
+    │   │   ├── i18n.tsx                        # React i18n context provider
+    │   │   ├── marine.ts                       # Oceanographic math & conversions
+    │   │   ├── reference.ts                    # Maritime reference standards
+    │   │   ├── session.tsx                     # Session state provider
+    │   │   ├── theme.tsx                       # Theme mode provider
+    │   │   ├── types.ts                        # Domain interfaces
+    │   │   └── use-marine.ts                   # Custom marine data fetching hook
     │   └── services/
-    │       └── api.ts                  # Axios/Fetch API client for ORCA backend
+    │       └── api.ts                          # Axios/Fetch API client for ORCA backend
 ```
 
 ---
 
 ## 📡 Complete REST API Reference
 
-The backend exposes automated OpenAPI documentation at `/docs` (Swagger UI) and `/redoc`.
+The backend provides interactive OpenAPI documentation at `/docs` (Swagger UI) and `/redoc`.
 
-### 1. Operational Advisory & Chat
+### 1. Operational Advisory & Conversational Copilot
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `POST` | `/query` | Executes full multi-agent workflow: intent classification, planning, retrieval, risk synthesis, and Indic translation. |
-| `POST` | `/api/chat` | Multi-turn conversational chat with session memory, language persistence, and structured reasoning. |
+| `POST` | `/query` | Executes full multi-agent workflow: intent classification, planning, parallel retrieval, risk synthesis, recommendations, and Indic translation. |
+| `POST` | `/api/chat` | Multi-turn conversational chat with session memory, Romanized Indic script understanding, language persistence, and structured reasoning. |
+| `POST` | `/api/demo/dahanu` | SIH Guided Demo Endpoint: executes the signature Dahanu multi-agent PFZ + safety + safe route scenario. |
+| `POST` | `/api/simulate` | Counterfactual "what-if" scenario simulation (evaluates impact of simulated delta wave/wind on voyage safety). |
 | `GET` | `/` | Service health status, active upstream providers, and registered endpoints. |
+| `GET` | `/health` | Health check probe for container orchestrators. |
 
-#### Example `/query` Request & Response:
+#### Example `/query` Request:
 
 ```bash
 curl -X POST "http://localhost:8000/query" \
   -H "Content-Type: application/json" \
   -d '{
     "location": {"lat": 18.9220, "lon": 72.8347},
-    "date": "2026-08-25",
+    "date": "2026-08-27",
     "question": "ક્યાં માછીમારી કરવી સુરક્ષિત છે અને નજીકના ઝોન કયા છે?",
     "language": "gu"
   }'
 ```
 
+#### Example `/query` Response:
+
 ```json
 {
-  "answer": "તારીખ 2026-08-25 ના રોજ (18.9220, 72.8347) માટે સલાહ:\n\n✅ સમુદ્રની સ્થિતિ નેવિગેશન અને માછીમારી માટે સુરક્ષિત (SAFE) છે (તરંગ ઊંચાઈ: 1.05m, પવન ગતિ: 20.1 km/h).\n\nનજીકના સંભવિત માછીમારી ઝોન (PFZ):\n- Shelf Break Zone D: 8.8 km દૂર (ઊંડાઈ: ~65m, મુખ્ય માછલી: કિંગફિશ અને સુરમાઈ)\n- Chlorophyll Bloom Zone B: 12.3 km દૂર (ઊંડાઈ: ~45m, મુખ્ય માછલી: તારલી અને ઓલીયા)",
+  "answer": "તારીખ 2026-08-27 ના રોજ (18.9220, 72.8347) માટે ઓપરેશનલ સલાહ:\n\n✅ સમુદ્રની સ્થિતિ નેવિગેશન અને માછીમારી માટે સુરક્ષિત (SAFE) છે (તરંગ ઊંચાઈ: 1.05m, પવન ગતિ: 20.1 km/h).\n\nનજીકના સંભવિત માછીમારી ઝોન (PFZ):\n• Shelf Break Zone D: 8.8 km દૂર (દિશામાન: 285°, ઊંડાઈ: ~65m, મુખ્ય માછલી: કિંગફિશ અને સુરમાઈ)\n• Chlorophyll Bloom Zone B: 12.3 km દૂર (ઊંડાઈ: ~45m, મુખ્ય માછલી: તારલી અને ઓલીયા)\n\nભલામણ કરેલ સુરક્ષિત નેવિગેશન માર્ગ: પશ્ચિમ-દક્ષિણપશ્ચિમ તરફ સલામત નેવિગેશન વેપોઇન્ટ્સ અનુસરો.",
   "language": "gu",
   "language_name": "Gujarati",
+  "original_question": "ક્યાં માછીમારી કરવી સુરક્ષિત છે અને નજીકના ઝોન કયા છે?",
+  "english_question": "Where is it safe to fish and what are the nearest zones?",
   "risk_level": "safe",
   "risk_profile": {
     "overall_risk": "safe",
@@ -330,9 +445,12 @@ curl -X POST "http://localhost:8000/query" \
     "wave_height_m": 1.05,
     "wind_speed_kmh": 20.1,
     "wind_direction_cardinal": "WSW",
+    "wind_direction_deg": 245.0,
+    "sea_surface_temperature_c": 28.5,
     "forecast": "clear",
     "source": "INCOIS_OSF_LIVE",
-    "is_mock": false
+    "is_mock": false,
+    "cache_status": "live"
   },
   "nearest_pfz": [
     {
@@ -340,28 +458,33 @@ curl -X POST "http://localhost:8000/query" \
       "latitude": 18.9612,
       "longitude": 72.8941,
       "distance_km": 8.8,
+      "bearing_deg": 285.0,
       "depth_m": 65,
       "species": ["Kingfish", "Seer Fish"]
     }
   ],
   "reasoning": [
-    "Language Layer (Sarvam AI): Identified language as 'Gujarati' (gu). Translated user query to English: 'Where is it safe to fish and what are the nearest zones?'.",
-    "Detected intent 'safety_check' (location hint: 'Mumbai') for question: 'Where is it safe to fish and what are the nearest zones?'.",
-    "Generated execution plan with 4 tasks: weather_agent:get_marine_conditions, risk_agent:assess_risk, pfz_agent:find_nearest_zones, boundary_agent:check_boundary.",
-    "Retrieved marine weather data from INCOIS: forecast='clear', wave_height=1.05m, wind_speed=20.1 km/h.",
-    "Assessed marine risk level as 'SAFE': Wave height is 1.05m (<=1.5m), wind speed is 20.1 km/h (<=40 km/h).",
-    "Identified 3 Potential Fishing Zones (PFZ). Nearest: Shelf Break Zone D (8.8 km away).",
-    "Synthesized advisory answer combining safety verdict, weather metrics, and fishing zone data.",
-    "Translated synthesized operational advice back to Gujarati."
+    "Language Layer (Sarvam AI): Identified query language as 'Gujarati' (gu-IN, script: Gujr). Translated to English: 'Where is it safe to fish and what are the nearest zones?'.",
+    "Intent Agent: Detected intent 'safety_check' with location hint 'Mumbai' (18.9220°N, 72.8347°E).",
+    "Deterministic Planner: Generated execution plan with 5 tasks (weather, risk, pfz, boundary, route).",
+    "Weather Agent (INCOIS): Retrieved ocean state forecast (wave_height=1.05m, wind_speed=20.1 km/h, SST=28.5°C).",
+    "Risk Agent: Assessed composite marine risk as 'SAFE' across all 4 physical vectors.",
+    "PFZ Agent: Identified 3 active Potential Fishing Zones. Nearest: Shelf Break Zone D (8.8 km).",
+    "Boundary Agent (VLIZ): Verified coordinates are inside Indian EEZ (distance to border: 185 km).",
+    "Reliable Recommendation Engine: Generated 2 evidence-backed operational recommendations.",
+    "Dialogue Synthesizer: Synthesized structured advisory combining safety verdict, weather metrics, and PFZ coordinates.",
+    "Language Layer: Translated synthesized advisory into native Gujarati."
   ],
   "sources_used": [
     "sarvam_ai_language_service",
+    "bhashini_multilingual_service",
     "intent_agent",
     "planner",
     "incois_osf_provider",
     "risk_assessment_agent",
     "pfz_provider",
-    "marine_boundaries_service"
+    "marine_boundaries_service",
+    "route_agent"
   ]
 }
 ```
@@ -372,7 +495,7 @@ curl -X POST "http://localhost:8000/query" \
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `GET` | `/api/marine/conditions?lat=18.922&lon=72.834` | Direct endpoint returning normalized wave heights, wind vectors, SST, and tide state. |
+| `GET` | `/api/marine/conditions?lat=18.922&lon=72.834` | Returns normalized Significant Wave Height ($HS$), wind vectors, SST, visibility, and tidal state. |
 | `GET` | `/api/marine/risk?lat=18.922&lon=72.834` | Evaluates decomposed 4-vector environmental risk matrix with trend diagnosis. |
 | `GET` | `/api/marine/forecast?lat=18.922&lon=72.834` | Returns hourly forecast horizon (24h/48h) for wave and wind conditions. |
 | `GET` | `/api/marine/historical-comparison?lat=18.922&lon=72.834&period_hours=24` | Before-vs-After oceanographic comparison metrics and variance analysis. |
@@ -393,7 +516,7 @@ curl -X POST "http://localhost:8000/query" \
 
 ---
 
-### 4. Marine Boundaries & Geofencing (Marine Regions / VLIZ)
+### 4. Marine Boundaries, EEZ & Geofencing (Marine Regions / VLIZ)
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
@@ -401,16 +524,16 @@ curl -X POST "http://localhost:8000/query" \
 | `GET` | `/api/marine-boundaries/eez?mrgid=8480` | Returns GeoJSON FeatureCollection for the Indian Exclusive Economic Zone. |
 | `GET` | `/api/marine-boundaries/check?lat=18.922&lon=72.500` | Evaluates coordinates, distance to boundary, and geofence status (`SAFE`, `WARNING`, `CRITICAL`). |
 | `POST` | `/api/marine-boundaries/check` | JSON POST evaluation for vessel coordinate monitoring. |
-| `GET` | `/api/geofences?lat=18.922&lon=72.500` | Returns spatial evaluation for all registered maritime boundaries and MPAs. |
+| `GET` | `/api/geofences?lat=18.922&lon=72.500` | Returns spatial evaluation for all registered maritime boundaries, IMBL buffer zones, and MPAs. |
 
 ---
 
-### 5. Emergency SOS & Maritime Distress
+### 5. Emergency SOS & Maritime Search and Rescue (SAR)
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `GET` | `/api/emergency/contacts?region=Maharashtra` | Returns official 24x7 distress helplines (Coast Guard 1554, Coastal Police 1093, NDRF 1078). |
-| `POST` | `/api/emergency/sos` | Broadcasts instant SOS distress signal with MRCC routing and IMO MAYDAY VHF transcript generation. |
+| `GET` | `/api/emergency/contacts?region=Maharashtra` | Returns official 24x7 distress helplines (Coast Guard 1554, Coastal Police 1093, NDRF 1078, MRCC desks). |
+| `POST` | `/api/emergency/sos` | Broadcasts instant SOS distress signal with MRCC routing and automated IMO MAYDAY VHF Channel 16 script generation. |
 | `GET` | `/api/emergency/sos/active` | Lists active SOS distress beacons for maritime search & rescue monitoring desks. |
 
 #### Example `/api/emergency/sos` Payload:
@@ -429,7 +552,7 @@ curl -X POST "http://localhost:8000/query" \
 
 ---
 
-### 6. Government Circulars & Policy Portal
+### 6. Government Circulars & Fisheries Policy Portal
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
@@ -440,11 +563,11 @@ curl -X POST "http://localhost:8000/query" \
 
 ---
 
-### 7. Super Admin & User Fleet Management
+### 7. Super Admin Diagnostics & Fleet Operations
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `GET` | `/api/admin/system-health` | Returns real-time service health, upstream latencies (INCOIS, Open-Meteo, Sarvam AI), memory usage, and uptime. |
+| `GET` | `/api/admin/system-health` | Returns real-time service health, upstream latencies (INCOIS, Open-Meteo, Sarvam AI, Redis), memory usage, and uptime. |
 | `GET` | `/api/admin/users` | Lists registered fishermen, mariners, and officials. |
 | `PATCH` | `/api/admin/users/{user_id}/role` | Updates account role (`USER`, `GOVERNMENT`, `SUPER_ADMIN`). |
 
@@ -454,7 +577,7 @@ curl -X POST "http://localhost:8000/query" \
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `POST` | `/api/location/validate` | Validates GPS coordinates against India boundary and coastal belt (<= 100 km). |
+| `POST` | `/api/location/validate` | Validates GPS coordinates against India boundary and coastal belt ($\le 100\text{ km}$). |
 | `POST` | `/api/location/update` | Updates active vessel location for session. |
 | `GET` | `/api/notifications` | Retrieves active safety alerts (IMBL warnings, storm alerts, MPA notifications). |
 | `PATCH` | `/api/notifications/{id}/read` | Marks a specific notification as read. |
@@ -463,7 +586,7 @@ curl -X POST "http://localhost:8000/query" \
 
 ---
 
-## 🛡️ Risk Assessment Rules & Thresholds
+## 🛡️ Risk Assessment Rules & Operational Thresholds
 
 ORCA evaluates four independent physical risk vectors to construct the composite risk verdict:
 
@@ -471,9 +594,27 @@ ORCA evaluates four independent physical risk vectors to construct the composite
 | :--- | :--- | :--- | :--- | :--- |
 | **Significant Wave Height ($HS$)** | $\le 1.5\text{ m}$ | $1.5\text{ m} < HS \le 2.5\text{ m}$ | $2.5\text{ m} < HS \le 4.0\text{ m}$ | $> 4.0\text{ m}$ |
 | **Wind Speed** | $\le 40\text{ km/h}$ ($\le 11\text{ m/s}$) | $40\text{ km/h} < W \le 50\text{ km/h}$ | $50\text{ km/h} < W \le 65\text{ km/h}$ | $> 65\text{ km/h}$ ($> 18\text{ m/s}$) |
-| **Swell Period** | $6\text{s} - 12\text{s}$ (Normal) | $12\text{s} - 16\text{s}$ (High Energy) | $> 16\text{s}$ (Heavy Long Swell) | Severe breaker hazard |
+| **Swell Period ($T_p$)** | $6\text{s} - 12\text{s}$ (Normal) | $12\text{s} - 16\text{s}$ (High Energy) | $> 16\text{s}$ (Heavy Long Swell) | Severe breaker hazard |
 | **Forecast State** | `clear`, `calm` | `choppy`, `moderate`, `rainy` | `squally`, `rough`, `stormy` | `cyclonic`, `gale` |
 | **Recommended Action** | Normal operations permitted. | Small craft exercise caution; remain within 10 NM. | Strictly discourage sailing; recall vessels. | Complete harbour shutdown; deploy SAR standby. |
+
+---
+
+## 🌐 Supported Indian Coastal Languages
+
+| Language Code | Language Name | Native Script | Voice STT (Saaras) | Voice TTS (Bulbul) | NMT Translation | Romanized Indic |
+| :--- | :--- | :--- | :---: | :---: | :---: | :---: |
+| `gu` | Gujarati | ગુજરાતી | ✅ | ✅ | ✅ | ✅ |
+| `hi` | Hindi | हिन्दी | ✅ | ✅ | ✅ | ✅ |
+| `mr` | Marathi | मराठी | ✅ | ✅ | ✅ | ✅ |
+| `ta` | Tamil | தமிழ் | ✅ | ✅ | ✅ | ✅ |
+| `te` | Telugu | తెలుగు | ✅ | ✅ | ✅ | ✅ |
+| `ml` | Malayalam | മലയാളം | ✅ | ✅ | ✅ | ✅ |
+| `bn` | Bengali | বাংলা | ✅ | ✅ | ✅ | ✅ |
+| `or` / `od` | Odia | ଓડ଼િଆ | ✅ | ✅ | ✅ | ✅ |
+| `kn` | Kannada | ಕನ್ನಡ | ✅ | ✅ | ✅ | ✅ |
+| `pa` | Punjabi | ਪੰਜਾਬੀ | ✅ | ✅ | ✅ | ✅ |
+| `en` | English | English | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -485,8 +626,9 @@ ORCA evaluates four independent physical risk vectors to construct the composite
 - **Node.js 18+** & **npm**
 - (Optional) **Sarvam AI API Key** for production-grade Indic STT, TTS, and NMT.
 - (Optional) **Google Gemini API Key** or **Anthropic API Key** for LLM intent parsing.
+- (Optional) **Redis Server** for distributed caching (defaults to high-performance in-memory cache).
 
-> **Zero-Downtime Fallbacks:** If external API keys are omitted, ORCA automatically switches to built-in heuristic intent classification, local Indic translation dictionaries, and open fallback data providers.
+> **Zero-Downtime Resilience:** If external API keys or network connections are unavailable, ORCA automatically switches to built-in heuristic intent classification, local Indic translation dictionaries, in-memory spatial caching, and open fallback data providers.
 
 ---
 
@@ -500,7 +642,7 @@ cd backend
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# Install dependencies
+# Install backend dependencies
 pip install -r requirements.txt
 ```
 
@@ -513,11 +655,11 @@ Create a `.env` file in the `backend/` directory:
 # ORCA Marine AI Backend Configuration
 # ==========================================
 
-# LLM Providers (Optional - Heuristic fallback available)
+# LLM Providers (Optional - Deterministic rule-based fallback available)
 GEMINI_API_KEY=your_gemini_api_key_here
 # ANTHROPIC_API_KEY=your_anthropic_api_key_here
 
-# Sarvam AI Voice & Language Service (Optional - Mock/Bhashini fallback available)
+# Sarvam AI Voice & Multilingual Service (Optional - Bhashini/Dictionary fallback available)
 SARVAM_API_KEY=your_sarvam_api_key_here
 SARVAM_BASE_URL=https://api.sarvam.ai
 SARVAM_TIMEOUT_SEC=10.0
@@ -531,9 +673,20 @@ SARVAM_TIMEOUT_SEC=10.0
 INCOIS_BASE_URL=https://incois.gov.in
 INCOIS_TIMEOUT_SEC=4.0
 
+# Database & Cache Settings
+DATABASE_URL=sqlite:///./orca_marine.db
+REDIS_URL=redis://localhost:6379/0
+
 # Security & Coastal Validation
 ORCA_JWT_SECRET=orca_marine_ai_jwt_secret_key_sih_2026_coastal_safety
 ORCA_INTELLIGENCE_RADIUS_KM=100.0
+```
+
+#### Database Setup (Optional Alembic Migration)
+
+```bash
+# Run schema migrations
+alembic upgrade head
 ```
 
 #### Run the Backend Server
@@ -559,13 +712,13 @@ npm install
 npm run dev
 ```
 
-The frontend dashboard will be live at `http://localhost:5173`.
+The frontend tactical GIS dashboard will be live at `http://localhost:5173`.
 
 ---
 
 ## 🧪 Testing & Quality Assurance
 
-The ORCA backend contains a comprehensive test suite of **222 unit and integration tests** (100% passing) verifying multi-agent planning, ISRO satellite ocean analytics, PFZ discovery, 4-vector risk assessment, VLIZ EEZ boundary ray-casting, multilingual translations across 11 Indic languages, proactive hazard alerts, and the reliable recommendations & reasoning engine.
+The ORCA backend contains a comprehensive test suite of **254 unit and integration tests across 36 test modules** (100% passing) verifying multi-agent planning, ISRO satellite ocean analytics, PFZ discovery, 4-vector risk assessment, VLIZ EEZ boundary ray-casting, IMBL geofencing, multilingual translations across 11 Indic languages, proactive hazard alerts, Romanized Indic script understanding, and the reliable recommendations & reasoning engine.
 
 ```bash
 # Run all backend tests
@@ -579,69 +732,55 @@ platform darwin -- Python 3.14.4, pytest-9.0.3, pluggy-1.6.0
 rootdir: /Users/darshilmodi/Desktop/ORCA/backend
 configfile: pytest.ini
 testpaths: tests
-collected 222 items
+plugins: langsmith-0.7.26, anyio-4.13.0
+collected 254 items
 
-tests/test_admin_and_historical.py .......                               [  3%]
-tests/test_agent_contracts.py .....                                      [  5%]
-tests/test_auth.py .......                                               [  8%]
-tests/test_bhashini.py ............                                      [ 13%]
-tests/test_chat.py .......                                               [ 17%]
-tests/test_database.py ..........                                        [ 21%]
-tests/test_demo_scenario.py ....                                         [ 23%]
-tests/test_emergency.py ........                                         [ 27%]
-tests/test_geofence.py ......                                            [ 29%]
-tests/test_geofence_agent.py ....                                        [ 31%]
-tests/test_government.py .........                                       [ 35%]
-tests/test_hazard_agent.py ...                                           [ 36%]
-tests/test_historical_observations.py ...                                [ 38%]
-tests/test_incois_provider.py ........                                   [ 41%]
+tests/test_admin_and_historical.py .......                               [  2%]
+tests/test_agent_contracts.py .....                                      [  4%]
+tests/test_assistant_pipeline_comprehensive.py ................          [ 11%]
+tests/test_auth.py .......                                               [ 13%]
+tests/test_bhashini.py ............                                      [ 18%]
+tests/test_chat.py .......                                               [ 21%]
+tests/test_database.py ..........                                        [ 25%]
+tests/test_demo_scenario.py ....                                         [ 26%]
+tests/test_emergency.py ........                                         [ 29%]
+tests/test_geofence.py ......                                            [ 32%]
+tests/test_geofence_agent.py ....                                        [ 33%]
+tests/test_government.py .........                                       [ 37%]
+tests/test_hazard_agent.py ...                                           [ 38%]
+tests/test_historical_observations.py ...                                [ 39%]
+tests/test_incois_provider.py ........                                   [ 42%]
 tests/test_incois_query.py .....                                         [ 44%]
 tests/test_ingestion_service.py ..                                       [ 45%]
 tests/test_location_validation.py .......                                [ 48%]
 tests/test_marine_boundaries.py ..........                               [ 52%]
-tests/test_marine_cache.py ....                                          [ 54%]
-tests/test_marine_endpoints.py .....                                     [ 56%]
-tests/test_notifications.py .......                                      [ 59%]
-tests/test_ocean_analytics_and_isro_queries.py .............             [ 65%]
-tests/test_pfz_api.py ..                                                 [ 66%]
-tests/test_planner.py ......                                             [ 69%]
-tests/test_query.py ......                                               [ 72%]
-tests/test_recommendations_and_reasoning.py .........                    [ 76%]
-tests/test_resilient_cache.py .......                                    [ 79%]
-tests/test_risk_engine.py ......                                         [ 81%]
-tests/test_route_agent.py ..                                             [ 82%]
-tests/test_sarvam_language.py .............                              [ 88%]
+tests/test_marine_cache.py ....                                          [ 53%]
+tests/test_marine_endpoints.py .....                                     [ 55%]
+tests/test_multilingual_assistant_upgrade.py ................            [ 62%]
+tests/test_notifications.py .......                                      [ 64%]
+tests/test_ocean_analytics_and_isro_queries.py .............             [ 70%]
+tests/test_pfz_api.py ..                                                 [ 70%]
+tests/test_planner.py ......                                             [ 73%]
+tests/test_query.py ......                                               [ 75%]
+tests/test_recommendations_and_reasoning.py .........                    [ 79%]
+tests/test_resilient_cache.py .......                                    [ 81%]
+tests/test_risk_engine.py ......                                         [ 84%]
+tests/test_route_agent.py ..                                             [ 85%]
+tests/test_sarvam_language.py .............                              [ 90%]
 tests/test_sarvam_lid.py ..............                                  [ 95%]
-tests/test_sarvam_live.py ....                                           [ 96%]
-tests/test_simulation_agent.py ..                                        [ 97%]
+tests/test_sarvam_live.py ....                                           [ 97%]
+tests/test_simulation_agent.py ..                                        [ 98%]
 tests/test_weather_provider.py .....                                     [100%]
 
-================== 222 passed, 1 warning in 145.41s (0:02:25) ==================
+================== 254 passed, 1 warning in 198.05s (0:03:18) ==================
 ```
-
----
-
-## 🌐 Supported Indian Coastal Languages
-
-| Language Code | Language Name | Native Script | Voice STT (Saaras) | Voice TTS (Bulbul) | NMT Translation |
-| :--- | :--- | :--- | :---: | :---: | :---: |
-| `gu` | Gujarati | ગુજરાતી | ✅ | ✅ | ✅ |
-| `hi` | Hindi | हिन्दी | ✅ | ✅ | ✅ |
-| `mr` | Marathi | मराठी | ✅ | ✅ | ✅ |
-| `ta` | Tamil | தமிழ் | ✅ | ✅ | ✅ |
-| `te` | Telugu | తెలుగు | ✅ | ✅ | ✅ |
-| `ml` | Malayalam | മലയാളം | ✅ | ✅ | ✅ |
-| `bn` | Bengali | বাংলা | ✅ | ✅ | ✅ |
-| `or` / `od` | Odia | ଓଡ଼ିଆ | ✅ | ✅ | ✅ |
-| `kn` | Kannada | ಕನ್ನಡ | ✅ | ✅ | ✅ |
-| `pa` | Punjabi | ਪੰਜਾਬੀ | ✅ | ✅ | ✅ |
-| `en` | English | English | ✅ | ✅ | ✅ |
 
 ---
 
 ## 🏛️ Institutional Data Attributions
 
 - **INCOIS (Indian National Centre for Ocean Information Services)**: Ministry of Earth Sciences, Govt. of India (Ocean State Forecast WW3 NCSS services & Potential Fishing Zone advisories).
+- **ISRO (Indian Space Research Organisation)**: Oceansat-2 / INSAT-3D ocean color, chlorophyll density, and thermal sensor observations.
 - **Marine Regions / Flanders Marine Institute (VLIZ)**: World EEZ v12 dataset (MRGID 8480, Creative Commons Attribution 4.0 International).
 - **Sarvam AI**: Saaras Speech-to-Text & Bulbul Neural Text-to-Speech models for Indian regional languages.
 - **Digital India Bhashini Division**: Ministry of Electronics and Information Technology (MeitY), Govt. of India.

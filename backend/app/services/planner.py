@@ -135,6 +135,15 @@ class Planner:
         elif intent == "weather_conditions":
             add_task("weather_agent", "get_marine_conditions", required=True)
 
+        elif intent == "emergency_sos":
+            add_task("geospatial_agent", "calculate_distance", required=True)
+            add_task("boundary_agent", "check_marine_boundary", required=True)
+            add_task("hazard_agent", "detect_hazards", required=True)
+
+        elif intent == "government_schemes":
+            # Informational scheme retrieval
+            pass
+
         elif intent == "general":
             # General informational query: 0 tasks
             pass
