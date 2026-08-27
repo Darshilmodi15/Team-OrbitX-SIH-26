@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { AppShell } from "@/components/orca/AppShell";
+import { OrcaLogo } from "@/components/orca/Logo";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
 import { useMarine } from "@/lib/orca/use-marine";
@@ -494,7 +495,7 @@ export default function AssistantPage() {
               /* ChatGPT-Style Empty State */
               <div className="mx-auto flex h-full max-w-xl flex-col items-center justify-center text-center px-1 py-4">
                 <div className="flex size-12 sm:size-14 items-center justify-center rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-400 shadow-md">
-                  <Bot className="size-6 sm:size-7" />
+                  <OrcaLogo className="size-8 sm:size-9 shrink-0" />
                 </div>
                 <h2 className="mt-3 sm:mt-4 text-lg sm:text-xl font-bold text-foreground">{t("chat.title")}</h2>
                 <p className="mt-1 max-w-md text-xs sm:text-sm text-muted-foreground">{t("chat.subtitle")}</p>
@@ -521,13 +522,17 @@ export default function AssistantPage() {
                   {/* Avatar */}
                   <div
                     className={cn(
-                      "flex size-7 shrink-0 items-center justify-center rounded-md border",
+                      "flex size-7.5 sm:size-8 shrink-0 items-center justify-center rounded-lg border shadow-xs",
                       m.role === "user"
                         ? "bg-slate-800 border-slate-700 text-slate-200"
-                        : "bg-teal-500/15 border-teal-500/30 text-teal-400",
+                        : "bg-teal-500/10 border-teal-500/30",
                     )}
                   >
-                    {m.role === "user" ? <User className="size-4" /> : <Bot className="size-4" />}
+                    {m.role === "user" ? (
+                      <User className="size-4" />
+                    ) : (
+                      <OrcaLogo className="size-5 sm:size-5.5 shrink-0" />
+                    )}
                   </div>
 
                   {/* Message Content Body */}

@@ -16,6 +16,7 @@ import {
 import type { MessageItem } from '../context/AppContext';
 import { useAppContext } from '../context/AppContext';
 import EvidencePanel from './EvidencePanel';
+import { OrcaLogo } from './orca/Logo';
 
 interface ChatMessageProps {
   message: MessageItem;
@@ -61,8 +62,8 @@ export default function ChatMessage({ message }: ChatMessageProps) {
   return (
     <div className="flex justify-start items-start gap-2.5 mb-4 group animate-fadeIn">
       {/* ORCA Avatar */}
-      <div className="w-8 h-8 rounded-xl bg-[#0D9488] text-white flex items-center justify-center text-xs shrink-0 shadow-sm font-bold">
-        🌊
+      <div className="w-8 h-8 rounded-xl bg-teal-500/10 border border-teal-500/30 text-white flex items-center justify-center shrink-0 shadow-xs">
+        <OrcaLogo className="size-5.5 shrink-0" />
       </div>
 
       <div className="max-w-[92%] flex-1 rounded-2xl rounded-tl-xs bg-white border border-slate-200 text-slate-900 p-4 shadow-sm hover:border-slate-300 transition">
