@@ -76,7 +76,7 @@ export default function DashboardPage() {
         </section>
 
         {/* Marine conditions */}
-        {c && <MarineConditions data={c} />}
+        {c && <MarineConditions data={c} tide={marine.data?.tide ?? null} />}
 
         {/* Forecast */}
         {marine.data?.forecast && <ForecastTimeline points={marine.data.forecast} />}

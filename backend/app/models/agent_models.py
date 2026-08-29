@@ -186,7 +186,7 @@ class TideInfo(BaseModel):
     secondary_high_tide_height_m: Optional[float] = Field(default=None, description="Secondary high tide height in meters")
     tidal_phase: str = Field(default="Spring Tide", description="Tidal phase ('Spring Tide', 'Neap Tide', 'Transitional')")
     tidal_range_m: Optional[float] = Field(default=None, description="Difference between high and low tide in meters")
-    source: str = Field(default="INCOIS Tidal Harmonic Predictions & Survey of India", description="Tidal data provenance")
+    source: str = Field(default="ORCA regional tidal harmonic estimate; official tide feed integration pending", description="Tidal data provenance")
 
 
 class OceanAnalyticsEvidence(BaseModel):
@@ -303,4 +303,3 @@ class GeofenceEvidence(BaseModel):
     has_critical_violation: bool = Field(default=False, description="Whether any critical boundary violation exists")
     source: str = Field(default="geofence_spatial_engine", description="Evaluation engine provenance")
     is_mock: bool = Field(default=False, description="Whether evaluation used mock data")
-

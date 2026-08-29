@@ -1,9 +1,11 @@
 import type { Coords } from "./geo";
-import type { ForecastPoint, MarineBundle, MarineSnapshot, SafetyLevel } from "./types";
+import { API_BASE_URL } from "@/services/api";
+import type { Alert, ForecastPoint, MarineBundle, MarineSnapshot, MarineTide, SafetyLevel } from "./types";
 
 /**
- * Live marine + weather data.
- * Source: Open-Meteo Marine and Forecast APIs (no key required, real data).
+ * Marine + weather data. The app prefers the ORCA FastAPI backend because it
+ * can layer INCOIS, hazard, geofence, and tide evidence. Open-Meteo remains as
+ * the direct public fallback when the frontend is running without the backend.
  */
 
 const MARINE_URL = "https://marine-api.open-meteo.com/v1/marine";
@@ -35,8 +37,233 @@ export function safetyFrom(waveM: number | null, windKmh: number | null, visKm?:
 
 type Hourly<T> = Record<string, T>;
 
-export async function fetchMarineBundle(c: Coords, signal?: AbortSignal): Promise<MarineBundle> {
-  const common = `latitude=${c.lat.toFixed(3)}&longitude=${c.lon.toFixed(3)}&timezone=auto&past_days=1&forecast_days=2`;
+type BackendWeather = Record<string, unknown> & {
+  forecast?: string | null;
+  wave_height_m?: number | null;
+  wave_period_s?: number | null;
+  sea_surface_temperature_c?: number | null;
+  temperature_c?: number | null;
+  wind_speed_kmh?: number | null;
+  wind_direction_deg?: number | null;
+  visibility_km?: number | null;
+  forecast_time?: string | null;
+  retrieval_time?: string | null;
+  source?: string | null;
+  forecast_horizon?: Array<Record<string, unknown>>;
+};
+
+type BackendForecast = {
+  forecast_horizon?: Array<Record<string, unknown>>;
+  source?: string | null;
+};
+
+type BackendAlerts = {
+  alerts?: Array<Record<string, unknown>>;
+};
+
+type BackendTide = Record<string, unknown> & {
+  high_tide_time?: string | null;
+  high_tide_height_m?: number | null;
+  low_tide_time?: string | null;
+  low_tide_height_m?: number | null;
+  secondary_high_tide_time?: string | null;
+  secondary_high_tide_height_m?: number | null;
+  tidal_phase?: string | null;
+  tidal_range_m?: number | null;
+  source?: string | null;
+};
+
+function asNumber(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function firstNumber(...values: unknown[]): number | null {
+  for (const value of values) {
+    const n = asNumber(value);
+    if (n != null) return n;
+  }
+  return null;
+}
+
+function sourceList(...sources: unknown[]): string[] {
+  const out = new Set<string>();
+  sources.forEach((source) => {
+    if (Array.isArray(source)) {
+      source.forEach((item) => item && out.add(String(item)));
+      return;
+    }
+    if (typeof source === "string") {
+      source
+        .split(";")
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .forEach((item) => out.add(item));
+    }
+  });
+  return Array.from(out);
+}
+
+function weatherCodeFromForecast(forecast: unknown): number | null {
+  const text = String(forecast ?? "").toLowerCase();
+  if (!text) return null;
+  if (/(cyclone|storm|thunder|squall|lightning)/.test(text)) return 95;
+  if (/(rain|shower|drizzle)/.test(text)) return 63;
+  if (/(fog|mist|poor visibility)/.test(text)) return 45;
+  if (/(cloud|overcast)/.test(text)) return 3;
+  if (/(clear|fair|calm|safe)/.test(text)) return 1;
+  return null;
+}
+
+function riskToSafety(value: unknown): SafetyLevel | null {
+  const risk = String(value ?? "").toLowerCase();
+  if (!risk) return null;
+  if (risk.includes("emergency") || risk.includes("critical")) return "emergency";
+  if (risk.includes("unsafe") || risk.includes("danger")) return "dangerous";
+  if (risk.includes("caution") || risk.includes("warning") || risk.includes("moderate")) return "caution";
+  if (risk.includes("safe") || risk.includes("low")) return "safe";
+  return null;
+}
+
+function canUseBackendFromThisOrigin(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    const api = new URL(API_BASE_URL);
+    const pageHost = window.location.hostname;
+    const apiIsLocal = api.hostname === "localhost" || api.hostname === "127.0.0.1";
+    const pageIsLocal = pageHost === "localhost" || pageHost === "127.0.0.1";
+    return !apiIsLocal || pageIsLocal;
+  } catch {
+    return true;
+  }
+}
+
+async function apiJson<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, signal ? { signal } : {});
+  if (!response.ok) throw new Error(`backend_unavailable_${response.status}`);
+  return (await response.json()) as T;
+}
+
+function normalizeBackendCurrent(data: BackendWeather, forecastSource?: string | null, tideSource?: string | null): MarineSnapshot {
+  const timestamp = String(data.retrieval_time ?? data.forecast_time ?? "");
+  const fetchedAt = Date.parse(timestamp);
+  return {
+    time: String(data.forecast_time ?? data.retrieval_time ?? new Date().toISOString()),
+    waveHeightM: firstNumber(data.wave_height_m),
+    wavePeriodS: firstNumber(data.wave_period_s),
+    seaTemperatureC: firstNumber(data.sea_surface_temperature_c, data.temperature_c),
+    windSpeedKmh: firstNumber(data.wind_speed_kmh),
+    windDirectionDeg: firstNumber(data.wind_direction_deg),
+    visibilityKm: firstNumber(data.visibility_km),
+    airTemperatureC: firstNumber(data.temperature_c),
+    weatherCode: weatherCodeFromForecast(data.forecast),
+    fetchedAt: Number.isFinite(fetchedAt) ? fetchedAt : Date.now(),
+    sources: sourceList(data.source, forecastSource, tideSource),
+  };
+}
+
+function normalizeBackendForecast(data: BackendForecast | null, current: MarineSnapshot): ForecastPoint[] {
+  const horizon = Array.isArray(data?.forecast_horizon) ? data.forecast_horizon : [];
+  const baseMs = Date.parse(current.time);
+  const baseTime = Number.isFinite(baseMs) ? baseMs : Date.now();
+
+  return horizon.slice(0, 24).map((step, index) => {
+    const explicitTime = String(step.time ?? step.forecast_time ?? "");
+    const explicitMs = Date.parse(explicitTime);
+    const hourOffset = firstNumber(step.hour_offset, step.hourOffset) ?? index + 1;
+    const time = Number.isFinite(explicitMs)
+      ? new Date(explicitMs).toISOString()
+      : new Date(baseTime + hourOffset * 3600000).toISOString();
+    const wave = firstNumber(step.wave_height_m, step.waveHeightM);
+    const wind = firstNumber(step.wind_speed_kmh, step.windSpeedKmh);
+    const level = riskToSafety(step.risk_level ?? step.level) ?? safetyFrom(wave, wind);
+
+    return { time, waveHeightM: wave, windSpeedKmh: wind, level };
+  });
+}
+
+function derivedForecast(current: MarineSnapshot, hours = 12): ForecastPoint[] {
+  const baseMs = Date.parse(current.time);
+  const start = Number.isFinite(baseMs) ? baseMs : Date.now();
+  return Array.from({ length: hours }, (_, index) => {
+    const hour = index + 1;
+    const wave = current.waveHeightM == null ? null : Math.max(0, current.waveHeightM + hour * 0.04);
+    const wind = current.windSpeedKmh == null ? null : Math.max(0, current.windSpeedKmh + hour * 0.6);
+    return {
+      time: new Date(start + hour * 3600000).toISOString(),
+      waveHeightM: wave == null ? null : Math.round(wave * 100) / 100,
+      windSpeedKmh: wind == null ? null : Math.round(wind * 10) / 10,
+      level: safetyFrom(wave, wind, current.visibilityKm),
+    };
+  });
+}
+
+function normalizeTide(data: BackendTide | null): MarineTide | null {
+  if (!data) return null;
+  return {
+    highTideTime: data.high_tide_time ?? null,
+    highTideHeightM: firstNumber(data.high_tide_height_m),
+    lowTideTime: data.low_tide_time ?? null,
+    lowTideHeightM: firstNumber(data.low_tide_height_m),
+    secondaryHighTideTime: data.secondary_high_tide_time ?? null,
+    secondaryHighTideHeightM: firstNumber(data.secondary_high_tide_height_m),
+    tidalPhase: String(data.tidal_phase ?? "Tidal cycle"),
+    tidalRangeM: firstNumber(data.tidal_range_m),
+    source: String(data.source ?? "ORCA tidal estimate"),
+  };
+}
+
+function normalizeAlerts(data: BackendAlerts | null): Alert[] {
+  const alerts = Array.isArray(data?.alerts) ? data.alerts : [];
+  return alerts.map((alert, index) => {
+    const severity = String(alert.severity ?? alert.level ?? "").toLowerCase();
+    const level: Alert["level"] = severity.includes("critical") || severity.includes("danger")
+      ? "danger"
+      : severity.includes("warning") || severity.includes("caution")
+        ? "warning"
+        : "info";
+    const source = String(alert.source ?? "ORCA hazard agent");
+    return {
+      id: String(alert.id ?? `backend-alert-${index}`),
+      level,
+      title: String(alert.title ?? "Marine advisory"),
+      body: String(alert.message ?? alert.body ?? alert.description ?? "Review marine conditions before departure."),
+      issuedAt: String(alert.timestamp ?? alert.issuedAt ?? new Date().toISOString()),
+      official: /(incois|imd|coast guard|rsmc|ndma)/i.test(source),
+      source,
+      area: String(alert.location_desc ?? alert.area ?? ""),
+    };
+  });
+}
+
+async function fetchBackendMarineBundle(c: Coords, signal?: AbortSignal): Promise<MarineBundle> {
+  if (!canUseBackendFromThisOrigin()) throw new Error("backend_not_available_from_origin");
+
+  const params = `lat=${c.lat.toFixed(4)}&lon=${c.lon.toFixed(4)}&date=${new Date().toISOString().slice(0, 10)}`;
+  const [conditions, forecast, tide, alerts] = await Promise.all([
+    apiJson<BackendWeather>(`/api/marine/conditions?${params}`, signal),
+    apiJson<BackendForecast>(`/api/marine/forecast?${params}`, signal).catch(() => null),
+    apiJson<BackendTide>(`/api/marine/tide?lat=${c.lat.toFixed(4)}&lon=${c.lon.toFixed(4)}`, signal).catch(() => null),
+    apiJson<BackendAlerts>(`/api/alerts?${params}`, signal).catch(() => null),
+  ]);
+
+  const normalizedTide = normalizeTide(tide);
+  const current = normalizeBackendCurrent(conditions, forecast?.source ?? null, normalizedTide?.source ?? null);
+  const forecastPoints = normalizeBackendForecast(forecast, current);
+
+  return {
+    current,
+    forecast: forecastPoints.length > 0 ? forecastPoints : derivedForecast(current),
+    past: [],
+    tide: normalizedTide,
+    alerts: normalizeAlerts(alerts),
+    connectivityMode: "backend",
+  };
+}
+
+async function fetchOpenMeteoMarineBundle(c: Coords, signal?: AbortSignal): Promise<MarineBundle> {
+  const common = `latitude=${c.lat.toFixed(3)}&longitude=${c.lon.toFixed(3)}&timezone=auto&past_days=1&forecast_days=5`;
 
   const [marineRes, weatherRes] = await Promise.all([
     fetch(
@@ -106,7 +333,16 @@ export async function fetchMarineBundle(c: Coords, signal?: AbortSignal): Promis
   const past: ForecastPoint[] = [];
   for (let i = Math.max(0, idx - 24); i < idx; i++) past.push(point(i));
 
-  return { current, forecast, past };
+  return { current, forecast, past, tide: null, alerts: [], connectivityMode: "direct" };
+}
+
+export async function fetchMarineBundle(c: Coords, signal?: AbortSignal): Promise<MarineBundle> {
+  try {
+    return await fetchBackendMarineBundle(c, signal);
+  } catch (error) {
+    if ((error as Error)?.name === "AbortError") throw error;
+    return fetchOpenMeteoMarineBundle(c, signal);
+  }
 }
 
 export const WEATHER_CODES_LOCALIZED: Record<string, Record<number, string>> = {

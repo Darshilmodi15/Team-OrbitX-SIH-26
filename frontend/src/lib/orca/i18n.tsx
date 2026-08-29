@@ -73,6 +73,7 @@ const en = {
   "auth.registerTitle": "Create your ORCA account",
   "auth.subtitle": "Your account keeps your location, language and alerts in sync.",
   "auth.name": "Full name",
+  "auth.fisherId": "Fisher ID",
   "auth.mobile": "Mobile number",
   "auth.email": "Email",
   "auth.password": "Password",
@@ -80,9 +81,9 @@ const en = {
   "auth.haveAccount": "Already have an account?",
   "auth.noAccount": "New to ORCA?",
   "auth.mismatch": "Passwords do not match.",
-  "auth.invalid": "Enter a valid mobile number or email and a password of at least 6 characters.",
+  "auth.invalid": "Enter a valid Fisher ID, mobile number or email and a password of at least 6 characters.",
   "auth.localNotice":
-    "Accounts are stored on this device until the secure account service is connected.",
+    "Demo sessions are stored on this device. Official National Marine Fisher ID verification can be connected through the secure account service.",
 
   "loc.title": "Set your location",
   "loc.why":
@@ -123,6 +124,10 @@ const en = {
   "marine.sst": "Sea temperature",
   "marine.air": "Air temperature",
   "marine.weather": "Weather",
+  "marine.highTide": "High tide",
+  "marine.lowTide": "Low tide",
+  "marine.tidePhase": "Tide phase",
+  "marine.tideRange": "Tide range",
 
   "forecast.title": "Next hours",
   "forecast.now": "Now",
@@ -169,7 +174,8 @@ const en = {
   "svc.title": "Emergency & government services",
   "svc.call": "Call",
   "svc.sos": "Emergency help",
-  "svc.sosConfirm": "Call the national emergency number 112 now?",
+  "svc.sosConfirm": "Call 112 or transmit a GPS distress broadcast to the ORCA emergency workflow.",
+  "svc.transmitSos": "Transmit SOS",
   "svc.shareLocation": "Share my location",
   "svc.copied": "Location copied. Paste it into a message or call.",
   "svc.112.name": "National Emergency Response (112)",

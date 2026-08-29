@@ -19,11 +19,14 @@ export default function AuthPage() {
     e.preventDefault();
     setError(null);
     const contact = form.contact.trim();
-    const valid = /^\+?\d{10,13}$/.test(contact) || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact);
+    const valid =
+      /^\+?\d{10,13}$/.test(contact) ||
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact) ||
+      /^(?:NMFD|MFD|IND)[A-Z0-9-]{4,}$/i.test(contact);
     if (!valid || form.password.length < 6) return setError(t("auth.invalid"));
     if (mode === "register" && form.password !== form.confirm) return setError(t("auth.mismatch"));
 
-    signIn({ contact, name: form.name });
+    signIn({ contact, name: form.name || "Marine Fisher" });
     navigate("/location");
   }
 
@@ -47,7 +50,7 @@ export default function AuthPage() {
         )}
         <div className="space-y-1.5">
           <label htmlFor="contact" className="text-sm font-medium">
-            {t("auth.mobile")} / {t("auth.email")}
+            {t("auth.fisherId")} / {t("auth.mobile")} / {t("auth.email")}
           </label>
           <input
             id="contact" value={form.contact} onChange={set("contact")} inputMode="text"

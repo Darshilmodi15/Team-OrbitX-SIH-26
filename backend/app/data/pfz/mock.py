@@ -1,4 +1,4 @@
-"""INCOIS and Mock Potential Fishing Zone (PFZ) data provider implementing the PFZProvider interface."""
+"""Potential Fishing Zone (PFZ) provider with INCOIS-derived records and a deterministic fallback."""
 import hashlib
 import json
 import math
@@ -24,10 +24,10 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return R * c
 
 
-class MockPFZProvider(PFZProvider):
+class IncoisPFZProvider(PFZProvider):
     """
-    Potential Fishing Zone (PFZ) provider using real INCOIS datasets when available,
-    with synthetic generator fallback.
+    Potential Fishing Zone provider using bundled INCOIS-derived advisory coordinates
+    when available, with a deterministic synthetic generator fallback.
     """
 
     def __init__(self):
@@ -66,16 +66,26 @@ class MockPFZProvider(PFZProvider):
 
                 landing = z.get("landing_centre", "Offshore")
                 bearing = z.get("bearing_deg")
+                dist_range = z.get("distance_km", {})
+                if isinstance(dist_range, dict):
+                    distance_range = f"{dist_range.get('min', dist)}-{dist_range.get('max', dist)} km"
+                else:
+                    distance_range = f"{dist} km"
                 results.append({
                     "zone_id": z.get("id", "PFZ-INCOIS"),
-                    "name": f"INCOIS Zone ({landing})",
+                    "name": f"INCOIS PFZ ({landing})",
                     "lat": z_lat,
                     "lon": z_lon,
                     "distance_km": dist,
+                    "distance_range_km": distance_range,
                     "depth_m": avg_depth,
                     "bearing_deg": bearing,
+                    "direction": z.get("direction"),
                     "landing_centre": landing,
-                    "dominant_species": "Mackerel, Pomfret & Sardines (INCOIS Advisory)",
+                    "dominant_species": z.get(
+                        "dominant_species",
+                        "Pelagic aggregation potential; species not specified in advisory text",
+                    ),
                 })
 
             results.sort(key=lambda item: item["distance_km"])
@@ -120,3 +130,7 @@ class MockPFZProvider(PFZProvider):
 
         zones.sort(key=lambda z: z["distance_km"])
         return zones
+
+
+class MockPFZProvider(IncoisPFZProvider):
+    """Backward-compatible alias for older imports and tests."""

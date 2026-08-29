@@ -1,10 +1,70 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useMemo } from "react";
 import type { Map as LeafletMap, Marker, Circle, Polyline, LayerGroup } from "leaflet";
+import { useQuery } from "@tanstack/react-query";
 import { useI18n } from "@/lib/orca/i18n";
 import { useMarine } from "@/lib/orca/use-marine";
-import { COASTAL_BUFFER_KM, INDIA_BOUNDS, type Coords } from "@/lib/orca/geo";
+import { COASTAL_BUFFER_KM, INDIA_BOUNDS, haversineKm, type Coords } from "@/lib/orca/geo";
 import { COASTAL_CITIES } from "@/data/maritimeData";
 import { getLocalizedCityName } from "@/data/localizedGeo";
+import { fetchGeofences, fetchPFZDataset } from "@/services/api";
+
+type RawPFZZone = {
+  id?: string;
+  landing_centre?: string;
+  latitude?: number | string;
+  longitude?: number | string;
+  bearing_deg?: number | string | null;
+  direction?: string | null;
+  depth_m?: number | string | { min?: number; max?: number };
+  distance_km?: number | string | { min?: number; max?: number };
+  dominant_species?: string;
+};
+
+type RawGeofence = {
+  id?: string;
+  name?: string;
+  category?: string;
+  description?: string;
+  distance_to_vessel_km?: number | string | null;
+  coordinates?: Array<[number, number]>;
+  source?: string;
+  is_demonstration?: boolean;
+};
+
+function asNumber(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function depthValue(depth: RawPFZZone["depth_m"]): number | null {
+  if (typeof depth === "object" && depth) {
+    const min = asNumber(depth.min);
+    const max = asNumber(depth.max);
+    if (min != null && max != null) return (min + max) / 2;
+    return min ?? max;
+  }
+  return asNumber(depth);
+}
+
+function distanceRangeText(distance: RawPFZZone["distance_km"], fallback: number): string {
+  if (typeof distance === "object" && distance) {
+    const min = asNumber(distance.min);
+    const max = asNumber(distance.max);
+    if (min != null && max != null) return `${min}-${max} km`;
+  }
+  const numeric = asNumber(distance);
+  return `${(numeric ?? fallback).toFixed(1)} km`;
+}
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 /**
  * Tactical Marine GIS Map with Satellite / Satellite-Hybrid Base Layer:
@@ -43,10 +103,70 @@ export default function CoastMap({
 
   // Retrieve marine conditions for popup tooltips
   const { data: marine } = useMarine(center);
+  const { data: pfzDataset } = useQuery({
+    queryKey: ["pfz-dataset"],
+    queryFn: fetchPFZDataset,
+    staleTime: 60 * 60 * 1000,
+    retry: 1,
+  });
+  const { data: geofenceDataset } = useQuery({
+    queryKey: ["geofences", center.lat.toFixed(2), center.lon.toFixed(2)],
+    queryFn: () => fetchGeofences(center.lat, center.lon),
+    staleTime: 15 * 60 * 1000,
+    retry: 1,
+  });
   const sst =
     marine?.current.seaTemperatureC != null
       ? `${marine.current.seaTemperatureC.toFixed(1)}°C`
-      : "29.4°C";
+      : "\u2014";
+
+  const nearestPfz = useMemo(() => {
+    const zones = ((pfzDataset as { pfz_zones?: RawPFZZone[] } | undefined)?.pfz_zones ?? [])
+      .map((zone) => {
+        const lat = asNumber(zone.latitude);
+        const lon = asNumber(zone.longitude);
+        if (lat == null || lon == null) return null;
+        const distanceKm = haversineKm(center, { lat, lon });
+        return {
+          coords: [lat, lon] as [number, number],
+          landingCentre: zone.landing_centre ?? "Offshore",
+          depthM: depthValue(zone.depth_m),
+          distanceKm,
+          distanceRange: distanceRangeText(zone.distance_km, distanceKm),
+          bearingDeg: asNumber(zone.bearing_deg),
+          direction: zone.direction ?? null,
+          species: zone.dominant_species ?? "Pelagic aggregation potential",
+          source: "INCOIS PFZ advisory dataset",
+        };
+      })
+      .filter(Boolean) as Array<{
+        coords: [number, number];
+        landingCentre: string;
+        depthM: number | null;
+        distanceKm: number;
+        distanceRange: string;
+        bearingDeg: number | null;
+        direction: string | null;
+        species: string;
+        source: string;
+      }>;
+    zones.sort((a, b) => a.distanceKm - b.distanceKm);
+    return zones[0] ?? null;
+  }, [center, pfzDataset]);
+
+  const nearestImbl = useMemo(() => {
+    const geofences = ((geofenceDataset as { geofences?: RawGeofence[] } | null | undefined)?.geofences ?? [])
+      .filter((zone) => zone.category === "IMBL" && Array.isArray(zone.coordinates) && zone.coordinates.length >= 2)
+      .map((zone) => ({
+        name: zone.name ?? t("glossary.imbl.full"),
+        description: zone.description ?? t("map.imblBuffer"),
+        distanceToVesselKm: asNumber(zone.distance_to_vessel_km),
+        coordinates: zone.coordinates as [number, number][],
+        source: zone.source ?? "geospatial_geofence_registry",
+      }));
+    geofences.sort((a, b) => (a.distanceToVesselKm ?? Infinity) - (b.distanceToVesselKm ?? Infinity));
+    return geofences[0] ?? null;
+  }, [geofenceDataset, t]);
 
   // Function to update all localized labels, tooltips, popups & markers
   const updateMapLayers = useCallback(() => {
@@ -68,11 +188,19 @@ export default function CoastMap({
     }
 
     // 3. Update PFZ (Potential Fishing Zone)
-    const pfzLat = center.lat + 0.05;
-    const pfzLon = center.lon < 78 ? center.lon - 0.28 : center.lon + 0.28;
+    const fallbackPfzLat = center.lat + 0.05;
+    const fallbackPfzLon = center.lon < 78 ? center.lon - 0.28 : center.lon + 0.28;
+    const pfzLat = nearestPfz?.coords[0] ?? fallbackPfzLat;
+    const pfzLon = nearestPfz?.coords[1] ?? fallbackPfzLon;
+    const pfzDepth = nearestPfz?.depthM == null ? "\u2014" : `~${Math.round(nearestPfz.depthM)}m`;
+    const pfzDistance = nearestPfz ? nearestPfz.distanceRange : "estimated display overlay";
+    const pfzBearing = nearestPfz?.bearingDeg == null
+      ? nearestPfz?.direction ?? "\u2014"
+      : `${Math.round(nearestPfz.bearingDeg)}°${nearestPfz.direction ? ` ${nearestPfz.direction}` : ""}`;
 
     if (pfzCircleRef.current) {
       pfzCircleRef.current.setLatLng([pfzLat, pfzLon]);
+      pfzCircleRef.current.setRadius(nearestPfz ? 9000 : 12000);
       pfzCircleRef.current.bindTooltip(t("glossary.pfz.full"));
     }
 
@@ -81,10 +209,12 @@ export default function CoastMap({
       const pfzPopupHtml = `
         <div style="font-family:sans-serif;font-size:12px;color:#0f172a;line-height:1.4;min-width:180px;">
           <b style="color:#059669;font-size:13px;display:block;margin-bottom:2px;">🐟 ${t("glossary.pfz.full")}</b>
-          <span style="color:#475569;font-size:11px;display:block;margin-bottom:4px;">${t("map.pfzFront")}</span>
+          <span style="color:#475569;font-size:11px;display:block;margin-bottom:4px;">${escapeHtml(nearestPfz?.landingCentre ?? t("map.pfzFront"))}</span>
           <div style="border-top:1px solid #e2e8f0;padding-top:4px;margin-top:2px;">
-            <b>${t("map.sstLabel")}:</b> ${sst} · <b>${t("map.pfzDepth")}:</b> ~45m<br/>
-            <b>${t("map.pfzTarget")}:</b> ${t("map.pfzSpecies")}
+            <b>${t("map.sstLabel")}:</b> ${sst} · <b>${t("map.pfzDepth")}:</b> ${pfzDepth}<br/>
+            <b>Distance:</b> ${escapeHtml(pfzDistance)} · <b>Bearing:</b> ${escapeHtml(pfzBearing)}<br/>
+            <b>${t("map.pfzTarget")}:</b> ${escapeHtml(nearestPfz?.species ?? t("map.pfzSpecies"))}<br/>
+            <b>${t("state.source")}:</b> ${escapeHtml(nearestPfz?.source ?? "ORCA visual fallback")}
           </div>
         </div>
       `;
@@ -93,7 +223,7 @@ export default function CoastMap({
 
     // 4. Update IMBL (International Maritime Boundary Line)
     const isWestCoast = center.lon < 78;
-    const imblCoords: [number, number][] = isWestCoast
+    const fallbackImblCoords: [number, number][] = isWestCoast
       ? [
           [center.lat + 1.2, center.lon - 1.35],
           [center.lat, center.lon - 1.45],
@@ -104,6 +234,11 @@ export default function CoastMap({
           [center.lat, center.lon + 1.45],
           [center.lat - 1.2, center.lon + 1.3],
         ];
+    const imblCoords = nearestImbl?.coordinates ?? fallbackImblCoords;
+    const imblMidpoint = imblCoords[Math.floor(imblCoords.length / 2)] ?? fallbackImblCoords[1];
+    const imblDistance = nearestImbl?.distanceToVesselKm == null
+      ? t("map.imblBuffer")
+      : `${nearestImbl.distanceToVesselKm.toFixed(1)} km from vessel`;
 
     if (imblLineRef.current) {
       imblLineRef.current.setLatLngs(imblCoords);
@@ -111,13 +246,14 @@ export default function CoastMap({
     }
 
     if (imblMarkerRef.current) {
-      imblMarkerRef.current.setLatLng([imblCoords[1][0], imblCoords[1][1]]);
+      imblMarkerRef.current.setLatLng([imblMidpoint[0], imblMidpoint[1]]);
       const imblPopupHtml = `
         <div style="font-family:sans-serif;font-size:12px;color:#0f172a;line-height:1.4;min-width:190px;">
-          <b style="color:#dc2626;font-size:13px;display:block;margin-bottom:2px;">🚨 ${t("glossary.imbl.full")}</b>
-          <span style="color:#475569;font-size:11px;display:block;margin-bottom:4px;">${t("map.imblBuffer")}</span>
+          <b style="color:#dc2626;font-size:13px;display:block;margin-bottom:2px;">🚨 ${escapeHtml(nearestImbl?.name ?? t("glossary.imbl.full"))}</b>
+          <span style="color:#475569;font-size:11px;display:block;margin-bottom:4px;">${escapeHtml(imblDistance)}</span>
           <div style="border-top:1px solid #e2e8f0;padding-top:4px;margin-top:2px;">
-            <b>${t("map.imblStatus")}:</b> ${t("map.imblMonitored")}
+            <b>${t("map.imblStatus")}:</b> ${escapeHtml(nearestImbl?.description ?? t("map.imblMonitored"))}<br/>
+            <b>${t("state.source")}:</b> ${escapeHtml(nearestImbl?.source ?? "ORCA visual fallback")}
           </div>
         </div>
       `;
@@ -144,7 +280,7 @@ export default function CoastMap({
         cityLayerRef.current?.addLayer(marker);
       });
     }
-  }, [center.lat, center.lon, lang, t, sst]);
+  }, [center, lang, nearestImbl, nearestPfz, sst, t]);
 
   useEffect(() => {
     let disposed = false;

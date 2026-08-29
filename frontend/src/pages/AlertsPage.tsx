@@ -17,7 +17,7 @@ export default function AlertsPage() {
   const { lang, t } = useI18n();
   const { location } = useSession();
   const marine = useMarine(location?.coords ?? null);
-  const alerts = deriveAdvisories(marine.data ?? null, lang);
+  const alerts = marine.data?.alerts?.length ? marine.data.alerts : deriveAdvisories(marine.data ?? null, lang);
 
   return (
     <AppShell>

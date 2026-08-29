@@ -7,9 +7,6 @@ import {
   CheckCircle2,
   X,
   Send,
-  Navigation,
-  LifeBuoy,
-  Users,
 } from 'lucide-react';
 import { broadcastSOS } from '../services/api';
 import type { LocationCoords } from '../context/AppContext';
@@ -32,10 +29,10 @@ export default function EmergencySOSModal({
 
   const [step, setStep] = useState<'standby' | 'confirming' | 'dispatched'>('standby');
   const [vesselName, setVesselName] = useState('Matsya Shakti');
-  const [registrationNo, setRegistrationNo] = useState('IND-MH-01-F-4433');
+  const [registrationNo] = useState('IND-MH-01-F-4433');
   const [crewCount, setCrewCount] = useState(6);
   const [emergencyNature, setEmergencyNature] = useState('Engine Failure / Adrift at Sea');
-  const [notes, setNotes] = useState('Drifting west towards offshore shipping corridor');
+  const [notes] = useState('Drifting west towards offshore shipping corridor');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dispatchResult, setDispatchResult] = useState<any | null>(null);
 

@@ -2,9 +2,6 @@ import { useState, useEffect } from 'react';
 import {
   Waves,
   Wind,
-  Sun,
-  CloudSun,
-  CloudRain,
   Clock,
   ShieldCheck,
   AlertTriangle,
@@ -34,18 +31,49 @@ export default function ForecastHorizonTimeline({
 
     async function loadForecast() {
       setLoading(true);
+      let loadedFromApi = false;
       try {
         const data = await fetchMarineForecast(userLocation.lat, userLocation.lon);
-        if (isMounted && data && Array.isArray(data.hourly) && data.hourly.length > 0) {
-          setForecastSteps(data.hourly.slice(0, 6));
-          return;
+        const rawSteps = Array.isArray(data?.forecast_horizon)
+          ? data.forecast_horizon
+          : Array.isArray(data?.hourly)
+            ? data.hourly
+            : [];
+        if (isMounted && rawSteps.length > 0) {
+          const now = new Date();
+          setForecastSteps(
+            rawSteps.slice(0, 6).map((step: any, idx: number) => {
+              const hourOffsetValue = Number(step.hour_offset ?? idx + 1);
+              const hourDate = step.time
+                ? new Date(step.time)
+                : new Date(now.getTime() + hourOffsetValue * 3600000);
+              const wave = Number(step.wave_height_m ?? step.waveHeightM ?? baseWeather.wave_height_m ?? 1.2);
+              const wind = Number(step.wind_speed_kmh ?? step.windSpeedKmh ?? baseWeather.wind_speed_kmh ?? 18);
+              const risk = String(step.risk_level ?? step.level ?? '').toLowerCase();
+              const normalizedRisk = risk.includes('unsafe') || risk.includes('danger')
+                ? 'unsafe'
+                : risk.includes('caution') || risk.includes('warning')
+                  ? 'caution'
+                  : 'safe';
+
+              return {
+                time: hourDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                hourOffset: `+${hourOffsetValue}h`,
+                wave_height_m: Number.isFinite(wave) ? wave : 1.2,
+                wind_speed_kmh: Number.isFinite(wind) ? wind : 18,
+                risk_level: normalizedRisk,
+                condition: step.condition ?? step.forecast ?? 'Marine outlook',
+              };
+            }),
+          );
+          loadedFromApi = true;
         }
       } catch (err) {
         console.warn('Forecast API fallback:', err);
       }
 
       // Generate accurate 6-hour progressive step model from base weather
-      if (isMounted) {
+      if (isMounted && !loadedFromApi) {
         const baseWave = baseWeather.wave_height_m || 1.2;
         const baseWind = baseWeather.wind_speed_kmh || 18.0;
         const now = new Date();
@@ -72,7 +100,7 @@ export default function ForecastHorizonTimeline({
 
         setForecastSteps(steps);
       }
-      setLoading(false);
+      if (isMounted) setLoading(false);
     }
 
     loadForecast();
@@ -126,7 +154,11 @@ export default function ForecastHorizonTimeline({
         </div>
       </div>
 
-      {/* Hourly Timeline Cards */}
+      {loading && forecastSteps.length === 0 ? (
+        <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-4 text-center text-xs font-semibold text-slate-500">
+          Loading marine forecast...
+        </div>
+      ) : (
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
         {forecastSteps.map((step, idx) => {
           const riskInfo = getRiskPill(step.risk_level);
@@ -163,6 +195,7 @@ export default function ForecastHorizonTimeline({
           );
         })}
       </div>
+      )}
     </section>
   );
 }

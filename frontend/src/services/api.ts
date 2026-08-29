@@ -241,6 +241,14 @@ export async function fetchMarineForecast(lat: number, lon: number, date?: strin
   return await response.json();
 }
 
+export async function fetchMarineTide(lat: number, lon: number) {
+  const response = await fetch(`${API_BASE_URL}/api/marine/tide?lat=${lat}&lon=${lon}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch marine tide');
+  }
+  return await response.json();
+}
+
 export async function fetchPFZDataset() {
   const response = await fetch(`${API_BASE_URL}/api/pfz`);
   if (!response.ok) {
@@ -603,6 +611,7 @@ export default {
   fetchMarineConditions,
   fetchMarineRisk,
   fetchMarineForecast,
+  fetchMarineTide,
   fetchPFZDataset,
   fetchMarineBoundariesEEZ,
   checkMarineBoundary,
@@ -624,4 +633,5 @@ export default {
   fetchAdminUsers,
   updateUserRole,
   fetchHistoricalComparison,
+  getHazardAlerts,
 };

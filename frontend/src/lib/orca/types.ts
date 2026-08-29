@@ -23,10 +23,25 @@ export type ForecastPoint = {
   level: SafetyLevel;
 };
 
+export type MarineTide = {
+  highTideTime: string | null;
+  highTideHeightM: number | null;
+  lowTideTime: string | null;
+  lowTideHeightM: number | null;
+  secondaryHighTideTime: string | null;
+  secondaryHighTideHeightM: number | null;
+  tidalPhase: string;
+  tidalRangeM: number | null;
+  source: string;
+};
+
 export type MarineBundle = {
   current: MarineSnapshot;
   forecast: ForecastPoint[];
   past: ForecastPoint[];
+  tide?: MarineTide | null;
+  alerts?: Alert[];
+  connectivityMode?: "backend" | "direct";
 };
 
 export type Alert = {

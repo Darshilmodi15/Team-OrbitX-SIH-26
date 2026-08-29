@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from app.agents.boundary_agent import check_marine_boundary_evidence
 from app.agents.geospatial_agent import analyze_geospatial_context
 from app.agents.hazard_agent import detect_proactive_hazards
-from app.agents.intent_agent import COASTAL_PORT_COORDS, parse_intent
+from app.agents.intent_agent import parse_intent
 from app.agents.ocean_analytics_agent import (
     analyze_chlorophyll_and_sst,
     analyze_productivity_decline,
@@ -27,11 +27,9 @@ from app.data.geofence import (
     evaluate_vessel_geofences,
 )
 from app.data.pfz.base import PFZProvider
-from app.data.pfz.mock import MockPFZProvider
+from app.data.pfz.mock import IncoisPFZProvider
 from app.data.weather.base import WeatherProvider
-from app.data.weather.cache import MarineWeatherCache
 from app.data.weather.incois import IncoisWeatherProvider
-from app.data.weather.mock import MockWeatherProvider
 from app.models.agent_models import (
     AgentResult,
     BoundaryEvidence,
@@ -65,7 +63,7 @@ from app.services.recommendation_engine import RecommendationReasoningEngine
 
 # Initialize authoritative INCOIS data provider with low-bandwidth geospatial cache
 weather_provider: WeatherProvider = IncoisWeatherProvider()
-pfz_provider: PFZProvider = MockPFZProvider()
+pfz_provider: PFZProvider = IncoisPFZProvider()
 geofence_provider: GeofenceProvider = SpatialGeofenceProvider()
 
 from contextlib import asynccontextmanager
@@ -111,7 +109,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="ORCA Marine AI Backend",
     description="Autonomous Maritime Intelligence, Multi-Agent Decision Support & Bhashini Multilingual Layer.",
-    version="1.4.0",
+    version="1.4.1",
     lifespan=lifespan,
 )
 
@@ -136,33 +134,6 @@ app.include_router(government_router)
 app.include_router(emergency_router)
 app.include_router(admin_router)
 app.include_router(notifications_router)
-
-
-@app.get("/")
-def root_status():
-    return {
-        "status": "healthy",
-        "service": "ORCA Marine AI Backend",
-        "version": "1.2.0",
-        "docs": "/docs",
-        "endpoints": [
-            "/query",
-            "/api/chat",
-            "/api/simulate",
-            "/api/route",
-            "/api/alerts",
-            "/api/geofences",
-            "/api/demo/dahanu",
-            "/api/languages",
-            "/api/detect-language",
-            "/api/translate",
-            "/api/pfz",
-            "/api/marine/conditions",
-            "/api/marine/risk",
-            "/api/marine/forecast",
-            "/api/recommendations",
-        ],
-    }
 
 
 @app.get("/health")
@@ -339,11 +310,11 @@ class DetectLanguageRequest(BaseModel):
 
 
 @app.get("/")
-def health_check():
+def root_status():
     return {
         "status": "healthy",
         "service": "ORCA Marine AI Backend",
-        "version": "1.2.0",
+        "version": app.version,
         "bhashini_configured": bhashini_service.is_configured,
         "sarvam_configured": bhashini_service.is_sarvam_configured,
         "capabilities": [
@@ -371,6 +342,16 @@ def health_check():
             "/api/detect-language",
             "/api/translate",
             "/api/pfz",
+            "/api/marine/conditions",
+            "/api/marine/risk",
+            "/api/marine/forecast",
+            "/api/marine/tide",
+            "/api/recommendations",
+            "/api/analytics/ocean",
+            "/api/analytics/productivity",
+            "/api/analytics/zone-avoidance",
+            "/api/emergency/contacts",
+            "/api/emergency/sos",
         ],
     }
 
@@ -706,7 +687,7 @@ def _process_orca_query(
             secondary_high_tide_height_m=3.60,
             tidal_phase="Semi-Diurnal Spring Tide",
             tidal_range_m=2.73,
-            source="INCOIS Tidal Harmonic Predictions & Survey of India",
+            source="ORCA regional tidal harmonic estimate; official tide feed integration pending",
         )
 
     # 5b. Risk Assessment Agent
@@ -1210,8 +1191,6 @@ def get_marine_tide_endpoint(lat: float = Query(18.9220), lon: float = Query(72.
         secondary_high_tide_height_m=3.60,
         tidal_phase="Semi-Diurnal Spring Tide",
         tidal_range_m=2.73,
-        source="INCOIS Tidal Harmonic Predictions & Survey of India",
+        source="ORCA regional tidal harmonic estimate; official tide feed integration pending",
     )
     return tide.model_dump()
-
-

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { PhoneCall, Share2 } from "lucide-react";
+import { PhoneCall, Radio, Share2 } from "lucide-react";
 import { AppShell } from "@/components/orca/AppShell";
+import EmergencySOSModal from "@/components/EmergencySOSModal";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
 import { getEmergencyServices } from "@/lib/orca/reference";
@@ -10,6 +11,7 @@ export default function ServicesPage() {
   const { lang, t } = useI18n();
   const { location } = useSession();
   const [copied, setCopied] = useState(false);
+  const [sosOpen, setSosOpen] = useState(false);
   const services = getEmergencyServices(lang);
 
   async function shareLocation() {
@@ -40,6 +42,14 @@ export default function ServicesPage() {
             <span>112</span>
           </a>
           <button
+            className="flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md bg-danger px-4 text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-50 shadow-sm"
+            onClick={() => setSosOpen(true)}
+            disabled={!location}
+          >
+            <Radio className="size-4" aria-hidden />
+            <span>{t("svc.transmitSos")}</span>
+          </button>
+          <button
             className="flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-semibold text-card-foreground transition hover:bg-muted disabled:opacity-50 shadow-sm"
             onClick={shareLocation}
             disabled={!location}
@@ -54,6 +64,15 @@ export default function ServicesPage() {
           </p>
         )}
       </div>
+
+      {location && (
+        <EmergencySOSModal
+          isOpen={sosOpen}
+          onClose={() => setSosOpen(false)}
+          userLocation={location.coords}
+          currentLang={lang}
+        />
+      )}
 
       <ul className="mt-4 space-y-3">
         {services.map((s) => (

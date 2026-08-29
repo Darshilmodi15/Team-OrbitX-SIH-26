@@ -1,10 +1,11 @@
 import {
-  CloudSun, Eye, Gauge, Thermometer, Waves, Wind,
+  Clock, CloudSun, Eye, Gauge, Thermometer, Waves, Wind,
 } from "lucide-react";
 import type { ComponentType } from "react";
+import { useMemo } from "react";
 import { useI18n } from "@/lib/orca/i18n";
 import { compassDirection, describeWeather } from "@/lib/orca/marine";
-import type { ForecastPoint, MarineSnapshot } from "@/lib/orca/types";
+import type { ForecastPoint, MarineSnapshot, MarineTide } from "@/lib/orca/types";
 import { SafetyPill } from "./SafetyStatus";
 
 function Metric({
@@ -28,9 +29,17 @@ function Metric({
 const num = (v: number | null, unit: string, digits = 1) =>
   v == null ? "\u2014" : `${v.toFixed(digits)} ${unit}`;
 
-export function MarineConditions({ data }: { data: MarineSnapshot }) {
+function tideTime(time: string | null, height: number | null) {
+  if (!time) return "\u2014";
+  return height == null ? time : `${time} · ${height.toFixed(1)} m`;
+}
+
+export function MarineConditions({ data, tide = null }: { data: MarineSnapshot; tide?: MarineTide | null }) {
   const { lang, t } = useI18n();
-  const mins = Math.max(0, Math.round((Date.now() - data.fetchedAt) / 60000));
+  const updatedAt = useMemo(
+    () => new Date(data.fetchedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }),
+    [data.fetchedAt],
+  );
 
   return (
     <section aria-labelledby="marine-heading" className="space-y-3">
@@ -39,7 +48,7 @@ export function MarineConditions({ data }: { data: MarineSnapshot }) {
           {t("marine.title")}
         </h2>
         <p className="text-xs text-muted-foreground">
-          {t("state.live")} · {t("state.updated")} {mins} {t("state.minsAgo")} · {t("state.source")}:{" "}
+          {t("state.live")} · {t("state.updated")} {updatedAt} · {t("state.source")}:{" "}
           {data.sources.join(", ")}
         </p>
       </div>
@@ -58,6 +67,14 @@ export function MarineConditions({ data }: { data: MarineSnapshot }) {
         <Metric Icon={Thermometer} label={t("marine.sst")} value={num(data.seaTemperatureC, "\u00b0C")} />
         <Metric Icon={Gauge} label={t("marine.period")} value={num(data.wavePeriodS, "s", 0)} />
         <Metric Icon={CloudSun} label={t("marine.weather")} value={describeWeather(data.weatherCode, lang)} />
+        {tide && (
+          <>
+            <Metric Icon={Clock} label={t("marine.highTide")} value={tideTime(tide.highTideTime, tide.highTideHeightM)} />
+            <Metric Icon={Clock} label={t("marine.lowTide")} value={tideTime(tide.lowTideTime, tide.lowTideHeightM)} />
+            <Metric Icon={Waves} label={t("marine.tideRange")} value={num(tide.tidalRangeM, "m")} />
+            <Metric Icon={Gauge} label={t("marine.tidePhase")} value={tide.tidalPhase} />
+          </>
+        )}
       </div>
     </section>
   );
