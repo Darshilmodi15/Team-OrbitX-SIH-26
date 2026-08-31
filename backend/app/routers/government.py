@@ -2,7 +2,7 @@
 Government Announcements, Circulars, and Policy Documents REST Router for ORCA.
 """
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.models.government_models import (
     CreateAnnouncementRequest,
@@ -10,6 +10,8 @@ from app.models.government_models import (
     GovernmentDocument,
 )
 from app.services.government import government_service
+from app.models.user_models import UserProfile, UserRole
+from app.routers.auth import require_roles
 
 router = APIRouter(prefix="/api/government", tags=["Government Circulars & Policy Portal"])
 
@@ -38,7 +40,7 @@ def get_announcement_details(announcement_id: str):
 
 
 @router.post("/announcements", response_model=GovernmentAnnouncement, status_code=status.HTTP_201_CREATED)
-def publish_government_announcement(request: CreateAnnouncementRequest):
+def publish_government_announcement(request: CreateAnnouncementRequest, _user: UserProfile = Depends(require_roles(UserRole.GOVERNMENT, UserRole.SUPER_ADMIN))):
     """
     Publishes a new official government circular (Available to Government Officers & Administrators).
     """

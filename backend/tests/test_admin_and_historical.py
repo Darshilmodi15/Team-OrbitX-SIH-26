@@ -36,16 +36,18 @@ class TestAdminEndpoints(unittest.TestCase):
 
     def setUp(self):
         self.client = TestClient(app)
+        login = self.client.post("/api/auth/login", json={"email_or_phone": "admin@orca.marine", "password": "adminpassword123"})
+        self.admin_headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
 
     def test_get_system_health_endpoint(self):
-        res = self.client.get("/api/admin/system-health")
+        res = self.client.get("/api/admin/system-health", headers=self.admin_headers)
         self.assertEqual(res.status_code, 200)
         data = res.json()
         self.assertEqual(data["overall_status"], "HEALTHY")
         self.assertIn("services", data)
 
     def test_get_admin_users_endpoint(self):
-        res = self.client.get("/api/admin/users")
+        res = self.client.get("/api/admin/users", headers=self.admin_headers)
         self.assertEqual(res.status_code, 200)
         data = res.json()
         self.assertIsInstance(data, list)
@@ -61,7 +63,7 @@ class TestAdminEndpoints(unittest.TestCase):
         target_user_id = reg["user"]["id"]
 
         payload = {"role": UserRole.GOVERNMENT.value}
-        res = self.client.patch(f"/api/admin/users/{target_user_id}/role", json=payload)
+        res = self.client.patch(f"/api/admin/users/{target_user_id}/role", json=payload, headers=self.admin_headers)
         self.assertEqual(res.status_code, 200)
         data = res.json()
         self.assertEqual(data["role"], UserRole.GOVERNMENT.value)

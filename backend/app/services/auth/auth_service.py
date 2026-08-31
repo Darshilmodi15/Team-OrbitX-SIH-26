@@ -12,7 +12,7 @@ import hmac
 import json
 import logging
 import os
-import secrets
+import base64
 import time
 import uuid
 from datetime import datetime, timezone
@@ -22,8 +22,18 @@ from app.models.user_models import RegisterRequest, UserProfile, UserRole
 
 logger = logging.getLogger(__name__)
 
-JWT_SECRET = os.getenv("JWT_SECRET") or os.getenv("ORCA_JWT_SECRET") or "orca_marine_ai_jwt_secret_key_sih_2026_coastal_safety"
-JWT_EXPIRY_SECONDS = 86400 * 7  # 7 days
+ENVIRONMENT = (os.getenv("APP_ENV") or os.getenv("ENVIRONMENT", "development")).lower()
+JWT_SECRET = os.getenv("JWT_SECRET_KEY") or os.getenv("JWT_SECRET") or os.getenv("ORCA_JWT_SECRET")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+JWT_EXPIRY_SECONDS = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60")) * 60
+
+if JWT_ALGORITHM != "HS256":
+    raise RuntimeError("ORCA currently supports JWT_ALGORITHM=HS256 only.")
+if not JWT_SECRET:
+    if ENVIRONMENT in {"production", "prod"}:
+        raise RuntimeError("JWT_SECRET_KEY is required in production.")
+    JWT_SECRET = "development-only-change-me"
+    logger.warning("JWT_SECRET_KEY is not set; using a development-only secret.")
 
 
 import bcrypt
@@ -64,39 +74,45 @@ def verify_password(password: str, hashed: str, salt: str) -> bool:
         return False
 
 
-def create_token(user_id: str, role: str, email_or_phone: str) -> str:
-    """Generates simple signed token for session authentication."""
+def _b64url(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+
+def _b64url_decode(value: str) -> bytes:
+    return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+
+
+def create_token(user_id: str, role: str, email_or_phone: str = "") -> str:
+    """Generate a standards-compliant, minimal HS256 JWT."""
     header = {"alg": "HS256", "typ": "JWT"}
     payload = {
         "sub": user_id,
         "role": role,
-        "identity": email_or_phone,
         "exp": int(time.time()) + JWT_EXPIRY_SECONDS,
         "iat": int(time.time()),
+        "jti": str(uuid.uuid4()),
     }
-    
-    header_b64 = secrets.token_urlsafe(8)
-    payload_json = json.dumps(payload)
-    sig = hmac.new(JWT_SECRET.encode("utf-8"), payload_json.encode("utf-8"), hashlib.sha256).hexdigest()
-    return f"{header_b64}.{secrets.token_hex(4)}.{sig}___{secrets.token_hex(4)}___{payload_json.encode('utf-8').hex()}"
+    header_b64 = _b64url(json.dumps(header, separators=(",", ":")).encode())
+    payload_b64 = _b64url(json.dumps(payload, separators=(",", ":")).encode())
+    signing_input = f"{header_b64}.{payload_b64}".encode()
+    signature = _b64url(hmac.new(JWT_SECRET.encode(), signing_input, hashlib.sha256).digest())
+    return f"{header_b64}.{payload_b64}.{signature}"
 
 
 def decode_token(token: str) -> Optional[Dict[str, Any]]:
     """Decodes and validates token signature and expiry."""
     try:
-        if "___" not in token:
-            return None
-        parts = token.split("___")
+        parts = token.split(".")
         if len(parts) != 3:
             return None
-        sig_part = parts[0].split(".")[-1]
-        payload_json = bytes.fromhex(parts[2]).decode("utf-8")
-        expected_sig = hmac.new(JWT_SECRET.encode("utf-8"), payload_json.encode("utf-8"), hashlib.sha256).hexdigest()
-        
-        if not hmac.compare_digest(sig_part, expected_sig):
+        signing_input = f"{parts[0]}.{parts[1]}".encode()
+        expected_sig = _b64url(hmac.new(JWT_SECRET.encode(), signing_input, hashlib.sha256).digest())
+        if not hmac.compare_digest(parts[2], expected_sig):
             return None
-            
-        payload = json.loads(payload_json)
+        header = json.loads(_b64url_decode(parts[0]))
+        if header.get("alg") != JWT_ALGORITHM:
+            return None
+        payload = json.loads(_b64url_decode(parts[1]))
         if payload.get("exp", 0) < time.time():
             return None  # Expired
         return payload
@@ -116,6 +132,10 @@ class AuthService:
 
     def _seed_default_accounts(self):
         """Pre-seeds accounts for demonstration & role verification."""
+        app_env = (os.getenv("APP_ENV") or os.getenv("ENVIRONMENT", "development")).lower()
+        if app_env in {"production", "prod"}:
+            logger.info("Predictable demo account seeding is disabled in production.")
+            return
         demo_accounts = [
             {
                 "id": "USR-DEMO-01",
@@ -194,7 +214,8 @@ class AuthService:
         user_id = str(uuid.uuid4())
         pwd_hash, salt = hash_password(req.password)
         now_iso = datetime.now(timezone.utc).isoformat()
-        role_val = req.role if isinstance(req.role, UserRole) else UserRole(req.role or "USER")
+        # Public registration can never grant a privileged role.
+        role_val = UserRole.USER
 
         user_data = {
             "id": user_id,

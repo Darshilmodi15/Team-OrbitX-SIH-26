@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/orca/AppShell";
 import { MapPanel } from "@/components/orca/MapPanel";
 import { EmptyState } from "@/components/orca/States";
+import { SEO } from "@/components/SEO";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
 import { COASTAL_BUFFER_KM, formatCoords } from "@/lib/orca/geo";
@@ -19,6 +20,10 @@ export default function MapPage() {
 
   return (
     <AppShell>
+      <SEO
+        title="Interactive GIS Map & Potential Fishing Zones | ORCA Marine AI"
+        description="High-resolution coastal geospatial chart with chlorophyll-a fronts, sea surface temperature, bathymetry, and IMBL boundaries."
+      />
       <h1 className="text-xl font-semibold text-foreground">{t("map.title")}</h1>
 
       {location ? (

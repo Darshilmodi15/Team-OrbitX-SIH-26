@@ -29,6 +29,16 @@ function getApiBaseUrl(): string {
 }
 
 export const API_BASE_URL = getApiBaseUrl();
+let authFailureHandler: (() => void) | null = null;
+export function setAuthFailureHandler(handler: (() => void) | null) { authFailureHandler = handler; }
+function authToken(): string | null { return sessionStorage.getItem('orca.auth.session') || localStorage.getItem('orca.auth.token'); }
+async function apiFetch(path: string, init: RequestInit = {}) {
+  const headers = new Headers(init.headers); const token = authToken();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  if (response.status === 401) authFailureHandler?.();
+  return response;
+}
 
 export interface QueryPayload {
   location: { lat: number; lon: number };
@@ -45,11 +55,12 @@ export interface ChatMessagePayload {
   language?: string;
   session_id?: string;
   history?: Array<{ role: string; text: string }>;
+  request_id?: string;
 }
 
 export async function sendChatMessage(payload: ChatMessagePayload) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/chat`, {
+    const response = await apiFetch(`/api/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -61,6 +72,7 @@ export async function sendChatMessage(payload: ChatMessagePayload) {
         language: payload.language || 'auto',
         session_id: payload.session_id,
         history: payload.history,
+        request_id: payload.request_id,
       }),
     });
 

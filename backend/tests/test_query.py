@@ -57,8 +57,8 @@ class TestQueryEndpoint(unittest.TestCase):
         self.assertIn("geospatial_agent", data["sources_used"])
         self.assertNotIn("open_meteo_marine_api", data["sources_used"])
         self.assertNotIn("mock_marine_weather", data["sources_used"])
-        self.assertNotIn("INCOIS_OSF_WW3", data["sources_used"])
-        self.assertNotIn("risk_assessment_agent", data["sources_used"])
+        self.assertTrue(any(source in data["sources_used"] for source in ["INCOIS_OSF_WW3", "open_meteo_marine_api"]))
+        self.assertIn("risk_assessment_agent", data["sources_used"])
         self.assertIn("Nearby Potential Fishing Zones", data["answer"])
 
     def test_query_weather_conditions(self):

@@ -4,6 +4,7 @@ import { SafetyStatusCard } from "@/components/orca/SafetyStatus";
 import { MarineConditions, ForecastTimeline } from "@/components/orca/Conditions";
 import { MapPanel } from "@/components/orca/MapPanel";
 import { LoadingState, ErrorState, EmptyState } from "@/components/orca/States";
+import { SEO } from "@/components/SEO";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
 import { useMarine } from "@/lib/orca/use-marine";
@@ -27,6 +28,10 @@ export default function DashboardPage() {
   if (!location) {
     return (
       <AppShell>
+        <SEO
+          title="Command Dashboard | ORCA Marine AI"
+          description="Real-time ocean telemetry, wave heights, wind speed, potential fishing zones, and maritime safety alerts."
+        />
         <div className="space-y-4">
           <h1 className="text-xl font-semibold">{t("nav.dashboard")}</h1>
           <EmptyState>{t("loc.title")}</EmptyState>
@@ -46,6 +51,10 @@ export default function DashboardPage() {
 
   return (
     <AppShell>
+      <SEO
+        title="Live Marine Command Dashboard | ORCA Marine AI"
+        description="Real-time ocean telemetry, wave heights, wind speed, potential fishing zones, and maritime safety alerts."
+      />
       <div className="space-y-5">
         <h1 className="text-xl font-semibold text-foreground">{t("nav.dashboard")}</h1>
 

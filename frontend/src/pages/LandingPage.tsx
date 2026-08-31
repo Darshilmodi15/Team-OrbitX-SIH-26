@@ -10,11 +10,16 @@ import {
   Radio,
   ShieldCheck,
   Sparkles,
+  PhoneCall,
+  MapPin,
 } from "lucide-react";
 import { OrcaLogo } from "@/components/orca/Logo";
 import { LANGUAGES, useI18n, type LangCode } from "@/lib/orca/i18n";
 import { useAppContext } from "@/context/AppContext";
 import { ThemeToggle } from "@/components/orca/ThemeToggle";
+import { SEO } from "@/components/SEO";
+import { openCookieSettings } from "@/components/CookieBanner";
+import { StickyMobileCTA } from "@/components/StickyMobileCTA";
 import { cn } from "@/lib/utils";
 
 const FEATURES = [
@@ -85,31 +90,43 @@ export default function LandingPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground selection:bg-teal-500/30">
-      {/* Hero Section — Government/Defence Grade Maritime Command with Light Ocean Sea */}
-      <section className="relative isolate overflow-hidden bg-[#06182C] px-4 pt-4 pb-12 sm:pt-6 sm:pb-20 md:pt-8 md:pb-24 min-h-[580px] sm:min-h-[560px] md:min-h-[600px] flex flex-col justify-between border-b border-border">
-        {/* Realistic Edge-to-Edge Ocean Photography Background (No Sky Gap) with Gentle Wave Swell Motion */}
+      <SEO
+        title="ORCA Marine AI — Autonomous Ocean Intelligence & Decision Support"
+        description="Agentic AI-powered conversational marine platform integrating satellite Earth Observation, PFZ discovery, safe route navigation, and IMBL geofencing for SIH 2026."
+      />
+
+      {/* Hero Section — Prominent Above The Fold Layout */}
+      <section className="relative isolate overflow-hidden bg-[#06182C] px-4 pt-3 pb-8 sm:pt-5 sm:pb-12 md:pt-6 md:pb-16 min-h-[90vh] sm:min-h-[580px] md:min-h-[620px] flex flex-col justify-between border-b border-border">
+        {/* Compressed & High Performance Ocean Photography Background with Modern WebP Source */}
         <div className="absolute inset-0 -z-10 overflow-hidden">
-          <img
-            src="/hero-ocean-surface.jpg"
-            alt="Real Coastal Sea Surface and Ocean Waters"
-            className="w-full h-full object-cover object-center animate-ocean-swell will-change-transform scale-105"
-          />
-          {/* Professional Navy Readability Overlay: Preserves bright turquoise waves while ensuring high text contrast */}
+          <picture>
+            <source srcSet="/hero-ocean-surface.webp" type="image/webp" />
+            <img
+              src="/hero-ocean-surface.jpg"
+              alt="Real Coastal Sea Surface and Ocean Waves in Indian Exclusive Economic Zone"
+              width={1920}
+              height={1080}
+              loading="eager"
+              decoding="async"
+              className="w-full h-full object-cover object-center animate-ocean-swell will-change-transform scale-105"
+            />
+          </picture>
+          {/* Professional Navy Readability Overlay */}
           <div className="absolute inset-0 bg-[#06182C]/45 mix-blend-multiply" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#06182C]/80 via-[#06182C]/40 to-[#06182C]/85" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#06182C]/30 via-transparent to-[#06182C]/65" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#06182C]/80 via-[#06182C]/40 to-[#06182C]/90" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#06182C]/30 via-transparent to-[#06182C]/70" />
         </div>
 
         {/* Top Command Bar inside Hero */}
         <div className="mx-auto flex w-full max-w-6xl justify-between items-center pb-2 relative z-20">
           {/* Mission Tag / Status */}
-          <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full border border-teal-500/30 bg-teal-950/40 text-[11px] font-mono font-medium text-teal-300 tracking-wider backdrop-blur-md">
+          <div className="flex items-center gap-2 px-2.5 py-1 rounded-full border border-teal-500/30 bg-teal-950/40 text-[10px] sm:text-[11px] font-mono font-medium text-teal-300 tracking-wider backdrop-blur-md">
             <Radio className="size-3 text-teal-400 animate-pulse" />
             <span className="uppercase">{t("land.network")}</span>
           </div>
 
           {/* Top-Right Language & Theme Controls */}
-          <div className="flex items-center gap-2.5 ml-auto">
+          <div className="flex items-center gap-2 sm:gap-2.5 ml-auto">
             <ThemeToggle />
 
             {/* Compact Language Selector */}
@@ -119,7 +136,7 @@ export default function LandingPage() {
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 aria-expanded={dropdownOpen}
                 aria-haspopup="listbox"
-                className="inline-flex min-h-10 items-center gap-1.5 sm:gap-2 rounded-md border border-slate-700/80 bg-slate-900/80 px-3 sm:px-3.5 text-xs font-medium text-slate-100 backdrop-blur-md transition-all hover:bg-slate-800 hover:border-slate-600 cursor-pointer shadow-sm sm:text-sm font-sans"
+                className="inline-flex min-h-9 sm:min-h-10 items-center gap-1.5 sm:gap-2 rounded-md border border-slate-700/80 bg-slate-900/80 px-2.5 sm:px-3.5 text-xs font-medium text-slate-100 backdrop-blur-md transition-all hover:bg-slate-800 hover:border-slate-600 cursor-pointer shadow-sm sm:text-sm font-sans"
               >
                 <Globe className="size-3.5 text-teal-400 shrink-0 sm:size-4" aria-hidden />
                 <span className="font-semibold">{activeLanguage.native}</span>
@@ -135,7 +152,7 @@ export default function LandingPage() {
               {dropdownOpen && (
                 <div
                   role="listbox"
-                  className="absolute right-0 top-full mt-2 z-50 w-56 sm:w-60 max-h-[80vh] sm:max-h-none overflow-y-auto sm:overflow-visible rounded-lg border border-slate-700 bg-slate-900 p-1.5 text-slate-100 shadow-2xl ring-1 ring-black/40 backdrop-blur-xl"
+                  className="absolute right-0 top-full mt-2 z-50 w-56 sm:w-60 max-h-[70vh] sm:max-h-none overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 p-1.5 text-slate-100 shadow-2xl ring-1 ring-black/40 backdrop-blur-xl"
                 >
                   {LANGUAGES.map((l) => {
                     const isSelected = (selectedLang || lang) === l.code;
@@ -171,35 +188,35 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Hero Content — Executive Presentation Grade */}
-        <div className="mx-auto max-w-4xl text-center relative z-10 my-auto px-4 py-4 sm:py-6">
+        {/* Hero Content — Executive Presentation Grade with CTA strictly above the fold */}
+        <div className="mx-auto max-w-4xl text-center relative z-10 my-auto px-4 py-2 sm:py-6">
           {/* Logo Brand Mark */}
-          <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-gradient-to-b from-teal-500/10 to-teal-500/0 border border-teal-500/20 mb-4 shadow-inner">
-            <OrcaLogo className="size-12 sm:size-16 drop-shadow-[0_0_20px_rgba(45,212,191,0.4)]" />
+          <div className="inline-flex items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-gradient-to-b from-teal-500/10 to-teal-500/0 border border-teal-500/20 mb-3 sm:mb-4 shadow-inner">
+            <OrcaLogo className="size-10 sm:size-14 md:size-16 drop-shadow-[0_0_20px_rgba(45,212,191,0.4)]" />
           </div>
 
           {/* Main Title */}
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold tracking-tight text-white drop-shadow-sm font-sans">
+          <h1 className="text-2xl sm:text-4xl md:text-6xl font-bold tracking-tight text-white drop-shadow-sm font-sans">
             {t("app.name")}
           </h1>
 
           {/* Subtitle / Platform Mission */}
-          <p className="mx-auto mt-3 sm:mt-4 max-w-2xl text-sm sm:text-lg md:text-xl text-teal-300/90 font-medium tracking-normal leading-relaxed">
+          <p className="mx-auto mt-2 sm:mt-3 max-w-2xl text-xs sm:text-base md:text-lg text-teal-300/90 font-medium tracking-normal leading-relaxed">
             {t("app.tagline")}
           </p>
 
           {/* High-legibility Mission Description */}
-          <p className="mx-auto mt-2 sm:mt-3 max-w-2xl text-xs sm:text-sm md:text-base text-slate-300/85 leading-relaxed font-normal">
+          <p className="mx-auto mt-1.5 sm:mt-2 max-w-2xl text-xs sm:text-sm md:text-base text-slate-300/85 leading-relaxed font-normal">
             {t("app.desc")}
           </p>
 
-          {/* Executive CTA Command Buttons */}
-          <div className="mt-6 sm:mt-8 flex flex-row items-center justify-center gap-3 sm:gap-4 w-full max-w-md mx-auto">
-            {/* Get Started Button */}
+          {/* Executive CTA Command Buttons — Guaranteed Above The Fold */}
+          <div className="mt-5 sm:mt-8 flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-4 w-full max-w-md mx-auto">
+            {/* Get Started / Launch Button */}
             <button
               type="button"
               onClick={handleGetStarted}
-              className="flex-1 inline-flex min-h-11 sm:min-h-12 cursor-pointer items-center justify-center gap-2 rounded-md bg-teal-500 hover:bg-teal-400 px-5 sm:px-8 text-xs sm:text-sm font-bold text-slate-950 shadow-lg shadow-teal-950/40 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full sm:flex-1 inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-lg bg-teal-500 hover:bg-teal-400 px-6 text-sm font-bold text-slate-950 shadow-xl shadow-teal-950/60 transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               <span>{t("cta.getStarted")}</span>
               <ArrowRight className="size-4" />
@@ -208,14 +225,14 @@ export default function LandingPage() {
             {/* Explore Platform Button */}
             <Link
               to="/dashboard"
-              className="flex-1 inline-flex min-h-11 sm:min-h-12 items-center justify-center rounded-md border border-slate-700 bg-slate-900/60 backdrop-blur-md px-5 sm:px-8 text-xs sm:text-sm font-semibold text-slate-100 transition-all hover:bg-slate-800 hover:border-slate-600 hover:text-white active:scale-[0.98]"
+              className="w-full sm:flex-1 inline-flex min-h-12 items-center justify-center rounded-lg border border-slate-700 bg-slate-900/70 backdrop-blur-md px-6 text-sm font-semibold text-slate-100 transition-all hover:bg-slate-800 hover:border-slate-600 hover:text-white active:scale-[0.98]"
             >
               {t("cta.explore")}
             </Link>
           </div>
 
           {/* Telemetry Metrics Bar */}
-          <div className="mt-8 pt-6 border-t border-slate-800/80 flex flex-wrap items-center justify-center gap-4 sm:gap-8 text-[11px] font-mono text-slate-400 uppercase tracking-wider">
+          <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-slate-800/80 flex flex-wrap items-center justify-center gap-3 sm:gap-8 text-[10px] sm:text-[11px] font-mono text-slate-400 uppercase tracking-wider">
             <span className="flex items-center gap-1.5">
               <span className="size-1.5 rounded-full bg-teal-400" />
               {t("land.coastline")}
@@ -235,7 +252,7 @@ export default function LandingPage() {
       </section>
 
       {/* Feature Cards Section — Command & Decision Modules */}
-      <section className="orca-container py-12 sm:py-16">
+      <section className="orca-container py-10 sm:py-16">
         <div className="mb-8 text-center sm:text-left">
           <p className="text-xs font-mono font-semibold uppercase tracking-widest text-secondary">
             {t("land.capabilities")}
@@ -249,11 +266,11 @@ export default function LandingPage() {
           {FEATURES.map(({ key, desc, tag, Icon, badgeColor }) => (
             <article
               key={key}
-              className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 sm:p-6 transition-all duration-200 hover:border-slate-400/50 hover:shadow-lg dark:hover:border-slate-700 shadow-xs"
+              className="flex flex-col justify-between rounded-xl border border-border bg-card p-5 sm:p-6 transition-all duration-200 hover:border-teal-500/50 hover:shadow-lg shadow-xs"
             >
               <div>
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex size-10 items-center justify-center rounded-md bg-secondary/10 border border-secondary/20 text-secondary">
+                  <div className="flex size-10 items-center justify-center rounded-lg bg-secondary/10 border border-secondary/20 text-secondary">
                     <Icon className="size-5" aria-hidden />
                   </div>
                   <span className={cn("text-[10px] font-mono font-semibold px-2 py-0.5 rounded border", badgeColor)}>
@@ -270,25 +287,71 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Footer — Official & Minimal */}
-      <footer className="border-t border-border bg-surface py-6 text-center text-xs text-muted-foreground">
-        <div className="orca-container flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-2 mx-auto sm:mx-0">
-            <span className="font-semibold text-foreground">ORCA Marine AI</span>
-            <span>—</span>
-            <span>National Coastal Safety & Decision Intelligence Platform</span>
+      {/* Real Contact & Operations Footer */}
+      <footer className="border-t border-border bg-card/60 backdrop-blur-sm py-8 text-xs text-muted-foreground">
+        <div className="orca-container space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <div className="flex items-center gap-2 font-bold text-foreground text-sm">
+                <OrcaLogo className="size-5" />
+                <span>ORCA Marine AI Platform</span>
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                Autonomous Ocean Intelligence & Coastal Decision Support System developed for Smart India Hackathon 2026 in coordination with INCOIS & Ministry of Earth Sciences.
+              </p>
+            </div>
+
+            <div className="space-y-1.5 font-mono text-[11px]">
+              <span className="font-bold text-foreground block font-sans text-xs">Official Headquarters Address:</span>
+              <p className="text-muted-foreground">
+                INCOIS "Ocean Valley", Pragathi Nagar (BO), Nizampet (SO),<br />
+                Hyderabad, Telangana — 500090, India
+              </p>
+              <div className="flex items-center gap-2 pt-1 text-teal-500 dark:text-teal-400">
+                <MapPin className="size-3" />
+                <span>17.5255° N, 78.3688° E</span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 font-mono text-[11px]">
+              <span className="font-bold text-foreground block font-sans text-xs">Emergency & Support Contact:</span>
+              <p className="flex items-center gap-1.5 text-rose-500 dark:text-rose-400 font-bold">
+                <PhoneCall className="size-3" />
+                <span>24x7 Marine SOS: 1554 / 1800-425-1881</span>
+              </p>
+              <p className="text-muted-foreground">Support: contact@orca-marine.gov.in</p>
+              <p className="text-muted-foreground">Desk: +91 (40) 2389-5000</p>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center justify-center gap-5 mx-auto sm:mx-0">
-            <Link to="/privacy" className="hover:text-foreground transition-colors">
-              {t("footer.privacy")}
-            </Link>
-            <Link to="/terms" className="hover:text-foreground transition-colors">
-              {t("footer.terms")}
-            </Link>
-            <span>{t("footer.rights")}</span>
+
+          <div className="border-t border-border pt-4 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-foreground">ORCA Marine AI</span>
+              <span>—</span>
+              <span>All Indian Coastal States & UTs</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-4">
+              <Link to="/privacy" className="hover:text-foreground transition-colors">
+                {t("footer.privacy")}
+              </Link>
+              <Link to="/terms" className="hover:text-foreground transition-colors">
+                {t("footer.terms")}
+              </Link>
+              <button
+                type="button"
+                onClick={openCookieSettings}
+                className="hover:text-foreground transition-colors underline-offset-2 hover:underline"
+              >
+                Cookie Settings
+              </button>
+              <span>{t("footer.rights")}</span>
+            </div>
           </div>
         </div>
       </footer>
+
+      {/* Sticky Mobile CTA */}
+      <StickyMobileCTA />
     </div>
   );
 }

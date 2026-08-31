@@ -1,7 +1,8 @@
 """FastAPI Application for ORCA Marine AI with Bhashini Multilingual Service."""
-from datetime import date as dt_date
+from datetime import date as dt_date, datetime, timezone
 import os
 import re
+import threading
 from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -113,11 +114,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Enable CORS for frontend applications
+frontend_origins = [
+    origin.strip()
+    for origin in os.getenv("FRONTEND_ORIGIN", "http://localhost:5173,http://localhost:3000").split(",")
+    if origin.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_origin_regex=r".*",
+    allow_origins=frontend_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -261,6 +265,7 @@ class ChatRequest(BaseModel):
         default=None,
         description="Previous conversation turns for context-aware multi-turn reasoning",
     )
+    request_id: Optional[str] = Field(default=None, max_length=128)
 
 
 class ChatResponse(BaseModel):
@@ -287,6 +292,17 @@ class ChatResponse(BaseModel):
     recommendations: Optional[List[Dict[str, Any]]] = None
     connectivity_mode: Optional[str] = "LIVE"
     location: Optional[Dict[str, Any]] = None
+    session_id: Optional[str] = None
+    request_id: Optional[str] = None
+    intent: str = "general"
+    mode: str = "live"
+    agents_used: List[str] = Field(default_factory=list)
+    data_timestamp: str
+    fallback_used: bool = False
+
+
+_chat_idempotency_cache: Dict[str, ChatResponse] = {}
+_chat_idempotency_lock = threading.Lock()
 
 
 class SimulateRequest(BaseModel):
@@ -677,18 +693,7 @@ def _process_orca_query(
             f"Evidence (weather_agent): source='{weather_evidence.source}' ({c_stat}), forecast='{weather_evidence.forecast}', wave_height={weather_evidence.wave_height_m:.2f}m, wind_speed={weather_evidence.wind_speed_kmh:.1f} km/h."
         )
 
-        # Generate tidal predictions
-        tide_evidence = TideInfo(
-            high_tide_time="04:45 AM",
-            high_tide_height_m=3.85,
-            low_tide_time="11:15 AM",
-            low_tide_height_m=1.12,
-            secondary_high_tide_time="17:30 PM",
-            secondary_high_tide_height_m=3.60,
-            tidal_phase="Semi-Diurnal Spring Tide",
-            tidal_range_m=2.73,
-            source="ORCA regional tidal harmonic estimate; official tide feed integration pending",
-        )
+        # Tide data is deliberately omitted until a timestamped authoritative provider is configured.
 
     # 5b. Risk Assessment Agent
     if needs_risk:
@@ -1027,6 +1032,10 @@ def _process_orca_query(
         "recommendations": [r.model_dump() for r in recommendations],
         "connectivity_mode": connectivity_mode,
         "location": {"lat": active_lat, "lon": active_lon, "name": location_hint},
+        "intent": detected_intent,
+        "agents_used": list(dict.fromkeys(task.split(":", 1)[0] for task in executed_tasks)),
+        "data_timestamp": (weather_evidence.retrieval_time if weather_evidence and weather_evidence.retrieval_time else datetime.now(timezone.utc).isoformat()),
+        "fallback_used": connectivity_mode != "LIVE",
     }
 
 
@@ -1071,6 +1080,13 @@ def handle_query(request: QueryRequest) -> QueryResponse:
 @app.post("/api/chat", response_model=ChatResponse)
 def handle_chat(request: ChatRequest) -> ChatResponse:
     """Dedicated conversational endpoint with Bhashini multilingual orchestration."""
+    cache_key = f"{request.session_id or 'anonymous'}:{request.request_id}" if request.request_id else None
+    if cache_key:
+        with _chat_idempotency_lock:
+            cached = _chat_idempotency_cache.get(cache_key)
+        if cached:
+            return cached
+
     lat = request.location.lat if request.location else 18.9220
     lon = request.location.lon if request.location else 72.8347
     q_date = request.date or dt_date.today().isoformat()
@@ -1087,7 +1103,7 @@ def handle_chat(request: ChatRequest) -> ChatResponse:
         history=history_dicts,
     )
 
-    return ChatResponse(
+    response = ChatResponse(
         language=result["language"],
         language_name=result["language_name"],
         original_message=result["original_message"],
@@ -1111,7 +1127,20 @@ def handle_chat(request: ChatRequest) -> ChatResponse:
         recommendations=result.get("recommendations"),
         connectivity_mode=result.get("connectivity_mode", "LIVE"),
         location=result.get("location"),
+        session_id=request.session_id,
+        request_id=request.request_id,
+        intent=result.get("intent", "general"),
+        mode=result.get("connectivity_mode", "LIVE").lower(),
+        agents_used=result.get("agents_used", []),
+        data_timestamp=result.get("data_timestamp", datetime.now(timezone.utc).isoformat()),
+        fallback_used=result.get("fallback_used", False),
     )
+    if cache_key:
+        with _chat_idempotency_lock:
+            if len(_chat_idempotency_cache) >= 512:
+                _chat_idempotency_cache.pop(next(iter(_chat_idempotency_cache)))
+            _chat_idempotency_cache[cache_key] = response
+    return response
 
 
 @app.get("/api/recommendations")

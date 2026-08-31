@@ -9,6 +9,7 @@ import base64
 import logging
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from app.services.language import SUPPORTED_LANGUAGES, language_service, to_sarvam_code
@@ -26,6 +27,7 @@ class TranscribeBase64Request(BaseModel):
 
 
 class TranscribeResponse(BaseModel):
+    success: bool = True
     transcript: str = Field(..., description="Transcribed regional text")
     language: str = Field(..., description="Detected 2-letter ISO language code")
     language_code: str = Field(..., description="Sarvam BCP-47 language code (e.g. 'gu-IN')")
@@ -33,6 +35,8 @@ class TranscribeResponse(BaseModel):
     english_transcript: str = Field(..., description="English translation of transcribed speech")
     source: str = Field(..., description="Provider source (e.g. 'sarvam_saaras_v3')")
     is_mock: bool = Field(default=False, description="Whether mock provider was used")
+    provider: str = Field(default="sarvam", description="Normalized STT provider")
+    fallback_used: bool = False
 
 
 class SpeakRequest(BaseModel):
@@ -68,8 +72,12 @@ async def transcribe_audio_file(
     if not audio_bytes or len(audio_bytes) < 10:
         raise HTTPException(status_code=400, detail="Uploaded audio file is empty or corrupted.")
 
-    content_type = file.content_type or "audio/wav"
+    content_type = file.content_type or "application/octet-stream"
     filename = file.filename or "recording.wav"
+    supported = {"audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg", "audio/wav", "audio/x-wav"}
+    normalized_type = content_type.split(";", 1)[0].lower()
+    if normalized_type not in supported:
+        raise HTTPException(status_code=415, detail=f"Unsupported audio type: {normalized_type}")
 
     result = language_service.speech_to_text(
         audio_bytes=audio_bytes,
@@ -77,6 +85,13 @@ async def transcribe_audio_file(
         language_code=language,
         content_type=content_type,
     )
+    if result.get("is_mock") or not result.get("transcript", "").strip():
+        logger.warning("STT provider unavailable or returned an empty transcript (source=%s)", result.get("source"))
+        return JSONResponse(status_code=503, content={
+            "success": False,
+            "error_code": "STT_UPSTREAM_UNAVAILABLE",
+            "message": "Voice transcription is temporarily unavailable.",
+        })
 
     transcript = result.get("transcript", "")
     detected_iso = result.get("detected_iso", "en")
@@ -101,6 +116,8 @@ async def transcribe_audio_file(
         english_transcript=english_transcript,
         source=result.get("source", "sarvam_saaras_v3"),
         is_mock=result.get("is_mock", False),
+        provider="sarvam",
+        fallback_used=False,
     )
 
 

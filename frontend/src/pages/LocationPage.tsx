@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Crosshair, MapPin, Search, CheckCircle2 } from "lucide-react";
 import { AppShell } from "@/components/orca/AppShell";
 import { MapPanel } from "@/components/orca/MapPanel";
+import { SEO } from "@/components/SEO";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
 import {
@@ -86,6 +87,10 @@ export default function LocationPage() {
 
   return (
     <AppShell>
+      <SEO
+        title="Select Coastal Harbour & Port Base | ORCA Marine AI"
+        description="Choose your departure harbour, fishing radius, and coastal coordinates across India's exclusive economic zone."
+      />
       <div className="mx-auto flex w-full max-w-3xl flex-col space-y-4">
         <div className="flex items-center justify-between">
           <div>

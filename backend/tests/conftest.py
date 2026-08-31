@@ -9,6 +9,7 @@ from sqlalchemy.orm import sessionmaker
 
 # Set in-memory sqlite test database for pytest execution
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+os.environ["APP_ENV"] = "test"
 
 from app.db.base import Base
 from app.db.session import engine, init_db

@@ -13,7 +13,7 @@ class TestPlanner(unittest.TestCase):
         self.date = "2026-08-24"
 
     def test_1_safety_check_basic(self):
-        """Rule 1: safety_check requires weather_agent and risk_agent."""
+        """Rule 1: safety_check requires weather, hazard, and deterministic risk agents."""
         question = "Is it safe to go out to sea today?"
         plan = Planner.plan(
             question=question,
@@ -28,12 +28,13 @@ class TestPlanner(unittest.TestCase):
         task_list = [(t.agent, t.action) for t in plan.tasks]
         self.assertIn(("weather_agent", "get_marine_conditions"), task_list)
         self.assertIn(("risk_agent", "assess_risk"), task_list)
+        self.assertIn(("hazard_agent", "detect_hazards"), task_list)
         self.assertNotIn(("pfz_agent", "find_nearest_zones"), task_list)
         self.assertNotIn(("geospatial_agent", "calculate_distance"), task_list)
-        self.assertEqual(len(plan.tasks), 2)
+        self.assertEqual(len(plan.tasks), 3)
 
     def test_2_nearest_pfz_basic(self):
-        """Rule 2: nearest_pfz requires pfz_agent and geospatial_agent."""
+        """Rule 2: PFZ recommendations include location and safety evaluation."""
         question = "Where are the nearest fishing zones?"
         plan = Planner.plan(
             question=question,
@@ -48,9 +49,10 @@ class TestPlanner(unittest.TestCase):
         task_list = [(t.agent, t.action) for t in plan.tasks]
         self.assertIn(("pfz_agent", "find_nearest_zones"), task_list)
         self.assertIn(("geospatial_agent", "calculate_distance"), task_list)
-        self.assertNotIn(("weather_agent", "get_marine_conditions"), task_list)
-        self.assertNotIn(("risk_agent", "assess_risk"), task_list)
-        self.assertEqual(len(plan.tasks), 2)
+        self.assertIn(("weather_agent", "get_marine_conditions"), task_list)
+        self.assertIn(("risk_agent", "assess_risk"), task_list)
+        self.assertIn(("hazard_agent", "detect_hazards"), task_list)
+        self.assertEqual(len(plan.tasks), 5)
 
     def test_3_weather_conditions_basic(self):
         """Rule 3: weather_conditions requires weather_agent."""
@@ -89,7 +91,8 @@ class TestPlanner(unittest.TestCase):
         self.assertIn(("risk_agent", "assess_risk"), task_list)
         self.assertIn(("pfz_agent", "find_nearest_zones"), task_list)
         self.assertIn(("geospatial_agent", "calculate_distance"), task_list)
-        self.assertEqual(len(plan.tasks), 4)
+        self.assertIn(("hazard_agent", "detect_hazards"), task_list)
+        self.assertEqual(len(plan.tasks), 5)
 
     def test_5_nearest_pfz_with_weather_request(self):
         """Rule 5: nearest_pfz asking about conditions/weather adds weather_agent."""
@@ -108,7 +111,9 @@ class TestPlanner(unittest.TestCase):
         self.assertIn(("pfz_agent", "find_nearest_zones"), task_list)
         self.assertIn(("geospatial_agent", "calculate_distance"), task_list)
         self.assertIn(("weather_agent", "get_marine_conditions"), task_list)
-        self.assertEqual(len(plan.tasks), 3)
+        self.assertIn(("risk_agent", "assess_risk"), task_list)
+        self.assertIn(("hazard_agent", "detect_hazards"), task_list)
+        self.assertEqual(len(plan.tasks), 5)
 
     def test_6_general(self):
         """Rule 6: general intent returns an empty task list."""

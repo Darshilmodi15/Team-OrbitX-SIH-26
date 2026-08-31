@@ -2,13 +2,14 @@
 Super Admin Diagnostics, User Fleet Management, and Historical Marine REST Router for ORCA.
 """
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
 from app.models.admin_models import HistoricalMarineComparison, SystemHealthStatus
 from app.models.user_models import UserProfile, UserRole
 from app.services.admin import admin_service
 from app.services.auth import auth_service
+from app.routers.auth import require_roles
 
 router = APIRouter(tags=["Super Admin & Historical Comparisons"])
 
@@ -18,7 +19,7 @@ class UpdateRoleRequest(BaseModel):
 
 
 @router.get("/api/admin/system-health", response_model=SystemHealthStatus)
-def get_system_health():
+def get_system_health(_user: UserProfile = Depends(require_roles(UserRole.SUPER_ADMIN))):
     """
     Returns real-time service health, upstream latencies, memory footprint, and active SOS beacons.
     """
@@ -26,7 +27,7 @@ def get_system_health():
 
 
 @router.get("/api/admin/users", response_model=List[UserProfile])
-def get_all_registered_users():
+def get_all_registered_users(_user: UserProfile = Depends(require_roles(UserRole.SUPER_ADMIN))):
     """
     Returns list of all registered vessel owners, fishermen, and officers.
     """
@@ -34,7 +35,7 @@ def get_all_registered_users():
 
 
 @router.patch("/api/admin/users/{user_id}/role", response_model=UserProfile)
-def update_user_role(user_id: str, request: UpdateRoleRequest):
+def update_user_role(user_id: str, request: UpdateRoleRequest, _user: UserProfile = Depends(require_roles(UserRole.SUPER_ADMIN))):
     """
     Elevates or changes a user account role (USER -> GOVERNMENT -> SUPER_ADMIN).
     """

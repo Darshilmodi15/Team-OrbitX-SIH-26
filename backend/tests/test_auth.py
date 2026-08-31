@@ -1,5 +1,6 @@
 """Unit and Integration tests for ORCA Authentication & User Profile Management."""
 import unittest
+import os
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -30,6 +31,8 @@ class TestAuthService(unittest.TestCase):
         self.assertIsNotNone(payload)
         self.assertEqual(payload["sub"], user_id)
         self.assertEqual(payload["role"], role)
+        self.assertEqual(len(token.split(".")), 3)
+        self.assertNotIn("fisherman@orca.marine", token)
 
     def test_invalid_jwt_token_rejection(self):
         self.assertIsNone(decode_token("invalid.tampered.token"))
@@ -98,6 +101,38 @@ class TestAuthEndpoints(unittest.TestCase):
         }
         res = self.client.post("/api/auth/register", json=payload)
         self.assertEqual(res.status_code, 400)
+
+    def test_profile_requires_authentication(self):
+        self.assertEqual(self.client.get("/api/user/profile").status_code, 401)
+
+    def test_public_registration_cannot_self_assign_admin(self):
+        payload = {
+            "name": "Role Escalation Test",
+            "email": "role-escalation-test@orca.example",
+            "password": "safe-password-123",
+            "role": "SUPER_ADMIN",
+        }
+        res = self.client.post("/api/auth/register", json=payload)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["user"]["role"], "USER")
+
+    def test_google_email_only_bypass_is_disabled(self):
+        res = self.client.post("/api/auth/google", json={"google_token": "x" * 30})
+        self.assertEqual(res.status_code, 503)
+
+    def test_production_environment_never_seeds_predictable_accounts(self):
+        from app.services.auth.auth_service import AuthService
+        previous = os.environ.get("APP_ENV")
+        os.environ["APP_ENV"] = "production"
+        try:
+            isolated = AuthService()
+            self.assertEqual(isolated._users, {})
+            self.assertEqual(isolated._lookup, {})
+        finally:
+            if previous is None:
+                os.environ.pop("APP_ENV", None)
+            else:
+                os.environ["APP_ENV"] = previous
 
 
 if __name__ == "__main__":

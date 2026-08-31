@@ -10,6 +10,7 @@ import {
 import type { ReactNode } from "react";
 import { OrcaWordmark } from "./Logo";
 import { LanguageMenu } from "./LanguageMenu";
+import { Footer } from "@/components/Footer";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
 import { cn } from "@/lib/utils";
@@ -28,7 +29,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
+    <div className="flex min-h-screen flex-col bg-background text-foreground selection:bg-teal-500/30">
       <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur">
         <div className="orca-container flex h-14 items-center justify-between gap-3">
           <Link to="/dashboard" className="min-w-0 flex-1">
@@ -79,10 +80,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
       </header>
 
-      <main className="orca-container w-full flex-1 py-4 pb-24 lg:pb-10">{children}</main>
+      <main className="orca-container w-full flex-1 py-4 pb-24 lg:pb-8">{children}</main>
 
+      {/* Official Footnote / Contact info on desktop & mobile */}
+      <Footer />
+
+      {/* Mobile Bottom Navigation Bar */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur-md lg:hidden"
         aria-label="Primary mobile"
       >
         <ul className="grid grid-cols-5">

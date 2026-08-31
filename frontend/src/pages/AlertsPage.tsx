@@ -1,6 +1,7 @@
 import { AlertTriangle, Info, ShieldAlert } from "lucide-react";
 import { AppShell } from "@/components/orca/AppShell";
 import { EmptyState, ErrorState, LoadingState } from "@/components/orca/States";
+import { SEO } from "@/components/SEO";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
 import { useMarine } from "@/lib/orca/use-marine";
@@ -21,6 +22,10 @@ export default function AlertsPage() {
 
   return (
     <AppShell>
+      <SEO
+        title="Marine Weather Advisories & Cyclone Alerts | ORCA Marine AI"
+        description="Official high swell warnings, cyclone alerts, tsunami advisories, and marine safety bulletins issued by INCOIS and IMD."
+      />
       <h1 className="text-xl font-semibold">{t("alerts.title")}</h1>
 
       <div className="mt-4 space-y-3">

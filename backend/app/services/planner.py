@@ -81,6 +81,7 @@ class Planner:
             add_task("risk_agent", "assess_risk", required=True)
             add_task("geospatial_agent", "calculate_distance", required=True)
             add_task("route_agent", "plan_safe_route", required=True)
+            add_task("hazard_agent", "detect_hazards", required=True)
 
         elif intent == "chlorophyll_sst_analytics":
             add_task("weather_agent", "get_marine_conditions", required=True)
@@ -121,6 +122,7 @@ class Planner:
 
         elif intent == "safety_check":
             add_task("weather_agent", "get_marine_conditions", required=True)
+            add_task("hazard_agent", "detect_hazards", required=True)
             add_task("risk_agent", "assess_risk", required=True)
             if _asks_for_pfz(question):
                 add_task("pfz_agent", "find_nearest_zones", required=True)
@@ -129,8 +131,9 @@ class Planner:
         elif intent == "nearest_pfz":
             add_task("pfz_agent", "find_nearest_zones", required=True)
             add_task("geospatial_agent", "calculate_distance", required=True)
-            if _asks_for_weather(question):
-                add_task("weather_agent", "get_marine_conditions", required=True)
+            add_task("weather_agent", "get_marine_conditions", required=True)
+            add_task("risk_agent", "assess_risk", required=True)
+            add_task("hazard_agent", "detect_hazards", required=True)
 
         elif intent == "weather_conditions":
             add_task("weather_agent", "get_marine_conditions", required=True)

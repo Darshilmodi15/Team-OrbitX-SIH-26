@@ -2,6 +2,7 @@ import { useState } from "react";
 import { PhoneCall, Radio, Share2 } from "lucide-react";
 import { AppShell } from "@/components/orca/AppShell";
 import EmergencySOSModal from "@/components/EmergencySOSModal";
+import { SEO } from "@/components/SEO";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
 import { getEmergencyServices } from "@/lib/orca/reference";
@@ -28,6 +29,10 @@ export default function ServicesPage() {
 
   return (
     <AppShell>
+      <SEO
+        title="Maritime Emergency SOS & Coastal Services | ORCA Marine AI"
+        description="24x7 Marine distress SOS dispatch, Coast Guard MRCC helpline, and state fisheries welfare services."
+      />
       <h1 className="text-xl font-semibold text-foreground">{t("svc.title")}</h1>
 
       <div className="mt-4 rounded-md border border-danger/40 bg-danger-surface p-4 shadow-sm">

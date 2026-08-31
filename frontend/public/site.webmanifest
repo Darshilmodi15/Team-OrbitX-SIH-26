@@ -1,0 +1,29 @@
+{
+  "name": "ORCA Marine AI — Autonomous Ocean Intelligence",
+  "short_name": "ORCA Marine",
+  "description": "Agentic AI-powered conversational marine platform integrating satellite Earth Observation, PFZ discovery, safe route navigation, and IMBL geofencing.",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#06182C",
+  "background_color": "#06182C",
+  "display": "standalone",
+  "start_url": "/",
+  "orientation": "portrait-primary",
+  "lang": "en-IN",
+  "categories": ["navigation", "weather", "utilities", "productivity"]
+}

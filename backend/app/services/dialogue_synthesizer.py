@@ -111,7 +111,7 @@ class DialogueSynthesizer:
             )
 
         risk_summary = f"Level: {r.level.upper()}, Reason: {r.reason}" if r else "Not evaluated"
-        tide_summary = f"High Tide: {tide.high_tide_time} ({tide.high_tide_height_m}m), Low Tide: {tide.low_tide_time} ({tide.low_tide_height_m}m)" if tide else "Semi-diurnal tides"
+        tide_summary = f"High Tide: {tide.high_tide_time} ({tide.high_tide_height_m}m), Low Tide: {tide.low_tide_time} ({tide.low_tide_height_m}m)" if tide else "Unavailable; no authoritative tide feed is configured"
         pfz_summary = ", ".join([f"{z.name} ({z.distance_km}km, species: {', '.join(z.species[:2])})" for z in pfz[:2]]) if pfz else "None in immediate sector"
         alerts_summary = "; ".join([f"{a.title}: {a.message}" for a in alerts[:2]]) if alerts else "No active severe hazard warnings"
         boundary_summary = f"Inside EEZ: {boundary.inside_eez}, Distance to border: {boundary.distance_to_boundary_km:.1f}km" if boundary else "Inside Indian EEZ"
@@ -439,17 +439,23 @@ Generate the complete, natural response in language '{target_lang}':"""
                 f"• **Significant Wave Height**: **{wave_h:.2f} m**{wave_per}\n"
                 f"• **Sea Surface Temperature**: **{sst_c:.1f}°C**\n"
                 f"• **Visibility**: **{vis_km:.0f} km**\n"
-                f"• **Tidal Forecast**: {tide.tidal_phase if tide else 'Normal tidal cycle'} with High Tide around {tide.high_tide_time if tide else '04:45 AM'}.\n\n"
+                f"• **Tidal Forecast**: {(str(tide.tidal_phase) + ' with High Tide around ' + str(tide.high_tide_time)) if tide else 'Unavailable — consult the official port tide table'}.\n\n"
                 f"The wave height is within acceptable parameters for motorized fishing vessels. Avoid navigating too close to shallow coastal breaker lines."
             )
 
         # 13. Tide, Weather & Sea Conditions Inquiry
         if any(k in q_lower for k in ["tide", "tides", "high tide", "low tide", "tide timing", "bharti", "jwar"]):
-            t_high = tide.high_tide_time if tide else "04:45 AM"
-            t_high_h = tide.high_tide_height_m if tide else 3.85
-            t_low = tide.low_tide_time if tide else "11:15 AM"
-            t_low_h = tide.low_tide_height_m if tide else 1.12
-            t_phase = tide.tidal_phase if tide else "Semi-Diurnal Spring Tide"
+            if not tide:
+                return (
+                    f"**Tide data unavailable near {loc}.**\n\n"
+                    "ORCA does not currently have a timestamped authoritative tide feed for this request, so it will not estimate high/low tide times or heights. "
+                    "Check the official port or hydrographic tide table before departure."
+                )
+            t_high = tide.high_tide_time
+            t_high_h = tide.high_tide_height_m
+            t_low = tide.low_tide_time
+            t_low_h = tide.low_tide_height_m
+            t_phase = tide.tidal_phase
             return (
                 f"**Tide, Weather & Coastal Ocean Conditions near {loc}**:\n\n"
                 f"• **Tidal Regime**: **{t_phase}**\n"
@@ -517,7 +523,7 @@ Generate the complete, natural response in language '{target_lang}':"""
                 f"• **Wave Height**: {wave_h:.2f} m\n"
                 f"• **Wind Speed & Direction**: {wind_spd:.1f} km/h from {wind_dir}\n"
                 f"• **Sea Surface Temperature**: {sst_c:.1f}°C\n"
-                f"• **Tidal Prediction**: High Tide expected around {tide.high_tide_time if tide else '04:45 AM'}\n\n"
+                f"• **Tidal Prediction**: {('High Tide expected around ' + str(tide.high_tide_time)) if tide else 'Unavailable — no authoritative tide feed configured'}\n\n"
                 f"**Pre-Departure Checklist**:\n"
                 f"1. Check lifejacket availability for every person on board.\n"
                 f"2. Confirm VHF Channel 16 radio operational status.\n"

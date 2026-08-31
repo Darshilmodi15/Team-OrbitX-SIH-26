@@ -74,7 +74,8 @@ def seed_database():
         # -------------------------------------------------------------
         # 2. Demo User Accounts
         # -------------------------------------------------------------
-        logger.info("Seeding demo user accounts...")
+        app_env = (os.getenv("APP_ENV") or os.getenv("ENVIRONMENT", "development")).lower()
+        logger.info("Seeding demo user accounts for %s environment...", app_env)
         demo_accounts = [
             {
                 "id": "USR-DEMO-01",
@@ -107,6 +108,9 @@ def seed_database():
                 "preferred_language": "en",
             },
         ]
+        if app_env in {"production", "prod"}:
+            demo_accounts = []
+            logger.info("Skipped predictable demo database accounts in production.")
 
         for acc in demo_accounts:
             existing = db.query(User).filter(User.email == acc["email"]).first()
@@ -484,4 +488,3 @@ def seed_database():
 
 if __name__ == "__main__":
     seed_database()
-

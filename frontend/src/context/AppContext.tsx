@@ -232,22 +232,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [setCurrentUser]);
 
   const authenticateWithOtp = useCallback(
-    async (phone: string, otp: string, role = 'FISHERMAN', name = 'Vessel Master'): Promise<boolean> => {
-      // In production or prototype demo: OTP 123456 or any 6 digit
-      if (otp.length === 6) {
-        const userObj: UserAccount = {
-          id: `usr_${Date.now()}`,
-          name: name || 'Vessel Master',
-          mobile_number: phone,
-          role: (role as any) || 'FISHERMAN',
-          token: `token_demo_${Date.now()}`,
-        };
-        setCurrentUser(userObj);
-        return true;
-      }
+    async (_phone: string, _otp: string, _role = 'FISHERMAN', _name = 'Vessel Master'): Promise<boolean> => {
+      // OTP delivery and verification are intentionally unavailable until a real provider is configured.
       return false;
-    },
-    [setCurrentUser]
+    }, []
   );
 
   // ── Language ──

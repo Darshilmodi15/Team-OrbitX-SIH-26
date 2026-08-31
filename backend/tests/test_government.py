@@ -54,6 +54,8 @@ class TestGovernmentEndpoints(unittest.TestCase):
 
     def setUp(self):
         self.client = TestClient(app)
+        login = self.client.post("/api/auth/login", json={"email_or_phone": "officer@fisheries.gov.in", "password": "govpassword123"})
+        self.gov_headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
 
     def test_get_announcements_endpoint(self):
         res = self.client.get("/api/government/announcements")
@@ -81,7 +83,7 @@ class TestGovernmentEndpoints(unittest.TestCase):
             "reference_number=":"MH-FISH-2026-99",
             "is_urgent": False,
         }
-        res = self.client.post("/api/government/announcements", json=payload)
+        res = self.client.post("/api/government/announcements", json=payload, headers=self.gov_headers)
         self.assertEqual(res.status_code, 201)
         data = res.json()
         self.assertIn("id", data)

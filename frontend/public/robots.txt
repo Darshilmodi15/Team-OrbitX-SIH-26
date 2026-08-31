@@ -1,0 +1,24 @@
+# Robots.txt for ORCA Marine AI Platform
+# https://orca-marine.gov.in
+
+User-agent: *
+Allow: /
+Allow: /dashboard
+Allow: /map
+Allow: /assistant
+Allow: /alerts
+Allow: /services
+Allow: /location
+Allow: /auth
+Allow: /privacy
+Allow: /terms
+Allow: /thank-you
+
+# Disallow internal API endpoints & local cache
+Disallow: /api/
+Disallow: /admin/
+Disallow: /scratch/
+
+# Sitemaps
+Sitemap: https://orca-marine.gov.in/sitemap.xml
+Sitemap: /sitemap.xml

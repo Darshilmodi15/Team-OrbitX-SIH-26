@@ -212,7 +212,8 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
     if any(k in q_lower for k in [
         "avoided", "should be avoided", "zones to avoid", "zone to avoid", "which zone", "which zones", "where not to fish",
         "avoid fishing", "avoid due to", "hazardous marine conditions or geofencing", "geofencing restrictions",
-        "prohibited zone", "dangerous zones", "zones should i avoid", "zone should i avoid"
+        "prohibited zone", "dangerous zones", "zones should i avoid", "zone should i avoid",
+        "areas should i avoid", "area should i avoid", "what areas should i avoid"
     ]):
         return {
             "intent": "zone_avoidance",
@@ -232,7 +233,8 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
         }
 
     # 7. Combined PFZ + Safety / Killer demo intent
-    has_pfz = any(k in q_lower for k in ["pfz", "fishing zone", "fish zone", "fishing spot", "fishing spots", "fish", "machhimari", "machhli", "meen", "chepalu", "matsyam", "machha"])
+    # Do not treat the generic word "fish" as a PFZ request; it appears in ordinary safety questions.
+    has_pfz = any(k in q_lower for k in ["pfz", "fishing zone", "fish zone", "fishing spot", "fishing spots", "nearest fish", "machhimari zone", "machhli zone", "meen zone", "chepalu zone", "matsyam zone", "machha zone"])
     has_safety_or_route = any(k in q_lower for k in ["safe", "safety", "route", "tomorrow", "weather", "suitable", "kale", "kal", "udya", "naalai", "repu"])
     has_explicit_route = any(k in q_lower for k in ["route", "safest route", "navigation corridor", "how to reach", "path", "rasto"])
 
@@ -411,5 +413,3 @@ def parse_intent(question: str, history: Optional[List[Dict[str, str]]] = None) 
             pass
 
     return _fallback_intent(question)
-
-

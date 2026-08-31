@@ -1,6 +1,8 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Laptop, Moon, Sun } from "lucide-react";
 import { AppShell } from "@/components/orca/AppShell";
+import { SEO } from "@/components/SEO";
+import { openCookieSettings } from "@/components/CookieBanner";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
 import { useTheme } from "@/lib/orca/theme";
@@ -15,6 +17,10 @@ export default function SettingsPage() {
 
   return (
     <AppShell>
+      <SEO
+        title="Settings & Vessel Preferences | ORCA Marine AI"
+        description="Configure theme, language preferences, vessel telemetry, and privacy controls."
+      />
       <h1 className="text-xl font-semibold text-foreground">{t("nav.settings")}</h1>
 
       {/* Theme Settings Section */}
@@ -78,6 +84,19 @@ export default function SettingsPage() {
         >
           {t("loc.change")}
         </Link>
+      </section>
+
+      {/* Privacy & Cookies Section */}
+      <section className="mt-4 rounded-md border border-border bg-card p-4 shadow-xs">
+        <h2 className="text-sm font-semibold text-foreground">Privacy & Telemetry Controls</h2>
+        <p className="mt-1 text-xs text-muted-foreground">Manage offline GIS caching, anonymous diagnostic telemetry, and consent settings.</p>
+        <button
+          type="button"
+          onClick={openCookieSettings}
+          className="mt-3 inline-flex min-h-11 cursor-pointer items-center justify-center rounded-md border border-border bg-card px-4 text-sm font-semibold text-foreground transition hover:bg-muted shadow-xs"
+        >
+          Manage Cookie & Privacy Settings
+        </button>
       </section>
 
       {/* User / Account Section */}

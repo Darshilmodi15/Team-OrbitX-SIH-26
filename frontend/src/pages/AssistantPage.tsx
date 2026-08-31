@@ -35,11 +35,9 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/orca/AppShell";
 import { OrcaLogo } from "@/components/orca/Logo";
+import { SEO } from "@/components/SEO";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
-import { useMarine } from "@/lib/orca/use-marine";
-import { answerQuestion } from "@/lib/orca/assistant";
-import { useSafetyLabel } from "@/components/orca/SafetyStatus";
 import { transcribeVoiceAudio, sendChatMessage, synthesizeVoiceAudio } from "@/services/api";
 import { MarkdownRenderer } from "@/components/orca/MarkdownRenderer";
 import type { ChatMessage, ChatEvidence } from "@/lib/orca/types";
@@ -55,6 +53,9 @@ interface ChatThread {
 type VoiceState = "idle" | "preparing" | "listening" | "processing" | "transcribing" | "error";
 
 const STORAGE_KEY = "orca_assistant_threads_v1";
+const voiceDiagnostic = (event: string, details?: Record<string, unknown>) => {
+  if (import.meta.env.DEV) console.info(`[ORCA Voice] ${event}`, details || {});
+};
 
 function loadThreads(): ChatThread[] {
   try {
@@ -255,8 +256,6 @@ function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
 export default function AssistantPage() {
   const { t, lang } = useI18n();
   const { location } = useSession();
-  const marine = useMarine(location?.coords ?? null);
-  const levelLabel = useSafetyLabel();
 
   const [threads, setThreads] = useState<ChatThread[]>(() => loadThreads());
   const [activeThreadId, setActiveThreadId] = useState<string>(() => {
@@ -269,6 +268,7 @@ export default function AssistantPage() {
   const [input, setInput] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
+  const requestInFlightRef = useRef(false);
 
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [voiceErrorMessage, setVoiceErrorMessage] = useState<string | null>(null);
@@ -281,6 +281,7 @@ export default function AssistantPage() {
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const speechRecognitionRef = useRef<any>(null);
 
@@ -311,6 +312,7 @@ export default function AssistantPage() {
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current);
       }
+      mediaStreamRef.current?.getTracks().forEach(track => track.stop());
     };
   }, []);
 
@@ -398,7 +400,8 @@ export default function AssistantPage() {
 
   async function ask(text: string) {
     const question = text.trim();
-    if (!question || isThinking) return;
+    if (!question || requestInFlightRef.current) return;
+    requestInFlightRef.current = true;
 
     stopAudio();
     const now = Date.now();
@@ -447,6 +450,7 @@ export default function AssistantPage() {
         language: lang || "auto",
         session_id: activeThreadId,
         history: historyTurns,
+        request_id: crypto.randomUUID(),
       });
 
       if (res && res.answer) {
@@ -474,50 +478,20 @@ export default function AssistantPage() {
         };
       }
     } catch (err) {
-      console.warn("Backend /api/chat error, falling back to local engine:", err);
-      reply = answerQuestion(question, {
-        location: location ?? null,
-        bundle: marine.data ?? null,
-        levelLabel,
-        lang,
-        history: currentThread.messages.map((m) => ({ role: m.role, text: m.text })),
-      });
-      const curr = marine.data?.current;
-      const waveH = curr?.waveHeightM ?? 0.8;
+      console.warn("Backend /api/chat unavailable:", err);
+      reply = "ORCA live intelligence is temporarily unavailable. Live marine conditions cannot currently be verified. Please use official coastal warnings and do not base a sailing decision on unavailable data.";
       evidenceData = {
-        sources: curr?.sources && curr.sources.length > 0 ? curr.sources : ["INCOIS Ocean State Forecast", "ORCA Marine Intelligence Engine"],
-        reasoning: ["Synthesized local high-fidelity coastal telemetry"],
-        risk_level: waveH > 2.0 ? "unsafe" : waveH > 1.4 ? "caution" : "safe",
-        weather: curr ? {
-          wave_height_m: curr.waveHeightM,
-          wind_speed_kmh: curr.windSpeedKmh,
-          temperature_c: curr.seaTemperatureC,
-          visibility_km: curr.visibilityKm,
-        } : null,
+        sources: [], reasoning: ["The authoritative ORCA service returned no verified evidence."], risk_level: null, weather: null,
         nearest_pfz: [],
         recommendations: [],
-        connectivity_mode: "LOCAL_EDGE",
+        connectivity_mode: "SERVICE_UNAVAILABLE",
         language: lang || "en",
       };
     }
 
     if (!reply) {
-      reply = answerQuestion(question, {
-        location: location ?? null,
-        bundle: marine.data ?? null,
-        levelLabel,
-        lang,
-        history: currentThread.messages.map((m) => ({ role: m.role, text: m.text })),
-      });
-      if (!evidenceData) {
-        evidenceData = {
-          sources: ["ORCA Marine Intelligence Engine"],
-          reasoning: ["Grounded local rule evaluation"],
-          risk_level: "safe",
-          connectivity_mode: "LOCAL_EDGE",
-          language: lang || "en",
-        };
-      }
+      reply = "ORCA returned no usable answer. No live marine recommendation is available for this request.";
+      evidenceData = { sources: [], reasoning: ["Empty authoritative response."], risk_level: null, connectivity_mode: "SERVICE_UNAVAILABLE", language: lang || "en" };
     }
 
     const botNow = Date.now();
@@ -544,6 +518,7 @@ export default function AssistantPage() {
     });
 
     setIsThinking(false);
+    requestInFlightRef.current = false;
   }
 
   function handleCopy(text: string, id: string) {
@@ -556,10 +531,15 @@ export default function AssistantPage() {
      Voice Recognition & Speech-to-Text Controller
      ========================================================================== */
   async function startRecording() {
+    voiceDiagnostic("MIC_CLICK");
     stopAudio();
     setVoiceErrorMessage(null);
     setInterimTranscript("");
     setVoiceState("preparing");
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setVoiceErrorMessage(!window.isSecureContext ? "Voice recording requires a secure HTTPS connection." : "Voice recording is not supported by this browser. You can continue by typing.");
+      setVoiceState("error"); return;
+    }
 
     // Start concurrent SpeechRecognition for visual interim preview only
     const SpeechRecognition =
@@ -583,27 +563,27 @@ export default function AssistantPage() {
             setInterimTranscript(liveBrowserTranscript);
           }
         };
-        recognition.onerror = () => {};
+        recognition.onerror = (event: any) => console.info("Browser speech preview unavailable:", event?.error || "unknown");
         recognition.start();
         speechRecognitionRef.current = recognition;
-      } catch {
-        // ignore
+      } catch (err) {
+        console.info("Browser speech preview could not start:", err);
       }
     }
 
     try {
+      voiceDiagnostic("MIC_PERMISSION_REQUESTED");
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      voiceDiagnostic("MIC_PERMISSION_GRANTED");
+      mediaStreamRef.current = stream;
       audioChunksRef.current = [];
 
-      let mimeType = "audio/webm;codecs=opus";
-      if (typeof MediaRecorder !== "undefined") {
-        if (!MediaRecorder.isTypeSupported(mimeType)) {
-          mimeType = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "";
-        }
-      }
+      const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"]
+        .find(type => MediaRecorder.isTypeSupported(type)) || "";
 
       const recorderOptions: MediaRecorderOptions = mimeType ? { mimeType } : {};
       const recorder = new MediaRecorder(stream, recorderOptions);
+      voiceDiagnostic("RECORDER_CREATED", { mimeType: recorder.mimeType || mimeType || "browser-default" });
 
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -612,6 +592,7 @@ export default function AssistantPage() {
       };
 
       recorder.onstop = async () => {
+        voiceDiagnostic("RECORDING_STOPPED");
         if (recordingTimerRef.current) {
           clearInterval(recordingTimerRef.current);
           recordingTimerRef.current = null;
@@ -628,18 +609,24 @@ export default function AssistantPage() {
         setVoiceState("transcribing");
         const actualMime = recorder.mimeType || "audio/webm";
         const audioBlob = new Blob(audioChunksRef.current, { type: actualMime });
+        voiceDiagnostic("AUDIO_BLOB_CREATED", { bytes: audioBlob.size, mimeType: actualMime });
+        if (audioBlob.size === 0) {
+          setVoiceErrorMessage("No audio was recorded. Check your microphone and try again.");
+          setVoiceState("error"); stream.getTracks().forEach(trk => trk.stop()); return;
+        }
 
         try {
           // Call authoritative Sarvam Saaras v3 STT
+          voiceDiagnostic("AUDIO_UPLOAD_STARTED");
           const result = await transcribeVoiceAudio(audioBlob, lang || "auto");
+          voiceDiagnostic("AUDIO_UPLOAD_COMPLETED");
           let finalSpokenText = "";
 
           if (result && result.transcript && result.transcript.trim() && !result.is_mock) {
             finalSpokenText = result.transcript.trim();
-          } else if (result && result.transcript && result.transcript.trim()) {
-            finalSpokenText = result.transcript.trim();
-          } else if (liveBrowserTranscript) {
-            finalSpokenText = liveBrowserTranscript;
+            voiceDiagnostic("STT_TRANSCRIPT_RECEIVED", { language: result.language_code || result.language });
+          } else if (result?.is_mock) {
+            throw new Error("Authoritative transcription provider unavailable");
           }
 
           if (finalSpokenText) {
@@ -651,20 +638,22 @@ export default function AssistantPage() {
             setVoiceState("error");
           }
         } catch (err) {
-          console.warn("Backend STT fallback:", err);
-          if (liveBrowserTranscript) {
-            setVoiceState("idle");
-            ask(liveBrowserTranscript);
-          } else {
-            setVoiceErrorMessage("Transcription service temporarily unavailable. Please try again or type.");
-            setVoiceState("error");
-          }
+          console.warn("Authoritative STT unavailable:", err);
+          voiceDiagnostic("STT_FAILED", { error: err instanceof Error ? err.message : "unknown" });
+          setInput(liveBrowserTranscript);
+          setVoiceErrorMessage(liveBrowserTranscript ? "Live preview was placed in the input, but Sarvam could not verify it. Review before sending." : "Transcription service temporarily unavailable. Please try again or type.");
+          setVoiceState("error");
         } finally {
           stream.getTracks().forEach((trk) => trk.stop());
+          mediaStreamRef.current = null;
+          mediaRecorderRef.current = null;
+          audioChunksRef.current = [];
+          speechRecognitionRef.current = null;
         }
       };
 
       recorder.start(250);
+      voiceDiagnostic("RECORDING_STARTED");
       mediaRecorderRef.current = recorder;
       setVoiceState("listening");
       setRecordingSeconds(0);
@@ -672,8 +661,10 @@ export default function AssistantPage() {
         setRecordingSeconds((prev) => prev + 1);
       }, 1000);
     } catch (err) {
-      console.warn("Microphone access denied or hardware error:", err);
-      setVoiceErrorMessage("Microphone access is required for voice questions. Please allow microphone permission or type below.");
+      console.warn("Microphone access or hardware error:", err);
+      const name = err instanceof DOMException ? err.name : "";
+      const messages: Record<string, string> = { NotAllowedError: "Microphone permission is blocked. Allow access in browser settings.", NotFoundError: "No microphone was detected.", NotReadableError: "The microphone is being used by another application.", SecurityError: "Microphone access requires a secure HTTPS connection.", AbortError: "Microphone startup was interrupted. Please try again.", OverconstrainedError: "No microphone matches the requested audio settings." };
+      setVoiceErrorMessage(messages[name] || "Microphone could not start. You can continue by typing.");
       setVoiceState("error");
     }
   }
@@ -740,6 +731,10 @@ export default function AssistantPage() {
 
   return (
     <AppShell>
+      <SEO
+        title="AI Ocean Copilot — Multilingual Marine Decision Support | ORCA AI"
+        description="Multilingual conversational agent providing instant voice and text advice on potential fishing zones, ocean weather, and safe maritime navigation in 9 coastal languages."
+      />
       <div className="relative flex h-[calc(100dvh-13rem)] sm:h-[calc(100vh-8.5rem)] w-full overflow-hidden rounded-xl border border-border bg-card shadow-lg">
         {/* Mobile Backdrop Overlay */}
         {mobileDrawerOpen && (
