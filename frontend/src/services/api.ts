@@ -10,8 +10,16 @@
  * - /api/voice/* (Sarvam AI STT Saaras v3 & TTS Bulbul v3)
  */
 
+const PRODUCTION_API_BASE_URL = 'https://orca-backend-ycue.onrender.com';
+
 function getApiBaseUrl(): string {
-  let url = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').trim();
+  const configuredUrl = (import.meta.env.VITE_API_BASE_URL || '').trim();
+  const isPlaceholder = configuredUrl.includes('your-orca-backend.onrender.com');
+  let url = configuredUrl;
+
+  if (!url || isPlaceholder) {
+    url = import.meta.env.PROD ? PRODUCTION_API_BASE_URL : 'http://localhost:8000';
+  }
   if (url && !url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('/')) {
     url = `https://${url}`;
   }

@@ -15,8 +15,12 @@ services:
         fromDatabase:
           name: orca-postgres
           property: connectionString
-      - key: JWT_SECRET
+      - key: APP_ENV
+        value: production
+      - key: JWT_SECRET_KEY
         generateValue: true
+      - key: FRONTEND_ORIGIN
+        value: https://team-orbit-x-sih-26.vercel.app
       - key: INCOIS_BASE_URL
         value: https://incois.gov.in
       - key: INCOIS_TIMEOUT_SEC

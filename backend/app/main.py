@@ -116,7 +116,10 @@ app = FastAPI(
 
 frontend_origins = [
     origin.strip()
-    for origin in os.getenv("FRONTEND_ORIGIN", "http://localhost:5173,http://localhost:3000").split(",")
+    for origin in os.getenv(
+        "FRONTEND_ORIGIN",
+        "https://team-orbit-x-sih-26.vercel.app,http://localhost:5173,http://localhost:3000",
+    ).split(",")
     if origin.strip()
 ]
 app.add_middleware(
