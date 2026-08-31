@@ -57,16 +57,25 @@ REVERSE_SARVAM_LANG_MAP: Dict[str, str] = {
 }
 
 DEFAULT_SPEAKERS: Dict[str, str] = {
-    "gu-IN": "kavya",
-    "hi-IN": "kavya",
-    "mr-IN": "kavya",
-    "ta-IN": "kavya",
-    "te-IN": "kavya",
-    "ml-IN": "kavya",
-    "bn-IN": "kavya",
-    "kn-IN": "kavya",
-    "en-IN": "anushka",
+    "gu-IN": "ratan",
+    "hi-IN": "shubh",
+    "mr-IN": "ratan",
+    "ta-IN": "ratan",
+    "te-IN": "shubh",
+    "ml-IN": "shubh",
+    "bn-IN": "rehan",
+    "kn-IN": "shubh",
+    "en-IN": "ratan",
 }
+
+BULBUL_V3_SPEAKERS: Tuple[str, ...] = (
+    "aditya", "ritu", "ashutosh", "priya", "neha", "rahul", "pooja",
+    "rohan", "simran", "kavya", "amit", "dev", "ishita", "shreya",
+    "ratan", "varun", "manan", "sumit", "roopa", "kabir", "aayan",
+    "shubh", "advait", "anand", "tanya", "tarun", "sunny", "mani",
+    "gokul", "vijay", "shruti", "suhani", "mohit", "kavitha", "rehan",
+    "soham", "rupali", "niharika",
+)
 
 
 def to_sarvam_code(lang: str) -> str:
@@ -269,7 +278,7 @@ class SarvamLanguageProvider(LanguageProvider):
 
         data = {
             "model": "saaras:v3",
-            "with_diarization": "false",
+            "mode": "transcribe",
         }
         if language_code and language_code != "auto":
             data["language_code"] = to_sarvam_code(language_code)
@@ -319,7 +328,7 @@ class SarvamLanguageProvider(LanguageProvider):
         Endpoint: POST /text-to-speech
         """
         sarvam_lang = to_sarvam_code(language_code)
-        chosen_speaker = speaker or DEFAULT_SPEAKERS.get(sarvam_lang, "meera")
+        chosen_speaker = speaker or DEFAULT_SPEAKERS.get(sarvam_lang, "shubh")
 
         if not self.is_configured:
             # Generate a lightweight silent/tone wav byte response for offline testing
@@ -338,12 +347,11 @@ class SarvamLanguageProvider(LanguageProvider):
         clean_text = re.sub(r"[*#_`•-]", "", text).strip()[:400]
 
         payload = {
-            "inputs": [clean_text],
-            "target_language_code": sarvam_lang,
+            "text": clean_text,
+            "language_code": sarvam_lang,
             "speaker": chosen_speaker,
             "pace": 1.0,
             "speech_sample_rate": 22050,
-            "enable_preprocessing": True,
             "model": "bulbul:v3",
         }
 

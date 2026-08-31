@@ -177,12 +177,12 @@ def test_voice_speak_endpoint():
         json={
             "text": "Conditions are safe for fishing operations today.",
             "language": "en",
-            "speaker": "meera",
+            "speaker": "ratan",
         },
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["speaker"] == "meera"
+    assert data["speaker"] == "ratan"
     assert data["language_code"] == "en-IN"
 
 

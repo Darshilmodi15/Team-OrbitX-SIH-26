@@ -12,7 +12,12 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from app.services.language import SUPPORTED_LANGUAGES, language_service, to_sarvam_code
+from app.services.language import (
+    BULBUL_V3_SPEAKERS,
+    SUPPORTED_LANGUAGES,
+    language_service,
+    to_sarvam_code,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -42,14 +47,14 @@ class TranscribeResponse(BaseModel):
 class SpeakRequest(BaseModel):
     text: str = Field(..., description="Text to synthesize to speech")
     language: Optional[str] = Field(default="en", description="Target ISO language code (e.g. 'gu', 'hi', 'en')")
-    speaker: Optional[str] = Field(default=None, description="Speaker persona (e.g. 'meera', 'arvind', 'kavya')")
+    speaker: Optional[str] = Field(default=None, description="Bulbul v3 speaker persona (e.g. 'shubh', 'ratan', 'kavya')")
 
 
 class SpeakResponse(BaseModel):
     audio_base64: Optional[str] = Field(default=None, description="Base64 encoded WAV audio bytes")
     audio_format: str = Field(default="wav", description="Audio format")
     sample_rate: int = Field(default=22050, description="Audio sample rate in Hz")
-    speaker: str = Field(default="meera", description="Voice persona used")
+    speaker: str = Field(default="shubh", description="Voice persona used")
     language_code: str = Field(default="en-IN", description="Sarvam language code")
     source: str = Field(default="sarvam_bulbul_v3", description="Provider name")
     is_mock: bool = Field(default=False, description="Whether mock provider was used")
@@ -182,7 +187,7 @@ def synthesize_speech(request: SpeakRequest):
         audio_base64=result.get("audio_base64"),
         audio_format=result.get("audio_format", "wav"),
         sample_rate=result.get("sample_rate", 22050),
-        speaker=result.get("speaker", "meera"),
+        speaker=result.get("speaker", "shubh"),
         language_code=result.get("language_code", to_sarvam_code(request.language or "en")),
         source=result.get("source", "sarvam_bulbul_v3"),
         is_mock=result.get("is_mock", False),
@@ -196,7 +201,7 @@ def list_available_speakers():
     """
     return {
         "provider": "Sarvam AI (Bulbul v3)",
-        "default_speaker": "meera",
-        "available_speakers": ["meera", "kavya", "arvind", "amartya", "ratan", "shashi"],
+        "default_speaker": "shubh",
+        "available_speakers": list(BULBUL_V3_SPEAKERS),
         "supported_languages": SUPPORTED_LANGUAGES,
     }

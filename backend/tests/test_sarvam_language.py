@@ -79,9 +79,25 @@ class TestSarvamLanguageService(unittest.TestCase):
     def test_speech_to_text_mock(self):
         """Validates Speech-to-Text payload handling."""
         mock_audio = b"RIFF....WAVEfmt ...."
-        res = self.provider.speech_to_text(mock_audio, language_code="gu")
-        self.assertIn("transcript", res)
-        self.assertIn("language_code", res)
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "transcript": "દરિયો આજે શાંત છે.",
+            "language_code": "gu-IN",
+        }
+
+        with patch("httpx.Client.post", return_value=mock_response) as mock_post:
+            res = self.provider.speech_to_text(mock_audio, language_code="auto")
+
+        request = mock_post.call_args.kwargs
+        self.assertEqual(request["data"], {
+            "model": "saaras:v3",
+            "mode": "transcribe",
+            "language_code": "unknown",
+        })
+        self.assertNotIn("with_diarization", request["data"])
+        self.assertEqual(res["transcript"], "દરિયો આજે શાંત છે.")
+        self.assertFalse(res["is_mock"])
 
     def test_text_to_speech_mock(self):
         """Validates Text-to-Speech Bulbul v3 request formatting."""
@@ -91,11 +107,17 @@ class TestSarvamLanguageService(unittest.TestCase):
             "audios": ["UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA="]
         }
 
-        with patch("httpx.Client.post", return_value=mock_response):
-            res = self.provider.text_to_speech("દરિયાઈ સ્થિતિ સલામત છે.", language_code="gu", speaker="meera")
-            self.assertEqual(res["speaker"], "meera")
-            self.assertEqual(res["language_code"], "gu-IN")
-            self.assertIsNotNone(res["audio_base64"])
+        with patch("httpx.Client.post", return_value=mock_response) as mock_post:
+            res = self.provider.text_to_speech("દરિયાઈ સ્થિતિ સલામત છે.", language_code="gu", speaker="kavya")
+
+        request = mock_post.call_args.kwargs
+        self.assertEqual(request["json"]["text"], "દરિયાઈ સ્થિતિ સલામત છે.")
+        self.assertEqual(request["json"]["language_code"], "gu-IN")
+        self.assertNotIn("inputs", request["json"])
+        self.assertNotIn("target_language_code", request["json"])
+        self.assertEqual(res["speaker"], "kavya")
+        self.assertEqual(res["language_code"], "gu-IN")
+        self.assertIsNotNone(res["audio_base64"])
 
 
 class TestVoiceEndpoints(unittest.TestCase):
@@ -110,7 +132,8 @@ class TestVoiceEndpoints(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         data = res.json()
         self.assertIn("Sarvam AI", data["provider"])
-        self.assertIn("meera", data["available_speakers"])
+        self.assertEqual(data["default_speaker"], "shubh")
+        self.assertIn("ratan", data["available_speakers"])
         self.assertIn("gu", data["supported_languages"])
 
     def test_voice_speak_endpoint(self):
