@@ -6,13 +6,28 @@
 [![Vite](https://img.shields.io/badge/Vite-8.2-646CFF.svg?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC.svg?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![Leaflet](https://img.shields.io/badge/Leaflet-1.9-199900.svg?logo=leaflet&logoColor=white)](https://leafletjs.com/)
-[![Tests](https://img.shields.io/badge/Pytest-254%20Passed-brightgreen.svg?logo=pytest&logoColor=white)](https://pytest.org)
+[![Tests](https://img.shields.io/badge/Pytest-258%20Passed-brightgreen.svg?logo=pytest&logoColor=white)](https://pytest.org)
 [![Sarvam AI](https://img.shields.io/badge/Sarvam_AI-Voice_%26_Indic_AI-orange.svg)](https://sarvam.ai)
 [![INCOIS Live](https://img.shields.io/badge/INCOIS-Ocean_State_Forecast-blue.svg)](https://incois.gov.in)
 [![ISRO](https://img.shields.io/badge/ISRO-Satellite_Earth_Observation-purple.svg)](https://isro.gov.in)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **ORCA Marine AI** is a production-grade autonomous maritime intelligence platform and conversational copilot engineered for artisanal fishermen, commercial mariners, coastal communities, and maritime security agencies. Built on a deterministic **11-agent multi-agent architecture**, ORCA fuses real-time **INCOIS** ocean state forecasts, **ISRO** satellite ocean productivity telemetry, decomposed 4-vector safety risk assessments, **Potential Fishing Zone (PFZ)** advisories, **Flanders Marine Institute (VLIZ) World EEZ v12** boundaries & **IMBL geofencing**, 1-click **SOS distress broadcasting** with automated **IMO MAYDAY VHF Channel 16 generation**, government gazette circulars, and a regional voice & multilingual dialogue engine spanning **11 Indian coastal languages + English** with full **Romanized Indic script transliteration recognition**.
+
+---
+
+## Production Deployment
+
+| Service | URL | Host |
+| :--- | :--- | :--- |
+| Frontend | [team-orbit-x-sih-26.vercel.app](https://team-orbit-x-sih-26.vercel.app) | Vercel |
+| Backend API | [orca-backend-ycue.onrender.com](https://orca-backend-ycue.onrender.com) | Render |
+| OpenAPI | [orca-backend-ycue.onrender.com/docs](https://orca-backend-ycue.onrender.com/docs) | Render |
+
+The Vercel deployment is a single-page application. `frontend/vercel.json` rewrites application routes to `index.html`, so direct visits and refreshes work on `/login`, `/dashboard`, `/assistant`, and other client-side routes. `/dashboard`, `/assistant`, `/map`, `/alerts`, `/services`, `/settings`, and `/location` require an authenticated session and redirect unauthenticated visitors to `/login`.
+
+Production authentication uses server-issued JWTs and backend-enforced role checks for `USER`, `GOVERNMENT`, and `SUPER_ADMIN`. Never place `JWT_SECRET_KEY`, `SARVAM_API_KEY`, database credentials, or LLM keys in `VITE_*` variables.
+
+> **Voice production requirement:** A valid `SARVAM_API_KEY` must also have active Sarvam credits. The production browser flow deliberately rejects mock or empty STT results. If the Assistant shows **“Transcription service temporarily unavailable”** and Sarvam returns HTTP `402 insufficient_quota_error`, recharge the Sarvam account and retry; do not replace the failure with a fabricated transcript.
 
 ---
 
@@ -24,13 +39,13 @@
 - **🗺️ Marine Boundaries & EEZ Integration (Marine Regions / VLIZ)**: Official Exclusive Economic Zone (EEZ) boundaries from Flanders Marine Institute (VLIZ) World EEZ v12 via Web Feature Service (WFS) with pure-Python ray-casting containment testing and automated geofence proximity monitoring.
 - **🚧 Real-Time IMBL & MPA Buffer Geofencing**: Proactive monitoring of the International Maritime Boundary Line (IMBL - India/Pakistan/Sri Lanka) and Marine Protected Areas (MPAs like Gulf of Mannar, Malvan, Sundarbans) with tiered buffer warnings (`SAFE`, `WARNING`, `CRITICAL`) to prevent accidental international border crossings.
 - **🐟 Potential Fishing Zones (PFZ) & Bathymetric Ecology**: Identifies thermal fronts, chlorophyll-a blooms, shelf breaks, and upwelling zones with distance/bearing calculations, depth estimates, and dominant target species (Kingfish, Seer Fish, Tuna, Mackerel, Sardines, Pomfret).
-- **🎙️ Sarvam AI & Bhashini Voice & Multilingual Stack**:
-  - **Speech-to-Text (STT)**: Sarvam Saaras v3 / v2 supporting speech in 22+ Indic languages + English.
-  - **Text-to-Speech (TTS)**: Sarvam Bulbul v3 neural voice synthesis with authentic Indian voice personas (*Meera*, *Arvind*, *Kavya*, *Amartya*, *Ratan*, *Shashi*).
+- **🎙️ Sarvam AI & Bhashini Multilingual Stack**:
+  - **Speech-to-Text (STT)**: Sarvam Saaras v3 multipart transcription supporting 22 Indic languages + English. Empty, mock, quota-exhausted, or unavailable provider results are surfaced as explicit failures.
+  - **Text-to-Speech (TTS)**: Sarvam Bulbul v3 neural voice synthesis using current v3-compatible voices such as *Shubh*, *Ratan*, *Priya*, *Ritu*, *Kavya*, and *Rehan*.
   - **Neural Machine Translation (NMT)** & Language Identification across 11 coastal languages (Gujarati, Hindi, Marathi, Tamil, Telugu, Malayalam, Bengali, Odia, Kannada, Punjabi, English).
   - **Romanized Indic Language Recognition**: Automatic identification and native handling of Indian languages transliterated into Latin script (e.g. *"Kya main kal machhli pakadne ja sakta hoon?"*, *"shu hu kale machhimari karva jai shaku?"*, *"naalai meen pidikka pogalama?"*).
   - **Language Priority Rule**: User input language dynamically overrides dashboard default on every conversational turn.
-  - **Dual Fallback Integration**: Resilient fallbacks between Sarvam AI, MeitY Bhashini, and domain-specific offline marine dictionaries.
+  - **Text-Language Degradation**: Translation and language identification may use configured Sarvam/Bhashini services or domain-specific dictionaries. Recorded STT is never reported as successful unless a real transcript is returned.
 - **🚨 Maritime Emergency SOS & Search and Rescue (SAR) Hub**: Instant one-click SOS distress broadcasting with GPS routing to Maritime Rescue Coordination Centres (**MRCC Mumbai, MRCC Chennai, MRCC Port Blair**), automated **IMO-standard MAYDAY VHF Channel 16 transmission script** generation, and 24x7 maritime helplines (Coast Guard 1554, Coastal Police 1093, NDRF 1078, National Emergency 112).
 - **📜 Government Circulars & Fisheries Policy Portal**: Interactive gazette notices, seasonal monsoon fishing ban advisories, PMMSY (Pradhan Mantri Matsya Sampada Yojana) subsidy schemes, Kisan Credit Card (KCC) for fisheries, transponder mandates, and official circular publishing with Role-Based Access Control (`USER`, `GOVERNMENT`, `SUPER_ADMIN`).
 - **⚡ Low-Bandwidth Resilient Coastal Geospatial Cache**: Ultra-compact query payloads (~130–160 bytes) with 0.05° (~5.5 km) spatial grid binning and spiral coastal land-mask search, Redis caching with in-memory fallback, allowing nearby vessels on 2G/3G maritime edge connections to reuse forecasts with sub-millisecond retrieval latencies.
@@ -52,7 +67,7 @@ flowchart TD
         Modals[Emergency SOS / Govt Portal / Admin / Trace]
     end
 
-    subgraph API_Gateway["FastAPI Application Layer (v1.4.0)"]
+    subgraph API_Gateway["FastAPI Application Layer (v1.4.1)"]
         RouterMain["Core Router (/query, /api/chat)"]
         RouterVoice["Voice & Speech Router (/api/voice/*)"]
         RouterMarine["Marine Telemetry Router (/api/marine/*)"]
@@ -287,7 +302,7 @@ ORCA/
 │   │       ├── language/                       # Unified multilingual service layer
 │   │       ├── location/                       # Geodetic validation & coastal distance service
 │   │       └── notifications/                  # Automated safety alert evaluator
-│   └── tests/                                  # 36 Test Modules (254 Unit & Integration Tests)
+│   └── tests/                                  # 38 test modules (258 passing, 4 skipped at last verification)
 │       ├── test_admin_and_historical.py
 │       ├── test_agent_contracts.py
 │       ├── test_assistant_pipeline_comprehensive.py
@@ -400,6 +415,18 @@ ORCA/
 
 The backend provides interactive OpenAPI documentation at `/docs` (Swagger UI) and `/redoc`.
 
+### Authentication, Sessions & Protected Routes
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/auth/register` | Creates an account and returns a bearer JWT plus the user profile. |
+| `POST` | `/api/auth/login` | Authenticates by email/mobile number and password. Invalid credentials return `401`. |
+| `POST` | `/api/auth/google` | Reserved for Google ID-token login; currently returns `503` until server-side verification is configured. |
+| `GET` | `/api/user/profile` | Restores the authenticated profile from `Authorization: Bearer <token>`. |
+| `PATCH` | `/api/user/profile` | Updates the authenticated user's profile and preferences. |
+
+The frontend stores the token in session storage by default and in local storage only when **Remember me** is selected. A `401` response clears the invalid session and returns the user to `/login`. Government publishing and Super Admin operations are protected by backend RBAC; hiding controls in the browser is not treated as authorization.
+
 ### 1. Operational Advisory & Conversational Copilot
 
 | Method | Endpoint | Description |
@@ -502,13 +529,13 @@ curl -X POST "http://localhost:8000/query" \
 
 ---
 
-### 3. Voice & Multilingual Speech (Sarvam AI / Bhashini)
+### 3. Voice & Multilingual Speech
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `POST` | `/api/voice/transcribe` | Transcribes uploaded multipart audio file via **Sarvam Saaras STT** (supports 22+ Indic languages). |
-| `POST` | `/api/voice/transcribe-base64` | Transcribes Base64-encoded audio payload from web/mobile clients. |
-| `POST` | `/api/voice/speak` | Synthesizes regional Indic speech using **Sarvam Bulbul v3** neural voices (*Meera*, *Arvind*, *Kavya*). |
+| `POST` | `/api/voice/transcribe` | Transcribes uploaded multipart audio via **Sarvam Saaras v3** using `mode=transcribe`; returns `503` when the provider is unavailable or returns no real transcript. |
+| `POST` | `/api/voice/transcribe-base64` | Transcribes a Base64-encoded audio payload and includes `is_mock`; callers must treat `is_mock=true` or an empty transcript as unavailable. |
+| `POST` | `/api/voice/speak` | Synthesizes regional Indic speech using **Sarvam Bulbul v3** and v3-compatible speakers such as *Shubh*, *Ratan*, *Priya*, *Ritu*, *Kavya*, and *Rehan*. |
 | `GET` | `/api/voice/speakers` | Lists available Sarvam voice personas and supported language mappings. |
 | `GET` | `/api/languages` | Returns list of supported Indian coastal languages. |
 | `POST` | `/api/detect-language` | Detects language of input text with ISO and BCP-47 codes. |
@@ -624,11 +651,11 @@ ORCA evaluates four independent physical risk vectors to construct the composite
 
 - **Python 3.10+** (Tested on Python 3.11, 3.12, 3.14)
 - **Node.js 18+** & **npm**
-- (Optional) **Sarvam AI API Key** for production-grade Indic STT, TTS, and NMT.
+- **Sarvam AI API Key with active credits** for production STT/TTS. The rest of the application can run without it, but voice transcription will remain explicitly unavailable.
 - (Optional) **Google Gemini API Key** or **Anthropic API Key** for LLM intent parsing.
 - (Optional) **Redis Server** for distributed caching (defaults to high-performance in-memory cache).
 
-> **Zero-Downtime Resilience:** If external API keys or network connections are unavailable, ORCA automatically switches to built-in heuristic intent classification, local Indic translation dictionaries, in-memory spatial caching, and open fallback data providers.
+> **Truthful degradation:** If external services are unavailable, ORCA may use documented heuristic, cache, or public-data fallbacks where supported. It does not label mock marine data as live, fabricate tide data, or report an empty/mock voice transcription as successful.
 
 ---
 
@@ -659,10 +686,11 @@ Create a `.env` file in the `backend/` directory:
 GEMINI_API_KEY=your_gemini_api_key_here
 # ANTHROPIC_API_KEY=your_anthropic_api_key_here
 
-# Sarvam AI Voice & Multilingual Service (Optional - Bhashini/Dictionary fallback available)
+# Sarvam AI Voice & Multilingual Service
+# Required for real STT/TTS; the account must have active credits.
 SARVAM_API_KEY=your_sarvam_api_key_here
 SARVAM_BASE_URL=https://api.sarvam.ai
-SARVAM_TIMEOUT_SEC=10.0
+SARVAM_TIMEOUT_SEC=5
 
 # Bhashini / ULCA Credentials (Optional fallback)
 # BHASHINI_USER_ID=your_bhashini_user_id
@@ -674,13 +702,19 @@ INCOIS_BASE_URL=https://incois.gov.in
 INCOIS_TIMEOUT_SEC=4.0
 
 # Database & Cache Settings
-DATABASE_URL=sqlite:///./orca_marine.db
+# Omit DATABASE_URL for the local SQLite default, or provide PostgreSQL:
+DATABASE_URL=postgresql://orca_user:password@localhost:5432/orca_marine
 REDIS_URL=redis://localhost:6379/0
 
-# Security & Coastal Validation
-ORCA_JWT_SECRET=orca_marine_ai_jwt_secret_key_sih_2026_coastal_safety
-ORCA_INTELLIGENCE_RADIUS_KM=100.0
+# Security & browser origin
+APP_ENV=development
+JWT_SECRET_KEY=replace_with_a_cryptographically_random_secret
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+FRONTEND_ORIGIN=http://localhost:5173
 ```
+
+`APP_ENV=production` requires `JWT_SECRET_KEY`; backend startup intentionally fails when the production JWT secret is absent. Generate a unique secret and keep it server-side.
 
 #### Database Setup (Optional Alembic Migration)
 
@@ -708,72 +742,62 @@ cd frontend
 # Install Node dependencies
 npm install
 
+# Configure the public backend origin only
+cp .env.example .env
+
 # Start Vite development server
 npm run dev
 ```
 
 The frontend tactical GIS dashboard will be live at `http://localhost:5173`.
 
+Only public browser configuration belongs in `frontend/.env`:
+
+```ini
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+For production, set `VITE_API_BASE_URL=https://orca-backend-ycue.onrender.com` in Vercel and redeploy. Never expose backend secrets through a `VITE_*` variable.
+
+### 3. Production Environment
+
+Render backend:
+
+```ini
+APP_ENV=production
+JWT_SECRET_KEY=<cryptographically-random-server-secret>
+DATABASE_URL=<production-postgresql-url>
+FRONTEND_ORIGIN=https://team-orbit-x-sih-26.vercel.app
+SARVAM_API_KEY=<funded-sarvam-key>
+```
+
+Vercel frontend:
+
+```ini
+VITE_API_BASE_URL=https://orca-backend-ycue.onrender.com
+```
+
+After changing backend environment variables, restart or redeploy the Render service. `render.yaml` and `frontend/vercel.json` contain the production service and SPA routing configuration.
+
 ---
 
 ## 🧪 Testing & Quality Assurance
 
-The ORCA backend contains a comprehensive test suite of **254 unit and integration tests across 36 test modules** (100% passing) verifying multi-agent planning, ISRO satellite ocean analytics, PFZ discovery, 4-vector risk assessment, VLIZ EEZ boundary ray-casting, IMBL geofencing, multilingual translations across 11 Indic languages, proactive hazard alerts, Romanized Indic script understanding, and the reliable recommendations & reasoning engine.
+The backend suite covers authentication and RBAC, chat context, Sarvam request contracts and failure states, marine providers, PFZ discovery, deterministic risk assessment, geofencing, emergency flows, government publishing, and admin authorization. The frontend suite covers session and route behavior.
 
 ```bash
 # Run all backend tests
 cd backend
 python3 -m pytest
+
+# Run frontend tests, production build, and lint
+cd ../frontend
+npm test
+npm run build
+npm run lint
 ```
 
-```
-============================= test session starts ==============================
-platform darwin -- Python 3.14.4, pytest-9.0.3, pluggy-1.6.0
-rootdir: /Users/darshilmodi/Desktop/ORCA/backend
-configfile: pytest.ini
-testpaths: tests
-plugins: langsmith-0.7.26, anyio-4.13.0
-collected 254 items
-
-tests/test_admin_and_historical.py .......                               [  2%]
-tests/test_agent_contracts.py .....                                      [  4%]
-tests/test_assistant_pipeline_comprehensive.py ................          [ 11%]
-tests/test_auth.py .......                                               [ 13%]
-tests/test_bhashini.py ............                                      [ 18%]
-tests/test_chat.py .......                                               [ 21%]
-tests/test_database.py ..........                                        [ 25%]
-tests/test_demo_scenario.py ....                                         [ 26%]
-tests/test_emergency.py ........                                         [ 29%]
-tests/test_geofence.py ......                                            [ 32%]
-tests/test_geofence_agent.py ....                                        [ 33%]
-tests/test_government.py .........                                       [ 37%]
-tests/test_hazard_agent.py ...                                           [ 38%]
-tests/test_historical_observations.py ...                                [ 39%]
-tests/test_incois_provider.py ........                                   [ 42%]
-tests/test_incois_query.py .....                                         [ 44%]
-tests/test_ingestion_service.py ..                                       [ 45%]
-tests/test_location_validation.py .......                                [ 48%]
-tests/test_marine_boundaries.py ..........                               [ 52%]
-tests/test_marine_cache.py ....                                          [ 53%]
-tests/test_marine_endpoints.py .....                                     [ 55%]
-tests/test_multilingual_assistant_upgrade.py ................            [ 62%]
-tests/test_notifications.py .......                                      [ 64%]
-tests/test_ocean_analytics_and_isro_queries.py .............             [ 70%]
-tests/test_pfz_api.py ..                                                 [ 70%]
-tests/test_planner.py ......                                             [ 73%]
-tests/test_query.py ......                                               [ 75%]
-tests/test_recommendations_and_reasoning.py .........                    [ 79%]
-tests/test_resilient_cache.py .......                                    [ 81%]
-tests/test_risk_engine.py ......                                         [ 84%]
-tests/test_route_agent.py ..                                             [ 85%]
-tests/test_sarvam_language.py .............                              [ 90%]
-tests/test_sarvam_lid.py ..............                                  [ 95%]
-tests/test_sarvam_live.py ....                                           [ 97%]
-tests/test_simulation_agent.py ..                                        [ 98%]
-tests/test_weather_provider.py .....                                     [100%]
-
-================== 254 passed, 1 warning in 198.05s (0:03:18) ==================
-```
+Last verified on **2026-08-31**: backend `258 passed, 4 skipped`; frontend `9 passed`; production build passed; lint exited successfully with existing warnings. Treat counts as a verification snapshot rather than a permanent guarantee—run the commands above after every change.
 
 ---
 
@@ -790,6 +814,4 @@ tests/test_weather_provider.py .....                                     [100%]
 
 ## 📄 License
 
-This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
-
-
+No license file is currently included in this repository. Until the project owners add one, no open-source license is granted by this README.
