@@ -124,10 +124,10 @@ export default function CurrentMarineStatusCard({
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Wave Height</span>
           </div>
           <div className="text-base font-extrabold text-slate-900">
-            {weather.wave_height_m.toFixed(1)} m
+            {weather.wave_height_m == null ? 'Unavailable' : `${weather.wave_height_m.toFixed(1)} m`}
           </div>
           <div className="text-[10px] text-slate-500">
-            Period: {weather.swell_period_s || 7}s
+            Period: {weather.swell_period_s == null ? 'Unavailable' : `${weather.swell_period_s.toFixed(1)} s`}
           </div>
         </div>
 
@@ -138,10 +138,12 @@ export default function CurrentMarineStatusCard({
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Wind Speed</span>
           </div>
           <div className="text-base font-extrabold text-slate-900">
-            {weather.wind_speed_kmh.toFixed(0)} km/h
+            {weather.wind_speed_kmh == null ? 'Unavailable' : `${weather.wind_speed_kmh.toFixed(0)} km/h`}
           </div>
           <div className="text-[10px] text-slate-500">
-            {weather.wind_direction_cardinal || 'SW'} ({weather.forecast || 'Clear'})
+            {weather.wind_direction_cardinal && weather.forecast
+              ? `${weather.wind_direction_cardinal} (${weather.forecast})`
+              : 'Direction or weather unavailable'}
           </div>
         </div>
 
@@ -152,10 +154,10 @@ export default function CurrentMarineStatusCard({
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Sea Temp</span>
           </div>
           <div className="text-base font-extrabold text-slate-900">
-            {(weather.sst_c || 28.2).toFixed(1)}°C
+            {weather.sst_c == null ? 'Unavailable' : `${weather.sst_c.toFixed(1)}°C`}
           </div>
           <div className="text-[10px] text-slate-500">
-            Air: {(weather.temperature_c || 29.5).toFixed(1)}°C
+            Air: {weather.temperature_c == null ? 'Unavailable' : `${weather.temperature_c.toFixed(1)}°C`}
           </div>
         </div>
 
@@ -166,10 +168,10 @@ export default function CurrentMarineStatusCard({
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Visibility</span>
           </div>
           <div className="text-base font-extrabold text-slate-900">
-            {weather.visibility_km || 15} km
+            {weather.visibility_km == null ? 'Unavailable' : `${weather.visibility_km} km`}
           </div>
           <div className="text-[10px] text-slate-500">
-            Tide: {weather.tide_state || 'Ebb'}
+            Tide: {weather.tide_state || 'Unavailable'}
           </div>
         </div>
       </div>

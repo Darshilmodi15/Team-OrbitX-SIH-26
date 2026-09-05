@@ -256,7 +256,7 @@ class ChatHistoryItem(BaseModel):
 
 class ChatRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    message: str = Field(..., description="User message or question in any Indian language or English")
+    message: str = Field(..., min_length=1, max_length=8000, description="User message or question in any Indian language or English")
     location: Optional[Location] = Field(
         default_factory=lambda: Location(lat=18.9220, lon=72.8347),
         description="Vessel GPS location",
@@ -1005,6 +1005,12 @@ def _process_orca_query(
             synthesized_answer = f"{synthesized_answer}\n\n{rec_md}"
 
     reasoning.append("Synthesized dynamic conversational response based on multi-agent evidence and context.")
+    localized_reasoning = reasoning
+    if detected_lang != "en":
+        localized_reasoning = [
+            bhashini_service.translate(text=step, source_lang="en", target_lang=detected_lang)
+            for step in reasoning
+        ]
 
     # Step 7: Indic translation if needed and not already native script
     has_native_indic = any(0x0900 <= ord(c) <= 0x0D7F for c in synthesized_answer)
@@ -1026,7 +1032,7 @@ def _process_orca_query(
         "original_message": question_raw,
         "english_query": english_question,
         "answer": final_answer,
-        "reasoning": reasoning,
+        "reasoning": localized_reasoning,
         "sources_used": sources_used,
         "plan": plan,
         "risk_level": risk_evidence.level if risk_evidence else None,

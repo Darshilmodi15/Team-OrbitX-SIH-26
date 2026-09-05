@@ -85,6 +85,7 @@ const LANG_NAMES: Record<string, string> = {
 };
 
 function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
+  const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
 
   const hasWeather =
@@ -106,7 +107,7 @@ function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
         <div className="flex items-center gap-2 flex-wrap">
           <span className="inline-flex items-center gap-1 font-semibold text-teal-400 text-[11px]">
             <Sparkles className="size-3 text-teal-400" />
-            <span>Grounded Evidence & Sources</span>
+            <span>{t("chat.evidence")}</span>
           </span>
           {evidence.risk_level && (
             <span
@@ -134,7 +135,7 @@ function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
           onClick={() => setIsOpen(!isOpen)}
           className="cursor-pointer inline-flex items-center gap-1 text-[11px] text-teal-400 hover:text-teal-300 font-medium transition"
         >
-          <span>{isOpen ? "Hide Trace" : "View Trace"}</span>
+          <span>{isOpen ? t("chat.hideTrace") : t("chat.viewTrace")}</span>
           {isOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
         </button>
       </div>
@@ -197,7 +198,7 @@ function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
           {hasSources && (
             <div>
               <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block mb-1">
-                Data Providers & Agents Consulted:
+                {t("chat.providers")}:
               </span>
               <div className="flex flex-wrap gap-1">
                 {evidence.sources!.map((src, idx) => (
@@ -216,7 +217,7 @@ function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
           {hasReasoning && (
             <div>
               <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block mb-1">
-                Multi-Agent Analytical Steps:
+                {t("chat.steps")}:
               </span>
               <ul className="space-y-1 text-[11px] text-muted-foreground pl-1">
                 {evidence.reasoning!.map((step, idx) => (
@@ -235,8 +236,7 @@ function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
 }
 
 export default function AssistantPage() {
-  const { t, lang } = useI18n();
-  const { location, user } = useSession();
+  const { user, location } = useSession();
 
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string>("");

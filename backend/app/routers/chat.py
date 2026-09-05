@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.chat_models import ConversationSummary, CreateConversationRequest, UpdateConversationRequest
@@ -10,8 +10,8 @@ from app.services.chat_service import chat_storage_service
 router = APIRouter(prefix="/api/conversations", tags=["User-owned conversations"])
 
 @router.get("", response_model=List[ConversationSummary])
-def list_conversations(user: UserProfile = Depends(get_current_user_from_header), db: Session = Depends(get_db)):
-    return chat_storage_service.list(db, user.id)
+def list_conversations(limit: int = Query(50, ge=1, le=100), user: UserProfile = Depends(get_current_user_from_header), db: Session = Depends(get_db)):
+    return chat_storage_service.list(db, user.id, limit)
 
 @router.post("", response_model=ConversationSummary, status_code=status.HTTP_201_CREATED)
 def create_conversation(request: CreateConversationRequest, user: UserProfile = Depends(get_current_user_from_header), db: Session = Depends(get_db)):

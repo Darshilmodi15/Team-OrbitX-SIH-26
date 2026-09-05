@@ -46,8 +46,8 @@ export interface GeofenceZone {
 }
 
 export interface WeatherMetrics {
-  wave_height_m: number;
-  wind_speed_kmh: number;
+  wave_height_m?: number;
+  wind_speed_kmh?: number;
   wind_direction_deg?: number;
   wind_direction_cardinal?: string;
   wind_speed_ms?: number;
@@ -57,6 +57,8 @@ export interface WeatherMetrics {
   swell_period_s?: number;
   tide_state?: string;
   visibility_km?: number;
+  chlorophyll_mg_m3?: number;
+  chlorophyll_source?: string;
   cyclone_warning?: boolean;
   cyclone_name?: string;
   forecast_time?: string;

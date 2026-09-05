@@ -142,3 +142,10 @@ def test_rate_limiter_blocks_excess_requests():
         assert False, "expected rate limit"
     except Exception as exc:
         assert getattr(exc, "status_code", None) == 429
+
+
+def test_oversized_chat_and_sos_payloads_are_rejected():
+    client = TestClient(app)
+    _, normal = register_account(client, "payload")
+    assert client.post("/api/chat", headers=normal, json={"message": "x" * 8001}).status_code == 422
+    assert client.post("/api/emergency/sos", headers=normal, json={"lat": 20, "lon": 70, "notes": "x" * 2001}).status_code == 422

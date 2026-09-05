@@ -25,7 +25,7 @@ const NAV = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { t } = useI18n();
-  const { location, user } = useSession();
+  const { user, location } = useSession();
   const { pathname } = useLocation();
   const nav = user?.role === "admin"
     ? [{ to: "/admin", key: "System Overview", Icon: LayoutDashboard }, { to: "/settings", key: "System Settings", Icon: Settings }]
@@ -63,6 +63,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="flex shrink-0 items-center gap-1.5">
+            <span className="hidden rounded-full border border-teal-500/30 bg-teal-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-teal-300 sm:inline">
+              {user?.role === "government" ? "Government view" : user?.role === "admin" ? "Admin view" : "Fisher view"}
+            </span>
             <LanguageMenu />
             <Link
               to="/settings"

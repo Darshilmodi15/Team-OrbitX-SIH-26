@@ -8,9 +8,6 @@ import {
   MessageSquare,
   Map as MapIcon,
   ShieldCheck,
-  Building2,
-  Phone,
-  Mail,
   Clock,
   Printer,
 } from "lucide-react";
@@ -163,35 +160,16 @@ export default function ThankYouPage() {
           </div>
         </div>
 
-        {/* Real Maritime Operations Contact Details */}
+        {/* Hackathon prototype notice */}
         <div className="mt-8 w-full rounded-xl border border-slate-800/80 bg-slate-950/40 p-5 text-xs text-slate-400">
           <p className="font-semibold text-slate-200 mb-2 flex items-center gap-2">
-            <Building2 className="size-4 text-teal-400" />
-            Official Maritime Support & Operational Escalations
+            <ShieldCheck className="size-4 text-teal-400" />
+            Hackathon Prototype
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[11px] pt-1">
-            <div className="flex items-start gap-2">
-              <Phone className="size-3.5 text-emerald-400 shrink-0 mt-0.5" />
-              <div>
-                <strong className="text-slate-300 block">Toll-Free Coastal Helpline</strong>
-                <span>1800-425-1881 / 1554 (MRCC)</span>
-              </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <Mail className="size-3.5 text-sky-400 shrink-0 mt-0.5" />
-              <div>
-                <strong className="text-slate-300 block">Official Support Desk</strong>
-                <span>contact@orca-marine.gov.in</span>
-              </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <ShieldCheck className="size-3.5 text-teal-400 shrink-0 mt-0.5" />
-              <div>
-                <strong className="text-slate-300 block">Operations Center</strong>
-                <span>INCOIS, Hyderabad, India</span>
-              </div>
-            </div>
-          </div>
+          <p className="text-[11px]">
+            ORCA is a student-built demonstration and is not an official government office or emergency service.
+            For emergencies, contact the appropriate local authorities.
+          </p>
         </div>
       </main>
 

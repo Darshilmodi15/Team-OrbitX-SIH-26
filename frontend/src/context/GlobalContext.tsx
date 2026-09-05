@@ -147,8 +147,10 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
 
     if (port.defaultWeather) {
       setWeather(port.defaultWeather);
-      const isUnsafe = port.defaultWeather.wave_height_m > 2.5 || port.defaultWeather.wind_speed_kmh > 50;
-      const isCaution = !isUnsafe && (port.defaultWeather.wave_height_m > 1.5 || port.defaultWeather.wind_speed_kmh > 35);
+      const waveHeight = port.defaultWeather.wave_height_m;
+      const windSpeed = port.defaultWeather.wind_speed_kmh;
+      const isUnsafe = (waveHeight != null && waveHeight > 2.5) || (windSpeed != null && windSpeed > 50);
+      const isCaution = !isUnsafe && ((waveHeight != null && waveHeight > 1.5) || (windSpeed != null && windSpeed > 35));
       setRiskLevel(isUnsafe ? 'unsafe' : isCaution ? 'caution' : 'safe');
     }
 

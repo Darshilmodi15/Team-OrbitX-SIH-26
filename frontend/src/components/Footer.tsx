@@ -15,7 +15,7 @@ export const Footer: React.FC<FooterProps> = () => {
       <div className="flex items-center gap-2">
         <span className="font-semibold text-foreground">ORCA Marine AI</span>
         <span>·</span>
-        <span>INCOIS Operations Command, Hyderabad 500090</span>
+        <span>Hackathon prototype</span>
       </div>
       <div className="flex items-center gap-3">
         <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>

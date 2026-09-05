@@ -6,8 +6,6 @@ import {
   Eye,
   Database,
   Building,
-  Mail,
-  Phone,
   Radio,
   FileCheck,
   ChevronRight,
@@ -170,42 +168,6 @@ export default function PrivacyPage() {
             </div>
           </section>
 
-          {/* Real Contact & DPO Section */}
-          <section className="mt-10 rounded-xl border border-slate-800 bg-slate-950/60 p-6">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Building className="size-5 text-teal-400" />
-              7. Data Protection Officer (DPO) & Official Address
-            </h2>
-            <p className="mt-2 text-xs sm:text-sm text-slate-300">
-              For privacy inquiries, grievance redressals, or data deletion requests under DPDPA 2023, contact our designated Data Protection Officer:
-            </p>
-
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
-              <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-4">
-                <span className="text-slate-400 block text-[11px]">CENTRAL OPERATIONS COMMAND</span>
-                <strong className="text-white block mt-1">ORCA Marine Operations Center</strong>
-                <span className="text-slate-300 block mt-1">
-                  Indian National Centre for Ocean Information Services (INCOIS)<br />
-                  "Ocean Valley", Pragathi Nagar (BO), Nizampet (SO)<br />
-                  Hyderabad, Telangana — 500090, India
-                </span>
-              </div>
-
-              <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-2">
-                <div className="flex items-center gap-2">
-                  <Mail className="size-4 text-teal-400" />
-                  <span>dpo@orca-marine.gov.in</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="size-4 text-emerald-400" />
-                  <span>+91 (40) 2389-5000 / 1800-425-1881</span>
-                </div>
-                <div className="text-[11px] text-slate-400 pt-1">
-                  Working Hours: 24x7 Marine Operations Desk
-                </div>
-              </div>
-            </div>
-          </section>
         </div>
 
         <div className="mt-10 border-t border-slate-800 pt-6 flex justify-between items-center text-xs text-slate-400">
