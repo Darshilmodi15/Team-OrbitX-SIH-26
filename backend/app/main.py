@@ -61,6 +61,7 @@ from app.routers.voice import router as voice_router
 from app.routers.chat import router as chat_router
 from app.routers.auth import get_current_user_from_header
 from app.db.session import get_db
+from app.db.models import Conversation
 from app.models.user_models import UserProfile
 from app.services.chat_service import chat_storage_service
 from app.services.rate_limit import rate_limiter

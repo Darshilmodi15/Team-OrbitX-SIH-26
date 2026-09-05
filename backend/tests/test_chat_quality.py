@@ -10,16 +10,23 @@ from tests.auth_helpers import authenticate_client
 
 client = authenticate_client(TestClient(app))
 VERAVAL = {"lat": 20.9159, "lon": 70.3629}
+session_ids = {}
 
 
 def ask(message: str, request_id: str, session_id: str = "quality-veraval", history=None):
     if client.get("/api/user/profile").status_code != 200:
         authenticate_client(client)
+        session_ids.clear()
+    if session_id not in session_ids:
+        created = client.post("/api/conversations", json={"title": session_id})
+        assert created.status_code == 201, created.text
+        session_ids[session_id] = created.json()["id"]
+    persisted_session_id = session_ids[session_id]
     response = client.post("/api/chat", json={
         "message": message,
         "location": VERAVAL,
         "language": "en",
-        "session_id": session_id,
+        "session_id": persisted_session_id,
         "request_id": request_id,
         "history": history or [],
     })
@@ -27,7 +34,7 @@ def ask(message: str, request_id: str, session_id: str = "quality-veraval", hist
     body = response.json()
     assert body["answer"].strip()
     assert body["request_id"] == request_id
-    assert body["session_id"] == session_id
+    assert body["session_id"] == persisted_session_id
     assert body["mode"] in {"live", "cached", "degraded", "offline"}
     assert isinstance(body["agents_used"], list)
     assert body["data_timestamp"]

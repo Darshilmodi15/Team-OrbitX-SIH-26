@@ -236,6 +236,7 @@ function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
 }
 
 export default function AssistantPage() {
+  const { t, lang } = useI18n();
   const { user, location } = useSession();
 
   const [threads, setThreads] = useState<ChatThread[]>([]);
