@@ -14,7 +14,7 @@ const DEFAULT_TITLE = "ORCA Marine AI — Autonomous Ocean Intelligence & Decisi
 const DEFAULT_DESCRIPTION =
   "Agentic AI-powered conversational marine platform integrating satellite Earth Observation, PFZ discovery, safe route navigation, and IMBL geofencing for SIH 2026.";
 const DEFAULT_IMAGE = "/og-image.png";
-const BASE_URL = "https://orca-marine.gov.in";
+const BASE_URL = import.meta.env.VITE_PUBLIC_SITE_URL || window.location.origin;
 
 export function SEO({
   title,

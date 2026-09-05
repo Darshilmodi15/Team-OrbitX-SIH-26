@@ -5,9 +5,6 @@ import {
   AlertTriangle,
   Compass,
   ShieldAlert,
-  Building,
-  Mail,
-  Phone,
   Radio,
   Scale,
 } from "lucide-react";
@@ -138,38 +135,6 @@ export default function TermsPage() {
             </p>
           </section>
 
-          {/* Contact & Grievance Section */}
-          <section className="mt-10 rounded-xl border border-slate-800 bg-slate-950/60 p-6">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Building className="size-5 text-teal-400" />
-              7. Maritime Legal & Operational Office
-            </h2>
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
-              <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-4">
-                <span className="text-slate-400 block text-[11px]">NATIONAL HEADQUARTERS</span>
-                <strong className="text-white block mt-1">ORCA Operations Command</strong>
-                <span className="text-slate-300 block mt-1">
-                  INCOIS "Ocean Valley", Pragathi Nagar (BO), Nizampet (SO)<br />
-                  Hyderabad, Telangana — 500090, India
-                </span>
-              </div>
-
-              <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-2">
-                <div className="flex items-center gap-2">
-                  <Mail className="size-4 text-teal-400" />
-                  <span>legal@orca-marine.gov.in</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="size-4 text-emerald-400" />
-                  <span>+91 (40) 2389-5000 (General)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="size-4 text-rose-400" />
-                  <span>1554 / 1800-425-1881 (Emergency)</span>
-                </div>
-              </div>
-            </div>
-          </section>
         </div>
 
         <div className="mt-10 border-t border-slate-800 pt-6 flex justify-between items-center text-xs text-slate-400">

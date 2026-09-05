@@ -302,25 +302,12 @@ export default function LandingPage() {
             </div>
 
             <div className="space-y-1.5 font-mono text-[11px]">
-              <span className="font-bold text-foreground block font-sans text-xs">Official Headquarters Address:</span>
-              <p className="text-muted-foreground">
-                INCOIS "Ocean Valley", Pragathi Nagar (BO), Nizampet (SO),<br />
-                Hyderabad, Telangana — 500090, India
-              </p>
-              <div className="flex items-center gap-2 pt-1 text-teal-500 dark:text-teal-400">
-                <MapPin className="size-3" />
-                <span>17.5255° N, 78.3688° E</span>
-              </div>
-            </div>
-
-            <div className="space-y-1.5 font-mono text-[11px]">
-              <span className="font-bold text-foreground block font-sans text-xs">Emergency & Support Contact:</span>
+              <span className="font-bold text-foreground block font-sans text-xs">Emergency guidance:</span>
               <p className="flex items-center gap-1.5 text-rose-500 dark:text-rose-400 font-bold">
                 <PhoneCall className="size-3" />
-                <span>24x7 Marine SOS: 1554 / 1800-425-1881</span>
+                <span>For emergencies, call 112 or Coast Guard 1554.</span>
               </p>
-              <p className="text-muted-foreground">Support: contact@orca-marine.gov.in</p>
-              <p className="text-muted-foreground">Desk: +91 (40) 2389-5000</p>
+              <p className="text-muted-foreground">ORCA is a Smart India Hackathon prototype, not an official government office.</p>
             </div>
           </div>
 
