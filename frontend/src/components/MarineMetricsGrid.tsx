@@ -5,6 +5,7 @@ import {
   Thermometer,
   Eye,
   Activity,
+  Leaf,
   Radio,
   Clock,
 } from 'lucide-react';
@@ -15,12 +16,14 @@ export default function MarineMetricsGrid() {
   const { weather, currentLang } = useAppContext();
   const t = getStrings(currentLang);
 
+  const format = (value: number | undefined, unit: string, digits = 1) =>
+    value == null ? 'Unavailable' : `${value.toFixed(digits)}${unit}`;
   const metrics = [
     {
       id: 'wave',
       label: t.waveHeight || 'Significant Wave Height',
-      value: `${(weather.wave_height_m || 1.2).toFixed(2)} m`,
-      subtext: weather.wave_height_m && weather.wave_height_m > 1.8 ? 'Rough Swell' : 'Moderate Sea',
+      value: format(weather.wave_height_m, ' m', 2),
+      subtext: weather.wave_height_m == null ? 'No observation available' : weather.wave_height_m > 1.8 ? 'Rough Swell' : 'Moderate Sea',
       icon: Waves,
       color: 'text-sky-600',
       bg: 'bg-sky-50',
@@ -29,8 +32,10 @@ export default function MarineMetricsGrid() {
     {
       id: 'wind',
       label: t.windSpeed || 'Wind Velocity',
-      value: `${(weather.wind_speed_kmh || 18.0).toFixed(1)} km/h`,
-      subtext: `${weather.wind_direction_cardinal || 'WSW'} (${weather.wind_direction_deg || 240}°)`,
+      value: format(weather.wind_speed_kmh, ' km/h'),
+      subtext: weather.wind_direction_cardinal && weather.wind_direction_deg != null
+        ? `${weather.wind_direction_cardinal} (${weather.wind_direction_deg}°)`
+        : 'Direction unavailable',
       icon: Wind,
       color: 'text-teal-600',
       bg: 'bg-teal-50',
@@ -39,8 +44,8 @@ export default function MarineMetricsGrid() {
     {
       id: 'swell',
       label: t.swellPeriod || 'Peak Swell Period',
-      value: `${(weather.swell_period_s || 7.5).toFixed(1)} s`,
-      subtext: 'Deep Water Swell',
+      value: format(weather.swell_period_s, ' s'),
+      subtext: weather.swell_period_s == null ? 'No observation available' : 'Deep Water Swell',
       icon: Activity,
       color: 'text-indigo-600',
       bg: 'bg-indigo-50',
@@ -49,8 +54,8 @@ export default function MarineMetricsGrid() {
     {
       id: 'sst',
       label: t.seaTemperature || 'Sea Surface Temp',
-      value: `${(weather.sst_c || 28.2).toFixed(1)} °C`,
-      subtext: 'Thermal Fronts Active',
+      value: format(weather.sst_c, ' °C'),
+      subtext: weather.sst_c == null ? 'No observation available' : 'Thermal Fronts Active',
       icon: Thermometer,
       color: 'text-amber-600',
       bg: 'bg-amber-50',
@@ -59,8 +64,8 @@ export default function MarineMetricsGrid() {
     {
       id: 'vis',
       label: t.visibility || 'Optical Visibility',
-      value: `${(weather.visibility_km || 15.0).toFixed(0)} km`,
-      subtext: 'Clear Horizon',
+      value: format(weather.visibility_km, ' km', 0),
+      subtext: weather.visibility_km == null ? 'No observation available' : 'Clear Horizon',
       icon: Eye,
       color: 'text-emerald-600',
       bg: 'bg-emerald-50',
@@ -69,12 +74,22 @@ export default function MarineMetricsGrid() {
     {
       id: 'tide',
       label: t.tideState || 'Tidal Phase',
-      value: weather.tide_state || 'Ebb (Falling)',
-      subtext: 'Falling Phase',
+      value: weather.tide_state || 'Unavailable',
+      subtext: weather.tide_state ? 'Observed tide phase' : 'No observation available',
       icon: Navigation,
       color: 'text-slate-600',
       bg: 'bg-slate-50',
       border: 'border-slate-200/60',
+    },
+    {
+      id: 'chlorophyll',
+      label: 'Chlorophyll-a',
+      value: format(weather.chlorophyll_mg_m3, ' mg/m³', 2),
+      subtext: weather.chlorophyll_source || 'No observation available',
+      icon: Leaf,
+      color: 'text-lime-600',
+      bg: 'bg-lime-50',
+      border: 'border-lime-200/60',
     },
   ];
 
@@ -97,7 +112,7 @@ export default function MarineMetricsGrid() {
             <span>{t.live || 'LIVE'}</span>
           </div>
           <span className="text-[10px] font-mono text-slate-400 hidden sm:inline">
-            INCOIS WW3
+            {weather.source || 'Source unavailable'}
           </span>
         </div>
       </div>

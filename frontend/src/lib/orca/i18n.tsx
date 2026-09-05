@@ -160,6 +160,13 @@ const en = {
   "chat.placeholder": "Ask anything about your coastal safety…",
   "chat.send": "Send",
   "chat.thinking": "Preparing answer…",
+  "chat.evidence": "Grounded evidence and sources",
+  "chat.viewTrace": "View trace",
+  "chat.hideTrace": "Hide trace",
+  "chat.providers": "Data providers and agents consulted",
+  "chat.steps": "Multi-agent analytical steps",
+  "chat.unavailable": "Unavailable",
+  "marine.chlorophyll": "Chlorophyll-a",
   "chat.s1": "Is it safe to go fishing today?",
   "chat.s2": "What is the wind speed right now?",
   "chat.s3": "What does PFZ mean?",
@@ -1854,6 +1861,14 @@ const DICTS: Record<LangCode, Dict> = {
   pa,
 };
 
+const UI_TRANSLATIONS: Partial<Record<TKey, Partial<Record<LangCode, string>>>> = {
+  "chat.evidence": { hi: "प्रमाणित साक्ष्य और स्रोत", ta: "ஆதாரங்கள் மற்றும் மூலங்கள்", te: "ఆధారాలు మరియు మూలాలు", bn: "প্রমাণিত তথ্য ও উৎস", mr: "आधारित पुरावे आणि स्रोत", gu: "પુરાવા અને સ્ત્રોતો", ml: "തെളിവുകളും ഉറവിടങ്ങളും", kn: "ಪುರಾವೆಗಳು ಮತ್ತು ಮೂಲಗಳು", or: "ପ୍ରମାଣ ଓ ଉତ୍ସ", pa: "ਸਬੂਤ ਅਤੇ ਸਰੋਤ" },
+  "chat.viewTrace": { hi: "ट्रेस देखें", ta: "தடத்தைப் பார்க்கவும்", te: "ట్రేస్ చూడండి", bn: "ট্রেস দেখুন", mr: "ट्रेस पहा", gu: "ટ્રેસ જુઓ", ml: "ട്രേസ് കാണുക", kn: "ಟ್ರೇಸ್ ವೀಕ್ಷಿಸಿ", or: "ଟ୍ରେସ ଦେଖନ୍ତୁ", pa: "ਟ੍ਰੇਸ ਵੇਖੋ" },
+  "chat.hideTrace": { hi: "ट्रेस छिपाएँ", ta: "தடத்தை மறைக்கவும்", te: "ట్రేస్ దాచండి", bn: "ট্রেস লুকান", mr: "ट्रेस लपवा", gu: "ટ્રેસ છુપાવો", ml: "ട്രേസ് മറയ്ക്കുക", kn: "ಟ್ರೇಸ್ ಮರೆಮಾಡಿ", or: "ଟ୍ରେସ ଲୁଚାନ୍ତୁ", pa: "ਟ੍ਰੇਸ ਲੁਕਾਓ" },
+  "chat.providers": { hi: "परामर्श किए गए डेटा प्रदाता और एजेंट", ta: "ஆலோசிக்கப்பட்ட தரவு வழங்குநர்கள் மற்றும் முகவர்கள்", te: "సంప్రదించిన డేటా ప్రొవైడర్లు మరియు ఏజెంట్లు", bn: "পরামর্শ করা ডেটা প্রদানকারী ও এজেন্ট", mr: "वापरलेले डेटा प्रदाते आणि एजंट", gu: "સલાહ લીધેલા ડેટા પ્રદાતાઓ અને એજન્ટ્સ", ml: "പരിശോധിച്ച ഡാറ്റാ ദാതാക്കളും ഏജന്റുമാരും", kn: "ಸಂಪರ್ಕಿಸಿದ ಡೇಟಾ ಪೂರೈಕೆದಾರರು ಮತ್ತು ಏಜೆಂಟ್‌ಗಳು", or: "ପରାମର୍ଶ କରାଯାଇଥିବା ଡାଟା ପ୍ରଦାତା ଏବଂ ଏଜେଣ୍ଟ", pa: "ਸਲਾਹ ਕੀਤੇ ਡਾਟਾ ਪ੍ਰਦਾਤਾ ਅਤੇ ਏਜੰਟ" },
+  "chat.steps": { hi: "बहु-एजेंट विश्लेषण चरण", ta: "பல முகவர் பகுப்பாய்வு படிகள்", te: "బహుళ ఏజెంట్ విశ్లేషణ దశలు", bn: "মাল্টি-এজেন্ট বিশ্লেষণ ধাপ", mr: "मल्टी-एजंट विश्लेषण टप्पे", gu: "મલ્ટી-એજન્ટ વિશ્લેષણ પગલાં", ml: "മൾട്ടി-ഏജന്റ് വിശകലന ഘട്ടങ്ങൾ", kn: "ಬಹು-ಏಜೆಂಟ್ ವಿಶ್ಲೇಷಣಾ ಹಂತಗಳು", or: "ମଲ୍ଟି-ଏଜେଣ୍ଟ ବିଶ୍ଳେଷଣ ପଦକ୍ଷେପ", pa: "ਮਲਟੀ-ਏਜੰਟ ਵਿਸ਼ਲੇਸ਼ਣ ਕਦਮ" },
+};
+
 const STORAGE_KEY = "orca.lang";
 
 type I18nValue = {
@@ -1899,7 +1914,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const t = useCallback(
-    (key: TKey) => DICTS[lang]?.[key] ?? en[key] ?? (key as string),
+    (key: TKey) => UI_TRANSLATIONS[key]?.[lang] ?? DICTS[lang]?.[key] ?? en[key] ?? (key as string),
     [lang],
   );
 

@@ -9,6 +9,7 @@ import {
 import {
   queryORCA,
   fetchMarineConditions,
+  fetchOceanAnalytics,
   fetchMarineRisk,
   markNotificationAsRead,
   markAllNotificationsAsRead,
@@ -294,21 +295,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [lastUpdated]);
 
   // ── Weather & Safety ──
-  const [weather, setWeather] = useState<WeatherMetrics>(
-    INDIAN_PORTS[0].defaultWeather || {
-      wave_height_m: 1.2,
-      wind_speed_kmh: 18.0,
-      wind_direction_deg: 240,
-      wind_direction_cardinal: 'WSW',
-      forecast: 'Clear Sky with Calm Moderate Swell',
-      temperature_c: 29.5,
-      sst_c: 28.2,
-      swell_period_s: 7.2,
-      tide_state: 'Ebb Tide',
-      visibility_km: 15.0,
-      source: 'INCOIS_OSF_LIVE',
-    }
-  );
+  const [weather, setWeather] = useState<WeatherMetrics>({ forecast: 'Unavailable' });
 
   const [riskLevel, setRiskLevel] = useState<SafetyLevel>('safe');
 
@@ -459,8 +446,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     async function loadTelemetryAndAlerts() {
       try {
-        const [condData, riskData, alertsData] = await Promise.all([
+        const [condData, oceanData, riskData, alertsData] = await Promise.all([
           fetchMarineConditions(userLocation.lat, userLocation.lon, currentDate).catch(() => null),
+          fetchOceanAnalytics(userLocation.lat, userLocation.lon).catch(() => null),
           fetchMarineRisk(userLocation.lat, userLocation.lon, currentDate).catch(() => null),
           checkLocationSafetyAlerts(userLocation.lat, userLocation.lon, undefined, undefined, currentUser?.id).catch(
             () => null
@@ -471,17 +459,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (condData) {
             setWeather((prev) => ({
               ...prev,
-              wave_height_m: condData.wave_height_m || prev.wave_height_m,
-              wind_speed_kmh: condData.wind_speed_kmh || prev.wind_speed_kmh,
-              wind_direction_deg: condData.wind_direction_deg || prev.wind_direction_deg,
-              wind_direction_cardinal: condData.wind_direction_cardinal || prev.wind_direction_cardinal,
-              forecast: condData.forecast || prev.forecast,
-              temperature_c: condData.temperature_c || prev.temperature_c,
-              sst_c: condData.sea_surface_temperature_c || prev.sst_c,
-              swell_period_s: condData.wave_period_s || prev.swell_period_s,
-              visibility_km: condData.visibility_km || prev.visibility_km,
-              source: condData.source || 'INCOIS_OSF_LIVE',
+              ...condData,
+              wave_height_m: condData.wave_height_m ?? prev.wave_height_m,
+              wind_speed_kmh: condData.wind_speed_kmh ?? prev.wind_speed_kmh,
+              wind_direction_deg: condData.wind_direction_deg ?? prev.wind_direction_deg,
+              wind_direction_cardinal: condData.wind_direction_cardinal ?? prev.wind_direction_cardinal,
+              forecast: condData.forecast ?? prev.forecast,
+              temperature_c: condData.temperature_c ?? prev.temperature_c,
+              sst_c: condData.sea_surface_temperature_c ?? prev.sst_c,
+              swell_period_s: condData.wave_period_s ?? prev.swell_period_s,
+              visibility_km: condData.visibility_km ?? prev.visibility_km,
+              source: condData.source ?? prev.source,
             }));
+            if (oceanData?.mean_chlorophyll_mg_m3 != null) {
+              setWeather((prev) => ({
+                ...prev,
+                chlorophyll_mg_m3: oceanData.mean_chlorophyll_mg_m3,
+                chlorophyll_source: oceanData.satellite_source,
+              }));
+            }
             setLastUpdated(new Date());
           }
 
@@ -633,8 +629,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (response.weather) {
           setWeather((prev) => ({
             ...prev,
-            wave_height_m: response.weather.wave_height_m || prev.wave_height_m,
-            wind_speed_kmh: response.weather.wind_speed_kmh || prev.wind_speed_kmh,
+            wave_height_m: response.weather.wave_height_m ?? prev.wave_height_m,
+            wind_speed_kmh: response.weather.wind_speed_kmh ?? prev.wind_speed_kmh,
             wind_direction_deg: response.weather.wind_direction_deg || prev.wind_direction_deg,
             wind_direction_cardinal: response.weather.wind_direction_cardinal || prev.wind_direction_cardinal,
             forecast: response.weather.forecast || prev.forecast,

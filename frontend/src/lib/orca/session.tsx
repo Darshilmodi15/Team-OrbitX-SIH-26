@@ -20,7 +20,13 @@ const DEFAULT_LOCATION: LocationInfo = { coords: { lat: 21.1702, lon: 72.8311 },
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<OrcaUser | null>(null); const [token, setToken] = useState<string | null>(null);
   const [location, setLocationState] = useState<LocationInfo | null>(() => readJson(LOC_KEY) ?? DEFAULT_LOCATION); const [ready, setReady] = useState(false);
-  const signOut = useCallback(() => { setUser(null); setToken(null); localStorage.removeItem(USER_KEY); localStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(SESSION_TOKEN_KEY); localStorage.removeItem("orca.chat.threads.v2"); }, []);
+  const signOut = useCallback(() => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(SESSION_TOKEN_KEY);
+  }, []);
   useEffect(() => { setAuthFailureHandler(signOut); const savedToken = readToken(); if (!savedToken) { setReady(true); return () => setAuthFailureHandler(null); }
     getUserProfile(savedToken).then(raw => { const restored = mapUser(raw); setToken(savedToken); setUser(restored); localStorage.setItem(USER_KEY, JSON.stringify(restored)); }).catch(signOut).finally(() => setReady(true));
     return () => setAuthFailureHandler(null); }, [signOut]);

@@ -8,7 +8,6 @@ import {
   LifeBuoy,
   Home,
   Radio,
-  PhoneCall,
   AlertTriangle,
 } from "lucide-react";
 import { SEO } from "@/components/SEO";
@@ -144,19 +143,12 @@ export default function NotFoundPage() {
           </div>
         </div>
 
-        {/* Emergency Helpline Banner */}
-        <div className="mt-6 flex items-center justify-center gap-3 text-xs text-slate-400 border border-slate-800/60 bg-slate-950/30 px-4 py-2 rounded-xl">
-          <PhoneCall className="size-4 text-emerald-400" />
-          <span>Coast Guard Maritime Rescue (MRCC): <strong className="text-white font-mono">1554</strong></span>
-          <span className="hidden sm:inline">·</span>
-          <span className="hidden sm:inline">INCOIS Helpline: <strong className="text-white font-mono">1800-425-1881</strong></span>
-        </div>
       </main>
 
       {/* Footer */}
       <footer className="border-t border-slate-800/80 bg-slate-950/60 py-4 text-center text-xs text-slate-500">
         <div className="mx-auto max-w-6xl px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>ORCA Marine AI · Operations Command, Hyderabad, Telangana 500090, India</span>
+          <span>ORCA Marine AI · Hackathon prototype</span>
           <div className="flex gap-4">
             <Link to="/privacy" className="hover:text-slate-300">Privacy Policy</Link>
             <Link to="/terms" className="hover:text-slate-300">Terms of Service</Link>

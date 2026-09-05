@@ -42,7 +42,7 @@ export function setAuthFailureHandler(handler: (() => void) | null) { authFailur
 function authToken(): string | null { return sessionStorage.getItem('orca.auth.session') || localStorage.getItem('orca.auth.token'); }
 async function apiFetch(path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers); const token = authToken();
-  if (token) headers.set('Authorization', `Bearer ${token}`);
+  if (token) headers.set("Authorization", "Bearer " + token);
   const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
   if (response.status === 401) authFailureHandler?.();
   return response;
@@ -177,7 +177,7 @@ export async function loginUser(email_or_phone: string, password: string) {
 
 export async function getUserProfile(token?: string) {
   const headers: Record<string, string> = {};
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (token) headers['Authorization'] = 'Bearer ' + token;
   const response = await fetch(`${API_BASE_URL}/api/user/profile`, { headers });
   if (!response.ok) {
     throw new Error('Failed to retrieve user profile');
@@ -190,7 +190,7 @@ export async function updateUserProfile(payload: any, token: string) {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
+      Authorization: 'Bearer ' + token,
     },
     body: JSON.stringify(payload),
   });
@@ -218,7 +218,7 @@ export async function validateLocation(lat: number, lon: number, accuracy_m?: nu
 
 export async function updateUserLocation(lat: number, lon: number, accuracy_m?: number, token?: string) {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (token) headers['Authorization'] = 'Bearer ' + token;
   const response = await fetch(`${API_BASE_URL}/api/location/update`, {
     method: 'POST',
     headers,
@@ -240,6 +240,15 @@ export async function fetchMarineConditions(lat: number, lon: number, date?: str
   if (!response.ok) {
     throw new Error('Failed to fetch marine conditions');
   }
+
+  return await response.json();
+}
+
+export async function fetchOceanAnalytics(lat: number, lon: number, region?: string) {
+  const query = new URLSearchParams({ lat: String(lat), lon: String(lon) });
+  if (region) query.set("region", region);
+  const response = await fetch(API_BASE_URL + "/api/analytics/ocean?" + query.toString());
+  if (!response.ok) throw new Error("Failed to fetch ocean analytics");
   return await response.json();
 }
 
@@ -393,7 +402,7 @@ export async function synthesizeVoiceAudio(
 
 export async function fetchNotifications(userId?: string, token?: string) {
   const headers: Record<string, string> = {};
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (token) headers['Authorization'] = 'Bearer ' + token;
   const query = userId ? `?user_id=${userId}` : '';
   const response = await fetch(`${API_BASE_URL}/api/notifications${query}`, { headers });
   if (!response.ok) {
@@ -414,7 +423,7 @@ export async function markNotificationAsRead(notificationId: string) {
 
 export async function markAllNotificationsAsRead(userId?: string, token?: string) {
   const headers: Record<string, string> = {};
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (token) headers['Authorization'] = 'Bearer ' + token;
   const query = userId ? `?user_id=${userId}` : '';
   const response = await fetch(`${API_BASE_URL}/api/notifications/read-all${query}`, {
     method: 'POST',
@@ -629,6 +638,7 @@ export default {
   validateLocation,
   updateUserLocation,
   fetchMarineConditions,
+  fetchOceanAnalytics,
   fetchMarineRisk,
   fetchMarineForecast,
   fetchMarineTide,
