@@ -15,11 +15,9 @@ const SessionContext = createContext<SessionValue | null>(null);
 function readJson<T>(key: string): T | null { try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) as T : null; } catch { return null; } }
 function readToken() { return sessionStorage.getItem(SESSION_TOKEN_KEY) || localStorage.getItem(TOKEN_KEY); }
 function mapUser(raw: any): OrcaUser { const role = raw.role === "GOVERNMENT" ? "government" : raw.role === "SUPER_ADMIN" ? "admin" : "user"; return { id: raw.id, name: raw.name, contact: raw.email || raw.mobile_number || "", role }; }
-const DEFAULT_LOCATION: LocationInfo = { coords: { lat: 21.1702, lon: 72.8311 }, label: "Surat", admin: "Gujarat", distanceToCoastKm: 16, area: "coastal", source: "manual" };
-
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<OrcaUser | null>(null); const [token, setToken] = useState<string | null>(null);
-  const [location, setLocationState] = useState<LocationInfo | null>(() => readJson(LOC_KEY) ?? DEFAULT_LOCATION); const [ready, setReady] = useState(false);
+  const [location, setLocationState] = useState<LocationInfo | null>(() => readJson(LOC_KEY)); const [ready, setReady] = useState(false);
   const signOut = useCallback(() => {
     setUser(null);
     setToken(null);

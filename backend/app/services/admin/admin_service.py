@@ -33,7 +33,8 @@ class AdminService:
         # Check DB stats if available
         user_count = len(users)
         sos_count = len(active_sos)
-        geofence_count = 8
+        geofence_count = 0
+        db_available = False
 
         try:
             from app.db.session import get_db_context
@@ -42,61 +43,53 @@ class AdminService:
                 db_users = db.query(User).count()
                 db_sos = db.query(SOSRequest).filter(SOSRequest.status != "RESOLVED").count()
                 db_geo = db.query(Geofence).filter(Geofence.is_active.is_(True)).count()
+                db_available = True
                 if db_users > 0:
                     user_count = db_users
                 if db_sos > 0:
                     sos_count = db_sos
                 if db_geo > 0:
                     geofence_count = db_geo
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Admin health database metrics unavailable: %s", exc)
 
         services = [
             ServiceEndpointHealth(
                 service_name="INCOIS Ocean State Forecast (OSF)",
-                status="OPERATIONAL",
-                latency_ms=62.4,
+                status="UNKNOWN",
             ),
             ServiceEndpointHealth(
                 service_name="Open-Meteo High-Resolution Marine Weather",
-                status="OPERATIONAL",
-                latency_ms=38.1,
+                status="UNKNOWN",
             ),
             ServiceEndpointHealth(
                 service_name="PostgreSQL / SQLAlchemy Storage Layer",
-                status="OPERATIONAL",
-                latency_ms=8.5,
+                status="OPERATIONAL" if db_available else "OFFLINE",
             ),
             ServiceEndpointHealth(
                 service_name="Shared Regional Live-Data Cache",
-                status="OPERATIONAL",
-                latency_ms=2.1,
+                status="UNKNOWN",
             ),
             ServiceEndpointHealth(
                 service_name="Sarvam AI Multilingual & Speech Engine (Saaras / Bulbul)",
-                status="OPERATIONAL",
-                latency_ms=115.0,
+                status="UNKNOWN",
             ),
             ServiceEndpointHealth(
                 service_name="ORCA Multi-Agent Intent & Task Planner (Gemini Core)",
-                status="OPERATIONAL",
-                latency_ms=84.2,
+                status="UNKNOWN",
             ),
             ServiceEndpointHealth(
                 service_name="Spatial Boundaries & Geofence Engine (IMBL / MPA)",
-                status="OPERATIONAL",
-                latency_ms=12.0,
+                status="UNKNOWN",
             ),
         ]
 
         return SystemHealthStatus(
-            overall_status="HEALTHY",
+            overall_status="HEALTHY" if db_available else "DEGRADED",
             uptime_seconds=round(uptime, 1),
             registered_users_count=user_count,
             active_sos_count=sos_count,
             active_geofences_count=geofence_count,
-            cache_hit_rate_pct=95.8,
-            memory_usage_mb=142.3,
             services=services,
         )
 
@@ -110,13 +103,8 @@ class AdminService:
         Calculates 24-hour or 7-day before-vs-after oceanographic trends using database observations
         with graceful baseline fallback.
         """
-        curr_wave = 1.35
-        curr_wind = 19.5
-        curr_sst = 28.4
-
-        hist_wave = 1.15 if period_hours != 168 else 1.70
-        hist_wind = 16.0 if period_hours != 168 else 26.0
-        hist_sst = 28.2 if period_hours != 168 else 27.9
+        curr_wave = curr_wind = curr_sst = None
+        hist_wave = hist_wind = hist_sst = None
 
         # Attempt to load historical observation from database
         try:
@@ -127,23 +115,26 @@ class AdminService:
                 if latest_obs:
                     curr_wave = latest_obs.wave_height_m
                     curr_wind = latest_obs.wind_speed_kmh
-                    if latest_obs.sst_c:
+                    if latest_obs.sst_c is not None:
                         curr_sst = latest_obs.sst_c
 
                 past_obs = MarineObservationRepository.get_historical_window(db, lat, lon, hours_ago=period_hours)
                 if past_obs:
                     hist_wave = past_obs.wave_height_m
                     hist_wind = past_obs.wind_speed_kmh
-                    if past_obs.sst_c:
+                    if past_obs.sst_c is not None:
                         hist_sst = past_obs.sst_c
-        except Exception as e:
-            logger.debug(f"Historical comparison DB lookup fallback: {e}")
+        except Exception as exc:
+            logger.warning("Historical comparison database lookup unavailable: %s", exc)
 
-        wave_delta = round(curr_wave - hist_wave, 2)
-        wind_delta = round(curr_wind - hist_wind, 1)
-        sst_delta = round(curr_sst - hist_sst, 2)
+        wave_delta = round(curr_wave - hist_wave, 2) if curr_wave is not None and hist_wave is not None else None
+        wind_delta = round(curr_wind - hist_wind, 1) if curr_wind is not None and hist_wind is not None else None
+        sst_delta = round(curr_sst - hist_sst, 2) if curr_sst is not None and hist_sst is not None else None
 
-        if wave_delta > 0.4 or wind_delta > 8.0:
+        if wave_delta is None or wind_delta is None:
+            trend = "UNAVAILABLE"
+            summary = "Historical marine telemetry is unavailable for the selected location and period."
+        elif wave_delta > 0.4 or wind_delta > 8.0:
             trend = "DETERIORATING"
             summary = f"Conditions have roughened over the past {period_hours} hours with wave heights rising by +{wave_delta}m and sustained winds increasing by +{wind_delta} km/h."
         elif wave_delta < -0.3 and wind_delta < -5.0:

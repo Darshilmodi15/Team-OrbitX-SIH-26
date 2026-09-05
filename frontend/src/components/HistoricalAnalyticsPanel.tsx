@@ -37,17 +37,9 @@ export default function HistoricalAnalyticsPanel({
           setComparison(data);
         }
       } catch (err) {
-        console.warn('Historical comparison API fallback:', err);
+        console.warn('Historical comparison unavailable:', err);
         if (isMounted) {
-          setComparison({
-            current_time: new Date().toISOString(),
-            historical_time: new Date(Date.now() - period * 3600000).toISOString(),
-            wave_delta_m: -0.15,
-            wind_delta_kmh: -2.4,
-            sst_delta_c: 0.2,
-            safety_trend: 'IMPROVING',
-            summary_advisory: 'Sea state has settled moderately over the observed period with calming westerly swells.',
-          });
+          setComparison(null);
         }
       } finally {
         if (isMounted) setLoading(false);

@@ -18,7 +18,12 @@ function getApiBaseUrl(): string {
   let url = configuredUrl;
 
   if (!url || isPlaceholder) {
-    url = import.meta.env.PROD ? PRODUCTION_API_BASE_URL : 'http://localhost:8000';
+    if (import.meta.env.PROD) {
+      url = PRODUCTION_API_BASE_URL;
+    } else {
+      const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+      url = `http://${host}:8000`;
+    }
   }
   if (url && !url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('/')) {
     url = `https://${url}`;
@@ -75,7 +80,7 @@ export async function sendChatMessage(payload: ChatMessagePayload) {
       },
       body: JSON.stringify({
         message: payload.message,
-        location: payload.location || { lat: 18.9220, lon: 72.8347 },
+        ...(payload.location ? { location: payload.location } : {}),
         date: payload.date || new Date().toISOString().split('T')[0],
         language: payload.language || 'auto',
         session_id: payload.session_id,

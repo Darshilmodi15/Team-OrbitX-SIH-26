@@ -458,7 +458,7 @@ export default function AssistantPage() {
 
       const res = await sendChatMessage({
         message: question,
-        location: location ? { lat: location.coords.lat, lon: location.coords.lon } : { lat: 18.9220, lon: 72.8347 },
+        ...(location ? { location: { lat: location.coords.lat, lon: location.coords.lon } } : {}),
         date: new Date().toISOString().split("T")[0],
         language: lang || "auto",
         session_id: activeThreadId,

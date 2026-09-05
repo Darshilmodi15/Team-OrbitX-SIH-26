@@ -297,7 +297,7 @@ export default function LandingPage() {
                 <span>ORCA Marine AI Platform</span>
               </div>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                Autonomous Ocean Intelligence & Coastal Decision Support System developed for Smart India Hackathon 2026 in coordination with INCOIS & Ministry of Earth Sciences.
+                Autonomous Ocean Intelligence & Coastal Decision Support System developed as a Smart India Hackathon 2026 prototype.
               </p>
             </div>
 

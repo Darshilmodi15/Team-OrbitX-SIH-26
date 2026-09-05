@@ -1,10 +1,11 @@
 """FastAPI Application for ORCA Marine AI with Bhashini Multilingual Service."""
 from datetime import date as dt_date, datetime, timezone
+import json
 import os
 import re
 import threading
 from typing import Any, Dict, List, Optional
-from fastapi import FastAPI, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -48,8 +49,10 @@ from app.models.agent_models import (
     WeatherEvidence,
     ZoneAvoidanceEvidence,
 )
+from app.models.user_models import UserProfile
+from app.db import ChatHistory, get_db_context
 from app.routers.admin import router as admin_router
-from app.routers.auth import router as auth_router, user_router
+from app.routers.auth import get_optional_current_user, router as auth_router, user_router
 from app.routers.emergency import router as emergency_router
 from app.routers.government import router as government_router
 from app.routers.location import router as location_router
@@ -118,13 +121,14 @@ frontend_origins = [
     origin.strip()
     for origin in os.getenv(
         "FRONTEND_ORIGIN",
-        "https://team-orbit-x-sih-26.vercel.app,http://localhost:5173,http://localhost:3000",
+        "https://team-orbit-x-sih-26.vercel.app,http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000",
     ).split(",")
     if origin.strip()
 ]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=frontend_origins,
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -249,7 +253,7 @@ class ChatHistoryItem(BaseModel):
 class ChatRequest(BaseModel):
     message: str = Field(..., description="User message or question in any Indian language or English")
     location: Optional[Location] = Field(
-        default_factory=lambda: Location(lat=18.9220, lon=72.8347),
+        default=None,
         description="Vessel GPS location",
     )
     date: Optional[str] = Field(
@@ -1086,9 +1090,68 @@ def handle_query(request: QueryRequest) -> QueryResponse:
     )
 
 
+def _validate_and_load_chat_history(
+    session_id: Optional[str],
+    user: Optional[UserProfile],
+) -> List[ChatHistory]:
+    """Validate session ownership before a chat request can use persisted context."""
+    if not session_id or user is None:
+        return []
+    with get_db_context() as db:
+        messages = (
+            db.query(ChatHistory)
+            .filter(ChatHistory.session_id == session_id)
+            .order_by(ChatHistory.created_at.asc())
+            .all()
+        )
+    owner_id = user.id if user else None
+    if any(message.user_id != owner_id for message in messages):
+        raise HTTPException(status_code=403, detail="This chat session belongs to another account.")
+    return messages
+
+
+def _persist_chat_messages(
+    request: ChatRequest,
+    response: ChatResponse,
+    user: Optional[UserProfile],
+) -> None:
+    """Persist both sides of a chat turn with the verified account owner."""
+    if not request.session_id or user is None:
+        return
+    sources = json.dumps(response.sources_used or [], default=str)
+    with get_db_context() as db:
+        for role, message, translated in (
+            ("user", request.message, response.english_query),
+            ("assistant", response.answer, response.answer),
+        ):
+            db.add(
+                ChatHistory(
+                    user_id=user.id if user else None,
+                    session_id=request.session_id,
+                    role=role,
+                    message=message,
+                    translated_message=translated,
+                    intent=response.intent,
+                    language=response.language,
+                    sources_used_json=sources,
+                    risk_level=response.risk_level,
+                )
+            )
+        db.commit()
+
+
 @app.post("/api/chat", response_model=ChatResponse)
-def handle_chat(request: ChatRequest) -> ChatResponse:
+def handle_chat(
+    request: ChatRequest,
+    current_user: Optional[UserProfile] = Depends(get_optional_current_user),
+) -> ChatResponse:
     """Dedicated conversational endpoint with Bhashini multilingual orchestration."""
+    if request.location is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Location is required for marine intelligence queries. Enable location access or choose a port.",
+        )
+    persisted_history = _validate_and_load_chat_history(request.session_id, current_user)
     cache_key = f"{request.session_id or 'anonymous'}:{request.request_id}" if request.request_id else None
     if cache_key:
         with _chat_idempotency_lock:
@@ -1096,11 +1159,14 @@ def handle_chat(request: ChatRequest) -> ChatResponse:
         if cached:
             return cached
 
-    lat = request.location.lat if request.location else 18.9220
-    lon = request.location.lon if request.location else 72.8347
+    lat = request.location.lat
+    lon = request.location.lon
     q_date = request.date or dt_date.today().isoformat()
 
-    history_dicts = [{"role": h.role, "text": h.text} for h in request.history] if request.history else None
+    if request.history:
+        history_dicts = [{"role": h.role, "text": h.text} for h in request.history]
+    else:
+        history_dicts = [{"role": h.role, "text": h.message} for h in persisted_history]
 
     result = _process_orca_query(
         question_raw=request.message,
@@ -1149,6 +1215,7 @@ def handle_chat(request: ChatRequest) -> ChatResponse:
             if len(_chat_idempotency_cache) >= 512:
                 _chat_idempotency_cache.pop(next(iter(_chat_idempotency_cache)))
             _chat_idempotency_cache[cache_key] = response
+    _persist_chat_messages(request, response, current_user)
     return response
 
 
