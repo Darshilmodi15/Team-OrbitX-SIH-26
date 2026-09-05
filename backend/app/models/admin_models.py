@@ -8,19 +8,24 @@ from pydantic import BaseModel, Field
 
 class ServiceEndpointHealth(BaseModel):
     service_name: str
-    status: str = Field(default="OPERATIONAL")  # OPERATIONAL, DEGRADED, OFFLINE
-    latency_ms: float = Field(default=45.0)
+    status: str = Field(default="UNKNOWN")
+    latency_ms: Optional[float] = None
     last_checked: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    last_successful_response: Optional[str] = None
+    last_error_summary: Optional[str] = None
+    fallback_in_use: bool = False
+    provider: Optional[str] = None
+    data_timestamp: Optional[str] = None
 
 
 class SystemHealthStatus(BaseModel):
     overall_status: str = Field(default="HEALTHY")  # HEALTHY, DEGRADED, CRITICAL
     uptime_seconds: float = Field(default=86400.0)
-    registered_users_count: int = Field(default=3)
+    registered_users_count: int = Field(default=0)
     active_sos_count: int = Field(default=0)
-    active_geofences_count: int = Field(default=8)
-    cache_hit_rate_pct: float = Field(default=94.2)
-    memory_usage_mb: float = Field(default=128.5)
+    active_geofences_count: int = Field(default=0)
+    cache_hit_rate_pct: Optional[float] = None
+    memory_usage_mb: Optional[float] = None
     services: List[ServiceEndpointHealth] = Field(default_factory=list)
 
 

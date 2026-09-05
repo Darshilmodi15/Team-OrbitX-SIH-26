@@ -1,15 +1,15 @@
 """
 Location and Coastal Area Verification Router for ORCA Marine AI.
 """
-from typing import Optional
-from fastapi import APIRouter, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.models.user_models import (
     LocationValidationRequest,
     LocationValidationResponse,
 )
-from app.services.auth import decode_token
+from app.models.user_models import UserProfile
+from app.routers.auth import get_current_user_from_header
 from app.services.location import location_service
 
 router = APIRouter(prefix="/api/location", tags=["Location & Coastal Verification"])
@@ -32,22 +32,16 @@ def validate_coordinates(request: LocationValidationRequest):
 @router.post("/update", response_model=LocationValidationResponse)
 def update_user_location(
     request: LocationValidationRequest,
-    authorization: Optional[str] = Header(None),
+    user: UserProfile = Depends(get_current_user_from_header),
 ):
     """
     Updates active location telemetry for authenticated user session.
     """
-    user_id = None
-    if authorization and authorization.startswith("Bearer "):
-        payload = decode_token(authorization.split("Bearer ")[1].strip())
-        if payload:
-            user_id = payload.get("sub")
-
     return location_service.validate_location(
         lat=request.lat,
         lon=request.lon,
         accuracy_m=request.accuracy_m,
-        user_id=user_id or "anonymous_session",
+        user_id=user.id,
     )
 
 
@@ -55,19 +49,13 @@ def update_user_location(
 def get_current_location(
     lat: float = Query(18.9220, description="Fallback latitude"),
     lon: float = Query(72.8347, description="Fallback longitude"),
-    authorization: Optional[str] = Header(None),
+    user: UserProfile = Depends(get_current_user_from_header),
 ):
     """
     Retrieves current validated location and coastal advisory status.
     """
-    user_id = None
-    if authorization and authorization.startswith("Bearer "):
-        payload = decode_token(authorization.split("Bearer ")[1].strip())
-        if payload:
-            user_id = payload.get("sub")
-
-    cached = location_service.get_user_location(user_id or "anonymous_session")
+    cached = location_service.get_user_location(user.id)
     if cached:
         return cached
 
-    return location_service.validate_location(lat=lat, lon=lon, user_id=user_id).model_dump()
+    return location_service.validate_location(lat=lat, lon=lon, user_id=user.id).model_dump()

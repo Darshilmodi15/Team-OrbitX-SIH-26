@@ -3,6 +3,7 @@ Super Admin Diagnostics, Fleet Telemetry, and Historical Marine Comparison Servi
 Supports querying real persistent database records with statistical fallback.
 """
 import logging
+import os
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -24,79 +25,44 @@ class AdminService:
     """Core Admin Diagnostics and Historical Comparison Service."""
 
     def get_system_health(self) -> SystemHealthStatus:
-        """Collects real-time diagnostic telemetry across all AI & Oceanographic services."""
+        """Collects non-secret, low-cost health signals without inventing provider success."""
         uptime = time.time() - START_TIME
-
         users = auth_service.list_all_users()
         active_sos = emergency_service.get_active_sos()
-
-        # Check DB stats if available
         user_count = len(users)
         sos_count = len(active_sos)
-        geofence_count = 8
-
+        geofence_count = 0
+        db_status, db_latency, db_error = "DOWN", None, "Database check failed"
         try:
             from app.db.session import get_db_context
             from app.db.models import User, SOSRequest, Geofence
+            started = time.perf_counter()
             with get_db_context() as db:
                 db_users = db.query(User).count()
                 db_sos = db.query(SOSRequest).filter(SOSRequest.status != "RESOLVED").count()
                 db_geo = db.query(Geofence).filter(Geofence.is_active.is_(True)).count()
-                if db_users > 0:
-                    user_count = db_users
-                if db_sos > 0:
-                    sos_count = db_sos
-                if db_geo > 0:
-                    geofence_count = db_geo
-        except Exception:
-            pass
-
+                user_count, sos_count, geofence_count = db_users, db_sos, db_geo
+            db_latency = round((time.perf_counter() - started) * 1000, 1)
+            db_status, db_error = "HEALTHY", None
+        except Exception as exc:
+            db_error = type(exc).__name__
+        checked = datetime.now(timezone.utc).isoformat()
         services = [
-            ServiceEndpointHealth(
-                service_name="INCOIS Ocean State Forecast (OSF)",
-                status="OPERATIONAL",
-                latency_ms=62.4,
-            ),
-            ServiceEndpointHealth(
-                service_name="Open-Meteo High-Resolution Marine Weather",
-                status="OPERATIONAL",
-                latency_ms=38.1,
-            ),
-            ServiceEndpointHealth(
-                service_name="PostgreSQL / SQLAlchemy Storage Layer",
-                status="OPERATIONAL",
-                latency_ms=8.5,
-            ),
-            ServiceEndpointHealth(
-                service_name="Shared Regional Live-Data Cache",
-                status="OPERATIONAL",
-                latency_ms=2.1,
-            ),
-            ServiceEndpointHealth(
-                service_name="Sarvam AI Multilingual & Speech Engine (Saaras / Bulbul)",
-                status="OPERATIONAL",
-                latency_ms=115.0,
-            ),
-            ServiceEndpointHealth(
-                service_name="ORCA Multi-Agent Intent & Task Planner (Gemini Core)",
-                status="OPERATIONAL",
-                latency_ms=84.2,
-            ),
-            ServiceEndpointHealth(
-                service_name="Spatial Boundaries & Geofence Engine (IMBL / MPA)",
-                status="OPERATIONAL",
-                latency_ms=12.0,
-            ),
+            ServiceEndpointHealth(service_name="INCOIS Ocean State Forecast", status="UNKNOWN", provider="INCOIS", last_error_summary="No quota-consuming dashboard probe performed"),
+            ServiceEndpointHealth(service_name="Open-Meteo Marine Weather", status="UNKNOWN", provider="Open-Meteo", fallback_in_use=True, last_error_summary="Configured as a fallback; current activation depends on each marine response"),
+            ServiceEndpointHealth(service_name="Database storage", status=db_status, latency_ms=db_latency, last_checked=checked, last_successful_response=checked if db_status == "HEALTHY" else None, last_error_summary=db_error),
+            ServiceEndpointHealth(service_name="Sarvam speech and language", status="UNKNOWN" if os.getenv("SARVAM_API_KEY") else "DEGRADED", provider="Sarvam", last_error_summary=None if os.getenv("SARVAM_API_KEY") else "SARVAM_API_KEY is not configured"),
+            ServiceEndpointHealth(service_name="Gemini planner", status="UNKNOWN" if (os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")) else "DEGRADED", provider="Gemini", last_error_summary=None if (os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")) else "Gemini credentials are not configured"),
+            ServiceEndpointHealth(service_name="Spatial boundary engine", status="HEALTHY", provider="ORCA local spatial provider", last_successful_response=checked),
         ]
-
         return SystemHealthStatus(
-            overall_status="HEALTHY",
+            overall_status="HEALTHY" if db_status == "HEALTHY" else "DEGRADED",
             uptime_seconds=round(uptime, 1),
             registered_users_count=user_count,
             active_sos_count=sos_count,
             active_geofences_count=geofence_count,
-            cache_hit_rate_pct=95.8,
-            memory_usage_mb=142.3,
+            cache_hit_rate_pct=None,
+            memory_usage_mb=None,
             services=services,
         )
 

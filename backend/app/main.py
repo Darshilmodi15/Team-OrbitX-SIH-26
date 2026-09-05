@@ -4,9 +4,10 @@ import os
 import re
 import threading
 from typing import Any, Dict, List, Optional
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Depends, HTTPException
+from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.agents.boundary_agent import check_marine_boundary_evidence
 from app.agents.geospatial_agent import analyze_geospatial_context
@@ -57,6 +58,12 @@ from app.routers.marine_boundaries import router as marine_boundaries_router
 from app.routers.notifications import router as notifications_router
 from app.routers.pfz import router as pfz_router
 from app.routers.voice import router as voice_router
+from app.routers.chat import router as chat_router
+from app.routers.auth import get_current_user_from_header
+from app.db.session import get_db
+from app.models.user_models import UserProfile
+from app.services.chat_service import chat_storage_service
+from app.services.rate_limit import rate_limiter
 from app.services.bhashini import SUPPORTED_LANGUAGES, bhashini_service
 from app.services.dialogue_synthesizer import DialogueSynthesizer
 from app.services.planner import ExecutionPlan, Planner
@@ -141,6 +148,7 @@ app.include_router(government_router)
 app.include_router(emergency_router)
 app.include_router(admin_router)
 app.include_router(notifications_router)
+app.include_router(chat_router)
 
 
 @app.get("/health")
@@ -247,6 +255,7 @@ class ChatHistoryItem(BaseModel):
 
 
 class ChatRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     message: str = Field(..., description="User message or question in any Indian language or English")
     location: Optional[Location] = Field(
         default_factory=lambda: Location(lat=18.9220, lon=72.8347),
@@ -1081,9 +1090,17 @@ def handle_query(request: QueryRequest) -> QueryResponse:
 
 
 @app.post("/api/chat", response_model=ChatResponse)
-def handle_chat(request: ChatRequest) -> ChatResponse:
+def handle_chat(request: ChatRequest, user: UserProfile = Depends(get_current_user_from_header), db: Session = Depends(get_db)) -> ChatResponse:
     """Dedicated conversational endpoint with Bhashini multilingual orchestration."""
-    cache_key = f"{request.session_id or 'anonymous'}:{request.request_id}" if request.request_id else None
+    rate_limiter.check("chat", user.id, limit=30)
+    if not request.session_id:
+        conversation = chat_storage_service.create(db, user.id, request.message[:80])
+        db.commit()
+        request.session_id = conversation.id
+    history_dicts = chat_storage_service.context(db, user.id, request.session_id)
+    if history_dicts is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    cache_key = f"{user.id}:{request.session_id}:{request.request_id}" if request.request_id else None
     if cache_key:
         with _chat_idempotency_lock:
             cached = _chat_idempotency_cache.get(cache_key)
@@ -1094,7 +1111,8 @@ def handle_chat(request: ChatRequest) -> ChatResponse:
     lon = request.location.lon if request.location else 72.8347
     q_date = request.date or dt_date.today().isoformat()
 
-    history_dicts = [{"role": h.role, "text": h.text} for h in request.history] if request.history else None
+    # Never trust client-supplied history; context is loaded from the authenticated user's conversation.
+    chat_storage_service.append(db, user.id, request.session_id, "user", request.message, request.language or "auto")
 
     result = _process_orca_query(
         question_raw=request.message,
@@ -1143,6 +1161,15 @@ def handle_chat(request: ChatRequest) -> ChatResponse:
             if len(_chat_idempotency_cache) >= 512:
                 _chat_idempotency_cache.pop(next(iter(_chat_idempotency_cache)))
             _chat_idempotency_cache[cache_key] = response
+    chat_storage_service.append(db, user.id, request.session_id, "assistant", response.answer, response.language, {
+        "sources": response.sources_used,
+        "risk_level": response.risk_level,
+        "connectivity_mode": response.connectivity_mode,
+    })
+    conversation = chat_storage_service._owned(db, user.id, request.session_id)
+    if conversation and conversation.title == "New conversation":
+        conversation.title = request.message[:80]
+    db.commit()
     return response
 
 

@@ -427,6 +427,20 @@ The backend provides interactive OpenAPI documentation at `/docs` (Swagger UI) a
 
 The frontend stores the token in session storage by default and in local storage only when **Remember me** is selected. A `401` response clears the invalid session and returns the user to `/login`. Government publishing and Super Admin operations are protected by backend RBAC; hiding controls in the browser is not treated as authorization.
 
+#### 🔑 Pre-Seeded Demo & Testing Credentials
+
+When running in development or testing environments, the backend automatically seeds three pre-configured accounts representing each system role. You can authenticate on the web frontend (`http://localhost:5173/login`) or via `/api/auth/login` using either the **Email** or the **Mobile Number** with the password:
+
+| Role | Name | Email Identifier | Mobile Number | Password | Permissions & Access Scope |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`USER`** (Fisherman) | Captain Ramesh Koli | `fisherman@orca.marine` | `9876543210` | `password123` | Standard mariner access: ocean weather, PFZ maps, safe route navigation, SOS alerts, and voice advisories. |
+| **`GOVERNMENT`** (Official) | Officer Priya Sharma | `officer@fisheries.gov.in` | `9123456780` | `govpassword123` | Fisheries Department official: authority to publish official government advisories, circulars, and hazard warnings. |
+| **`SUPER_ADMIN`** (Admin) | Super Admin OrbitX | `admin@orca.marine` | `9999999999` | `adminpassword123` | System administrator: full administrative privileges, system health diagnostics (`/api/admin/system-health`), and cache telemetry. |
+
+> [!NOTE]
+> Demo accounts are automatically seeded into SQLite/PostgreSQL upon backend startup in non-production environments (`APP_ENV=development`). In production environments (`APP_ENV=production`), predictable demo accounts are automatically skipped for security.
+
+
 ### 1. Operational Advisory & Conversational Copilot
 
 | Method | Endpoint | Description |

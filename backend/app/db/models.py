@@ -61,6 +61,7 @@ class User(Base):
     notification_preferences = relationship("NotificationPreference", back_populates="user", uselist=False, cascade="all, delete-orphan")
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
     chat_messages = relationship("ChatHistory", back_populates="user", cascade="all, delete-orphan")
+    conversations = relationship("Conversation", back_populates="user", cascade="all, delete-orphan")
     sos_requests = relationship("SOSRequest", back_populates="user", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="user")
 
@@ -329,12 +330,27 @@ class NotificationPreference(Base):
 # 6. Chat History, Audit Logs & System Settings
 # =========================================================================
 
+class Conversation(Base):
+    """User-owned chat thread. Ownership is always derived from the authenticated user."""
+    __tablename__ = "conversations"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    title = Column(String(255), default="New conversation", nullable=False)
+    created_at = Column(DateTime(timezone=True), default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now(), nullable=False, index=True)
+
+    user = relationship("User", back_populates="conversations")
+    messages = relationship("ChatHistory", back_populates="conversation", cascade="all, delete-orphan", order_by="ChatHistory.created_at")
+
+
 class ChatHistory(Base):
     """Multi-turn multilingual AI conversation logs."""
     __tablename__ = "chat_history"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     user_id = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    conversation_id = Column(String(36), ForeignKey("conversations.id", ondelete="CASCADE"), nullable=True, index=True)
     session_id = Column(String(128), nullable=False, index=True)
     role = Column(String(20), nullable=False)  # user, assistant, system
     message = Column(Text, nullable=False)
@@ -346,6 +362,7 @@ class ChatHistory(Base):
     created_at = Column(DateTime(timezone=True), default=func.now(), nullable=False, index=True)
 
     user = relationship("User", back_populates="chat_messages")
+    conversation = relationship("Conversation", back_populates="messages")
 
 
 class AuditLog(Base):

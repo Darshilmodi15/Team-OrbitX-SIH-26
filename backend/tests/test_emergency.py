@@ -3,6 +3,8 @@ import unittest
 from fastapi.testclient import TestClient
 
 from app.main import app
+from tests.auth_helpers import authenticate_client
+from app.models.user_models import UserRole
 from app.models.emergency_models import EmergencyNature, SOSBroadcastRequest
 from app.services.emergency import emergency_service
 
@@ -72,7 +74,7 @@ class TestEmergencyEndpoints(unittest.TestCase):
     """Integration tests for /api/emergency REST endpoints."""
 
     def setUp(self):
-        self.client = TestClient(app)
+        self.client = authenticate_client(TestClient(app), UserRole.SUPER_ADMIN)
 
     def test_get_contacts_endpoint(self):
         res = self.client.get("/api/emergency/contacts")

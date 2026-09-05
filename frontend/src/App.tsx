@@ -24,6 +24,7 @@ const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
 const TermsPage = lazy(() => import("./pages/TermsPage"));
 const ThankYouPage = lazy(() => import("./pages/ThankYouPage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
+const OperationsPage = lazy(() => import("./pages/OperationsPage"));
 
 function RouteFallback() {
   return (
@@ -51,6 +52,22 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return user ? children : <Navigate to="/login" replace />;
 }
 
+function RoleRoute({ roles, children }: { roles: Array<"user" | "government" | "admin">; children: React.ReactNode }) {
+  const { user, ready } = useSession();
+  if (!ready) return <RouteFallback />;
+  if (!user) return <Navigate to="/login" replace />;
+  return roles.includes(user.role) ? children : <Navigate to="/dashboard" replace />;
+}
+
+function DashboardRoute() {
+  const { user, ready } = useSession();
+  if (!ready) return <RouteFallback />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role === "admin") return <Navigate to="/admin" replace />;
+  if (user.role === "government") return <Navigate to="/officer" replace />;
+  return <DashboardPage />;
+}
+
 export default function App() {
   return (
     <ThemeProvider>
@@ -66,7 +83,9 @@ export default function App() {
                   <Route path="/auth" element={<Navigate to="/login" replace />} />
                   <Route path="/login" element={<AuthPage />} />
                   <Route path="/location" element={<ProtectedRoute><LocationPage /></ProtectedRoute>} />
-                  <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+                  <Route path="/dashboard" element={<DashboardRoute />} />
+                  <Route path="/officer" element={<RoleRoute roles={["government"]}><OperationsPage /></RoleRoute>} />
+                  <Route path="/admin" element={<RoleRoute roles={["admin"]}><OperationsPage /></RoleRoute>} />
                   <Route path="/home" element={<Navigate to="/dashboard" replace />} />
                   <Route path="/map" element={<ProtectedRoute><MapPage /></ProtectedRoute>} />
                   <Route path="/assistant" element={<ProtectedRoute><AssistantPage /></ProtectedRoute>} />

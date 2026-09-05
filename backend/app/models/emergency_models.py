@@ -4,7 +4,7 @@ Emergency Services, SOS Distress, and Maritime SAR Models for ORCA Marine AI.
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EmergencyNature(str, Enum):
@@ -27,6 +27,7 @@ class EmergencyContact(BaseModel):
 
 
 class SOSBroadcastRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     vessel_name: Optional[str] = Field(default="Fishing Craft / Motor Vessel", description="Vessel name")
     registration_no: Optional[str] = Field(default="IND-MH-01-F-1234", description="Fisheries/MFD registration code")
     lat: float = Field(..., description="Current vessel latitude")
@@ -45,3 +46,8 @@ class SOSBroadcastResponse(BaseModel):
     mayday_message: str = Field(..., description="Standard GMDSS/IMO MAYDAY radio transcript")
     emergency_hotlines: List[Dict[str, str]] = Field(default_factory=list)
     recorded_telemetry: Dict[str, Any] = Field(default_factory=dict)
+
+
+class SOSStatusUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: str = Field(..., pattern="^(RECEIVED|RESPONDING|RESOLVED)$")

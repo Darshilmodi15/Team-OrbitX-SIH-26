@@ -3,8 +3,9 @@ from fastapi.testclient import TestClient
 from app.main import app, _process_orca_query
 from app.services.bhashini import bhashini_service
 from app.models.agent_models import EvidenceBundle, WeatherEvidence, RiskEvidence, PFZEvidence, BoundaryEvidence, RouteEvidence
+from tests.auth_helpers import authenticate_client
 
-client = TestClient(app)
+client = authenticate_client(TestClient(app))
 
 
 def test_language_priority_rule_english_query():
@@ -188,6 +189,7 @@ def test_voice_speak_endpoint():
 
 def test_chat_endpoint_full_pipeline():
     """POST /api/chat handles full multi-agent payload."""
+    authenticate_client(client)
     response = client.post(
         "/api/chat",
         json={

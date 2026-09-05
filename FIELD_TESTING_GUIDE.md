@@ -72,6 +72,7 @@ This document outlines the step-by-step test procedures for verifying ORCA's res
 ---
 
 ### TC-08 & TC-09: RBAC Security & Diagnostics Audit
-1. Attempt `POST /api/government/announcements` with a standard `USER` token $\to$ Verify `403 Forbidden`.
-2. Login with `GOVERNMENT` or `SUPER_ADMIN` credentials $\to$ Verify `201 Created`.
-3. Query `GET /api/admin/system-health` $\to$ Verify status reports `HEALTHY`, database connected, and latencies under 50ms.
+1. Login as standard mariner (`fisherman@orca.marine` / `password123`). Attempt `POST /api/government/announcements` with this `USER` token $\to$ Verify `403 Forbidden`.
+2. Login with `GOVERNMENT` credentials (`officer@fisheries.gov.in` / `govpassword123`) or `SUPER_ADMIN` credentials (`admin@orca.marine` / `adminpassword123`) $\to$ Verify `201 Created` for official advisories.
+3. Using the `SUPER_ADMIN` token, query `GET /api/admin/system-health` $\to$ Verify status reports `HEALTHY`, database connected, and latencies under 50ms.
+

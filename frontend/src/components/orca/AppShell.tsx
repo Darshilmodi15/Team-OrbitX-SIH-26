@@ -25,8 +25,13 @@ const NAV = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { t } = useI18n();
-  const { location } = useSession();
+  const { location, user } = useSession();
   const { pathname } = useLocation();
+  const nav = user?.role === "admin"
+    ? [{ to: "/admin", key: "System Overview", Icon: LayoutDashboard }, { to: "/settings", key: "System Settings", Icon: Settings }]
+    : user?.role === "government"
+      ? [{ to: "/officer", key: "Operational Overview", Icon: LayoutDashboard }, { to: "/map", key: "Emergency Map", Icon: MapIcon }, { to: "/alerts", key: "Incidents", Icon: Bell }]
+      : NAV.map((item) => ({ ...item, key: t(item.key) }));
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground selection:bg-teal-500/30">
@@ -37,7 +42,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
 
           <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary">
-            {NAV.map(({ to, key, Icon }) => {
+            {nav.map(({ to, key, Icon }) => {
               const isActive = pathname === to;
               return (
                 <Link
@@ -51,7 +56,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   )}
                 >
                   <Icon className={cn("size-4", isActive ? "text-teal-400" : "text-muted-foreground")} aria-hidden />
-                  <span className={isActive ? "text-teal-400 font-bold" : "text-foreground"}>{t(key)}</span>
+                  <span className={isActive ? "text-teal-400 font-bold" : "text-foreground"}>{key}</span>
                 </Link>
               );
             })}
@@ -91,7 +96,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         aria-label="Primary mobile"
       >
         <ul className="grid grid-cols-5">
-          {NAV.map(({ to, key, Icon }) => {
+          {nav.slice(0, 5).map(({ to, key, Icon }) => {
             const isActive = pathname === to;
             return (
               <li key={to}>
@@ -103,7 +108,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   )}
                 >
                   <Icon className={cn("size-5", isActive ? "text-teal-400" : "text-muted-foreground")} aria-hidden />
-                  <span className={cn("w-full truncate text-center", isActive ? "text-teal-400 font-bold" : "text-foreground")}>{t(key)}</span>
+                  <span className={cn("w-full truncate text-center", isActive ? "text-teal-400 font-bold" : "text-foreground")}>{key}</span>
                 </Link>
               </li>
             );

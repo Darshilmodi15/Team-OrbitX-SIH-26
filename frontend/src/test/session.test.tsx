@@ -12,18 +12,21 @@ const authResult = { access_token: 'header.payload.signature', user: { id: 'u1',
 describe('session lifecycle', () => {
   beforeEach(() => { vi.mocked(getUserProfile).mockReset(); vi.mocked(loginUser).mockReset(); });
 
-  it('logs in and stores a remembered session without storing the password', async () => {
+  it('keeps authentication session-scoped and stores no user or chat data locally', async () => {
     vi.mocked(loginUser).mockResolvedValue(authResult);
     const { result } = renderHook(() => useSession(), { wrapper });
     await waitFor(() => expect(result.current.ready).toBe(true));
     await act(() => result.current.signIn({ contact: 'm@example.com', password: 'private-password', remember: true }));
     expect(result.current.user?.name).toBe('Meera');
-    expect(localStorage.getItem('orca.auth.token')).toBe(authResult.access_token);
+    expect(sessionStorage.getItem('orca.auth.session')).toBe(authResult.access_token);
+    expect(localStorage.getItem('orca.auth.token')).toBeNull();
+    expect(localStorage.getItem('orca.user')).toBeNull();
+    expect(localStorage.getItem('orca_assistant_threads_v1')).toBeNull();
     expect(JSON.stringify(localStorage)).not.toContain('private-password');
   });
 
   it('restores a valid profile on reload', async () => {
-    localStorage.setItem('orca.auth.token', authResult.access_token);
+    sessionStorage.setItem('orca.auth.session', authResult.access_token);
     vi.mocked(getUserProfile).mockResolvedValue(authResult.user);
     const { result } = renderHook(() => useSession(), { wrapper });
     await waitFor(() => expect(result.current.ready).toBe(true));

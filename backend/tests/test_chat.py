@@ -2,13 +2,14 @@
 import unittest
 from fastapi.testclient import TestClient
 from app.main import app
+from tests.auth_helpers import authenticate_client
 
 
 class TestChatAndBhashiniEndpoints(unittest.TestCase):
     """Test suite for /api/chat and auxiliary multilingual endpoints."""
 
     def setUp(self):
-        self.client = TestClient(app)
+        self.client = authenticate_client(TestClient(app))
 
     def test_languages_endpoint(self):
         """Test GET /api/languages."""

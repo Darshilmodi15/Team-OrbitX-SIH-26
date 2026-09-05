@@ -39,7 +39,7 @@ function getApiBaseUrl(): string {
 export const API_BASE_URL = getApiBaseUrl();
 let authFailureHandler: (() => void) | null = null;
 export function setAuthFailureHandler(handler: (() => void) | null) { authFailureHandler = handler; }
-function authToken(): string | null { return sessionStorage.getItem('orca.auth.session') || localStorage.getItem('orca.auth.token'); }
+function authToken(): string | null { return sessionStorage.getItem('orca.auth.session'); }
 async function apiFetch(path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers); const token = authToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
@@ -104,6 +104,29 @@ export async function sendChatMessage(payload: ChatMessagePayload) {
     }
     throw error;
   }
+}
+
+export async function fetchConversations() {
+  const response = await apiFetch('/api/conversations');
+  if (!response.ok) throw new Error(`Failed to load conversations (${response.status})`);
+  return response.json();
+}
+
+export async function createConversation(title = 'New conversation') {
+  const response = await apiFetch('/api/conversations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title }) });
+  if (!response.ok) throw new Error(`Failed to create conversation (${response.status})`);
+  return response.json();
+}
+
+export async function deleteConversation(id: string) {
+  const response = await apiFetch(`/api/conversations/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  if (!response.ok) throw new Error(`Failed to delete conversation (${response.status})`);
+}
+
+export async function fetchActiveSos() {
+  const response = await apiFetch('/api/emergency/sos/active');
+  if (!response.ok) throw new Error(`Failed to load SOS requests (${response.status})`);
+  return response.json();
 }
 
 export async function queryORCA(payload: QueryPayload) {
@@ -523,7 +546,7 @@ export async function fetchGovernmentAnnouncementDetails(id: string) {
 }
 
 export async function publishGovernmentAnnouncement(payload: any) {
-  const response = await fetch(`${API_BASE_URL}/api/government/announcements`, {
+  const response = await apiFetch(`/api/government/announcements`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -547,7 +570,7 @@ export async function fetchGovernmentDocuments() {
    ========================================================================== */
 
 export async function fetchSystemHealth() {
-  const response = await fetch(`${API_BASE_URL}/api/admin/system-health`);
+  const response = await apiFetch(`/api/admin/system-health`);
   if (!response.ok) {
     throw new Error('Failed to fetch system health');
   }
@@ -555,7 +578,7 @@ export async function fetchSystemHealth() {
 }
 
 export async function fetchAdminUsers() {
-  const response = await fetch(`${API_BASE_URL}/api/admin/users`);
+  const response = await apiFetch(`/api/admin/users`);
   if (!response.ok) {
     throw new Error('Failed to fetch user list');
   }
@@ -563,7 +586,7 @@ export async function fetchAdminUsers() {
 }
 
 export async function updateUserRole(userId: string, role: string) {
-  const response = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/role`, {
+  const response = await apiFetch(`/api/admin/users/${userId}/role`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ role }),

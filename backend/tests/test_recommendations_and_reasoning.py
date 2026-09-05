@@ -21,11 +21,12 @@ from app.models.agent_models import (
     ZoneAvoidanceItem,
 )
 from app.services.recommendation_engine import RecommendationReasoningEngine
+from tests.auth_helpers import authenticate_client
 
 
 @pytest.fixture
 def client():
-    return TestClient(app)
+    return authenticate_client(TestClient(app))
 
 
 def test_recommendation_generation_safe_conditions():

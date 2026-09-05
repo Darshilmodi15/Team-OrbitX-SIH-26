@@ -5,13 +5,16 @@ from difflib import SequenceMatcher
 from fastapi.testclient import TestClient
 
 from app.main import app
+from tests.auth_helpers import authenticate_client
 
 
-client = TestClient(app)
+client = authenticate_client(TestClient(app))
 VERAVAL = {"lat": 20.9159, "lon": 70.3629}
 
 
 def ask(message: str, request_id: str, session_id: str = "quality-veraval", history=None):
+    if client.get("/api/user/profile").status_code != 200:
+        authenticate_client(client)
     response = client.post("/api/chat", json={
         "message": message,
         "location": VERAVAL,
