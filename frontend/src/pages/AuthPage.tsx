@@ -265,7 +265,7 @@ export default function AuthPage() {
 
         <div className="flex items-center justify-between gap-3 text-xs">
           <label className="flex cursor-pointer items-center gap-2"><input type="checkbox" checked={remember} onChange={event => setRemember(event.target.checked)} />Remember me</label>
-          <span className="text-muted-foreground" title="Password reset delivery is not configured yet">Forgot Password?</span>
+          <span className="text-muted-foreground" title="Password recovery is not configured yet">Password recovery unavailable</span>
         </div>
 
         <button

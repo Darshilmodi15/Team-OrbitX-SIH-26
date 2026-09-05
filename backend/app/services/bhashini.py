@@ -552,8 +552,8 @@ class BhashiniService:
 
         cleaned_text = text.strip()
 
-        # 1. Primary: Try Sarvam Language Identification API if configured
-        if self.sarvam_service and self.sarvam_service.is_configured:
+        # 1. Primary: Let the provider decide whether live identification is available.
+        if self.sarvam_service:
             sarvam_res = self.sarvam_service.identify_language(cleaned_text)
             if sarvam_res is not None:
                 if session_id:
