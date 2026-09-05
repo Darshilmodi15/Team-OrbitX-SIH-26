@@ -52,14 +52,14 @@ interface ChatThread {
 
 type VoiceState = "idle" | "preparing" | "listening" | "processing" | "transcribing" | "error";
 
-const STORAGE_KEY = "orca_assistant_threads_v1";
+const STORAGE_PREFIX = "orca_assistant_threads_v2";
 const voiceDiagnostic = (event: string, details?: Record<string, unknown>) => {
   if (import.meta.env.DEV) console.info(`[ORCA Voice] ${event}`, details || {});
 };
 
-function loadThreads(): ChatThread[] {
+function loadThreads(storageKey: string): ChatThread[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) return [];
     return JSON.parse(raw);
   } catch {
@@ -67,9 +67,9 @@ function loadThreads(): ChatThread[] {
   }
 }
 
-function saveThreads(threads: ChatThread[]) {
+function saveThreads(storageKey: string, threads: ChatThread[]) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(threads));
+    localStorage.setItem(storageKey, JSON.stringify(threads));
   } catch {
     // ignore
   }
@@ -104,6 +104,7 @@ const LANG_NAMES: Record<string, string> = {
 };
 
 function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
+  const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
 
   const hasWeather =
@@ -125,7 +126,7 @@ function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
         <div className="flex items-center gap-2 flex-wrap">
           <span className="inline-flex items-center gap-1 font-semibold text-teal-400 text-[11px]">
             <Sparkles className="size-3 text-teal-400" />
-            <span>Grounded Evidence & Sources</span>
+            <span>{t("chat.evidence")}</span>
           </span>
           {evidence.risk_level && (
             <span
@@ -153,7 +154,7 @@ function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
           onClick={() => setIsOpen(!isOpen)}
           className="cursor-pointer inline-flex items-center gap-1 text-[11px] text-teal-400 hover:text-teal-300 font-medium transition"
         >
-          <span>{isOpen ? "Hide Trace" : "View Trace"}</span>
+          <span>{isOpen ? t("chat.hideTrace") : t("chat.viewTrace")}</span>
           {isOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
         </button>
       </div>
@@ -216,7 +217,7 @@ function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
           {hasSources && (
             <div>
               <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block mb-1">
-                Data Providers & Agents Consulted:
+                {t("chat.providers")}:
               </span>
               <div className="flex flex-wrap gap-1">
                 {evidence.sources!.map((src, idx) => (
@@ -235,7 +236,7 @@ function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
           {hasReasoning && (
             <div>
               <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block mb-1">
-                Multi-Agent Analytical Steps:
+                {t("chat.steps")}:
               </span>
               <ul className="space-y-1 text-[11px] text-muted-foreground pl-1">
                 {evidence.reasoning!.map((step, idx) => (
@@ -255,13 +256,12 @@ function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
 
 export default function AssistantPage() {
   const { t, lang } = useI18n();
-  const { location } = useSession();
+  const { user, location } = useSession();
+  const accountKey = user ? `${STORAGE_PREFIX}:${user.id}:${user.role}` : null;
 
-  const [threads, setThreads] = useState<ChatThread[]>(() => loadThreads());
-  const [activeThreadId, setActiveThreadId] = useState<string>(() => {
-    const existing = loadThreads();
-    return existing.length > 0 ? existing[0].id : "default";
-  });
+  const [threads, setThreads] = useState<ChatThread[]>([]);
+  const [activeThreadId, setActiveThreadId] = useState<string>("default");
+  const [threadOwnerKey, setThreadOwnerKey] = useState<string | null>(null);
 
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState<boolean>(false);
@@ -296,8 +296,21 @@ export default function AssistantPage() {
   };
 
   useEffect(() => {
-    saveThreads(threads);
-  }, [threads]);
+    if (!accountKey) {
+      setThreads([]);
+      setActiveThreadId("default");
+      setThreadOwnerKey(null);
+      return;
+    }
+    const existing = loadThreads(accountKey);
+    setThreads(existing);
+    setActiveThreadId(existing[0]?.id || "default");
+    setThreadOwnerKey(accountKey);
+  }, [accountKey]);
+
+  useEffect(() => {
+    if (accountKey && threadOwnerKey === accountKey) saveThreads(accountKey, threads);
+  }, [accountKey, threadOwnerKey, threads]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -318,7 +331,7 @@ export default function AssistantPage() {
 
   function createNewThread() {
     stopAudio();
-    const newId = `thread_${Date.now()}`;
+    const newId = `thread_${crypto.randomUUID()}`;
     const newThread: ChatThread = {
       id: newId,
       title: `${t("chat.title")} ${threads.length + 1}`,

@@ -87,10 +87,10 @@ export default function SafetyStatusBanner() {
   const StatusIcon = statusConfig.icon;
 
   // Evidence calculation metrics
-  const waveVal = weather.wave_height_m || 1.2;
-  const windVal = weather.wind_speed_kmh || 18.0;
-  const isWaveSafe = waveVal < 1.5;
-  const isWindSafe = windVal < 30.0;
+  const waveVal = weather.wave_height_m;
+  const windVal = weather.wind_speed_kmh;
+  const isWaveSafe = waveVal == null || waveVal < 1.5;
+  const isWindSafe = windVal == null || windVal < 30.0;
 
   return (
     <section className={`rounded-2xl border ${statusConfig.cardBg} p-4 shadow-xs transition-all`}>
@@ -158,7 +158,7 @@ export default function SafetyStatusBanner() {
                   <span>{t.waveHeight}</span>
                 </div>
                 <span className={`text-xs font-bold ${isWaveSafe ? 'text-emerald-700' : 'text-amber-700'}`}>
-                  {waveVal.toFixed(2)} m
+                  {waveVal == null ? 'Unavailable' : `${waveVal.toFixed(2)} m`}
                 </span>
               </div>
               <p className="mt-1 text-[11px] text-slate-500">
@@ -174,7 +174,7 @@ export default function SafetyStatusBanner() {
                   <span>{t.windSpeed}</span>
                 </div>
                 <span className={`text-xs font-bold ${isWindSafe ? 'text-emerald-700' : 'text-amber-700'}`}>
-                  {windVal.toFixed(1)} km/h
+                  {windVal == null ? 'Unavailable' : `${windVal.toFixed(1)} km/h`}
                 </span>
               </div>
               <p className="mt-1 text-[11px] text-slate-500">
