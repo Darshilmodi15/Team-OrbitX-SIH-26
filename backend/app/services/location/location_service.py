@@ -7,6 +7,7 @@ and rejects unsupported inland or international locations with actionable guidan
 import logging
 from typing import Any, Dict, Optional
 
+from fastapi import HTTPException
 from app.models.user_models import LocationValidationResponse
 from app.services.location.coastal_distance import coastal_distance_service
 
@@ -53,7 +54,7 @@ class LocationService:
         else:
             message = (
                 f"Verified: Location is within the {region} coastal zone ({distance_km:.1f} km from {nearest_pt['name']}). "
-                f"Live INCOIS ocean state telemetry, wave risk matrix, and fishing zones active."
+                f"Select this location to request available marine information."
             )
             is_supported = True
 
@@ -69,8 +70,7 @@ class LocationService:
             intelligence_radius_km=radius_km,
         )
 
-        if user_id:
-            self._current_locations[user_id] = result.model_dump()
+        if user_id and is_supported:
             try:
                 from app.db.session import get_db_context
                 from app.repositories import UserRepository
@@ -84,10 +84,12 @@ class LocationService:
                         coastal_distance_km=distance_km,
                         is_coastal=is_supported,
                         coastal_region=region,
-                        location_source="GPS",
+                        location_source="GPS" if accuracy_m is not None else "MANUAL",
                     )
-            except Exception as e:
-                logger.debug(f"Location DB persistence: {e}")
+            except Exception as exc:
+                logger.warning("Location persistence failed: %s", type(exc).__name__)
+                raise HTTPException(status_code=503, detail="LOCATION_SAVE_FAILED") from exc
+            self._current_locations[user_id] = result.model_dump()
 
         return result
 

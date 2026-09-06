@@ -24,6 +24,7 @@ class UserProfile(BaseModel):
     location_permission_status: str = Field(default="prompt", description="'granted', 'denied', or 'prompt'")
     location_sharing_enabled: bool = Field(default=True, description="Opt-in to emergency location sharing")
     created_at: str = Field(..., description="Profile creation ISO timestamp")
+    operational_region: Optional[str] = None
     last_login: Optional[str] = Field(default=None, description="Last login timestamp")
 
 

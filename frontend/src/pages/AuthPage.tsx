@@ -76,8 +76,9 @@ export default function AuthPage() {
     setIsSubmitting(true);
     try {
       const contact = form.contact.trim();
+      let signedIn;
       if (mode === "register") {
-        await register({
+        signedIn = await register({
           contact,
           password: form.password,
           name: form.name || "Marine Fisher",
@@ -85,14 +86,14 @@ export default function AuthPage() {
           remember,
         });
       } else {
-        await signIn({
+        signedIn = await signIn({
           contact,
           password: form.password,
           remember,
         });
       }
       trackEvent("user_auth_success", { mode, contactType: contact.includes("@") ? "email" : "mobile_nmfd" });
-      navigate("/location");
+      navigate(signedIn.role === "user" ? "/location" : "/dashboard");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Authentication failed. Please verify credentials and retry.";
       setGeneralError(msg);

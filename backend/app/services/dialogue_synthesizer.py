@@ -1,3 +1,4 @@
+from app.services.provider_health import record, ProviderUnavailable
 """
 ORCA Marine AI - Conversational Dialogue & Dynamic Reasoning Synthesizer.
 Generates context-aware, explainable, and multi-turn marine safety responses
@@ -54,7 +55,7 @@ class DialogueSynthesizer:
         """
         Synthesizes a detailed, natural, explainable conversational response.
         """
-        gemini_key = os.getenv("GEMINI_API_KEY")
+        gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
         if gemini_key:
             llm_reply = cls._synthesize_with_gemini(
                 user_query=user_query,
@@ -69,15 +70,9 @@ class DialogueSynthesizer:
             if llm_reply:
                 return llm_reply
 
-        # Fallback to intelligent deterministic reasoning engine
-        return cls._synthesize_deterministic(
-            english_query=english_query,
-            detected_intent=detected_intent,
-            evidence=evidence,
-            location_title=location_title,
-            target_lang=target_lang,
-            history=history,
-        )
+        if not gemini_key:
+            record("gemini", success=False, reason="NOT_CONFIGURED")
+        raise ProviderUnavailable("AI_PROVIDER_UNAVAILABLE")
 
     @classmethod
     def _synthesize_with_gemini(
@@ -100,21 +95,13 @@ class DialogueSynthesizer:
         boundary = evidence.boundary
         recs = evidence.recommendations or []
 
-        weather_summary = "Not available"
-        if w:
-            weather_summary = (
-                f"Significant Wave Height: {w.wave_height_m:.2f}m, "
-                f"Wind: {w.wind_speed_kmh:.1f} km/h from {w.wind_direction_cardinal or 'N/A'} ({w.wind_direction_deg or 0}°), "
-                f"Sea Surface Temperature: {w.sea_surface_temperature_c or w.temperature_c or 28.0:.1f}°C, "
-                f"Visibility: {w.visibility_km or 10}km, "
-                f"Condition: {w.forecast or 'Moderate'}"
-            )
+        weather_summary = w.model_dump_json(exclude_none=True) if w else "Unavailable"
 
         risk_summary = f"Level: {r.level.upper()}, Reason: {r.reason}" if r else "Not evaluated"
         tide_summary = f"High Tide: {tide.high_tide_time} ({tide.high_tide_height_m}m), Low Tide: {tide.low_tide_time} ({tide.low_tide_height_m}m)" if tide else "Unavailable; no authoritative tide feed is configured"
-        pfz_summary = ", ".join([f"{z.name} ({z.distance_km}km, species: {', '.join(z.species[:2])})" for z in pfz[:2]]) if pfz else "None in immediate sector"
-        alerts_summary = "; ".join([f"{a.title}: {a.message}" for a in alerts[:2]]) if alerts else "No active severe hazard warnings"
-        boundary_summary = f"Inside EEZ: {boundary.inside_eez}, Distance to border: {boundary.distance_to_boundary_km:.1f}km" if boundary else "Inside Indian EEZ"
+        pfz_summary = ", ".join([f"{z.name} ({z.distance_km}km, species: {', '.join(z.species[:2])})" for z in pfz[:2]]) if pfz else "Unavailable: no current verified PFZ feed. Do not infer that no advisories exist."
+        alerts_summary = "; ".join([f"{a.title}: {a.message}" for a in alerts[:2]]) if alerts else "No verified alert evidence supplied. Do not infer absence of hazards."
+        boundary_summary = f"Inside EEZ: {boundary.inside_eez}, Distance to border: {boundary.distance_to_boundary_km:.1f}km" if boundary else "Unavailable"
         recs_summary = "; ".join([f"{rec.title}: {rec.directive}" for rec in recs[:2]]) if recs else "Maintain standard VHF Ch 16 watch and carry certified life jackets."
 
         history_text = ""
@@ -126,11 +113,11 @@ class DialogueSynthesizer:
             history_text = "\n".join(turns)
 
         system_instruction = f"""You are ORCA Marine AI, India's national operational oceanographic assistant for coastal fishermen, vessel operators, and maritime agencies.
-Your goal is to provide intelligent, genuine, natural, and helpful advice grounded in authoritative INCOIS ocean telemetry.
+Your goal is to provide intelligent, genuine, natural, and helpful advice grounded in the supplied evidence and its actual source.
 
 CURRENT LOCATION: {location_title}
 CURRENT DATE: {evidence.date}
-LIVE OCEAN TELEMETRY:
+AVAILABLE EVIDENCE (may be cached or unavailable):
 - Weather & Sea State: {weather_summary}
 - Navigational Risk: {risk_summary}
 - Tidal Conditions: {tide_summary}
@@ -144,7 +131,7 @@ LANGUAGE REQUIREMENT:
 - Always respond completely and naturally in the target language. Preserve native script (Devanagari for Hindi/Marathi, Gujarati script, etc.). Do not mix Latin characters for Indian responses unless technical terms are required.
 
 CONVERSATION GUIDELINES:
-1. Ground every claim on the provided live telemetry. Do NOT invent numbers.
+1. Ground local claims on the supplied evidence. Do NOT invent numbers or quantitative benefit claims. Missing evidence means unavailable, never safe, zero, or no active advisories. Identify forecast or cached data as such.
 2. For safety/sailing inquiries ("Is it safe to fish?", "Can I go out?"): Explain overall safety, wave heights, wind strength & direction, visibility, small boat vs large boat considerations, and safety gear requirements.
 3. For follow-up questions ("Is that dangerous?", "Why?"): Understand the context of previous conversation turns smoothly.
 4. For definitions ("What does PFZ mean?", "What is IMBL/SST?"): Explain clearly in accessible terms and why it matters to fishermen.
@@ -159,41 +146,22 @@ User's Latest Query: {user_query} (English interpretation: {english_query})
 Generate the complete, natural response in language '{target_lang}':"""
 
         try:
-            try:
-                from google import genai
-                client = genai.Client(api_key=api_key)
-                for model_name in ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"]:
-                    try:
-                        response = client.models.generate_content(
-                            model=model_name,
-                            contents=prompt,
-                            config={"system_instruction": system_instruction},
-                        )
-                        text = response.text.strip()
-                        if text:
-                            return text
-                    except Exception as model_err:
-                        logger.warning(f"Model {model_name} failed: {model_err}")
-                        continue
-            except (ImportError, AttributeError):
-                try:
-                    import google.generativeai as gai
-                    gai.configure(api_key=api_key)
-                    for model_name in ["gemini-1.5-flash", "gemini-pro", "gemini-2.0-flash"]:
-                        try:
-                            model = gai.GenerativeModel(model_name, system_instruction=system_instruction)
-                            response = model.generate_content(prompt)
-                            text = response.text.strip()
-                            if text:
-                                return text
-                        except Exception as model_err:
-                            logger.warning(f"GenerativeAI model {model_name} failed: {model_err}")
-                            continue
-                except Exception as gai_err:
-                    logger.warning(f"GenerativeAI SDK fallback failed: {gai_err}")
+            from google import genai
+            client = genai.Client(api_key=api_key, http_options={"timeout": 30000})
+            response = client.models.generate_content(
+                model=os.getenv("GEMINI_MODEL", "gemini-3.7-flash"),
+                contents=prompt,
+                config={"system_instruction": system_instruction},
+            )
+            text = (response.text or "").strip()
+            if text:
+                record("gemini", success=True, http_status=200)
+                return text
+            record("gemini", success=False, http_status=200, reason="EMPTY_RESPONSE")
         except Exception as err:
-            logger.warning(f"Gemini conversational synthesis error: {err}")
-
+            status = getattr(err, "code", None)
+            record("gemini", success=False, http_status=status if isinstance(status, int) else None, reason=type(err).__name__)
+            logger.warning("Gemini synthesis failed (%s)", type(err).__name__)
         return None
 
     @classmethod

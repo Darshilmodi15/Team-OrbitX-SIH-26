@@ -1,3 +1,4 @@
+import { auditTranslations } from "./audit-translations";
 import {
   createContext,
   useCallback,
@@ -252,7 +253,7 @@ const en = {
     "By using the platform you accept that ORCA Marine AI and its operators are not liable for decisions taken at sea based on the information shown.",
 } as const;
 
-export type TKey = keyof typeof en;
+export type TKey = keyof typeof en | keyof typeof auditTranslations;
 type Dict = Partial<Record<TKey, string>>;
 
 const hi: Dict = {
@@ -1914,7 +1915,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const t = useCallback(
-    (key: TKey) => UI_TRANSLATIONS[key]?.[lang] ?? DICTS[lang]?.[key] ?? en[key] ?? (key as string),
+    (key: TKey) => (auditTranslations as Partial<Record<TKey, Record<LangCode, string>>>)[key]?.[lang] ?? UI_TRANSLATIONS[key]?.[lang] ?? DICTS[lang]?.[key] ?? (en as Dict)[key] ?? (key as string),
     [lang],
   );
 

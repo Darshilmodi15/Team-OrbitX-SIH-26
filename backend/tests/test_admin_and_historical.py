@@ -1,6 +1,8 @@
 """Unit and Integration tests for Super Admin Diagnostics and Historical Marine Comparison."""
 import unittest
 from fastapi.testclient import TestClient
+from fastapi import HTTPException
+from unittest.mock import patch
 
 from app.main import app
 from app.models.user_models import UserRole
@@ -13,23 +15,29 @@ class TestAdminAndHistoricalService(unittest.TestCase):
 
     def test_system_health_diagnostics(self):
         health = admin_service.get_system_health()
-        self.assertEqual(health.overall_status, "HEALTHY")
+        self.assertEqual(health.overall_status, "DEGRADED")
         self.assertGreaterEqual(health.registered_users_count, 0)
         self.assertGreaterEqual(len(health.services), 4)
         incois_svc = next((s for s in health.services if "INCOIS" in s.service_name), None)
         self.assertIsNotNone(incois_svc)
         self.assertEqual(incois_svc.status, "UNKNOWN")
 
-    def test_historical_marine_comparison_24h(self):
-        comp = admin_service.get_historical_comparison(lat=18.92, lon=72.83, period_hours=24)
-        self.assertEqual(comp.comparison_period_hours, 24)
-        self.assertIsInstance(comp.wave_delta_m, float)
-        self.assertIn("STABLE", ["IMPROVING", "STABLE", "DETERIORATING"])
+    def test_missing_history_is_unavailable_for_both_windows(self):
+        for period in (24, 168):
+            with self.assertRaises(HTTPException) as error:
+                admin_service.get_historical_comparison(lat=18.92, lon=72.83, period_hours=period)
+            self.assertEqual(error.exception.status_code, 503)
+            self.assertEqual(error.exception.detail, "HISTORICAL_DATA_UNAVAILABLE")
 
-    def test_historical_marine_comparison_7d(self):
-        comp = admin_service.get_historical_comparison(lat=18.92, lon=72.83, period_hours=168)
-        self.assertEqual(comp.comparison_period_hours, 168)
-        self.assertIsInstance(comp.wind_delta_kmh, float)
+    def test_comparison_uses_supplied_observations(self):
+        from types import SimpleNamespace
+        current = SimpleNamespace(wave_height_m=2.0, wind_speed_kmh=20.0, sst_c=29.0)
+        past = SimpleNamespace(wave_height_m=1.0, wind_speed_kmh=10.0, sst_c=28.0)
+        with patch('app.repositories.MarineObservationRepository.get_latest_observation', return_value=current), patch('app.repositories.MarineObservationRepository.get_historical_window', return_value=past):
+            comparison = admin_service.get_historical_comparison(18.92, 72.83)
+        self.assertEqual(comparison.wave_delta_m, 1.0)
+        self.assertEqual(comparison.wind_delta_kmh, 10.0)
+        self.assertEqual(comparison.safety_trend, 'DETERIORATING')
 
 
 class TestAdminEndpoints(unittest.TestCase):
@@ -43,7 +51,7 @@ class TestAdminEndpoints(unittest.TestCase):
         res = self.client.get("/api/admin/system-health", headers=self.admin_headers)
         self.assertEqual(res.status_code, 200)
         data = res.json()
-        self.assertEqual(data["overall_status"], "HEALTHY")
+        self.assertEqual(data["overall_status"], "DEGRADED")
         self.assertIn("services", data)
 
     def test_get_admin_users_endpoint(self):
@@ -51,7 +59,8 @@ class TestAdminEndpoints(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         data = res.json()
         self.assertIsInstance(data, list)
-        self.assertGreaterEqual(len(data), 3)
+        self.assertGreaterEqual(len(data), 1)
+        self.assertTrue(all(user["id"] != "USR-DEMO-01" for user in data))
 
     def test_patch_user_role_endpoint(self):
         reg = self.client.post("/api/auth/register", json={
@@ -70,10 +79,8 @@ class TestAdminEndpoints(unittest.TestCase):
 
     def test_get_historical_comparison_endpoint(self):
         res = self.client.get("/api/marine/historical-comparison?lat=18.92&lon=72.83&period_hours=24")
-        self.assertEqual(res.status_code, 200)
-        data = res.json()
-        self.assertIn("wave_delta_m", data)
-        self.assertIn("safety_trend", data)
+        self.assertEqual(res.status_code, 503)
+        self.assertEqual(res.json()["detail"], "HISTORICAL_DATA_UNAVAILABLE")
 
 
 if __name__ == "__main__":

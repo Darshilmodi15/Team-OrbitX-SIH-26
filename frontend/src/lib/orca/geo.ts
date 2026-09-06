@@ -154,27 +154,18 @@ export async function searchIndianPlaces(query: string, signal?: AbortSignal): P
   const res = await fetch(url, signal ? { signal } : {});
   if (!res.ok) throw new Error(`geocoding_failed_${res.status}`);
   const json = (await res.json()) as {
-    results?: { name: string; admin1?: string; latitude: number; longitude: number }[];
+    results?: { name: string; admin1?: string; country_code?: string; latitude: number; longitude: number }[];
   };
   return (json.results ?? [])
+    .filter((r) => r.country_code === "IN")
     .map((r) => ({
       name: r.name,
       admin: r.admin1 ?? "",
       coords: { lat: r.latitude, lon: r.longitude },
-    }))
-    .filter((r) => isInIndia(r.coords));
+    }));
 }
 
-/** Reverse lookup of the nearest named place, used for a human-readable label. */
-export async function reverseLabel(c: Coords, signal?: AbortSignal): Promise<string | null> {
-  try {
-    const url = `https://geocoding-api.open-meteo.com/v1/search?latitude=${c.lat}&longitude=${c.lon}&count=1&language=en&format=json`;
-    const res = await fetch(url, signal ? { signal } : {});
-    if (!res.ok) return null;
-    const json = (await res.json()) as { results?: { name: string; admin1?: string }[] };
-    const r = json.results?.[0];
-    return r ? [r.name, r.admin1].filter(Boolean).join(", ") : null;
-  } catch {
-    return null;
-  }
+/** No reverse-geocoding provider is configured; retain coordinates or a chosen search label. */
+export async function reverseLabel(_c: Coords, _signal?: AbortSignal): Promise<string | null> {
+  return null;
 }

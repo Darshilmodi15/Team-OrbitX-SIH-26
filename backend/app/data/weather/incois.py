@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import xml.etree.ElementTree as ET
 
 import httpx
+from app.services.provider_health import record
 
 from app.data.weather.base import WeatherProvider
 from app.data.weather.cache import MarineWeatherCache
@@ -313,7 +314,10 @@ class IncoisWeatherProvider(WeatherProvider):
             except Exception as db_err:
                 logger.debug(f"Observation persistence skipped: {db_err}")
 
+            record("incois", success=True, http_status=200, data_timestamp=live_raw["forecast_time"])
             return cached_res
+
+        record("incois", success=False, http_status=getattr(getattr(fetch_error, "response", None), "status_code", None), reason=type(fetch_error).__name__ if fetch_error else "NO_VALID_MARINE_DATA")
 
         # Step 4: Live fetch failed or returned no data; check stale cache
         if cached_data is not None:
@@ -324,6 +328,7 @@ class IncoisWeatherProvider(WeatherProvider):
             stale_copy["freshness"] = "ACCEPTABLE_STALE"
             if "warning" not in stale_copy:
                 stale_copy["warning"] = "Live INCOIS service unreachable. Showing cached forecast."
+            record("incois", success=True, mode="stale", data_timestamp=stale_copy.get("forecast_time"))
             return stale_copy
         # Step 5: Secondary provider fallback (Open-Meteo) before declaring unavailable
         try:
@@ -357,9 +362,10 @@ class IncoisWeatherProvider(WeatherProvider):
                         )
                 except Exception as db_err:
                     logger.debug(f"Observation persistence skipped for Open-Meteo fallback: {db_err}")
+                record("open_meteo", success=True, http_status=200, data_timestamp=om_data.get("forecast_time"), mode="fallback")
                 return om_res
         except Exception as om_err:
-            logger.debug(f"Open-Meteo fallback skipped: {om_err}")
+            record("open_meteo", success=False, reason=type(om_err).__name__)
 
         # Step 6: No data available — Return explicit data-unavailable record (NEVER fake values)
         return {

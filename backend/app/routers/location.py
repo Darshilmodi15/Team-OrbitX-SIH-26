@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/location", tags=["Location & Coastal Verificatio
 def validate_coordinates(request: LocationValidationRequest):
     """
     Validates user GPS or selected coordinates against India boundary and coastal intelligence belt.
-    
+
     Returns whether location is within India and within supported coastal range (<= 100 km).
     """
     return location_service.validate_location(
@@ -47,8 +47,6 @@ def update_user_location(
 
 @router.get("/current")
 def get_current_location(
-    lat: float = Query(18.9220, description="Fallback latitude"),
-    lon: float = Query(72.8347, description="Fallback longitude"),
     user: UserProfile = Depends(get_current_user_from_header),
 ):
     """
@@ -58,4 +56,10 @@ def get_current_location(
     if cached:
         return cached
 
-    return location_service.validate_location(lat=lat, lon=lon, user_id=user.id).model_dump()
+    from app.db.session import get_db_context
+    from app.db.models import UserLocation
+    with get_db_context() as db:
+        row = db.query(UserLocation).filter(UserLocation.user_id == user.id).order_by(UserLocation.created_at.desc()).first()
+        if row is None:
+            return None
+        return location_service.validate_location(row.latitude, row.longitude).model_dump()

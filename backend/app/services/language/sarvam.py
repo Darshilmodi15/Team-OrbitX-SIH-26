@@ -13,6 +13,7 @@ import logging
 import os
 import re
 from typing import Any, Dict, List, Optional, Tuple
+from app.services.provider_health import record, ProviderUnavailable
 import httpx
 from dotenv import load_dotenv
 
@@ -154,7 +155,8 @@ class SarvamLanguageProvider(LanguageProvider):
         tgt_sarvam = to_sarvam_code(tgt_iso)
 
         if not self.is_configured:
-            return self._fallback_translate(text, src_iso, tgt_iso)
+            record("sarvam_translation", success=False, reason="NOT_CONFIGURED")
+            raise ProviderUnavailable("TRANSLATION_UNAVAILABLE")
 
         # Handle chunking if text exceeds 750 characters (Sarvam Mayura v1 has 1000 char per-request limit)
         if len(text) > 750:
@@ -207,14 +209,12 @@ class SarvamLanguageProvider(LanguageProvider):
                     data = resp.json()
                     translated = data.get("translated_text")
                     if translated and isinstance(translated, str) and translated.strip():
+                        record("sarvam_translation", success=True, http_status=200)
                         return translated.strip()
-                logger.warning(
-                    f"Sarvam translate API returned {resp.status_code}: {resp.text}. Falling back to domain dictionary."
-                )
+                record("sarvam_translation", success=False, http_status=resp.status_code, reason="UPSTREAM_HTTP_ERROR")
         except Exception as err:
-            logger.warning(f"Sarvam translate request failed: {err}. Falling back to domain dictionary.")
-
-        return self._fallback_translate(text, src_iso, tgt_iso)
+            record("sarvam_translation", success=False, reason=type(err).__name__)
+        raise ProviderUnavailable("TRANSLATION_UNAVAILABLE")
 
     def detect_language(self, text: str) -> str:
         """
@@ -262,7 +262,7 @@ class SarvamLanguageProvider(LanguageProvider):
         Endpoint: POST /speech-to-text (multipart/form-data)
         """
         if not self.is_configured:
-            logger.info("Sarvam STT requested without active API key.")
+            record("sarvam_stt", success=False, reason="NOT_CONFIGURED")
             return {
                 "transcript": "",
                 "language_code": to_sarvam_code(language_code or "en"),
@@ -295,6 +295,7 @@ class SarvamLanguageProvider(LanguageProvider):
                 if resp.status_code == 200:
                     res_data = resp.json()
                     transcript = res_data.get("transcript", "")
+                    record("sarvam_stt", success=bool(transcript.strip()), http_status=200, reason="EMPTY_TRANSCRIPT")
                     lang_detected = res_data.get("language_code", data.get("language_code", "en-IN"))
                     return {
                         "transcript": transcript,
@@ -304,9 +305,11 @@ class SarvamLanguageProvider(LanguageProvider):
                         "is_mock": False,
                     }
                 else:
-                    logger.warning(f"Sarvam STT API error {resp.status_code}: {resp.text}")
+                    record("sarvam_stt", success=False, http_status=resp.status_code, reason="UPSTREAM_HTTP_ERROR")
+                    logger.warning("Sarvam STT HTTP %s", resp.status_code)
         except Exception as err:
-            logger.warning(f"Sarvam STT request failed: {err}")
+            record("sarvam_stt", success=False, reason=type(err).__name__)
+            logger.warning("Sarvam STT failed: %s", type(err).__name__)
 
         return {
             "transcript": "",
@@ -331,7 +334,7 @@ class SarvamLanguageProvider(LanguageProvider):
         chosen_speaker = speaker or DEFAULT_SPEAKERS.get(sarvam_lang, "shubh")
 
         if not self.is_configured:
-            # Generate a lightweight silent/tone wav byte response for offline testing
+            record("sarvam_tts", success=False, reason="NOT_CONFIGURED")
             return {
                 "audio_base64": None,
                 "audio_format": "wav",
@@ -362,6 +365,7 @@ class SarvamLanguageProvider(LanguageProvider):
                     data = resp.json()
                     audios = data.get("audios", [])
                     if audios and len(audios) > 0:
+                        record("sarvam_tts", success=True, http_status=200)
                         return {
                             "audio_base64": audios[0],
                             "audio_format": "wav",
@@ -371,9 +375,9 @@ class SarvamLanguageProvider(LanguageProvider):
                             "source": "sarvam_bulbul_v3",
                             "is_mock": False,
                         }
-                logger.warning(f"Sarvam TTS returned {resp.status_code}: {resp.text}")
+                record("sarvam_tts", success=False, http_status=resp.status_code, reason="UPSTREAM_HTTP_ERROR")
         except Exception as err:
-            logger.warning(f"Sarvam TTS request failed: {err}")
+            record("sarvam_tts", success=False, reason=type(err).__name__)
 
         return {
             "audio_base64": None,

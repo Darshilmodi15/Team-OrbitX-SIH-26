@@ -1,9 +1,7 @@
 """Potential Fishing Zone (PFZ) provider with INCOIS-derived records and a deterministic fallback."""
-import hashlib
 import json
 import math
 import os
-import random
 from typing import Any, Dict, List
 
 from app.data.pfz.base import PFZProvider
@@ -49,88 +47,9 @@ class IncoisPFZProvider(PFZProvider):
                     pass
 
     def get_pfz_zones(self, lat: float, lon: float) -> List[Dict[str, Any]]:
-        """
-        Returns nearby Potential Fishing Zones (PFZ).
-        Uses real INCOIS dataset if available, calculated by Haversine distance.
-        """
-        if self.incois_zones:
-            results = []
-            for z in self.incois_zones:
-                z_lat = float(z["latitude"])
-                z_lon = float(z["longitude"])
-                dist = round(haversine_km(lat, lon, z_lat, z_lon), 1)
-
-                min_d = z.get("depth_m", {}).get("min", 20)
-                max_d = z.get("depth_m", {}).get("max", 30)
-                avg_depth = int((min_d + max_d) / 2)
-
-                landing = z.get("landing_centre", "Offshore")
-                bearing = z.get("bearing_deg")
-                dist_range = z.get("distance_km", {})
-                if isinstance(dist_range, dict):
-                    distance_range = f"{dist_range.get('min', dist)}-{dist_range.get('max', dist)} km"
-                else:
-                    distance_range = f"{dist} km"
-                results.append({
-                    "zone_id": z.get("id", "PFZ-INCOIS"),
-                    "name": f"INCOIS PFZ ({landing})",
-                    "lat": z_lat,
-                    "lon": z_lon,
-                    "distance_km": dist,
-                    "distance_range_km": distance_range,
-                    "depth_m": avg_depth,
-                    "bearing_deg": bearing,
-                    "direction": z.get("direction"),
-                    "landing_centre": landing,
-                    "dominant_species": z.get(
-                        "dominant_species",
-                        "Pelagic aggregation potential; species not specified in advisory text",
-                    ),
-                })
-
-            results.sort(key=lambda item: item["distance_km"])
-            return results[:3]
-
-        # Synthetic fallback if JSON dataset is absent
-        seed_str = f"pfz_{round(lat, 2)}_{round(lon, 2)}"
-        seed = int(hashlib.md5(seed_str.encode("utf-8")).hexdigest(), 16) % (10**8)
-        rng = random.Random(seed)
-
-        count = rng.choice([2, 3])
-        zone_names = [
-            "Thermal Front Sector A",
-            "Chlorophyll Bloom Zone B",
-            "Coastal Upwelling Region C",
-            "Shelf Break Zone D",
-        ]
-        rng.shuffle(zone_names)
-
-        zones: List[Dict[str, Any]] = []
-        for i in range(count):
-            distance_km = round(rng.uniform(6.0, 32.0), 1)
-            bearing_deg = rng.uniform(0, 360)
-            lat_rad = math.radians(lat if lat != 0 else 1.0)
-            d_lat = (distance_km / 111.0) * math.cos(math.radians(bearing_deg))
-            d_lon = (distance_km / (111.0 * math.cos(lat_rad))) * math.sin(math.radians(bearing_deg))
-
-            zones.append({
-                "zone_id": f"PFZ-{101 + i}",
-                "name": zone_names[i % len(zone_names)],
-                "lat": round(lat + d_lat, 4),
-                "lon": round(lon + d_lon, 4),
-                "distance_km": distance_km,
-                "depth_m": rng.randint(30, 110),
-                "dominant_species": rng.choice([
-                    "Mackerel & Tuna",
-                    "Sardines & Anchovies",
-                    "Kingfish & Seer Fish",
-                    "Pomfret & Ribbon Fish",
-                ]),
-            })
-
-        zones.sort(key=lambda z: z["distance_km"])
-        return zones
+        """No current advisory feed: undated bundled reference coordinates are not live PFZs."""
+        return []
 
 
 class MockPFZProvider(IncoisPFZProvider):
-    """Backward-compatible alias for older imports and tests."""
+    """Compatibility name; no synthetic data is produced."""

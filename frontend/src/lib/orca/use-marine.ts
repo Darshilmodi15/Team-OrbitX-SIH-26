@@ -3,7 +3,7 @@ import { fetchMarineBundle } from "./marine";
 import type { Coords } from "./geo";
 import type { MarineBundle } from "./types";
 
-const CACHE_KEY = "orca.marine.cache";
+const CACHE_KEY = "orca.marine.cache.v3";
 
 function readCache(c: Coords): MarineBundle | null {
   try {
@@ -23,7 +23,7 @@ function cacheKey(c: Coords) {
 export function useMarine(coords: Coords | null) {
   const cached = coords ? readCache(coords) : null;
   return useQuery({
-    queryKey: ["marine", coords ? cacheKey(coords) : "none"],
+    queryKey: ["marine-v3", coords ? cacheKey(coords) : "none"],
     enabled: !!coords,
     staleTime: 10 * 60 * 1000,
     gcTime: 60 * 60 * 1000,

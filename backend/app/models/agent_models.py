@@ -263,8 +263,8 @@ class EvidenceBundle(BaseModel):
     zone_avoidance: Optional[ZoneAvoidanceEvidence] = Field(default=None, description="Hazard and geofence zone avoidance evaluation")
     tide: Optional[TideInfo] = Field(default=None, description="Tidal height and timing predictions")
     recommendations: List[OperationalRecommendation] = Field(default_factory=list, description="Reliable operational recommendations with supporting evidence and reasoning")
-    location_lat: float = Field(..., description="Inquiry latitude coordinate")
-    location_lon: float = Field(..., description="Inquiry longitude coordinate")
+    location_lat: Optional[float] = Field(default=None, description="Inquiry latitude coordinate")
+    location_lon: Optional[float] = Field(default=None, description="Inquiry longitude coordinate")
     date: str = Field(..., description="Inquiry forecast date string")
     connectivity_mode: str = Field(default="LIVE", description="Network resilience state ('LIVE', 'CACHED', 'DEGRADED', 'OFFLINE')")
 

@@ -47,7 +47,8 @@ export default function DashboardPage() {
   }
 
   const c = marine.data?.current;
-  const level = c ? safetyFrom(c.waveHeightM, c.windSpeedKmh, c.visibilityKm) : null;
+  const fresh = c && c.dataMode !== "stale" && Date.now() - Date.parse(c.time) <= 3600000;
+  const level = fresh && c.waveHeightM != null && c.windSpeedKmh != null ? safetyFrom(c.waveHeightM, c.windSpeedKmh, c.visibilityKm) : null;
 
   return (
     <AppShell>
@@ -65,7 +66,7 @@ export default function DashboardPage() {
           <LoadingState label={t("state.loadingMarine")} />
         ) : level ? (
           <SafetyStatusCard level={level} />
-        ) : null}
+        ) : <EmptyState>{t("status.title")}: {t("chat.unavailable")}</EmptyState>}
 
         {/* Quick actions */}
         <section>
@@ -88,7 +89,7 @@ export default function DashboardPage() {
         {c && <MarineConditions data={c} tide={marine.data?.tide ?? null} />}
 
         {/* Forecast */}
-        {marine.data?.forecast && <ForecastTimeline points={marine.data.forecast} />}
+        {marine.data?.forecast && (marine.data.forecast.length > 0 ? <ForecastTimeline points={marine.data.forecast} /> : <p className="text-sm text-muted-foreground">{t("forecast.title")}: {t("chat.unavailable")}</p>)}
 
         {/* Map preview */}
         <section className="space-y-2">

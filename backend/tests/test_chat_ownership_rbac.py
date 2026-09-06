@@ -79,7 +79,7 @@ def test_normal_and_officer_role_boundaries_and_sos_privacy():
     client = TestClient(app)
     _, normal = register_account(client, "sos-user")
     _, officer = register_account(client, "officer", UserRole.GOVERNMENT)
-    created = client.post("/api/emergency/sos", headers=normal, json={"lat": 20.1, "lon": 70.2, "contact_phone": "9999999999"})
+    created = client.post("/api/emergency/sos", headers=normal, json={"lat": 20.1, "lon": 70.2, "contact_phone": "9999999999", "crew_count": 1})
     assert created.status_code == 201, created.text
     sos_id = created.json()["sos_id"]
     assert client.get("/api/emergency/sos/active", headers=normal).status_code == 403
@@ -115,7 +115,7 @@ def test_locations_require_identity_and_are_account_scoped():
     assert client.get("/api/location/current").status_code == 401
     assert client.post("/api/location/update", headers=alice, json={"lat": 20.1, "lon": 70.2}).status_code == 200
     bob_location = client.get("/api/location/current?lat=21.1&lon=72.8", headers=bob).json()
-    assert bob_location["lat"] != 20.1
+    assert bob_location is None  # No default city for an account without a location.
 
 
 def test_health_output_is_sanitized_and_cors_is_restricted(monkeypatch):

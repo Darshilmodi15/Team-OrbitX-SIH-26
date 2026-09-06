@@ -11,6 +11,7 @@ import {
 import { broadcastSOS } from '../services/api';
 import type { LocationCoords } from '../context/AppContext';
 import { getStrings } from '../i18n';
+import { useI18n } from '@/lib/orca/i18n';
 
 interface EmergencySOSModalProps {
   isOpen: boolean;
@@ -26,19 +27,23 @@ export default function EmergencySOSModal({
   currentLang = 'en',
 }: EmergencySOSModalProps) {
   const t = getStrings(currentLang);
+  const { t: ui } = useI18n();
+  const [failed, setFailed] = useState(false);
 
   const [step, setStep] = useState<'standby' | 'confirming' | 'dispatched'>('standby');
-  const [vesselName, setVesselName] = useState('Matsya Shakti');
-  const [registrationNo] = useState('IND-MH-01-F-4433');
-  const [crewCount, setCrewCount] = useState(6);
-  const [emergencyNature, setEmergencyNature] = useState('Engine Failure / Adrift at Sea');
-  const [notes] = useState('Drifting west towards offshore shipping corridor');
+  const [vesselName, setVesselName] = useState('');
+  const [registrationNo] = useState('');
+  const [crewCount, setCrewCount] = useState(0);
+  const [emergencyNature, setEmergencyNature] = useState('General Maritime Distress');
+  const [notes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dispatchResult, setDispatchResult] = useState<any | null>(null);
 
   if (!isOpen) return null;
 
   const handleTriggerSOS = async () => {
+    if (isSubmitting || crewCount < 1) return;
+    setFailed(false);
     setIsSubmitting(true);
     try {
       const res = await broadcastSOS({
@@ -53,14 +58,8 @@ export default function EmergencySOSModal({
       setDispatchResult(res);
       setStep('dispatched');
     } catch (err) {
-      console.warn('SOS broadcast fallback:', err);
-      setDispatchResult({
-        id: `SOS-${Date.now().toString().slice(-6)}`,
-        status: 'ACTIVE_BEACON_DISPATCHED',
-        assigned_mrcc: userLocation.lon > 78.5 ? 'MRCC Chennai' : 'MRCC Mumbai',
-        mayday_message: `MAYDAY MAYDAY MAYDAY. THIS IS FISHING VESSEL ${vesselName.toUpperCase()}, REG ${registrationNo}. POSITION ${userLocation.lat.toFixed(4)}N ${userLocation.lon.toFixed(4)}E. NATURE OF DISTRESS: ${emergencyNature.toUpperCase()}. PERSONS ON BOARD: ${crewCount}. OVER.`,
-      });
-      setStep('dispatched');
+      console.warn('SOS request failed', err);
+      setFailed(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -104,7 +103,7 @@ export default function EmergencySOSModal({
                 {t.sosTitle}
               </h3>
               <p className="text-xs text-slate-500">
-                {t.sosDirectSar}
+                {ui("sos.submit")}
               </p>
             </div>
           </div>
@@ -119,6 +118,7 @@ export default function EmergencySOSModal({
         </div>
 
         {/* ─── State 1: Standby / Pre-Confirmation ─── */}
+        {failed && <p role="alert" className="rounded-lg bg-red-100 p-3 text-red-900">{ui("state.liveUnavailable")} · {ui("svc.call")} 112 / 1554</p>}
         {step === 'standby' && (
           <div className="space-y-4">
             <div className="rounded-xl border border-red-200 bg-red-50/80 p-3.5 text-xs text-red-900 leading-relaxed">
@@ -126,7 +126,7 @@ export default function EmergencySOSModal({
                 <AlertTriangle className="h-4 w-4 text-red-600" />
                 <span>{t.sosDistressNotice}</span>
               </div>
-              <p>{t.sosWarning}</p>
+              <p>{ui("sos.confirmDesc")}</p>
             </div>
 
             {/* Vessel Coordinates Confirmation */}
@@ -166,7 +166,7 @@ export default function EmergencySOSModal({
                   <input
                     type="number"
                     value={crewCount}
-                    onChange={(e) => setCrewCount(parseInt(e.target.value) || 1)}
+                    onChange={(e) => setCrewCount(parseInt(e.target.value) || 0)}
                     className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800"
                   />
                 </div>
@@ -182,11 +182,11 @@ export default function EmergencySOSModal({
                   className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800"
                 >
                   <option value="Engine Failure / Adrift at Sea">{t.sosEngineFailure}</option>
-                  <option value="Capsize / Taking on Water">{t.sosCapsizeSinking}</option>
-                  <option value="Medical Emergency on Board">{t.sosMedicalEmergency}</option>
-                  <option value="Severe Weather / Cyclone Squall">{t.sosSevereWeather}</option>
-                  <option value="Man Overboard (MOB)">{t.sosManOverboard}</option>
-                  <option value="Collision / Grounding">{t.sosCollision}</option>
+                  <option value="Vessel Capsizing / Taking Water">{t.sosCapsizeSinking}</option>
+                  <option value="Critical Medical Emergency on Board">{t.sosMedicalEmergency}</option>
+                  <option value="Severe Squall / Cyclone Trapped">{t.sosSevereWeather}</option>
+                  <option value="General Maritime Distress">{ui("sos.general")}</option>
+                  <option value="Collision / Grounding on Reef">{t.sosCollision}</option>
                 </select>
               </div>
             </div>
@@ -198,7 +198,7 @@ export default function EmergencySOSModal({
               className="w-full rounded-xl bg-red-600 py-3 text-sm font-extrabold text-white shadow-md hover:bg-red-700 active:scale-95 transition cursor-pointer flex items-center justify-center gap-2"
             >
               <Radio className="h-4 w-4 animate-pulse" />
-              <span>{t.sosProceedTransmit}</span>
+              <span>{ui("sos.submit")}</span>
             </button>
           </div>
         )}
@@ -212,7 +212,7 @@ export default function EmergencySOSModal({
                 {t.sosFinalConfirmation}
               </h4>
               <p className="text-xs text-red-800 mt-1">
-                {t.sosFinalConfirmDesc}{' '}
+                {ui("sos.confirmDesc")}{' '}
                 <strong className="font-mono">
                   ({userLocation.lat.toFixed(4)}°N, {userLocation.lon.toFixed(4)}°E)
                 </strong>
@@ -230,15 +230,15 @@ export default function EmergencySOSModal({
               <button
                 type="button"
                 onClick={handleTriggerSOS}
-                disabled={isSubmitting}
+                disabled={isSubmitting || crewCount < 1}
                 className="flex-1 rounded-lg bg-red-600 py-2.5 text-xs font-black text-white shadow-md hover:bg-red-700 active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5"
               >
                 {isSubmitting ? (
-                  <span>{t.sosDispatching}</span>
+                  <span>{ui("state.loading")}</span>
                 ) : (
                   <>
                     <Send className="h-4 w-4" />
-                    <span>{t.sosTransmitNow}</span>
+                    <span>{ui("sos.submit")}</span>
                   </>
                 )}
               </button>
@@ -252,17 +252,17 @@ export default function EmergencySOSModal({
             <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-center">
               <CheckCircle2 className="h-10 w-10 text-emerald-600 mx-auto mb-1.5" />
               <h4 className="font-display text-base font-extrabold text-emerald-950">
-                {t.sosBeaconDispatched}
+                {ui("sos.received")}
               </h4>
               <p className="text-xs text-emerald-800 mt-0.5">
-                Assigned to <strong>{dispatchResult?.assigned_mrcc || 'MRCC Operations'}</strong>. {t.sosBeaconDispatchedDesc}
+                {ui("sos.receivedDesc")}
               </p>
             </div>
 
             {/* Generated MAYDAY Transcript */}
             <div className="rounded-lg border border-slate-200 bg-slate-900 p-3 text-xs text-slate-100 font-mono space-y-1">
               <p className="text-emerald-400 font-bold">
-                [{t.sosGmdssTranscript}]
+                [{t.maydayTitle}]
               </p>
               <p className="leading-relaxed whitespace-pre-wrap">
                 {dispatchResult?.mayday_message ||
