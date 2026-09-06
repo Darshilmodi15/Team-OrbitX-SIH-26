@@ -9,6 +9,7 @@ from typing import Generator
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.pool import StaticPool
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,8 @@ engine_kwargs = {"echo": False}
 
 if DATABASE_URL.startswith("sqlite"):
     connect_args["check_same_thread"] = False
+    if DATABASE_URL.endswith(":memory:"):
+        engine_kwargs["poolclass"] = StaticPool
 else:
     # PostgreSQL production pool settings
     engine_kwargs.update({

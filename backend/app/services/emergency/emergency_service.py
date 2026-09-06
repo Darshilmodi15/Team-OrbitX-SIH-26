@@ -203,7 +203,7 @@ class EmergencyService:
             f"REQUIRE IMMEDIATE RESCUE ASSISTANCE. OVER."
         )
 
-    def broadcast_sos(self, req: SOSBroadcastRequest) -> SOSBroadcastResponse:
+    def broadcast_sos(self, req: SOSBroadcastRequest, user_id: Optional[str] = None) -> SOSBroadcastResponse:
         """
         Processes instantaneous SOS distress beacon, logs record, and formats hotlines.
         """
@@ -255,7 +255,7 @@ class EmergencyService:
             with get_db_context() as db:
                 db_sos = DBSOSRequest(
                     id=sos_id,
-                    user_id=None,
+                    user_id=user_id,
                     vessel_name=req.vessel_name or "Fishing Craft / Motor Vessel",
                     registration_no=req.registration_no or "IND-VESSEL",
                     latitude=req.lat,
@@ -280,7 +280,38 @@ class EmergencyService:
 
     def get_active_sos(self) -> List[SOSBroadcastResponse]:
         """Returns active distress broadcasts."""
-        return list(self._active_sos_records.values())
+        records = dict(self._active_sos_records)
+        try:
+            from app.db.session import get_db_context
+            from app.repositories import EmergencyRepository
+            with get_db_context() as db:
+                for row in EmergencyRepository.list_active_sos(db):
+                    records[row.id] = self._from_db(row)
+        except Exception as e:
+            logger.debug(f"SOS DB listing: {e}")
+        return list(records.values())
+
+    def update_status(self, sos_id: str, new_status: str) -> Optional[SOSBroadcastResponse]:
+        result = self._active_sos_records.get(sos_id)
+        if result:
+            result.status = new_status
+            if new_status == "RESOLVED": self._active_sos_records.pop(sos_id, None)
+        try:
+            from app.db.session import get_db_context
+            from app.db.models import SOSRequest
+            with get_db_context() as db:
+                row = db.query(SOSRequest).filter(SOSRequest.id == sos_id).first()
+                if row:
+                    row.status = new_status
+                    if new_status == "RESOLVED": row.resolved_at = datetime.now(timezone.utc)
+                    return self._from_db(row)
+        except Exception as e:
+            logger.debug(f"SOS status update: {e}")
+        return result
+
+    def _from_db(self, row) -> SOSBroadcastResponse:
+        import json
+        return SOSBroadcastResponse(sos_id=row.id, status=row.status, broadcast_timestamp=row.created_at.isoformat(), assigned_mrcc=row.assigned_mrcc, mayday_message=row.mayday_message, emergency_hotlines=json.loads(row.emergency_hotlines_json or "[]"), recorded_telemetry=json.loads(row.recorded_telemetry_json or "{}"))
 
 
 emergency_service = EmergencyService()

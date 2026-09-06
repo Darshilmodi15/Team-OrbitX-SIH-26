@@ -4,7 +4,7 @@ User, Authentication, and Location validation data models for ORCA Marine AI.
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class UserRole(str, Enum):
@@ -48,6 +48,7 @@ class AuthResponse(BaseModel):
 
 
 class UpdateProfileRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     name: Optional[str] = None
     preferred_language: Optional[str] = None
     location_permission_status: Optional[str] = None
@@ -55,6 +56,7 @@ class UpdateProfileRequest(BaseModel):
 
 
 class LocationValidationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     lat: float = Field(..., description="Latitude coordinate to validate")
     lon: float = Field(..., description="Longitude coordinate to validate")
     accuracy_m: Optional[float] = Field(default=None, description="GPS accuracy in meters")

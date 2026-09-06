@@ -38,7 +38,7 @@ import { OrcaLogo } from "@/components/orca/Logo";
 import { SEO } from "@/components/SEO";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
-import { transcribeVoiceAudio, sendChatMessage, synthesizeVoiceAudio } from "@/services/api";
+import { transcribeVoiceAudio, sendChatMessage, synthesizeVoiceAudio, fetchConversations, createConversation, deleteConversation } from "@/services/api";
 import { MarkdownRenderer } from "@/components/orca/MarkdownRenderer";
 import type { ChatMessage, ChatEvidence } from "@/lib/orca/types";
 import { cn } from "@/lib/utils";
@@ -52,28 +52,9 @@ interface ChatThread {
 
 type VoiceState = "idle" | "preparing" | "listening" | "processing" | "transcribing" | "error";
 
-const STORAGE_PREFIX = "orca_assistant_threads_v2";
 const voiceDiagnostic = (event: string, details?: Record<string, unknown>) => {
   if (import.meta.env.DEV) console.info(`[ORCA Voice] ${event}`, details || {});
 };
-
-function loadThreads(storageKey: string): ChatThread[] {
-  try {
-    const raw = localStorage.getItem(storageKey);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-function saveThreads(storageKey: string, threads: ChatThread[]) {
-  try {
-    localStorage.setItem(storageKey, JSON.stringify(threads));
-  } catch {
-    // ignore
-  }
-}
 
 const LANG_BCP47: Record<string, string> = {
   en: "en-IN",
@@ -257,11 +238,9 @@ function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
 export default function AssistantPage() {
   const { t, lang } = useI18n();
   const { user, location } = useSession();
-  const accountKey = user ? `${STORAGE_PREFIX}:${user.id}:${user.role}` : null;
 
   const [threads, setThreads] = useState<ChatThread[]>([]);
-  const [activeThreadId, setActiveThreadId] = useState<string>("default");
-  const [threadOwnerKey, setThreadOwnerKey] = useState<string | null>(null);
+  const [activeThreadId, setActiveThreadId] = useState<string>("");
 
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState<boolean>(false);
@@ -296,21 +275,15 @@ export default function AssistantPage() {
   };
 
   useEffect(() => {
-    if (!accountKey) {
-      setThreads([]);
-      setActiveThreadId("default");
-      setThreadOwnerKey(null);
-      return;
-    }
-    const existing = loadThreads(accountKey);
-    setThreads(existing);
-    setActiveThreadId(existing[0]?.id || "default");
-    setThreadOwnerKey(accountKey);
-  }, [accountKey]);
-
-  useEffect(() => {
-    if (accountKey && threadOwnerKey === accountKey) saveThreads(accountKey, threads);
-  }, [accountKey, threadOwnerKey, threads]);
+    let cancelled = false;
+    setThreads([]); setActiveThreadId("");
+    fetchConversations().then((rows: any[]) => {
+      if (cancelled) return;
+      const mapped = rows.map((row) => ({ id: row.id, title: row.title, updatedAt: new Date(row.updated_at).getTime(), messages: (row.messages || []).map((m: any) => ({ id: m.id, role: m.role, text: m.content, at: new Date(m.created_at).getTime(), evidence: m.metadata })) }));
+      setThreads(mapped); setActiveThreadId(mapped[0]?.id || "");
+    }).catch((err) => { if (!cancelled) console.warn("Conversation history unavailable", err); });
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -329,9 +302,10 @@ export default function AssistantPage() {
     };
   }, []);
 
-  function createNewThread() {
+  async function createNewThread() {
     stopAudio();
-    const newId = `thread_${crypto.randomUUID()}`;
+    const created = await createConversation(`${t("chat.title")} ${threads.length + 1}`);
+    const newId = created.id;
     const newThread: ChatThread = {
       id: newId,
       title: `${t("chat.title")} ${threads.length + 1}`,
@@ -345,25 +319,18 @@ export default function AssistantPage() {
     inputRef.current?.focus();
   }
 
-  function deleteThread(id: string, e: React.MouseEvent) {
+  async function deleteThread(id: string, e: React.MouseEvent) {
     e.stopPropagation();
     stopAudio();
+    await deleteConversation(id);
     const filtered = threads.filter((th) => th.id !== id);
     setThreads(filtered);
     if (activeThreadId === id) {
       if (filtered.length > 0) {
         setActiveThreadId(filtered[0].id);
       } else {
-        const fallbackId = `thread_${Date.now()}`;
-        setThreads([
-          {
-            id: fallbackId,
-            title: `${t("chat.title")} 1`,
-            updatedAt: Date.now(),
-            messages: [],
-          },
-        ]);
-        setActiveThreadId(fallbackId);
+        setThreads([]);
+        setActiveThreadId("");
       }
     }
   }
@@ -417,11 +384,17 @@ export default function AssistantPage() {
     requestInFlightRef.current = true;
 
     stopAudio();
+    let targetThreadId = activeThreadId;
+    if (!targetThreadId) {
+      const created = await createConversation(question.length > 80 ? question.slice(0, 80) : question);
+      targetThreadId = created.id;
+      setActiveThreadId(targetThreadId);
+    }
     const now = Date.now();
     const userMsg: ChatMessage = { id: `u_${now}`, role: "user", text: question, at: now };
 
     setThreads((prev) => {
-      const idx = prev.findIndex((th) => th.id === activeThreadId);
+      const idx = prev.findIndex((th) => th.id === targetThreadId);
       if (idx >= 0) {
         const updated = [...prev];
         const isFirst = updated[idx].messages.length === 0;
@@ -434,7 +407,7 @@ export default function AssistantPage() {
         return updated;
       } else {
         const newThread: ChatThread = {
-          id: activeThreadId,
+          id: targetThreadId,
           title: question.length > 28 ? `${question.slice(0, 28)}...` : question,
           updatedAt: now,
           messages: [userMsg],
@@ -451,18 +424,12 @@ export default function AssistantPage() {
     let evidenceData: ChatEvidence | null = null;
 
     try {
-      const historyTurns = currentThread.messages.slice(-6).map((m) => ({
-        role: m.role,
-        text: m.text,
-      }));
-
       const res = await sendChatMessage({
         message: question,
         ...(location ? { location: { lat: location.coords.lat, lon: location.coords.lon } } : {}),
         date: new Date().toISOString().split("T")[0],
         language: lang || "auto",
-        session_id: activeThreadId,
-        history: historyTurns,
+        session_id: targetThreadId,
         request_id: crypto.randomUUID(),
       });
 
@@ -517,7 +484,7 @@ export default function AssistantPage() {
     };
 
     setThreads((prev) => {
-      const idx = prev.findIndex((th) => th.id === activeThreadId);
+      const idx = prev.findIndex((th) => th.id === targetThreadId);
       if (idx >= 0) {
         const updated = [...prev];
         updated[idx] = {

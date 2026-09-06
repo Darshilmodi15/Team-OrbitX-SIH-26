@@ -4,7 +4,7 @@ Emergency Services, SOS Distress, and Maritime SAR Models for ORCA Marine AI.
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EmergencyNature(str, Enum):
@@ -27,14 +27,15 @@ class EmergencyContact(BaseModel):
 
 
 class SOSBroadcastRequest(BaseModel):
-    vessel_name: Optional[str] = Field(default="Fishing Craft / Motor Vessel", description="Vessel name")
-    registration_no: Optional[str] = Field(default="IND-MH-01-F-1234", description="Fisheries/MFD registration code")
-    lat: float = Field(..., description="Current vessel latitude")
-    lon: float = Field(..., description="Current vessel longitude")
+    model_config = ConfigDict(extra="forbid")
+    vessel_name: Optional[str] = Field(default="Fishing Craft / Motor Vessel", max_length=255, description="Vessel name")
+    registration_no: Optional[str] = Field(default="IND-MH-01-F-1234", max_length=100, description="Fisheries/MFD registration code")
+    lat: float = Field(..., ge=-90, le=90, description="Current vessel latitude")
+    lon: float = Field(..., ge=-180, le=180, description="Current vessel longitude")
     crew_count: int = Field(default=4, ge=1, description="Persons on board (POB)")
     emergency_nature: EmergencyNature = Field(default=EmergencyNature.ENGINE_FAILURE, description="Type of crisis")
-    notes: Optional[str] = Field(default="", description="Additional immediate situation notes")
-    contact_phone: Optional[str] = Field(default="+91-9876543210", description="Skipper or contact mobile number")
+    notes: Optional[str] = Field(default="", max_length=2000, description="Additional immediate situation notes")
+    contact_phone: Optional[str] = Field(default="+91-9876543210", max_length=50, description="Skipper or contact mobile number")
 
 
 class SOSBroadcastResponse(BaseModel):
@@ -45,3 +46,8 @@ class SOSBroadcastResponse(BaseModel):
     mayday_message: str = Field(..., description="Standard GMDSS/IMO MAYDAY radio transcript")
     emergency_hotlines: List[Dict[str, str]] = Field(default_factory=list)
     recorded_telemetry: Dict[str, Any] = Field(default_factory=dict)
+
+
+class SOSStatusUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: str = Field(..., pattern="^(RECEIVED|RESPONDING|RESOLVED)$")

@@ -237,7 +237,7 @@ class AuthService:
             from app.db.session import get_db_context
             from app.repositories import UserRepository
             with get_db_context() as db:
-                UserRepository.create_user(
+                db_user = UserRepository.create_user(
                     db=db,
                     name=req.name,
                     password_hash=pwd_hash,
@@ -247,6 +247,8 @@ class AuthService:
                     preferred_language=req.preferred_language or "en",
                     role=role_val.value,
                 )
+                user_id = db_user.id
+                user_data["id"] = user_id
         except Exception as e:
             logger.debug(f"Database user persistence note: {e}")
 
@@ -268,8 +270,9 @@ class AuthService:
         if not user_id:
             user_id = self._lookup.get(email_or_phone.strip())
 
-        # If not found in memory, check database
-        if not user_id:
+        # Database identity is authoritative when present; this also prevents a
+        # development demo cache ID from diverging from the persisted user ID.
+        if email_or_phone:
             try:
                 from app.db.session import get_db_context
                 from app.repositories import UserRepository
@@ -312,16 +315,17 @@ class AuthService:
         return profile, token
 
     def get_user_by_id(self, user_id: str) -> Optional[UserProfile]:
-        """Retrieves public user profile by ID."""
-        user_data = self._users.get(user_id)
-        if not user_data:
-            try:
-                from app.db.session import get_db_context
-                from app.repositories import UserRepository
-                with get_db_context() as db:
-                    db_user = UserRepository.get_by_id(db, user_id)
-                    if db_user:
-                        user_data = {
+        """Retrieves a profile, preferring current database role/account state."""
+        user_data = None
+        database_checked = False
+        try:
+            from app.db.session import get_db_context
+            from app.repositories import UserRepository
+            with get_db_context() as db:
+                db_user = UserRepository.get_by_id(db, user_id)
+                database_checked = True
+                if db_user and db_user.is_active:
+                    user_data = {
                             "id": db_user.id,
                             "name": db_user.name,
                             "email": db_user.email,
@@ -334,10 +338,15 @@ class AuthService:
                             "location_sharing_enabled": db_user.location_sharing_enabled,
                             "created_at": db_user.created_at.isoformat() if db_user.created_at else datetime.now(timezone.utc).isoformat(),
                             "last_login": db_user.last_login.isoformat() if db_user.last_login else None,
-                        }
-                        self._users[user_id] = user_data
-            except Exception:
-                pass
+                    }
+                    self._users[user_id] = user_data
+        except Exception as exc:
+            logger.debug(f"DB profile lookup: {exc}")
+
+        # Development/test demo identities may exist only in memory. Once the
+        # database answered, a missing/inactive account must not fall back.
+        if not database_checked or (ENVIRONMENT not in {"production", "prod"} and user_id.startswith("USR-DEMO-")):
+            user_data = self._users.get(user_id)
 
         if not user_data:
             return None
@@ -345,7 +354,18 @@ class AuthService:
 
     def list_all_users(self) -> List[UserProfile]:
         """Returns all registered users as public profiles."""
-        return [self._to_profile(u) for u in self._users.values()]
+        profiles: Dict[str, UserProfile] = {u["id"]: self._to_profile(u) for u in self._users.values()}
+        try:
+            from app.db.session import get_db_context
+            from app.db.models import User
+            with get_db_context() as db:
+                ids = [row[0] for row in db.query(User.id).all()]
+            for user_id in ids:
+                profile = self.get_user_by_id(user_id)
+                if profile: profiles[user_id] = profile
+        except Exception as exc:
+            logger.debug(f"DB user listing: {exc}")
+        return list(profiles.values())
 
     def update_profile(
         self,
@@ -372,7 +392,38 @@ class AuthService:
         if role is not None:
             user_data["role"] = role
 
+        try:
+            from app.db.session import get_db_context
+            from app.db.models import User
+            with get_db_context() as db:
+                db_user = db.query(User).filter(User.id == user_id).first()
+                if db_user:
+                    if name is not None: db_user.name = name
+                    if preferred_language is not None: db_user.preferred_language = preferred_language
+                    if location_permission_status is not None: db_user.location_permission_status = location_permission_status
+                    if location_sharing_enabled is not None: db_user.location_sharing_enabled = location_sharing_enabled
+                    if role is not None: db_user.role = role.value
+        except Exception as exc:
+            logger.debug(f"DB profile update: {exc}")
+
         return self._to_profile(user_data)
+
+    def update_role_safely(self, user_id: str, role: UserRole) -> Optional[UserProfile]:
+        """Atomically changes a role while preserving at least one administrator."""
+        from app.db.session import get_db_context
+        from app.db.models import User
+        with get_db_context() as db:
+            target = db.query(User).filter(User.id == user_id).with_for_update().first()
+            if not target:
+                return None
+            if target.role == UserRole.SUPER_ADMIN.value and role != UserRole.SUPER_ADMIN:
+                admins = db.query(User).filter(User.role == UserRole.SUPER_ADMIN.value, User.is_active.is_(True)).with_for_update().count()
+                if admins <= 1:
+                    raise ValueError("Cannot remove the last administrator")
+            target.role = role.value
+        if user_id in self._users:
+            self._users[user_id]["role"] = role
+        return self.get_user_by_id(user_id)
 
     def _to_profile(self, data: Dict[str, Any]) -> UserProfile:
         return UserProfile(

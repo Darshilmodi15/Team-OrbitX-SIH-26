@@ -15,6 +15,7 @@ from app.db.session import (
 from app.db.models import (
     AuditLog,
     ChatHistory,
+    Conversation,
     EmergencyContact,
     Geofence,
     GovernmentAlert,
@@ -54,6 +55,7 @@ __all__ = [
     "Notification",
     "NotificationPreference",
     "ChatHistory",
+    "Conversation",
     "AuditLog",
     "SystemSetting",
 ]

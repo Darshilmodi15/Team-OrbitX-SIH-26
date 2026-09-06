@@ -17,6 +17,7 @@ from app.services.auth.auth_service import auth_service
 from app.services.emergency.emergency_service import emergency_service
 from app.services.government.government_service import government_service
 from app.services.notifications.notification_service import notification_service
+from app.services.rate_limit import rate_limiter
 
 
 @pytest.fixture(autouse=True)
@@ -30,6 +31,7 @@ def reset_services_and_db():
     auth_service._seed_default_accounts()
     
     emergency_service._active_sos_records.clear()
+    rate_limiter.clear()
     
     yield
     

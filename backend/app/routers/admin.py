@@ -3,18 +3,20 @@ Super Admin Diagnostics, User Fleet Management, and Historical Marine REST Route
 """
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.models.admin_models import HistoricalMarineComparison, SystemHealthStatus
 from app.models.user_models import UserProfile, UserRole
 from app.services.admin import admin_service
 from app.services.auth import auth_service
 from app.routers.auth import require_roles
+from app.services.rate_limit import rate_limiter
 
 router = APIRouter(tags=["Super Admin & Historical Comparisons"])
 
 
 class UpdateRoleRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     role: UserRole
 
 
@@ -23,6 +25,7 @@ def get_system_health(_user: UserProfile = Depends(require_roles(UserRole.SUPER_
     """
     Returns real-time service health, upstream latencies, memory footprint, and active SOS beacons.
     """
+    rate_limiter.check("admin-health", _user.id, limit=60)
     return admin_service.get_system_health()
 
 
@@ -39,7 +42,10 @@ def update_user_role(user_id: str, request: UpdateRoleRequest, _user: UserProfil
     """
     Elevates or changes a user account role (USER -> GOVERNMENT -> SUPER_ADMIN).
     """
-    updated = auth_service.update_profile(user_id, role=request.role)
+    try:
+        updated = auth_service.update_role_safely(user_id, request.role)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
     if not updated:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return updated

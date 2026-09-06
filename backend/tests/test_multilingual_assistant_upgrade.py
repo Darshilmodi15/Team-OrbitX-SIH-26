@@ -15,13 +15,14 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.services.bhashini import bhashini_service, detect_romanized_indic
 from app.agents.intent_agent import parse_intent
+from tests.auth_helpers import authenticate_client
 
 
 class TestMultilingualAssistantUpgrade(unittest.TestCase):
     """Verifies all capabilities of the upgraded multilingual marine assistant."""
 
     def setUp(self):
-        self.client = TestClient(app)
+        self.client = authenticate_client(TestClient(app))
 
     # -------------------------------------------------------------------------
     # 1. Romanized Indian Language & Code-Mixing Detection

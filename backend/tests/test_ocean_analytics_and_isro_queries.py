@@ -14,11 +14,12 @@ from app.agents.ocean_analytics_agent import (
 )
 from app.models.agent_models import GeofenceZoneModel, PFZEvidence, WeatherEvidence
 from app.services.planner import create_plan
+from tests.auth_helpers import authenticate_client
 
 
 @pytest.fixture
 def client():
-    return TestClient(app)
+    return authenticate_client(TestClient(app))
 
 
 # =========================================================================
