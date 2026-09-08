@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, Query, Depends, HTTPException
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.agents.boundary_agent import check_marine_boundary_evidence
@@ -67,6 +68,7 @@ from app.services.chat_service import chat_storage_service
 from app.services.rate_limit import rate_limiter
 from app.services.bhashini import SUPPORTED_LANGUAGES, bhashini_service
 from app.services.dialogue_synthesizer import DialogueSynthesizer
+from app.services.provider_health import ProviderUnavailable
 from app.services.planner import ExecutionPlan, Planner
 from app.services.recommendation_engine import RecommendationReasoningEngine
 
@@ -121,6 +123,10 @@ app = FastAPI(
     version="1.4.1",
     lifespan=lifespan,
 )
+
+@app.exception_handler(ProviderUnavailable)
+async def unavailable_provider_handler(request, exc):
+    return JSONResponse(status_code=503, content={"detail": "AI_PROVIDER_UNAVAILABLE"})
 
 frontend_origins = [
     origin.strip()
@@ -180,7 +186,6 @@ def get_marine_risk_endpoint(
     res = risk.model_dump()
     if risk.profile:
         prof = risk.profile.model_dump()
-        prof["visibility_risk"] = {"level": "LOW", "score": 0.1, "description": "Good visibility"}
         res["profile"] = prof
     return res
 
@@ -193,14 +198,7 @@ def get_marine_forecast_endpoint(
 ):
     q_date = date or dt_date.today().isoformat()
     weather = get_marine_weather(provider=weather_provider, lat=lat, lon=lon, date=q_date)
-    horizon = weather.forecast_horizon or [
-        {
-            "hour_offset": i,
-            "wave_height_m": round(weather.wave_height_m + (i * 0.08), 2),
-            "wind_speed_kmh": round(weather.wind_speed_kmh + (i * 1.2), 1),
-        }
-        for i in range(1, 7)
-    ]
+    horizon = weather.forecast_horizon or []
     return {
         "location": {"lat": lat, "lon": lon},
         "forecast_horizon": horizon,
@@ -259,7 +257,7 @@ class ChatRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     message: str = Field(..., min_length=1, max_length=8000, description="User message or question in any Indian language or English")
     location: Optional[Location] = Field(
-        default_factory=lambda: Location(lat=18.9220, lon=72.8347),
+        default=None,
         description="Vessel GPS location",
     )
     date: Optional[str] = Field(
@@ -529,7 +527,7 @@ def _process_orca_query(
 
     # Step 1: Detect or resolve language using Language Priority Rule
     # Priority 1: Direct analysis of user input text (native Indic script or Romanized Indic)
-    lid_res = bhashini_service.identify_language(question_raw, session_id=session_id)
+    lid_res = bhashini_service.identify_language(question_raw, session_id=None)
     
     # Check if the query is explicitly written in English
     is_explicit_english = False
@@ -541,7 +539,7 @@ def _process_orca_query(
             "help", "forecast", "sea", "ocean", "tide", "alert", "warning", "temperature",
             "sst", "pfz", "route", "direction", "speed", "height", "today", "tomorrow"
         }
-        if len(eng_words.intersection(common_eng)) >= 1:
+        if lid_res.provider == "sarvam" or len(eng_words.intersection(common_eng)) >= 1 or len(eng_words) >= 2:
             is_explicit_english = True
 
     if lid_res.short_code != "en":
@@ -882,50 +880,9 @@ def _process_orca_query(
         )
 
     # 5h. Ocean Analytics Agent (Chlorophyll & SST)
-    if needs_ocean_analytics:
-        ocean_analytics_evidence = analyze_chlorophyll_and_sst(
-            lat=active_lat,
-            lon=active_lon,
-            region_name=location_hint,
-            weather=weather_evidence,
-        )
-        sources_used.append(ocean_analytics_evidence.satellite_source)
-        executed_tasks.append("ocean_analytics_agent:analyze_chlorophyll_sst")
-        agent_results.append(
-            AgentResult(
-                agent="ocean_analytics_agent",
-                action="analyze_chlorophyll_sst",
-                success=True,
-                evidence=ocean_analytics_evidence.model_dump(),
-            )
-        )
-        reasoning.append(
-            f"Evidence (ocean_analytics_agent): identified thermal front in {ocean_analytics_evidence.region_name} (mean Chl-a: {ocean_analytics_evidence.mean_chlorophyll_mg_m3:.2f} mg/m³, SST: {ocean_analytics_evidence.mean_sst_c:.1f}°C, upwelling: {ocean_analytics_evidence.upwelling_index})."
-        )
+    if needs_ocean_analytics or needs_ecology:
+        reasoning.append("Satellite ocean colour and historical catch observations are unavailable; no measured trend can be reported.")
 
-    # 5i. Ocean Analytics Agent (Fish Productivity Decline Diagnostics)
-    if needs_ecology:
-        ecology_evidence = analyze_productivity_decline(
-            region_name=location_hint or "Western Continental Shelf",
-            lat=active_lat,
-            lon=active_lon,
-            weather=weather_evidence,
-        )
-        sources_used.append(ecology_evidence.source)
-        executed_tasks.append("ocean_analytics_agent:analyze_productivity_decline")
-        agent_results.append(
-            AgentResult(
-                agent="ocean_analytics_agent",
-                action="analyze_productivity_decline",
-                success=True,
-                evidence=ecology_evidence.model_dump(),
-            )
-        )
-        reasoning.append(
-            f"Evidence (ocean_analytics_agent): evaluated multi-factorial ecological drivers of catch decline in {ecology_evidence.region_name} (SST anomaly: {ecology_evidence.sst_anomaly}, chlorophyll trend: {ecology_evidence.chlorophyll_trend})."
-        )
-
-    # 5j. Ocean Analytics Agent (Hazard & Geofence Zone Avoidance)
     if needs_zone_avoidance:
         zone_avoidance_evidence = evaluate_zone_avoidance(
             lat=active_lat,
@@ -1005,32 +962,9 @@ def _process_orca_query(
         target_lang=detected_lang,
         history=history,
     )
-    if recommendations and "Operational Recommendations, Evidence & Reasoning" not in synthesized_answer:
-        rec_md = RecommendationReasoningEngine.format_recommendations_markdown(recommendations)
-        if rec_md:
-            synthesized_answer = f"{synthesized_answer}\n\n{rec_md}"
-
-    reasoning.append("Synthesized dynamic conversational response based on multi-agent evidence and context.")
+    reasoning.append("Response generated by Gemini from the supplied evidence and conversation history.")
     localized_reasoning = reasoning
-    if detected_lang != "en":
-        localized_reasoning = [
-            bhashini_service.translate(text=step, source_lang="en", target_lang=detected_lang)
-            for step in reasoning
-        ]
-
-    # Step 7: Indic translation if needed and not already native script
-    has_native_indic = any(0x0900 <= ord(c) <= 0x0D7F for c in synthesized_answer)
-    if detected_lang != "en" and not has_native_indic:
-        final_answer = bhashini_service.translate(
-            text=synthesized_answer,
-            source_lang="en",
-            target_lang=detected_lang,
-        )
-        reasoning.append(
-            f"Bhashini Multilingual Layer: Translated operational response back into {lang_name}."
-        )
-    else:
-        final_answer = synthesized_answer
+    final_answer = synthesized_answer
 
     return {
         "language": detected_lang,
@@ -1119,22 +1053,42 @@ def handle_chat(request: ChatRequest, user: UserProfile = Depends(get_current_us
         if cached:
             return cached
 
-    lat = request.location.lat if request.location else 18.9220
-    lon = request.location.lon if request.location else 72.8347
+    lat = request.location.lat if request.location else None
+    lon = request.location.lon if request.location else None
     q_date = request.date or dt_date.today().isoformat()
 
     # Never trust client-supplied history; context is loaded from the authenticated user's conversation.
     chat_storage_service.append(db, user.id, request.session_id, "user", request.message, request.language or "auto")
 
-    result = _process_orca_query(
-        question_raw=request.message,
-        lat=lat,
-        lon=lon,
-        query_date=q_date,
-        requested_lang=request.language or "auto",
-        session_id=request.session_id,
-        history=history_dicts,
-    )
+    db.commit()  # Persist the user turn even when the provider is unavailable.
+    try:
+        if request.location is None:
+            lid = bhashini_service.identify_language(request.message, session_id=None)
+            response_lang = lid.short_code
+            if not any(character.isalpha() for character in request.message):
+                preferred = (request.language or "en").lower().split("-")[0]
+                response_lang = preferred if preferred in SUPPORTED_LANGUAGES else "en"
+            evidence = EvidenceBundle(date=q_date, connectivity_mode="UNAVAILABLE")
+            answer = DialogueSynthesizer.synthesize_response(
+                user_query=request.message, english_query=request.message, detected_intent="general",
+                evidence=evidence, location_title="Not selected. Ask the user to choose a location for local conditions; provide general explanations only.",
+                target_lang=response_lang, history=history_dicts,
+            )
+            result = {"language": response_lang, "language_name": SUPPORTED_LANGUAGES.get(response_lang, response_lang), "original_message": request.message,
+                      "english_query": request.message, "answer": answer, "reasoning": [], "sources_used": [],
+                      "plan": ExecutionPlan(intent="general", tasks=[]), "connectivity_mode": "UNAVAILABLE", "location": None}
+        else:
+            result = _process_orca_query(
+                question_raw=request.message,
+                lat=lat,
+                lon=lon,
+                query_date=q_date,
+                requested_lang=request.language or "auto",
+                session_id=request.session_id,
+                history=history_dicts,
+            )
+    except ProviderUnavailable:
+        raise HTTPException(status_code=503, detail="AI_PROVIDER_UNAVAILABLE")
 
     response = ChatResponse(
         language=result["language"],
@@ -1177,6 +1131,10 @@ def handle_chat(request: ChatRequest, user: UserProfile = Depends(get_current_us
         "sources": response.sources_used,
         "risk_level": response.risk_level,
         "connectivity_mode": response.connectivity_mode,
+        "language": response.language,
+        "weather": response.weather,
+        "nearest_pfz": response.nearest_pfz,
+        "boundary": response.boundary,
     })
     conversation = chat_storage_service._owned(db, user.id, request.session_id)
     if conversation and conversation.title == "New conversation":
@@ -1228,16 +1186,16 @@ def get_recommendations_endpoint(
 def get_ocean_analytics_endpoint(lat: float = Query(18.9220), lon: float = Query(72.8347), region: Optional[str] = Query(None)):
     """Returns satellite ocean color, chlorophyll-a concentration, and thermal front analytics."""
     weather = get_marine_weather(provider=weather_provider, lat=lat, lon=lon, date=dt_date.today().isoformat())
-    evidence = analyze_chlorophyll_and_sst(lat=lat, lon=lon, region_name=region, weather=weather)
-    return evidence.model_dump()
+    raise HTTPException(status_code=503, detail="SATELLITE_OBSERVATIONS_UNAVAILABLE")
+
 
 
 @app.get("/api/analytics/productivity")
 def get_productivity_decline_endpoint(region: str = Query("Maharashtra Coast"), lat: float = Query(18.9220), lon: float = Query(72.8347)):
     """Returns marine ecological root-cause analysis for fish productivity and catch decline."""
     weather = get_marine_weather(provider=weather_provider, lat=lat, lon=lon, date=dt_date.today().isoformat())
-    evidence = analyze_productivity_decline(region_name=region, lat=lat, lon=lon, weather=weather)
-    return evidence.model_dump()
+    raise HTTPException(status_code=503, detail="HISTORICAL_CATCH_OBSERVATIONS_UNAVAILABLE")
+
 
 
 @app.get("/api/analytics/zone-avoidance")
@@ -1253,15 +1211,4 @@ def get_zone_avoidance_endpoint(lat: float = Query(18.9220), lon: float = Query(
 @app.get("/api/marine/tide")
 def get_marine_tide_endpoint(lat: float = Query(18.9220), lon: float = Query(72.8347)):
     """Returns tidal predictions, high/low tide timings, and tidal ranges."""
-    tide = TideInfo(
-        high_tide_time="04:45 AM",
-        high_tide_height_m=3.85,
-        low_tide_time="11:15 AM",
-        low_tide_height_m=1.12,
-        secondary_high_tide_time="17:30 PM",
-        secondary_high_tide_height_m=3.60,
-        tidal_phase="Semi-Diurnal Spring Tide",
-        tidal_range_m=2.73,
-        source="ORCA regional tidal harmonic estimate; official tide feed integration pending",
-    )
-    return tide.model_dump()
+    raise HTTPException(status_code=503, detail="TIDE_FEED_UNAVAILABLE")

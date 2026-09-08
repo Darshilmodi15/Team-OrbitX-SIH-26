@@ -250,7 +250,9 @@ class AuthService:
                 user_id = db_user.id
                 user_data["id"] = user_id
         except Exception as e:
-            logger.debug(f"Database user persistence note: {e}")
+            from fastapi import HTTPException
+            logger.warning("Account persistence failed: %s", type(e).__name__)
+            raise HTTPException(status_code=503, detail="ACCOUNT_STORAGE_UNAVAILABLE")
 
         self._users[user_id] = user_data
         if req.email:
@@ -289,6 +291,7 @@ class AuthService:
                             "password_salt": db_user.password_salt,
                             "preferred_language": db_user.preferred_language,
                             "role": UserRole(db_user.role),
+                            "operational_region": db_user.government_profile.jurisdiction_region if db_user.government_profile else None,
                             "location_permission_status": db_user.location_permission_status,
                             "location_sharing_enabled": db_user.location_sharing_enabled,
                             "created_at": db_user.created_at.isoformat() if db_user.created_at else datetime.now(timezone.utc).isoformat(),
@@ -334,6 +337,7 @@ class AuthService:
                             "password_salt": db_user.password_salt,
                             "preferred_language": db_user.preferred_language,
                             "role": UserRole(db_user.role),
+                            "operational_region": db_user.government_profile.jurisdiction_region if db_user.government_profile else None,
                             "location_permission_status": db_user.location_permission_status,
                             "location_sharing_enabled": db_user.location_sharing_enabled,
                             "created_at": db_user.created_at.isoformat() if db_user.created_at else datetime.now(timezone.utc).isoformat(),
@@ -341,11 +345,11 @@ class AuthService:
                     }
                     self._users[user_id] = user_data
         except Exception as exc:
-            logger.debug(f"DB profile lookup: {exc}")
+            logger.warning("DB profile lookup failed: %s", type(exc).__name__)
 
         # Development/test demo identities may exist only in memory. Once the
         # database answered, a missing/inactive account must not fall back.
-        if not database_checked or (ENVIRONMENT not in {"production", "prod"} and user_id.startswith("USR-DEMO-")):
+        if ENVIRONMENT not in {"production", "prod"} and user_id.startswith("USR-DEMO-") and user_data is None and not database_checked:
             user_data = self._users.get(user_id)
 
         if not user_data:
@@ -354,18 +358,17 @@ class AuthService:
 
     def list_all_users(self) -> List[UserProfile]:
         """Returns all registered users as public profiles."""
-        profiles: Dict[str, UserProfile] = {u["id"]: self._to_profile(u) for u in self._users.values()}
         try:
             from app.db.session import get_db_context
             from app.db.models import User
             with get_db_context() as db:
                 ids = [row[0] for row in db.query(User.id).all()]
-            for user_id in ids:
-                profile = self.get_user_by_id(user_id)
-                if profile: profiles[user_id] = profile
+            return [profile for user_id in ids if (profile := self.get_user_by_id(user_id)) is not None]
         except Exception as exc:
-            logger.debug(f"DB user listing: {exc}")
-        return list(profiles.values())
+            from fastapi import HTTPException
+            logger.warning("Account listing failed: %s", type(exc).__name__)
+            raise HTTPException(status_code=503, detail="ACCOUNT_STORAGE_UNAVAILABLE") from exc
+
 
     def update_profile(
         self,
@@ -377,7 +380,7 @@ class AuthService:
         role: Optional[UserRole] = None,
     ) -> Optional[UserProfile]:
         """Updates user profile properties."""
-        user_data = self._users.get(user_id)
+        user_data = dict(self._users.get(user_id) or {})
         if not user_data:
             return None
 
@@ -397,6 +400,8 @@ class AuthService:
             from app.db.models import User
             with get_db_context() as db:
                 db_user = db.query(User).filter(User.id == user_id).first()
+                if not db_user:
+                    return None
                 if db_user:
                     if name is not None: db_user.name = name
                     if preferred_language is not None: db_user.preferred_language = preferred_language
@@ -404,7 +409,11 @@ class AuthService:
                     if location_sharing_enabled is not None: db_user.location_sharing_enabled = location_sharing_enabled
                     if role is not None: db_user.role = role.value
         except Exception as exc:
-            logger.debug(f"DB profile update: {exc}")
+            logger.warning("DB profile update failed: %s", type(exc).__name__)
+            from fastapi import HTTPException
+            raise HTTPException(status_code=503, detail="PROFILE_SAVE_FAILED") from exc
+
+        self._users[user_id] = user_data
 
         return self._to_profile(user_data)
 
@@ -437,6 +446,7 @@ class AuthService:
             location_sharing_enabled=data.get("location_sharing_enabled", True),
             created_at=data["created_at"],
             last_login=data.get("last_login"),
+            operational_region=data.get("operational_region"),
         )
 
 

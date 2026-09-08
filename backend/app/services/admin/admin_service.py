@@ -13,6 +13,7 @@ from app.models.admin_models import (
     ServiceEndpointHealth,
     SystemHealthStatus,
 )
+from app.services.provider_health import snapshot
 from app.services.auth import auth_service
 from app.services.emergency import emergency_service
 
@@ -27,11 +28,7 @@ class AdminService:
     def get_system_health(self) -> SystemHealthStatus:
         """Collects non-secret, low-cost health signals without inventing provider success."""
         uptime = time.time() - START_TIME
-        users = auth_service.list_all_users()
-        active_sos = emergency_service.get_active_sos()
-        user_count = len(users)
-        sos_count = len(active_sos)
-        geofence_count = 0
+        user_count = sos_count = geofence_count = None
         db_status, db_latency, db_error = "DOWN", None, "Database check failed"
         try:
             from app.db.session import get_db_context
@@ -48,15 +45,19 @@ class AdminService:
             db_error = type(exc).__name__
         checked = datetime.now(timezone.utc).isoformat()
         services = [
-            ServiceEndpointHealth(service_name="INCOIS Ocean State Forecast", status="UNKNOWN", provider="INCOIS", last_error_summary="No quota-consuming dashboard probe performed"),
-            ServiceEndpointHealth(service_name="Open-Meteo Marine Weather", status="UNKNOWN", provider="Open-Meteo", fallback_in_use=True, last_error_summary="Configured as a fallback; current activation depends on each marine response"),
-            ServiceEndpointHealth(service_name="Database storage", status=db_status, latency_ms=db_latency, last_checked=checked, last_successful_response=checked if db_status == "HEALTHY" else None, last_error_summary=db_error),
-            ServiceEndpointHealth(service_name="Sarvam speech and language", status="UNKNOWN" if os.getenv("SARVAM_API_KEY") else "DEGRADED", provider="Sarvam", last_error_summary=None if os.getenv("SARVAM_API_KEY") else "SARVAM_API_KEY is not configured"),
-            ServiceEndpointHealth(service_name="Gemini planner", status="UNKNOWN" if (os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")) else "DEGRADED", provider="Gemini", last_error_summary=None if (os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")) else "Gemini credentials are not configured"),
-            ServiceEndpointHealth(service_name="Spatial boundary engine", status="HEALTHY", provider="ORCA local spatial provider", last_successful_response=checked),
+            ServiceEndpointHealth(service_id=key, service_name=name, provider=provider, **snapshot(key))
+            for key, name, provider in [
+                ("incois", "INCOIS Ocean State Forecast", "INCOIS"),
+                ("open_meteo", "Open-Meteo Marine Weather", "Open-Meteo"),
+                ("sarvam_stt", "Sarvam speech-to-text", "Sarvam"),
+                ("sarvam_tts", "Sarvam text-to-speech", "Sarvam"),
+                ("sarvam_translation", "Sarvam translation", "Sarvam"),
+                ("gemini", "Gemini assistant", "Gemini"),
+            ]
         ]
+        services.append(ServiceEndpointHealth(service_id="database", service_name="Database storage", status=db_status, latency_ms=db_latency, last_checked=checked, last_successful_response=checked if db_status == "HEALTHY" else None, last_error_summary=db_error, provider="SQL database", real_data_arriving=db_status == "HEALTHY", data_mode="live" if db_status == "HEALTHY" else "unavailable"))
         return SystemHealthStatus(
-            overall_status="HEALTHY" if db_status == "HEALTHY" else "DEGRADED",
+            overall_status="HEALTHY" if all(service.status == "HEALTHY" for service in services) else "DEGRADED",
             uptime_seconds=round(uptime, 1),
             registered_users_count=user_count,
             active_sos_count=sos_count,
@@ -76,34 +77,24 @@ class AdminService:
         Calculates 24-hour or 7-day before-vs-after oceanographic trends using database observations
         with graceful baseline fallback.
         """
-        curr_wave = 1.35
-        curr_wind = 19.5
-        curr_sst = 28.4
-
-        hist_wave = 1.15 if period_hours != 168 else 1.70
-        hist_wind = 16.0 if period_hours != 168 else 26.0
-        hist_sst = 28.2 if period_hours != 168 else 27.9
-
-        # Attempt to load historical observation from database
+        from fastapi import HTTPException
+        from app.db.session import get_db_context
+        from app.repositories import MarineObservationRepository
         try:
-            from app.db.session import get_db_context
-            from app.repositories import MarineObservationRepository
             with get_db_context() as db:
                 latest_obs = MarineObservationRepository.get_latest_observation(db, lat, lon)
-                if latest_obs:
-                    curr_wave = latest_obs.wave_height_m
-                    curr_wind = latest_obs.wind_speed_kmh
-                    if latest_obs.sst_c:
-                        curr_sst = latest_obs.sst_c
-
                 past_obs = MarineObservationRepository.get_historical_window(db, lat, lon, hours_ago=period_hours)
-                if past_obs:
-                    hist_wave = past_obs.wave_height_m
-                    hist_wind = past_obs.wind_speed_kmh
-                    if past_obs.sst_c:
-                        hist_sst = past_obs.sst_c
-        except Exception as e:
-            logger.debug(f"Historical comparison DB lookup fallback: {e}")
+                if not latest_obs or not past_obs:
+                    raise HTTPException(status_code=503, detail="HISTORICAL_DATA_UNAVAILABLE")
+                curr_wave, curr_wind, curr_sst = latest_obs.wave_height_m, latest_obs.wind_speed_kmh, latest_obs.sst_c
+                hist_wave, hist_wind, hist_sst = past_obs.wave_height_m, past_obs.wind_speed_kmh, past_obs.sst_c
+                if any(value is None for value in (curr_wave, curr_wind, curr_sst, hist_wave, hist_wind, hist_sst)):
+                    raise HTTPException(status_code=503, detail="HISTORICAL_DATA_INCOMPLETE")
+        except HTTPException:
+            raise
+        except Exception as exc:
+            logger.warning("Historical lookup failed: %s", type(exc).__name__)
+            raise HTTPException(status_code=503, detail="HISTORICAL_DATA_UNAVAILABLE")
 
         wave_delta = round(curr_wave - hist_wave, 2)
         wind_delta = round(curr_wind - hist_wind, 1)

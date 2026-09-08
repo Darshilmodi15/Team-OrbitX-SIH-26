@@ -24,16 +24,24 @@ interface MarineMetricsProps {
 export default function MarineMetrics({ weather, riskLevel, riskProfile }: MarineMetricsProps) {
   if (!weather) return null;
 
-  const wave = weather.wave_height_m ?? 0;
-  const wind = weather.wind_speed_kmh ?? 0;
-  const gust = weather.wind_gust_kmh ?? Math.round(wind * 1.3);
+  const wave = weather.wave_height_m;
+  const wind = weather.wind_speed_kmh;
+  const gust = weather.wind_gust_kmh;
   const forecast = (weather.forecast || '').toLowerCase();
 
-  const isSevere = wave > 2.5 || wind > 50 || gust > 60 || forecast.includes('storm');
-  const isCaution = !isSevere && (wave > 1.5 || wind > 30 || gust > 40 || forecast.includes('rain'));
+  const isSevere = (wave != null && wave > 2.5) || (wind != null && wind > 50) || (gust != null && gust > 60) || forecast.includes('storm');
+  const isCaution = !isSevere && ((wave != null && wave > 1.5) || (wind != null && wind > 30) || (gust != null && gust > 40) || forecast.includes('rain'));
 
   const getStatusBadge = () => {
     if (riskLevel === 'unsafe' || riskProfile?.overall === 'HIGH' || isSevere) {
+      if (wave == null || wind == null) {
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1">
+            <span>?</span>
+            <span>INSUFFICIENT DATA</span>
+          </span>
+        );
+      }
       return (
         <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-800 border border-rose-200 flex items-center gap-1">
           <span>🚨</span>
@@ -52,7 +60,7 @@ export default function MarineMetrics({ weather, riskLevel, riskProfile }: Marin
     return (
       <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
         <span>✅</span>
-        <span>LOW RISK / SAFE TO SAIL</span>
+        <span>LOW RISK / NO THRESHOLD EXCEEDED</span>
       </span>
     );
   };
@@ -81,23 +89,23 @@ export default function MarineMetrics({ weather, riskLevel, riskProfile }: Marin
           <div className="text-[10px] text-slate-500 uppercase font-mono font-bold">Forecast</div>
           <div className="text-xs font-bold text-slate-900 mt-0.5 flex items-center gap-1">
             <span>{getForecastIcon(weather.forecast)}</span>
-            <span className="capitalize">{weather.forecast || 'Clear'}</span>
+            <span className="capitalize">            {weather.forecast || 'Unavailable'}</span>
           </div>
         </div>
 
         {/* Wave Height */}
         <div className="p-2 rounded-lg bg-white border border-slate-200">
           <div className="text-[10px] text-slate-500 uppercase font-mono font-bold">Wave Height</div>
-          <div className={`text-xs font-bold mt-0.5 ${wave > 2.0 ? 'text-rose-600' : wave > 1.5 ? 'text-amber-600' : 'text-emerald-700'}`}>
-            {wave.toFixed(1)} <span className="text-[10px] font-normal text-slate-500 font-mono">m</span>
+          <div className={`text-xs font-bold mt-0.5 ${wave != null && wave > 2.0 ? 'text-rose-600' : wave != null && wave > 1.5 ? 'text-amber-600' : 'text-emerald-700'}`}>
+            {wave == null ? 'Unavailable' : <>{wave.toFixed(1)} <span className="text-[10px] font-normal text-slate-500 font-mono">m</span></>}
           </div>
         </div>
 
         {/* Wind Speed */}
         <div className="p-2 rounded-lg bg-white border border-slate-200">
           <div className="text-[10px] text-slate-500 uppercase font-mono font-bold">Wind Speed</div>
-          <div className={`text-xs font-bold mt-0.5 ${wind > 45 ? 'text-rose-600' : wind > 35 ? 'text-amber-600' : 'text-teal-700'}`}>
-            {wind.toFixed(0)} <span className="text-[10px] font-normal text-slate-500 font-mono">km/h</span>
+          <div className={`text-xs font-bold mt-0.5 ${wind != null && wind > 45 ? 'text-rose-600' : wind != null && wind > 35 ? 'text-amber-600' : 'text-teal-700'}`}>
+            {wind == null ? 'Unavailable' : <>{wind.toFixed(0)} <span className="text-[10px] font-normal text-slate-500 font-mono">km/h</span></>}
           </div>
         </div>
 
@@ -105,7 +113,7 @@ export default function MarineMetrics({ weather, riskLevel, riskProfile }: Marin
         <div className="p-2 rounded-lg bg-white border border-slate-200">
           <div className="text-[10px] text-slate-500 uppercase font-mono font-bold">Temp / Vis</div>
           <div className="text-xs font-bold text-slate-900 mt-0.5">
-            {weather.temperature_c ?? 29.5}°C <span className="text-[10px] text-slate-500 font-normal font-mono">/ {weather.visibility_km ?? 15}km</span>
+            {weather.temperature_c == null ? 'Unavailable' : `${weather.temperature_c}°C`} <span className="text-[10px] text-slate-500 font-normal font-mono">/ {weather.visibility_km == null ? 'Unavailable' : `${weather.visibility_km}km`}</span>
           </div>
         </div>
       </div>

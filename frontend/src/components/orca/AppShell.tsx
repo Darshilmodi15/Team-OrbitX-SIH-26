@@ -28,9 +28,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, location } = useSession();
   const { pathname } = useLocation();
   const nav = user?.role === "admin"
-    ? [{ to: "/admin", key: "System Overview", Icon: LayoutDashboard }, { to: "/settings", key: "System Settings", Icon: Settings }]
+    ? [{ to: "/admin", key: t("ops.system"), Icon: LayoutDashboard }, { to: "/settings", key: t("nav.settings"), Icon: Settings }]
     : user?.role === "government"
-      ? [{ to: "/officer", key: "Operational Overview", Icon: LayoutDashboard }, { to: "/map", key: "Emergency Map", Icon: MapIcon }, { to: "/alerts", key: "Incidents", Icon: Bell }]
+      ? [{ to: "/officer", key: t("ops.overview"), Icon: LayoutDashboard }, { to: "/map", key: t("nav.map"), Icon: MapIcon }, { to: "/alerts", key: t("nav.alerts"), Icon: Bell }]
       : NAV.map((item) => ({ ...item, key: t(item.key) }));
 
   return (
@@ -64,7 +64,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <div className="flex shrink-0 items-center gap-1.5">
             <span className="hidden rounded-full border border-teal-500/30 bg-teal-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-teal-300 sm:inline">
-              {user?.role === "government" ? "Government view" : user?.role === "admin" ? "Admin view" : "Fisher view"}
+              {t(user?.role === "government" ? "ops.officer" : user?.role === "admin" ? "ops.admin" : "nav.dashboard")}
             </span>
             <LanguageMenu />
             <Link
@@ -98,7 +98,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur-md lg:hidden"
         aria-label="Primary mobile"
       >
-        <ul className="grid grid-cols-5">
+        <ul className="grid" style={{ gridTemplateColumns: `repeat(${nav.length}, minmax(0, 1fr))` }}>
           {nav.slice(0, 5).map(({ to, key, Icon }) => {
             const isActive = pathname === to;
             return (

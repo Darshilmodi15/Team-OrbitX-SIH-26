@@ -211,7 +211,7 @@ class EmergencyService:
         assigned_mrcc = self.route_to_mrcc(req.lat, req.lon)
         mayday = self.generate_mayday_transcript(
             vessel_name=req.vessel_name or "Fishing Vessel",
-            reg_no=req.registration_no or "IND-VESSEL",
+            reg_no=req.registration_no or "NOT PROVIDED",
             lat=req.lat,
             lon=req.lon,
             emergency_nature=req.emergency_nature,
@@ -228,7 +228,7 @@ class EmergencyService:
 
         response = SOSBroadcastResponse(
             sos_id=sos_id,
-            status="ACTIVE_BEACON_DISPATCHED",
+            status="RECEIVED",
             broadcast_timestamp=datetime.now(timezone.utc).isoformat(),
             assigned_mrcc=assigned_mrcc,
             mayday_message=mayday,
@@ -244,7 +244,6 @@ class EmergencyService:
             },
         )
 
-        self._active_sos_records[sos_id] = response
 
         # Persist to database if available
         try:
@@ -257,14 +256,14 @@ class EmergencyService:
                     id=sos_id,
                     user_id=user_id,
                     vessel_name=req.vessel_name or "Fishing Craft / Motor Vessel",
-                    registration_no=req.registration_no or "IND-VESSEL",
+                    registration_no=req.registration_no,
                     latitude=req.lat,
                     longitude=req.lon,
                     crew_count=req.crew_count,
                     emergency_nature=req.emergency_nature.value if hasattr(req.emergency_nature, "value") else str(req.emergency_nature),
                     notes=req.notes or "",
                     contact_phone=req.contact_phone,
-                    status="ACTIVE_BEACON_DISPATCHED",
+                    status="RECEIVED",
                     assigned_mrcc=assigned_mrcc,
                     mayday_message=mayday,
                     emergency_hotlines_json=json.dumps(hotlines),
@@ -273,9 +272,11 @@ class EmergencyService:
                 )
                 EmergencyRepository.create_sos(db, db_sos)
         except Exception as e:
-            logger.debug(f"SOS broadcast DB persistence: {e}")
+            from fastapi import HTTPException
+            logger.warning("SOS persistence failed: %s", type(e).__name__)
+            raise HTTPException(status_code=503, detail="SOS_STORAGE_UNAVAILABLE")
 
-        logger.warning(f"🚨 EMERGENCY SOS BROADCAST REGISTERED: {sos_id} at ({req.lat}, {req.lon}) - {req.emergency_nature}")
+        logger.info("SOS request stored: %s", sos_id)
         return response
 
     def get_active_sos(self) -> List[SOSBroadcastResponse]:
@@ -288,7 +289,8 @@ class EmergencyService:
                 for row in EmergencyRepository.list_active_sos(db):
                     records[row.id] = self._from_db(row)
         except Exception as e:
-            logger.debug(f"SOS DB listing: {e}")
+            from fastapi import HTTPException
+            raise HTTPException(status_code=503, detail="SOS_STORAGE_UNAVAILABLE")
         return list(records.values())
 
     def update_status(self, sos_id: str, new_status: str) -> Optional[SOSBroadcastResponse]:
@@ -306,12 +308,13 @@ class EmergencyService:
                     if new_status == "RESOLVED": row.resolved_at = datetime.now(timezone.utc)
                     return self._from_db(row)
         except Exception as e:
-            logger.debug(f"SOS status update: {e}")
+            from fastapi import HTTPException
+            raise HTTPException(status_code=503, detail="SOS_STORAGE_UNAVAILABLE")
         return result
 
     def _from_db(self, row) -> SOSBroadcastResponse:
         import json
-        return SOSBroadcastResponse(sos_id=row.id, status=row.status, broadcast_timestamp=row.created_at.isoformat(), assigned_mrcc=row.assigned_mrcc, mayday_message=row.mayday_message, emergency_hotlines=json.loads(row.emergency_hotlines_json or "[]"), recorded_telemetry=json.loads(row.recorded_telemetry_json or "{}"))
+        return SOSBroadcastResponse(sos_id=row.id, status=row.status, broadcast_timestamp=row.created_at.replace(tzinfo=timezone.utc).isoformat(), assigned_mrcc=row.assigned_mrcc, mayday_message=row.mayday_message, emergency_hotlines=json.loads(row.emergency_hotlines_json or "[]"), recorded_telemetry=json.loads(row.recorded_telemetry_json or "{}"))
 
 
 emergency_service = EmergencyService()

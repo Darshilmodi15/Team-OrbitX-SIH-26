@@ -136,16 +136,21 @@ def transcribe_base64_audio(request: TranscribeBase64Request):
         raw_b64 = request.audio_base64
         if "base64," in raw_b64:
             raw_b64 = raw_b64.split("base64,")[1]
-        audio_bytes = base64.b64decode(raw_b64)
+        audio_bytes = base64.b64decode(raw_b64, validate=True)
     except Exception as err:
         raise HTTPException(status_code=400, detail=f"Invalid base64 audio encoding: {err}")
 
+    if len(audio_bytes) < 10:
+        raise HTTPException(status_code=400, detail="Empty or malformed audio")
     result = language_service.speech_to_text(
         audio_bytes=audio_bytes,
         filename=request.filename or "recording.wav",
         language_code=request.language,
         content_type=request.content_type or "audio/wav",
     )
+
+    if result.get("is_mock") or not result.get("transcript", "").strip():
+        raise HTTPException(status_code=503, detail="STT_UPSTREAM_UNAVAILABLE")
 
     transcript = result.get("transcript", "")
     detected_iso = result.get("detected_iso", "en")
@@ -183,6 +188,8 @@ def synthesize_speech(request: SpeakRequest):
         speaker=request.speaker,
     )
 
+    if result.get("is_mock") or not result.get("audio_base64"):
+        raise HTTPException(status_code=503, detail="TTS_UPSTREAM_UNAVAILABLE")
     return SpeakResponse(
         audio_base64=result.get("audio_base64"),
         audio_format=result.get("audio_format", "wav"),

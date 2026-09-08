@@ -37,7 +37,7 @@ def get_pfz_dataset() -> Dict[str, Any]:
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        return data
+        return {"source": "unavailable", "data_mode": "unavailable", "pfz_zones": [], "reason": "No timestamped current PFZ advisory feed is configured"}
     except json.JSONDecodeError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

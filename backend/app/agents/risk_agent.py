@@ -1,5 +1,6 @@
-"""Marine safety risk assessment agent."""
-from typing import Any, Dict, List, Union
+"""Evidence-aware marine safety risk assessment."""
+from typing import Any, Dict, List, Optional, Union
+
 from app.models.agent_models import (
     MarineRiskProfile,
     RiskComponentItem,
@@ -8,175 +9,151 @@ from app.models.agent_models import (
 )
 
 
+def _value(data: Union[WeatherEvidence, Dict[str, Any]], name: str) -> Any:
+    return getattr(data, name, None) if isinstance(data, WeatherEvidence) else data.get(name)
+
+
 def assess_risk(weather_input: Union[WeatherEvidence, Dict[str, Any]]) -> RiskEvidence:
-    """
-    Assesses maritime safety risk based on WeatherEvidence.
-    
-    Returns a structured RiskEvidence object with:
-    - 'level': "safe", "caution", or "unsafe"
-    - 'reason': detailed rationale for the safety classification
-    - 'factors': list of specific parameters and thresholds triggered
-    - 'profile': MarineRiskProfile with decomposed risks and trends
-    - 'source': "risk_assessment_agent"
-    """
-    if isinstance(weather_input, WeatherEvidence):
-        wave_height = weather_input.wave_height_m
-        wind_speed = weather_input.wind_speed_kmh
-        wave_period = weather_input.wave_period_s or 7.0
-        wind_gust = weather_input.wind_gust_kmh or (wind_speed * 1.3)
-        forecast = weather_input.forecast.strip().lower()
-        horizon = weather_input.forecast_horizon or []
-        cache_status = weather_input.cache_status or "live"
-    else:
-        wave_height = float(weather_input.get("wave_height_m", 0.0))
-        wind_speed = float(weather_input.get("wind_speed_kmh", 0.0))
-        wave_period = float(weather_input.get("wave_period_s", 7.0))
-        wind_gust = float(weather_input.get("wind_gust_kmh", wind_speed * 1.3))
-        forecast = str(weather_input.get("forecast", "")).strip().lower()
-        horizon = weather_input.get("forecast_horizon", [])
-        cache_status = str(weather_input.get("cache_status", "live"))
+    """Apply ORCA thresholds only to measurements supplied by the provider."""
+    wave = _value(weather_input, "wave_height_m")
+    wind = _value(weather_input, "wind_speed_kmh")
+    period = _value(weather_input, "wave_period_s")
+    gust = _value(weather_input, "wind_gust_kmh")
+    forecast_value = _value(weather_input, "forecast")
+    forecast = forecast_value.strip().lower() if isinstance(forecast_value, str) else None
+    horizon = _value(weather_input, "forecast_horizon") or []
+    cache_status = _value(weather_input, "cache_status") or "unavailable"
 
-    severe_triggers: List[str] = []
-    caution_triggers: List[str] = []
+    available: List[str] = []
+    missing: List[str] = []
+    for label, value in (
+        ("wave height", wave),
+        ("sustained wind", wind),
+        ("wave period", period),
+        ("wind gusts", gust),
+        ("storm/precipitation forecast", forecast),
+    ):
+        (available if value is not None else missing).append(label)
+
+    cache_label = {
+        "live": "LIVE",
+        "cached": "CACHED",
+        "stale": "STALE",
+        "unavailable": "UNAVAILABLE",
+    }.get(str(cache_status), "UNKNOWN")
+
+    if wave is None or wind is None:
+        profile = MarineRiskProfile(
+            overall="UNKNOWN",
+            status_label="INSUFFICIENT DATA",
+            wave_risk=RiskComponentItem(level="UNKNOWN", description="Wave evidence unavailable"),
+            wind_risk=RiskComponentItem(level="UNKNOWN", description="Wind evidence unavailable"),
+            storm_risk=RiskComponentItem(
+                level="UNKNOWN" if forecast is None else "LOW",
+                description="Storm evidence unavailable" if forecast is None else "No storm trigger in supplied forecast",
+            ),
+            gust_risk=RiskComponentItem(
+                level="UNKNOWN" if gust is None else ("HIGH" if gust > 60 else "MODERATE" if gust > 40 else "LOW"),
+                description="Gust evidence unavailable" if gust is None else "Measured gust threshold evaluation",
+            ),
+            forecast_trend="unknown",
+            recommendations=["Do not treat this response as clearance to sail; obtain a verified marine forecast."],
+            warnings=["Essential wave or wind evidence is missing."],
+        )
+        return RiskEvidence(
+            level="unknown",
+            reason="Insufficient marine evidence for an ORCA risk classification.",
+            factors=[],
+            safety_label="INSUFFICIENT DATA",
+            confidence="INSUFFICIENT_EVIDENCE",
+            risk_score=None,
+            freshness_status=cache_label,
+            wave_status="Unavailable",
+            wind_status="Unavailable",
+            profile=profile,
+            available_evidence=available,
+            missing_evidence=missing,
+            evidence_completeness="insufficient",
+        )
+
+    severe: List[str] = []
+    caution: List[str] = []
     warnings: List[str] = []
-    recommendations: List[str] = []
-
-    # Check forecast horizon trend
-    forecast_trend = "stable"
-    if horizon and len(horizon) >= 2:
-        last_wave = horizon[-1].get("wave_height_m", wave_height)
-        if last_wave > wave_height + 0.5 or last_wave >= 2.0:
-            forecast_trend = "deteriorating"
-            caution_triggers.append("6-hour forecast shows deteriorating sea conditions")
-            warnings.append("Deteriorating forecast trend over the next 4-6 hours")
-        elif last_wave < wave_height - 0.5:
-            forecast_trend = "improving"
-
-    # Check steep chop / wave period penalty
-    is_steep_chop = (wave_period < 5.5) and (wave_height >= 1.2)
-    if is_steep_chop:
-        caution_triggers.append(f"short wave period ({wave_period:.1f}s) indicates steep chop")
-        warnings.append(f"Steep chop detected due to short wave period ({wave_period:.1f}s)")
-
-    # Check unsafe thresholds
-    if wave_height > 2.5:
-        severe_triggers.append(f"wave height of {wave_height:.2f}m exceeds severe limit (>2.5m)")
-        warnings.append(f"Severe wave height ({wave_height:.2f}m) exceeds craft limit")
-    if wind_speed > 50.0:
-        severe_triggers.append(f"wind speed of {wind_speed:.1f} km/h exceeds severe limit (>50 km/h)")
-        warnings.append(f"Gale wind speed ({wind_speed:.1f} km/h)")
-    if wind_gust > 60.0:
-        severe_triggers.append(f"wind gusts of {wind_gust:.1f} km/h exceed safe limits (>60 km/h)")
-        warnings.append(f"Dangerous wind gusts ({wind_gust:.1f} km/h)")
+    if wave > 2.5:
+        severe.append(f"wave height {wave:.2f}m exceeds the ORCA severe threshold")
+        warnings.append(f"Severe wave height ({wave:.2f}m)")
+    elif wave > 1.5:
+        caution.append(f"wave height {wave:.2f}m exceeds the ORCA caution threshold")
+        warnings.append(f"Elevated wave height ({wave:.2f}m)")
+    if wind > 50:
+        severe.append(f"wind speed {wind:.1f} km/h exceeds the ORCA severe threshold")
+        warnings.append(f"Severe wind speed ({wind:.1f} km/h)")
+    elif wind > 40:
+        caution.append(f"wind speed {wind:.1f} km/h exceeds the ORCA caution threshold")
+        warnings.append(f"Strong wind speed ({wind:.1f} km/h)")
+    if period is not None and period < 5.5 and wave > 1.2:
+        caution.append(f"short wave period {period:.1f}s indicates steep chop")
+        warnings.append(f"Short-period waves ({period:.1f}s)")
+    if gust is not None and gust > 60:
+        severe.append(f"wind gust {gust:.1f} km/h exceeds the ORCA severe threshold")
+    elif gust is not None and gust > 40:
+        caution.append(f"wind gust {gust:.1f} km/h exceeds the ORCA caution threshold")
     if forecast == "stormy":
-        severe_triggers.append("forecast indicates severe storm conditions")
-        warnings.append("Storm forecast in coastal sector")
+        severe.append("provider forecast indicates storm conditions")
+    elif forecast == "rainy":
+        caution.append("provider forecast indicates rain or squall risk")
 
-    # Component evaluations
-    wave_risk_level = "HIGH" if wave_height > 2.5 else ("MODERATE" if (wave_height > 1.5 or is_steep_chop) else "LOW")
-    wind_risk_level = "HIGH" if wind_speed > 50.0 else ("MODERATE" if wind_speed > 35.0 else "LOW")
-    storm_risk_level = "HIGH" if forecast == "stormy" else ("MODERATE" if forecast == "rainy" else "LOW")
-    gust_risk_level = "HIGH" if wind_gust > 60.0 else ("MODERATE" if wind_gust > 40.0 else "LOW")
+    trend = "unknown"
+    if len(horizon) >= 2 and horizon[-1].get("wave_height_m") is not None:
+        last_wave = horizon[-1]["wave_height_m"]
+        trend = "deteriorating" if last_wave > wave + 0.5 else "improving" if last_wave < wave - 0.5 else "stable"
 
-    cache_stat = "LIVE" if cache_status == "live" else ("CACHED" if cache_status == "cached" else "STALE")
-    wave_status = "High Wave Danger (>2.5m)" if wave_height > 2.5 else ("Moderate Swell (1.5-2.5m)" if wave_height > 1.5 else "Calm / Safe (<=1.5m)")
-    wind_status = "Gale Wind Hazard (>50 km/h)" if wind_speed > 50.0 else ("Breezy / Elevated (40-50 km/h)" if wind_speed > 40.0 else "Gentle / Moderate (<=40 km/h)")
+    wave_level = "HIGH" if wave > 2.5 else "MODERATE" if wave > 1.5 or (period is not None and period < 5.5 and wave > 1.2) else "LOW"
+    wind_level = "HIGH" if wind > 50 else "MODERATE" if wind > 35 else "LOW"
+    storm_level = "HIGH" if forecast == "stormy" else "MODERATE" if forecast == "rainy" else "UNKNOWN"
+    gust_level = "UNKNOWN" if gust is None else "HIGH" if gust > 60 else "MODERATE" if gust > 40 else "LOW"
+    completeness = "complete" if not missing else "partial"
+    confidence = "ORCA_HEURISTIC_COMPLETE" if completeness == "complete" else "ORCA_HEURISTIC_PARTIAL"
 
-    if severe_triggers:
-        score = min(1.0, 0.75 + (max(0, wave_height - 2.5) * 0.1) + (max(0, wind_speed - 50.0) * 0.005))
-        recommendations.append("Suspend all departures; return to harbor immediately.")
-        profile = MarineRiskProfile(
-            overall="HIGH",
-            status_label="UNSAFE",
-            wave_risk=RiskComponentItem(level=wave_risk_level, score=0.85, description="Dangerous wave action"),
-            wind_risk=RiskComponentItem(level=wind_risk_level, score=0.85, description="Severe gale winds"),
-            storm_risk=RiskComponentItem(level=storm_risk_level, score=0.90, description="Squall / storm activity"),
-            gust_risk=RiskComponentItem(level=gust_risk_level, score=0.85, description="High peak gusts"),
-            forecast_trend=forecast_trend,
-            recommendations=recommendations,
-            warnings=warnings,
-        )
-        return RiskEvidence(
-            level="unsafe",
-            reason=f"UNSAFE FOR SAILING: {'; '.join(severe_triggers)}. Sea venturing is strictly discouraged.",
-            factors=severe_triggers,
-            safety_label="UNSAFE — SEVERE HAZARD",
-            confidence="HIGH (Authoritative INCOIS Model Coverage)",
-            risk_score=round(score, 2),
-            freshness_status=cache_stat,
-            wave_status=wave_status,
-            wind_status=wind_status,
-            profile=profile,
-            source="risk_assessment_agent",
-        )
+    if trend == "deteriorating" and not severe:
+        caution.append("forecast horizon indicates deteriorating conditions")
+        warnings.append("Forecast horizon is deteriorating")
+    if severe:
+        level, overall, label = "unsafe", "HIGH", "UNSAFE"
+        recommendation = "Suspend departures and consult official marine safety broadcasts."
+        score: Optional[float] = 0.85
+    elif caution:
+        level, overall, label = "caution", "MODERATE", "CAUTION"
+        recommendation = "Use heightened caution and consult official marine safety broadcasts."
+        score = 0.55
+    else:
+        level, overall, label = "safe", "LOW", "SAFE"
+        recommendation = "No ORCA threshold was exceeded; this is not a safety clearance."
+        score = round(min(1.0, (wave / 1.5) * 0.3), 2)
 
-    # Check caution thresholds (wave_height_m > 1.5 or wind_speed_kmh > 40 or rainy or steep chop)
-    if wave_height > 1.5:
-        caution_triggers.append(f"wave height of {wave_height:.2f}m exceeds safety threshold (>1.5m)")
-        warnings.append(f"Elevated wave height of {wave_height:.2f}m")
-    if wind_speed > 40.0:
-        caution_triggers.append(f"wind speed of {wind_speed:.1f} km/h exceeds safety threshold (>40 km/h)")
-        warnings.append(f"Strong winds of {wind_speed:.1f} km/h")
-    if forecast == "rainy":
-        caution_triggers.append("reduced visibility and squall risks due to rain")
-        warnings.append("Rain and localized squall risks")
-
-    if caution_triggers:
-        score = 0.40 + (max(0, wave_height - 1.5) * 0.25)
-        recommendations.append("Remain within 5 nautical miles of coastline and monitor VHF Channel 16.")
-        profile = MarineRiskProfile(
-            overall="MODERATE",
-            status_label="CAUTION",
-            wave_risk=RiskComponentItem(level=wave_risk_level, score=0.55, description="Moderate swell/chop"),
-            wind_risk=RiskComponentItem(level=wind_risk_level, score=0.50, description="Fresh to strong breeze"),
-            storm_risk=RiskComponentItem(level=storm_risk_level, score=0.40, description="Squall possibility"),
-            gust_risk=RiskComponentItem(level=gust_risk_level, score=0.45, description="Moderate gusts"),
-            forecast_trend=forecast_trend,
-            recommendations=recommendations,
-            warnings=warnings,
-        )
-        return RiskEvidence(
-            level="caution",
-            reason=f"CAUTION ADVISED: {'; '.join(caution_triggers)}. Small crafts should exercise heightened vigilance.",
-            factors=caution_triggers,
-            safety_label="CAUTION ADVISED",
-            confidence="HIGH (Authoritative INCOIS Model Coverage)",
-            risk_score=round(min(0.74, score), 2),
-            freshness_status=cache_stat,
-            wave_status=wave_status,
-            wind_status=wind_status,
-            profile=profile,
-            source="risk_assessment_agent",
-        )
-
-    # Safe conditions
-    score = round(max(0.05, (wave_height / 1.5) * 0.30), 2)
-    recommendations.append("Conditions are optimal for fishing operations.")
     profile = MarineRiskProfile(
-        overall="LOW",
-        status_label="SAFE",
-        wave_risk=RiskComponentItem(level="LOW", score=0.2, description="Calm sea state"),
-        wind_risk=RiskComponentItem(level="LOW", score=0.2, description="Gentle breeze"),
-        storm_risk=RiskComponentItem(level="LOW", score=0.1, description="Clear sky"),
-        gust_risk=RiskComponentItem(level="LOW", score=0.2, description="Light gusts"),
-        forecast_trend=forecast_trend,
-        recommendations=recommendations,
-        warnings=[],
+        overall=overall,
+        status_label=label,
+        wave_risk=RiskComponentItem(level=wave_level, score=score, description="Measured wave threshold evaluation"),
+        wind_risk=RiskComponentItem(level=wind_level, score=score, description="Measured wind threshold evaluation"),
+        storm_risk=RiskComponentItem(level=storm_level, score=None, description="Provider forecast evidence" if forecast else "Storm evidence unavailable"),
+        gust_risk=RiskComponentItem(level=gust_level, score=None, description="Provider gust evidence" if gust is not None else "Gust evidence unavailable"),
+        forecast_trend=trend,
+        recommendations=[recommendation],
+        warnings=warnings,
     )
     return RiskEvidence(
-        level="safe",
-        reason=f"SAFE TO SAIL: Wave height is {wave_height:.2f}m (<=1.5m), wind speed is {wind_speed:.1f} km/h (<=40 km/h), with {forecast} forecast. Normal marine and fishing activities may proceed.",
-        factors=[
-            f"wave_height={wave_height:.2f}m (<=1.5m)",
-            f"wind_speed={wind_speed:.1f} km/h (<=40 km/h)",
-            f"forecast='{forecast}'",
-        ],
-        safety_label="SAFE TO VENTURE",
-        confidence="HIGH (Authoritative INCOIS Model Coverage)",
+        level=level,
+        reason=f"ORCA heuristic assessment: {'; '.join(severe or caution) or 'no configured threshold exceeded'}." ,
+        factors=severe or caution,
+        safety_label=label,
+        confidence=confidence,
         risk_score=score,
-        freshness_status=cache_stat,
-        wave_status=wave_status,
-        wind_status=wind_status,
+        freshness_status=cache_label,
+        wave_status=f"{wave:.2f}m",
+        wind_status=f"{wind:.1f} km/h",
         profile=profile,
-        source="risk_assessment_agent",
+        available_evidence=available,
+        missing_evidence=missing,
+        evidence_completeness=completeness,
     )

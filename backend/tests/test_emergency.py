@@ -64,7 +64,7 @@ class TestEmergencyService(unittest.TestCase):
             contact_phone="+91-9820011223",
         )
         resp = emergency_service.broadcast_sos(req)
-        self.assertEqual(resp.status, "ACTIVE_BEACON_DISPATCHED")
+        self.assertEqual(resp.status, "RECEIVED")
         self.assertTrue(resp.sos_id.startswith("SOS-"))
         self.assertIn("MRCC Mumbai", resp.assigned_mrcc)
         self.assertGreaterEqual(len(resp.emergency_hotlines), 3)
@@ -98,7 +98,7 @@ class TestEmergencyEndpoints(unittest.TestCase):
         self.assertEqual(res.status_code, 201)
         data = res.json()
         self.assertIn("sos_id", data)
-        self.assertEqual(data["status"], "ACTIVE_BEACON_DISPATCHED")
+        self.assertEqual(data["status"], "RECEIVED")
         self.assertIn("MAYDAY", data["mayday_message"])
 
     def test_get_active_sos_endpoint(self):

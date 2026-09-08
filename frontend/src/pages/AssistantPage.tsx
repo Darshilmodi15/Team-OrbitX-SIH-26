@@ -90,12 +90,12 @@ function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
 
   const hasWeather =
     evidence.weather &&
-    (evidence.weather.wave_height_m !== undefined ||
-      evidence.weather.wind_speed_kmh !== undefined ||
-      evidence.weather.temperature_c !== undefined ||
-      evidence.weather.sea_surface_temperature_c !== undefined);
+    (evidence.weather.wave_height_m != null ||
+      evidence.weather.wind_speed_kmh != null ||
+      evidence.weather.temperature_c != null ||
+      evidence.weather.sea_surface_temperature_c != null);
   const hasPfz = evidence.nearest_pfz && evidence.nearest_pfz.length > 0;
-  const hasBoundary = evidence.boundary && evidence.boundary.distance_to_boundary_km !== undefined;
+  const hasBoundary = evidence.boundary && evidence.boundary.distance_to_boundary_km != null;
   const hasSources = evidence.sources && evidence.sources.length > 0;
   const hasReasoning = evidence.reasoning && evidence.reasoning.length > 0;
 
@@ -125,7 +125,7 @@ function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
           )}
           {evidence.connectivity_mode && (
             <span className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono text-muted-foreground border border-border">
-              {evidence.connectivity_mode}
+              {t(evidence.connectivity_mode === "LIVE" ? "state.live" : evidence.connectivity_mode === "CACHED" ? "health.cached" : evidence.connectivity_mode === "STALE" ? "health.stale" : "chat.unavailable")}
             </span>
           )}
         </div>
@@ -143,32 +143,32 @@ function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
       <div className="flex flex-wrap items-center gap-1.5 p-2.5 bg-card/40">
         {hasWeather && (
           <>
-            {evidence.weather.wave_height_m !== undefined && (
+            {evidence.weather.wave_height_m != null && (
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/80 text-secondary-foreground text-[11px] font-mono">
                 <Waves className="size-3 text-cyan-400" />
-                <span>{evidence.weather.wave_height_m?.toFixed(1)}m Waves</span>
+                <span>{evidence.weather.wave_height_m?.toFixed(1)}m {t("marine.wave")}</span>
               </span>
             )}
-            {evidence.weather.wind_speed_kmh !== undefined && (
+            {evidence.weather.wind_speed_kmh != null && (
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/80 text-secondary-foreground text-[11px] font-mono">
                 <Wind className="size-3 text-sky-400" />
                 <span>
-                  {evidence.weather.wind_speed_kmh?.toFixed(0)} km/h {evidence.weather.wind_direction_cardinal || "W"}
+                  {evidence.weather.wind_speed_kmh?.toFixed(0)} km/h {evidence.weather.wind_direction_cardinal || ""}
                 </span>
               </span>
             )}
-            {(evidence.weather.sea_surface_temperature_c !== undefined || evidence.weather.temperature_c !== undefined) && (
+            {(evidence.weather.sea_surface_temperature_c != null || evidence.weather.temperature_c != null) && (
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/80 text-secondary-foreground text-[11px] font-mono">
                 <Thermometer className="size-3 text-amber-400" />
                 <span>
-                  {(evidence.weather.sea_surface_temperature_c || evidence.weather.temperature_c)?.toFixed(1)}°C SST
+                  {(evidence.weather.sea_surface_temperature_c ?? evidence.weather.temperature_c)?.toFixed(1)}°C {t("marine.sst")}
                 </span>
               </span>
             )}
-            {evidence.weather.visibility_km !== undefined && (
+            {evidence.weather.visibility_km != null && (
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/80 text-secondary-foreground text-[11px] font-mono">
                 <Eye className="size-3 text-teal-400" />
-                <span>{evidence.weather.visibility_km?.toFixed(0)} km Vis</span>
+                <span>{evidence.weather.visibility_km?.toFixed(0)} km {t("marine.visibility")}</span>
               </span>
             )}
           </>
@@ -178,7 +178,7 @@ function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-teal-500/10 text-teal-300 border border-teal-500/20 text-[11px] font-mono">
             <span>🐟</span>
             <span>
-              PFZ: {evidence.nearest_pfz![0].distance_km !== undefined ? `${evidence.nearest_pfz![0].distance_km.toFixed(1)} km` : evidence.nearest_pfz![0].name || "Active"}
+              PFZ: {evidence.nearest_pfz![0].distance_km != null ? `${evidence.nearest_pfz![0].distance_km.toFixed(1)} km` : evidence.nearest_pfz![0].name || "Active"}
             </span>
           </span>
         )}
@@ -247,6 +247,7 @@ export default function AssistantPage() {
   const [input, setInput] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
+  const [chatError, setChatError] = useState(false);
   const requestInFlightRef = useRef(false);
 
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
@@ -278,7 +279,7 @@ export default function AssistantPage() {
     let cancelled = false;
     setThreads([]); setActiveThreadId("");
     fetchConversations().then((rows: any[]) => {
-      if (cancelled) return;
+      if (cancelled || requestInFlightRef.current) return;
       const mapped = rows.map((row) => ({ id: row.id, title: row.title, updatedAt: new Date(row.updated_at).getTime(), messages: (row.messages || []).map((m: any) => ({ id: m.id, role: m.role, text: m.content, at: new Date(m.created_at).getTime(), evidence: m.metadata })) }));
       setThreads(mapped); setActiveThreadId(mapped[0]?.id || "");
     }).catch((err) => { if (!cancelled) console.warn("Conversation history unavailable", err); });
@@ -304,16 +305,9 @@ export default function AssistantPage() {
 
   async function createNewThread() {
     stopAudio();
-    const created = await createConversation(`${t("chat.title")} ${threads.length + 1}`);
-    const newId = created.id;
-    const newThread: ChatThread = {
-      id: newId,
-      title: `${t("chat.title")} ${threads.length + 1}`,
-      updatedAt: Date.now(),
-      messages: [],
-    };
-    setThreads((prev) => [newThread, ...prev]);
-    setActiveThreadId(newId);
+    if (requestInFlightRef.current) return;
+    setActiveThreadId("");
+    setChatError(false);
     setMobileDrawerOpen(false);
     setInput("");
     inputRef.current?.focus();
@@ -322,7 +316,8 @@ export default function AssistantPage() {
   async function deleteThread(id: string, e: React.MouseEvent) {
     e.stopPropagation();
     stopAudio();
-    await deleteConversation(id);
+    if (requestInFlightRef.current) return;
+    try { await deleteConversation(id); } catch { setChatError(true); return; }
     const filtered = threads.filter((th) => th.id !== id);
     setThreads(filtered);
     if (activeThreadId === id) {
@@ -383,6 +378,9 @@ export default function AssistantPage() {
     if (!question || requestInFlightRef.current) return;
     requestInFlightRef.current = true;
 
+    setIsThinking(true);
+    setChatError(false);
+    try {
     stopAudio();
     let targetThreadId = activeThreadId;
     if (!targetThreadId) {
@@ -450,7 +448,7 @@ export default function AssistantPage() {
           zone_avoidance: res.zone_avoidance || null,
           tide: res.tide || null,
           recommendations: res.recommendations || [],
-          connectivity_mode: res.connectivity_mode || "LIVE",
+          connectivity_mode: res.connectivity_mode || "UNAVAILABLE",
           language: res.language || lang || "en",
           language_name: res.language_name || "English",
           plan: res.plan || null,
@@ -458,21 +456,9 @@ export default function AssistantPage() {
         };
       }
     } catch (err) {
-      console.warn("Backend /api/chat unavailable:", err);
-      reply = "ORCA live intelligence is temporarily unavailable. Live marine conditions cannot currently be verified. Please use official coastal warnings and do not base a sailing decision on unavailable data.";
-      evidenceData = {
-        sources: [], reasoning: ["The authoritative ORCA service returned no verified evidence."], risk_level: null, weather: null,
-        nearest_pfz: [],
-        recommendations: [],
-        connectivity_mode: "SERVICE_UNAVAILABLE",
-        language: lang || "en",
-      };
+      throw err;
     }
-
-    if (!reply) {
-      reply = "ORCA returned no usable answer. No live marine recommendation is available for this request.";
-      evidenceData = { sources: [], reasoning: ["Empty authoritative response."], risk_level: null, connectivity_mode: "SERVICE_UNAVAILABLE", language: lang || "en" };
-    }
+    if (!reply) throw new Error("Empty authoritative response");
 
     const botNow = Date.now();
     const botMsg: ChatMessage = {
@@ -497,8 +483,14 @@ export default function AssistantPage() {
       return prev;
     });
 
-    setIsThinking(false);
-    requestInFlightRef.current = false;
+    } catch (err) {
+      console.warn("Chat request failed", err);
+      setChatError(true);
+      setInput(question);
+    } finally {
+      setIsThinking(false);
+      requestInFlightRef.current = false;
+    }
   }
 
   function handleCopy(text: string, id: string) {
@@ -517,7 +509,7 @@ export default function AssistantPage() {
     setInterimTranscript("");
     setVoiceState("preparing");
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-      setVoiceErrorMessage(!window.isSecureContext ? "Voice recording requires a secure HTTPS connection." : "Voice recording is not supported by this browser. You can continue by typing.");
+      setVoiceErrorMessage(t("voice.denied"));
       setVoiceState("error"); return;
     }
 
@@ -591,14 +583,14 @@ export default function AssistantPage() {
         const audioBlob = new Blob(audioChunksRef.current, { type: actualMime });
         voiceDiagnostic("AUDIO_BLOB_CREATED", { bytes: audioBlob.size, mimeType: actualMime });
         if (audioBlob.size === 0) {
-          setVoiceErrorMessage("No audio was recorded. Check your microphone and try again.");
+          setVoiceErrorMessage(t("voice.denied"));
           setVoiceState("error"); stream.getTracks().forEach(trk => trk.stop()); return;
         }
 
         try {
           // Call authoritative Sarvam Saaras v3 STT
           voiceDiagnostic("AUDIO_UPLOAD_STARTED");
-          const result = await transcribeVoiceAudio(audioBlob, lang || "auto");
+          const result = await transcribeVoiceAudio(audioBlob, "auto");
           voiceDiagnostic("AUDIO_UPLOAD_COMPLETED");
           let finalSpokenText = "";
 
@@ -612,16 +604,17 @@ export default function AssistantPage() {
           if (finalSpokenText) {
             // Ask directly through the intelligent assistant pipeline
             setVoiceState("idle");
-            ask(finalSpokenText);
+            setInput(finalSpokenText);
+            inputRef.current?.focus();
           } else {
-            setVoiceErrorMessage("Could not detect clear speech. Please try speaking again or type your question.");
+            setVoiceErrorMessage(t("voice.denied"));
             setVoiceState("error");
           }
         } catch (err) {
           console.warn("Authoritative STT unavailable:", err);
           voiceDiagnostic("STT_FAILED", { error: err instanceof Error ? err.message : "unknown" });
           setInput(liveBrowserTranscript);
-          setVoiceErrorMessage(liveBrowserTranscript ? "Live preview was placed in the input, but Sarvam could not verify it. Review before sending." : "Transcription service temporarily unavailable. Please try again or type.");
+          setVoiceErrorMessage(t("state.liveUnavailable"));
           setVoiceState("error");
         } finally {
           stream.getTracks().forEach((trk) => trk.stop());
@@ -641,10 +634,12 @@ export default function AssistantPage() {
         setRecordingSeconds((prev) => prev + 1);
       }, 1000);
     } catch (err) {
+      speechRecognitionRef.current?.stop();
+      mediaStreamRef.current?.getTracks().forEach(track => track.stop());
       console.warn("Microphone access or hardware error:", err);
       const name = err instanceof DOMException ? err.name : "";
-      const messages: Record<string, string> = { NotAllowedError: "Microphone permission is blocked. Allow access in browser settings.", NotFoundError: "No microphone was detected.", NotReadableError: "The microphone is being used by another application.", SecurityError: "Microphone access requires a secure HTTPS connection.", AbortError: "Microphone startup was interrupted. Please try again.", OverconstrainedError: "No microphone matches the requested audio settings." };
-      setVoiceErrorMessage(messages[name] || "Microphone could not start. You can continue by typing.");
+      voiceDiagnostic("MIC_START_FAILED", { name });
+      setVoiceErrorMessage(t("voice.denied"));
       setVoiceState("error");
     }
   }
@@ -756,7 +751,7 @@ export default function AssistantPage() {
             >
               <span className="flex items-center gap-2">
                 <MessageSquarePlus className="size-4.5" />
-                <span>New Chat</span>
+                <span>{t("chat.new")}</span>
               </span>
               <Sparkles className="size-4 opacity-80" />
             </button>
@@ -765,7 +760,7 @@ export default function AssistantPage() {
           {/* History Thread List */}
           <div className="flex-1 overflow-y-auto px-2 space-y-1">
             <p className="px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Recent Conversations
+              {t("chat.title")}
             </p>
             {threads.length === 0 ? (
               <p className="px-2.5 py-3 text-xs text-muted-foreground italic">No past conversations</p>
@@ -794,7 +789,7 @@ export default function AssistantPage() {
                     <button
                       type="button"
                       onClick={(e) => deleteThread(th.id, e)}
-                      title="Delete chat"
+                      title={t("chat.delete")}
                       className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 transition-opacity p-1 cursor-pointer"
                     >
                       <Trash2 className="size-4" />
@@ -822,8 +817,8 @@ export default function AssistantPage() {
                 type="button"
                 onClick={() => setMobileDrawerOpen(true)}
                 className="cursor-pointer rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:hidden"
-                title="Open conversations"
-                aria-label="Open conversations"
+                title={t("chat.title")}
+                aria-label={t("chat.title")}
               >
                 <MessageSquare className="size-4.5 text-teal-400" />
               </button>
@@ -833,8 +828,8 @@ export default function AssistantPage() {
                 type="button"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 className="hidden cursor-pointer rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:inline-flex"
-                title={sidebarOpen ? "Collapse sidebar" : "Open sidebar"}
-                aria-label={sidebarOpen ? "Collapse sidebar" : "Open sidebar"}
+                title={t("chat.title")}
+                aria-label={t("chat.title")}
               >
                 {sidebarOpen ? <PanelLeftClose className="size-4.5" /> : <PanelLeftOpen className="size-4.5" />}
               </button>
@@ -857,31 +852,29 @@ export default function AssistantPage() {
                 type="button"
                 onClick={createNewThread}
                 className="inline-flex cursor-pointer items-center gap-1 rounded-md bg-teal-500/15 border border-teal-500/30 px-2.5 py-1 text-xs font-semibold text-teal-400 hover:bg-teal-500/25 transition md:hidden"
-                title="New Chat"
+                title={t("chat.new")}
               >
                 <MessageSquarePlus className="size-4" />
-                <span className="text-[11px]">New</span>
+                <span className="text-[11px]">{t("chat.new")}</span>
               </button>
 
               {currentThread.messages.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => {
-                    stopAudio();
-                    setThreads((prev) =>
-                      prev.map((th) => (th.id === activeThreadId ? { ...th, messages: [] } : th)),
-                    );
-                  }}
+                  onClick={(e) => deleteThread(activeThreadId, e)}
+                  disabled={isThinking}
                   className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground transition hover:bg-muted hover:text-red-400"
-                  title="Clear chat"
+                  title={t("chat.delete")}
                 >
                   <Trash2 className="size-3.5" />
-                  <span className="hidden sm:inline">Clear</span>
+                  <span className="hidden sm:inline">{t("chat.delete")}</span>
                 </button>
               )}
             </div>
           </header>
 
+          {chatError && <p role="alert" className="border-b border-red-500/30 p-3 text-sm text-red-400">{t("state.liveUnavailable")} · {t("cta.retry")}</p>}
+          {!location && <a href="/location" className="border-b border-border p-3 text-sm text-teal-400">{t("loc.title")}</a>}
           {/* Conversation Stream */}
           <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
             {currentThread.messages.length === 0 ? (
@@ -892,16 +885,17 @@ export default function AssistantPage() {
                 </div>
                 <h2 className="mt-3 sm:mt-4 text-lg sm:text-xl font-bold text-foreground">{t("chat.title")}</h2>
                 <p className="mt-1 max-w-md text-xs sm:text-sm text-muted-foreground">
-                  Ask any marine, weather, fishing zone, boundary, or emergency question in your native language (voice or text).
+                  {t("chat.placeholder")}
                 </p>
 
                 {/* 4 Interactive Starting Cards */}
                 <div className="mt-6 sm:mt-8 grid w-full grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 text-left">
-                  {suggestions.map(({ label, prompt, icon: Icon }) => (
+                  {suggestions.map(({ label, icon: Icon }) => (
                     <button
                       key={label}
                       type="button"
-                      onClick={() => ask(prompt)}
+                      onClick={() => ask(label)}
+                      disabled={isThinking}
                       className="group flex min-h-[52px] cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-3 sm:p-3.5 text-xs font-medium text-foreground transition-all hover:border-teal-500/50 hover:bg-muted shadow-xs active:scale-[0.98]"
                     >
                       <Icon className="mt-0.5 size-4.5 shrink-0 text-teal-400 group-hover:scale-110 transition-transform" />
@@ -934,7 +928,7 @@ export default function AssistantPage() {
                   <div className="min-w-0 flex-1 space-y-1.5">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-foreground">
-                        {m.role === "user" ? "You" : "ORCA Marine Intelligence"}
+                        {m.role === "user" ? t("chat.you") : "ORCA"}
                       </span>
                       
                       {m.role === "assistant" && (
@@ -949,20 +943,20 @@ export default function AssistantPage() {
                                 ? "bg-teal-500/20 text-teal-400 border border-teal-500/30 animate-pulse"
                                 : "text-muted-foreground hover:bg-muted hover:text-foreground",
                             )}
-                            title="Listen in your language"
-                            aria-label="Listen audio"
+                            title={t("chat.listen")}
+                            aria-label={t("chat.listen")}
                           >
                             {isLoadingAudioId === m.id ? (
                               <Loader2 className="size-3.5 animate-spin text-teal-400" />
                             ) : playingMessageId === m.id ? (
                               <>
                                 <VolumeX className="size-3.5 text-teal-400" />
-                                <span className="text-teal-400">Stop</span>
+                                <span className="text-teal-400">{t("chat.stop")}</span>
                               </>
                             ) : (
                               <>
                                 <Volume2 className="size-3.5" />
-                                <span>Listen</span>
+                                <span>{t("chat.listen")}</span>
                               </>
                             )}
                           </button>
@@ -972,17 +966,17 @@ export default function AssistantPage() {
                             type="button"
                             onClick={() => handleCopy(m.text, m.id)}
                             className="inline-flex cursor-pointer items-center gap-1 rounded px-2 py-1 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                            title="Copy message"
+                            title={t("chat.copy")}
                           >
                             {copiedId === m.id ? (
                               <>
                                 <Check className="size-3.5 text-teal-400" />
-                                <span className="text-teal-400">Copied</span>
+                                <span className="text-teal-400">{t("chat.copied")}</span>
                               </>
                             ) : (
                               <>
                                 <Copy className="size-3.5" />
-                                <span>Copy</span>
+                                <span>{t("chat.copy")}</span>
                               </>
                             )}
                           </button>
@@ -1022,7 +1016,7 @@ export default function AssistantPage() {
                   <span className="text-xs font-bold text-teal-400">ORCA Marine Intelligence</span>
                   <div className="flex items-center gap-2.5 rounded-lg border border-teal-500/20 bg-teal-950/20 p-3.5 sm:p-4 text-xs text-muted-foreground shadow-xs">
                     <Loader2 className="size-4 shrink-0 animate-spin text-teal-400" />
-                    <span>ORCA is checking live marine conditions and analyzing ocean data...</span>
+                    <span>{t("chat.thinking")}</span>
                   </div>
                 </div>
               </div>
@@ -1046,7 +1040,7 @@ export default function AssistantPage() {
                   <>
                     <span className="size-3 shrink-0 rounded-full bg-red-500 animate-ping" />
                     <span className="font-semibold text-teal-300">
-                      🎙️ Listening ({recordingSeconds}s)... Speak your question naturally.
+                      {t("voice.record")} ({recordingSeconds}s)
                     </span>
                     {interimTranscript && (
                       <span className="text-teal-400/80 italic truncate max-w-xs">
@@ -1057,17 +1051,17 @@ export default function AssistantPage() {
                 ) : voiceState === "preparing" ? (
                   <>
                     <Loader2 className="size-3.5 animate-spin text-teal-400" />
-                    <span>Initializing microphone...</span>
+                    <span>{t("state.loading")}</span>
                   </>
                 ) : voiceState === "processing" || voiceState === "transcribing" ? (
                   <>
                     <Loader2 className="size-3.5 animate-spin text-teal-400" />
-                    <span>Processing your voice with Sarvam Saaras AI...</span>
+                    <span>{t("chat.thinking")}</span>
                   </>
                 ) : (
                   <>
                     <AlertTriangle className="size-4 shrink-0 text-red-400" />
-                    <span className="text-red-300">{voiceErrorMessage || "Voice recognition error"}</span>
+                    <span className="text-red-300">{voiceErrorMessage || t("voice.denied")}</span>
                   </>
                 )}
               </div>
@@ -1110,12 +1104,12 @@ export default function AssistantPage() {
               {/* Quick suggestion chips (natural prompts) */}
               {currentThread.messages.length > 0 && (
                 <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar touch-pan-x">
-                  {suggestions.map(({ label, prompt }) => (
+                  {suggestions.map(({ label }) => (
                     <button
                       key={label}
                       type="button"
                       disabled={isThinking || voiceState === "listening"}
-                      onClick={() => ask(prompt)}
+                      onClick={() => ask(label)}
                       className="cursor-pointer shrink-0 min-h-[36px] rounded-full border border-border bg-surface px-3 sm:px-3.5 py-1.5 text-[11px] font-medium text-foreground transition hover:bg-muted hover:border-teal-500/40 shadow-xs whitespace-nowrap disabled:opacity-40 disabled:pointer-events-none"
                     >
                       {label}
@@ -1154,7 +1148,7 @@ export default function AssistantPage() {
                   type="button"
                   disabled={isThinking}
                   onClick={toggleVoice}
-                  title={voiceState === "listening" ? "Stop recording and transcribe" : "Speak in Hindi, Gujarati, or any Indian language"}
+                  title={t(voiceState === "listening" ? "chat.stop" : "voice.record")}
                   className={cn(
                     "flex size-11 sm:size-12 shrink-0 cursor-pointer items-center justify-center rounded-lg border transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed",
                     voiceState === "listening"
@@ -1163,7 +1157,7 @@ export default function AssistantPage() {
                       ? "border-amber-500 bg-amber-500/20 text-amber-400"
                       : "border-border bg-card text-teal-400 hover:bg-muted hover:text-teal-300 shadow-xs",
                   )}
-                  aria-label="Voice input"
+                  aria-label={t("voice.record")}
                 >
                   {voiceState === "transcribing" || voiceState === "processing" ? (
                     <Loader2 className="size-5 animate-spin" />
@@ -1190,7 +1184,7 @@ export default function AssistantPage() {
               </form>
 
               <p className="text-center text-[10px] text-muted-foreground hidden sm:block">
-                ORCA Marine Decision AI is grounded on live INCOIS ocean sensors. Always maintain VHF Channel 16 radio watch.
+                {t("chat.subtitle")}
               </p>
             </div>
           </div>

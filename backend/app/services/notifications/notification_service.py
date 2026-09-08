@@ -28,47 +28,8 @@ class NotificationService:
         self._seed_default_notifications()
 
     def _seed_default_notifications(self):
-        """Seeds realistic advisory and government notifications."""
-        now_iso = datetime.now(timezone.utc).isoformat()
-
-        seed_items = [
-            SafetyNotification(
-                id=str(uuid.uuid4()),
-                user_id="global",
-                title="🌊 INCOIS High Wave & Swell Advisory",
-                message="Indian Ocean State Forecast model active: Wave heights in coastal Maharashtra and Gujarat expected between 1.2m and 1.8m today.",
-                severity=NotificationSeverity.INFO,
-                category=NotificationCategory.WEATHER,
-                source="INCOIS Ocean State Forecast",
-                timestamp=now_iso,
-                is_read=False,
-            ),
-            SafetyNotification(
-                id=str(uuid.uuid4()),
-                user_id="global",
-                title="🛑 Maritime Boundary Notice (IMBL)",
-                message="Vessels operating near Kutch / Sir Creek and Palk Strait are reminded to maintain at least 10 NM safe distance from the International Maritime Boundary Line.",
-                severity=NotificationSeverity.MODERATE,
-                category=NotificationCategory.GEOFENCE,
-                source="Indian Coast Guard & Directorate of Fisheries",
-                timestamp=now_iso,
-                is_read=False,
-            ),
-            SafetyNotification(
-                id=str(uuid.uuid4()),
-                user_id="global",
-                title="🐟 New Potential Fishing Zones (PFZ) Released",
-                message="High-probability pelagic chlorophyll fronts mapped off Ratnagiri, Veraval, and Kochi coastlines. Check GIS layer on the tactical map.",
-                severity=NotificationSeverity.LOW,
-                category=NotificationCategory.WEATHER,
-                source="INCOIS PFZ Mission",
-                timestamp=now_iso,
-                is_read=True,
-            ),
-        ]
-
-        for item in seed_items:
-            self._notifications[item.id] = item
+        """Keep startup state empty until a verified source creates an alert."""
+        return None
 
     def get_notifications_for_user(self, user_id: Optional[str] = None) -> NotificationsResponse:
         """Retrieves all notifications for user or global broadcast."""

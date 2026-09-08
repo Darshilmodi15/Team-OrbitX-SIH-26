@@ -243,7 +243,7 @@ export default function LandingPage() {
             </span>
             <span className="flex items-center gap-1.5">
               <span className="size-1.5 rounded-full bg-teal-400" />
-              {t("land.radar")}
+              {t("land.f2")}
             </span>
           </div>
         </div>
@@ -288,34 +288,32 @@ export default function LandingPage() {
       </section>
 
       {/* Real Contact & Operations Footer */}
-      <footer className="border-t border-border bg-card/60 backdrop-blur-sm py-8 text-xs text-muted-foreground">
+      <footer className="border-t border-border bg-card/60 backdrop-blur-sm pt-8 pb-28 lg:pb-8 text-xs text-muted-foreground">
         <div className="orca-container space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <div className="flex items-center gap-2 font-bold text-foreground text-sm">
                 <OrcaLogo className="size-5" />
-                <span>ORCA Marine AI Platform</span>
+                <span>{t("app.name")}</span>
               </div>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                Autonomous Ocean Intelligence & Coastal Decision Support System developed as a Smart India Hackathon 2026 prototype.
+                {t("footer.prototype")}
               </p>
             </div>
 
             <div className="space-y-1.5 font-mono text-[11px]">
-              <span className="font-bold text-foreground block font-sans text-xs">Emergency guidance:</span>
+              <span className="font-bold text-foreground block font-sans text-xs">{t("quick.emergency")}:</span>
               <p className="flex items-center gap-1.5 text-rose-500 dark:text-rose-400 font-bold">
                 <PhoneCall className="size-3" />
-                <span>For emergencies, call 112 or Coast Guard 1554.</span>
+                <span>112 / 1554</span>
               </p>
-              <p className="text-muted-foreground">ORCA is a Smart India Hackathon prototype, not an official government office.</p>
             </div>
           </div>
 
           <div className="border-t border-border pt-4 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-foreground">ORCA Marine AI</span>
-              <span>—</span>
-              <span>All Indian Coastal States & UTs</span>
+              <span>{t("footer.rights")}</span>
             </div>
             <div className="flex flex-wrap items-center gap-4">
               <Link to="/privacy" className="hover:text-foreground transition-colors">
@@ -329,9 +327,8 @@ export default function LandingPage() {
                 onClick={openCookieSettings}
                 className="hover:text-foreground transition-colors underline-offset-2 hover:underline"
               >
-                Cookie Settings
+                {t("footer.cookies")}
               </button>
-              <span>{t("footer.rights")}</span>
             </div>
           </div>
         </div>

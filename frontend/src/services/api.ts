@@ -48,7 +48,7 @@ function authToken(): string | null { return sessionStorage.getItem('orca.auth.s
 async function apiFetch(path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers); const token = authToken();
   if (token) headers.set("Authorization", "Bearer " + token);
-  const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  const response = await fetch(`${API_BASE_URL}${path}`, { ...init, signal: init.signal ?? AbortSignal.timeout(60000), headers });
   if (response.status === 401) authFailureHandler?.();
   return response;
 }
@@ -510,7 +510,7 @@ export async function broadcastSOS(payload: {
   notes?: string;
   contact_phone?: string;
 }) {
-  const response = await fetch(`${API_BASE_URL}/api/emergency/sos`, {
+  const response = await apiFetch('/api/emergency/sos', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -522,7 +522,7 @@ export async function broadcastSOS(payload: {
 }
 
 export async function fetchActiveSOS() {
-  const response = await fetch(`${API_BASE_URL}/api/emergency/sos/active`);
+  const response = await apiFetch('/api/emergency/sos/active');
   if (!response.ok) {
     throw new Error('Failed to fetch active SOS broadcasts');
   }
@@ -693,3 +693,14 @@ export default {
   fetchHistoricalComparison,
   getHazardAlerts,
 };
+
+export async function fetchSavedLocation() {
+  const response = await apiFetch('/api/location/current');
+  if (!response.ok) throw new Error('LOCATION_UNAVAILABLE');
+  return response.json();
+}
+export async function saveSelectedLocation(lat: number, lon: number, accuracy_m?: number) {
+  const response = await apiFetch('/api/location/update', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({lat, lon, accuracy_m}) });
+  if (!response.ok) throw new Error('LOCATION_SAVE_FAILED');
+  return response.json();
+}

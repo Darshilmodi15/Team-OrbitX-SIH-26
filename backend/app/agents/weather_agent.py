@@ -19,13 +19,13 @@ def get_marine_weather(
     source = str(raw.get("source", "mock_marine_weather" if is_mock else "open_meteo_marine_api"))
     
     return WeatherEvidence(
-        forecast=str(raw.get("forecast", "clear")),
-        wave_height_m=float(raw.get("wave_height_m", 0.0)),
+        forecast=str(raw["forecast"]) if raw.get("forecast") is not None else None,
+        wave_height_m=float(raw["wave_height_m"]) if raw.get("wave_height_m") is not None else None,
         wave_period_s=float(raw["wave_period_s"]) if raw.get("wave_period_s") is not None else None,
         wave_direction_deg=float(raw["wave_direction_deg"]) if raw.get("wave_direction_deg") is not None else None,
         wave_direction_cardinal=str(raw["wave_direction_cardinal"]) if raw.get("wave_direction_cardinal") is not None else None,
         
-        wind_speed_kmh=float(raw.get("wind_speed_kmh", 0.0)),
+        wind_speed_kmh=float(raw["wind_speed_kmh"]) if raw.get("wind_speed_kmh") is not None else None,
         wind_speed_ms=float(raw["wind_speed_ms"]) if raw.get("wind_speed_ms") is not None else None,
         wind_gust_kmh=float(raw["wind_gust_kmh"]) if raw.get("wind_gust_kmh") is not None else None,
         wind_direction_deg=float(raw["wind_direction_deg"]) if raw.get("wind_direction_deg") is not None else None,

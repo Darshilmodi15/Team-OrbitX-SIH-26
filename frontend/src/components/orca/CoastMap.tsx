@@ -187,6 +187,12 @@ export default function CoastMap({
       bufferCircleRef.current.bindTooltip(`${t("map.coastalZone")} (${COASTAL_BUFFER_KM} km)`);
     }
 
+    for (const layer of [pfzCircleRef.current, pfzMarkerRef.current]) {
+      if (layer) { if (nearestPfz) layer.addTo(mapRef.current!); else layer.remove(); }
+    }
+    for (const layer of [imblLineRef.current, imblMarkerRef.current]) {
+      if (layer) { if (nearestImbl) layer.addTo(mapRef.current!); else layer.remove(); }
+    }
     // 3. Update PFZ (Potential Fishing Zone)
     const fallbackPfzLat = center.lat + 0.05;
     const fallbackPfzLon = center.lon < 78 ? center.lon - 0.28 : center.lon + 0.28;
@@ -358,7 +364,7 @@ export default function CoastMap({
         fillOpacity: 0.22,
         weight: 2,
         dashArray: "4, 4",
-      }).addTo(map);
+      });
 
       const pfzIcon = L.divIcon({
         className: "orca-pfz-pin",
@@ -368,8 +374,7 @@ export default function CoastMap({
       });
 
       pfzMarkerRef.current = L.marker([pfzLat, pfzLon], { icon: pfzIcon })
-        .bindPopup("")
-        .addTo(map);
+        .bindPopup("");
 
       // ─── 4. IMBL (International Maritime Boundary Line) Visual Layer ───
       const isWestCoast = center.lon < 78;
@@ -390,7 +395,7 @@ export default function CoastMap({
         weight: 3,
         dashArray: "8, 8",
         opacity: 0.9,
-      }).addTo(map);
+      });
 
       const imblIcon = L.divIcon({
         className: "orca-imbl-pin",
@@ -402,8 +407,7 @@ export default function CoastMap({
       imblMarkerRef.current = L.marker([imblCoords[1][0], imblCoords[1][1]], {
         icon: imblIcon,
       })
-        .bindPopup("")
-        .addTo(map);
+        .bindPopup("");
 
       // ─── 5. Coastal Cities Layer Group ───
       cityLayerRef.current = L.layerGroup().addTo(map);

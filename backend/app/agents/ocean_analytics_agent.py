@@ -217,9 +217,17 @@ def evaluate_zone_avoidance(
     avoid_items: List[ZoneAvoidanceItem] = []
     safe_items: List[Dict[str, Any]] = []
 
-    wave_h = weather.wave_height_m if weather else 1.2
-    wind_spd = weather.wind_speed_kmh if weather else 20.0
-    forecast = weather.forecast.lower() if weather else "clear"
+    wave_h = weather.wave_height_m if weather else None
+    wind_spd = weather.wind_speed_kmh if weather else None
+    forecast = weather.forecast.lower() if weather and weather.forecast else None
+    if wave_h is None or wind_spd is None:
+        return ZoneAvoidanceEvidence(
+            overall_avoidance_status="INSUFFICIENT_EVIDENCE",
+            avoided_zones=[],
+            safe_alternative_zones=[],
+            summary="Zone avoidance cannot be determined because verified wave and wind evidence is unavailable.",
+            source="ORCA Multi-Agent Hazard & Geofencing Avoidance Engine",
+        )
 
     # 1. Evaluate Geofence Restrictions
     if geofences:

@@ -5,9 +5,9 @@ from pydantic import BaseModel, Field
 
 class WeatherEvidence(BaseModel):
     """Structured marine meteorological evidence returned by the Weather Agent."""
-    forecast: str = Field(..., description="Forecast condition string ('clear', 'rainy', 'stormy', etc.)")
-    wave_height_m: float = Field(..., description="Significant wave height in meters")
-    wind_speed_kmh: float = Field(..., description="Sustained wind speed in km/h")
+    forecast: Optional[str] = Field(default=None, description="Forecast condition string when supplied by the provider")
+    wave_height_m: Optional[float] = Field(default=None, description="Significant wave height in meters")
+    wind_speed_kmh: Optional[float] = Field(default=None, description="Sustained wind speed in km/h")
     wind_speed_ms: Optional[float] = Field(default=None, description="Wind speed in meters per second")
     wave_period_s: Optional[float] = Field(default=None, description="Peak or mean wave period in seconds")
     wind_gust_kmh: Optional[float] = Field(default=None, description="Peak wind gust speed in km/h")
@@ -49,7 +49,7 @@ class PFZEvidence(BaseModel):
 class RiskComponentItem(BaseModel):
     """Sub-component risk evaluation."""
     level: str = Field(default="LOW", description="Risk tier ('LOW', 'MODERATE', 'HIGH')")
-    score: float = Field(default=0.0, description="Component risk index 0.0 to 1.0")
+    score: Optional[float] = Field(default=None, description="Component risk index 0.0 to 1.0 when measurable")
     description: str = Field(default="Normal operating limits", description="Component rationale")
 
 
@@ -83,6 +83,9 @@ class RiskEvidence(BaseModel):
         description="Mandatory advisory disclaimer",
     )
     source: str = Field(default="risk_assessment_agent", description="Agent responsible for the risk evaluation")
+    available_evidence: List[str] = Field(default_factory=list)
+    missing_evidence: List[str] = Field(default_factory=list)
+    evidence_completeness: str = Field(default="unknown", description="complete, partial, or insufficient")
 
 
 class RouteWaypoint(BaseModel):
@@ -227,7 +230,7 @@ class ZoneAvoidanceItem(BaseModel):
 
 class ZoneAvoidanceEvidence(BaseModel):
     """Structured evaluation of zones to avoid due to hazards or geofencing."""
-    overall_avoidance_status: str = Field(default="ALL_ZONES_CLEAR", description="Status ('CRITICAL_AVOIDANCE', 'CAUTION_REQUIRED', 'ALL_ZONES_CLEAR')")
+    overall_avoidance_status: str = Field(default="INSUFFICIENT_EVIDENCE", description="Status ('CRITICAL_AVOIDANCE', 'CAUTION_REQUIRED', 'ALL_ZONES_CLEAR', 'INSUFFICIENT_EVIDENCE')")
     avoided_zones: List[ZoneAvoidanceItem] = Field(default_factory=list, description="List of specific zones to avoid")
     safe_alternative_zones: List[Dict[str, Any]] = Field(default_factory=list, description="Recommended safe alternative fishing zones")
     summary: str = Field(..., description="Summary advisory for avoidance")
@@ -263,8 +266,8 @@ class EvidenceBundle(BaseModel):
     zone_avoidance: Optional[ZoneAvoidanceEvidence] = Field(default=None, description="Hazard and geofence zone avoidance evaluation")
     tide: Optional[TideInfo] = Field(default=None, description="Tidal height and timing predictions")
     recommendations: List[OperationalRecommendation] = Field(default_factory=list, description="Reliable operational recommendations with supporting evidence and reasoning")
-    location_lat: float = Field(..., description="Inquiry latitude coordinate")
-    location_lon: float = Field(..., description="Inquiry longitude coordinate")
+    location_lat: Optional[float] = Field(default=None, description="Inquiry latitude coordinate")
+    location_lon: Optional[float] = Field(default=None, description="Inquiry longitude coordinate")
     date: str = Field(..., description="Inquiry forecast date string")
     connectivity_mode: str = Field(default="LIVE", description="Network resilience state ('LIVE', 'CACHED', 'DEGRADED', 'OFFLINE')")
 

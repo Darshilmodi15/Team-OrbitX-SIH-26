@@ -982,7 +982,8 @@ class BhashiniService:
             return gemini_result
 
         # 4. Fallback to Maritime domain translation
-        return self._translate_with_dictionary(text, source_lang, target_lang)
+        from app.services.provider_health import ProviderUnavailable
+        raise ProviderUnavailable("TRANSLATION_UNAVAILABLE")
 
 
 # Singleton instance for backend application

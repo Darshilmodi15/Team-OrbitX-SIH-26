@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import xml.etree.ElementTree as ET
 
 import httpx
+from app.services.provider_health import record
 
 from app.data.weather.base import WeatherProvider
 from app.data.weather.cache import MarineWeatherCache
@@ -79,7 +80,7 @@ class IncoisWeatherProvider(WeatherProvider):
         base_url: Optional[str] = None,
         cache: Optional[MarineWeatherCache] = None,
         timeout_sec: float = 4.0,
-        verify_ssl: bool = False,
+        verify_ssl: bool = True,
     ):
         self.base_url = (base_url or os.getenv("INCOIS_BASE_URL", "https://incois.gov.in")).rstrip("/")
         self.cache = cache if cache is not None else MarineWeatherCache()
@@ -313,7 +314,10 @@ class IncoisWeatherProvider(WeatherProvider):
             except Exception as db_err:
                 logger.debug(f"Observation persistence skipped: {db_err}")
 
+            record("incois", success=True, http_status=200, data_timestamp=live_raw["forecast_time"])
             return cached_res
+
+        record("incois", success=False, http_status=getattr(getattr(fetch_error, "response", None), "status_code", None), reason=type(fetch_error).__name__ if fetch_error else "NO_VALID_MARINE_DATA")
 
         # Step 4: Live fetch failed or returned no data; check stale cache
         if cached_data is not None:
@@ -324,6 +328,7 @@ class IncoisWeatherProvider(WeatherProvider):
             stale_copy["freshness"] = "ACCEPTABLE_STALE"
             if "warning" not in stale_copy:
                 stale_copy["warning"] = "Live INCOIS service unreachable. Showing cached forecast."
+            record("incois", success=True, mode="stale", data_timestamp=stale_copy.get("forecast_time"))
             return stale_copy
         # Step 5: Secondary provider fallback (Open-Meteo) before declaring unavailable
         try:
@@ -348,8 +353,8 @@ class IncoisWeatherProvider(WeatherProvider):
                             latitude=lat,
                             longitude=lon,
                             region_cell=om_res.get("region_cell", f"{lat:.3f}_{lon:.3f}"),
-                            wave_height_m=om_data.get("wave_height_m", 0.0),
-                            wind_speed_kmh=om_data.get("wind_speed_kmh", 0.0),
+                            wave_height_m=om_data.get("wave_height_m"),
+                            wind_speed_kmh=om_data.get("wind_speed_kmh"),
                             wind_direction_deg=om_data.get("wind_direction_deg"),
                             risk_level="SAFE" if om_data.get("wave_height_m", 0) < 1.8 else ("CAUTION" if om_data.get("wave_height_m", 0) < 2.8 else "UNSAFE"),
                             source="Open-Meteo",
@@ -357,9 +362,10 @@ class IncoisWeatherProvider(WeatherProvider):
                         )
                 except Exception as db_err:
                     logger.debug(f"Observation persistence skipped for Open-Meteo fallback: {db_err}")
+                record("open_meteo", success=True, http_status=200, data_timestamp=om_data.get("forecast_time"), mode="fallback")
                 return om_res
         except Exception as om_err:
-            logger.debug(f"Open-Meteo fallback skipped: {om_err}")
+            record("open_meteo", success=False, reason=type(om_err).__name__)
 
         # Step 6: No data available — Return explicit data-unavailable record (NEVER fake values)
         return {
@@ -367,9 +373,9 @@ class IncoisWeatherProvider(WeatherProvider):
             "grid_lat": None,
             "grid_lon": None,
             "date": date,
-            "wave_height_m": 0.0,
-            "wind_speed_ms": 0.0,
-            "wind_speed_kmh": 0.0,
+            "wave_height_m": None,
+            "wind_speed_ms": None,
+            "wind_speed_kmh": None,
             "wind_direction_deg": None,
             "wind_direction_cardinal": "Unavailable",
             "forecast": "data_unavailable",

@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 
-vi.mock('@/services/api', () => ({ loginUser: vi.fn(), registerUser: vi.fn(), getUserProfile: vi.fn(), setAuthFailureHandler: vi.fn() }));
+vi.mock('@/services/api', () => ({ loginUser: vi.fn(), registerUser: vi.fn(), getUserProfile: vi.fn(), fetchSavedLocation: vi.fn().mockResolvedValue(null), setAuthFailureHandler: vi.fn() }));
 import { getUserProfile, loginUser } from '@/services/api';
 import { SessionProvider, useSession } from '@/lib/orca/session';
 

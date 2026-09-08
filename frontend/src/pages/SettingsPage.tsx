@@ -73,10 +73,10 @@ export default function SettingsPage() {
       </section>
 
       {/* Location Section */}
-      <section className="mt-4 rounded-md border border-border bg-card p-4 shadow-xs">
-        <h2 className="text-sm font-semibold text-foreground">{t("loc.current")}</h2>
+      {user?.role !== "admin" && <section className="mt-4 rounded-md border border-border bg-card p-4 shadow-xs">
+        <h2 className="text-sm font-semibold text-foreground">{t(user?.role === "government" ? "ops.region" : "loc.current")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {location ? (location.label ?? formatCoords(location.coords)) : t("loc.title")}
+          {user?.operationalRegion || (location ? (location.label ?? formatCoords(location.coords)) : t("loc.title"))}
         </p>
         <Link
           to="/location"
@@ -86,23 +86,24 @@ export default function SettingsPage() {
         </Link>
       </section>
 
+      }
       {/* Privacy & Cookies Section */}
       <section className="mt-4 rounded-md border border-border bg-card p-4 shadow-xs">
-        <h2 className="text-sm font-semibold text-foreground">Privacy & Telemetry Controls</h2>
-        <p className="mt-1 text-xs text-muted-foreground">Manage offline GIS caching, anonymous diagnostic telemetry, and consent settings.</p>
+        <h2 className="text-sm font-semibold text-foreground">{t("footer.cookies")}</h2>
+
         <button
           type="button"
           onClick={openCookieSettings}
           className="mt-3 inline-flex min-h-11 cursor-pointer items-center justify-center rounded-md border border-border bg-card px-4 text-sm font-semibold text-foreground transition hover:bg-muted shadow-xs"
         >
-          Manage Cookie & Privacy Settings
+          {t("footer.cookies")}
         </button>
       </section>
 
       {/* User / Account Section */}
       <section className="mt-4 rounded-md border border-border bg-card p-4 shadow-xs">
         <h2 className="text-sm font-semibold text-foreground">{user?.name || user?.contact || t("auth.title")}</h2>
-        <p className="mt-1 text-xs text-muted-foreground">{t("auth.localNotice")}</p>
+
         <button
           className="mt-3 inline-flex min-h-11 cursor-pointer items-center justify-center rounded-md border border-border bg-card px-4 text-sm font-semibold text-foreground transition hover:bg-muted shadow-xs"
           onClick={() => {

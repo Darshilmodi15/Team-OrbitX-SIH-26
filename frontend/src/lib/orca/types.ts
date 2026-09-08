@@ -13,6 +13,7 @@ export type MarineSnapshot = {
   airTemperatureC: number | null;
   weatherCode: number | null;
   fetchedAt: number;
+  dataMode?: "live" | "cached" | "stale" | "fallback" | "unavailable";
   sources: string[];
 };
 
@@ -96,6 +97,7 @@ export type ChatMessage = {
 export type UserRole = "user" | "government" | "admin";
 
 export type OrcaUser = {
+  operationalRegion?: string;
   id: string;
   name: string;
   contact: string;

@@ -28,19 +28,19 @@ class EmergencyContact(BaseModel):
 
 class SOSBroadcastRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    vessel_name: Optional[str] = Field(default="Fishing Craft / Motor Vessel", max_length=255, description="Vessel name")
-    registration_no: Optional[str] = Field(default="IND-MH-01-F-1234", max_length=100, description="Fisheries/MFD registration code")
+    vessel_name: Optional[str] = Field(default=None, max_length=255, description="Vessel name")
+    registration_no: Optional[str] = Field(default=None, max_length=100, description="Fisheries/MFD registration code")
     lat: float = Field(..., ge=-90, le=90, description="Current vessel latitude")
     lon: float = Field(..., ge=-180, le=180, description="Current vessel longitude")
-    crew_count: int = Field(default=4, ge=1, description="Persons on board (POB)")
-    emergency_nature: EmergencyNature = Field(default=EmergencyNature.ENGINE_FAILURE, description="Type of crisis")
+    crew_count: int = Field(..., ge=1, description="Persons on board (POB)")
+    emergency_nature: EmergencyNature = Field(default=EmergencyNature.OTHER, description="Type of crisis")
     notes: Optional[str] = Field(default="", max_length=2000, description="Additional immediate situation notes")
-    contact_phone: Optional[str] = Field(default="+91-9876543210", max_length=50, description="Skipper or contact mobile number")
+    contact_phone: Optional[str] = Field(default=None, max_length=50, description="Skipper or contact mobile number")
 
 
 class SOSBroadcastResponse(BaseModel):
     sos_id: str = Field(..., description="Unique SOS tracking UUID")
-    status: str = Field(default="DISPATCHED", description="Broadcast dispatch status")
+    status: str = Field(default="RECEIVED", description="Broadcast dispatch status")
     broadcast_timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     assigned_mrcc: str = Field(..., description="Assigned Maritime Rescue Coordination Centre")
     mayday_message: str = Field(..., description="Standard GMDSS/IMO MAYDAY radio transcript")

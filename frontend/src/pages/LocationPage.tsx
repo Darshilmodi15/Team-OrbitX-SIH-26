@@ -1,3 +1,4 @@
+import { saveSelectedLocation } from "@/services/api";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Crosshair, MapPin, Search, CheckCircle2 } from "lucide-react";
@@ -25,6 +26,9 @@ export default function LocationPage() {
 
   const [coords, setCoords] = useState<Coords>(location?.coords ?? DEFAULT_CENTER);
   const [label, setLabel] = useState<string | null>(location?.label ?? null);
+  const [selected, setSelected] = useState(!!location);
+  const [source, setSource] = useState<"gps" | "manual">("manual");
+  const [accuracy, setAccuracy] = useState<number | undefined>();
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -51,6 +55,7 @@ export default function LocationPage() {
       (pos) => {
         setBusy(false);
         setNotice(null);
+        setSelected(true); setSource("gps"); setAccuracy(pos.coords.accuracy);
         setCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
       },
       () => {
@@ -74,15 +79,20 @@ export default function LocationPage() {
     }
   }
 
-  function confirm() {
+  async function confirm() {
+    setBusy(true);
+    try {
+      const validated = await saveSelectedLocation(coords.lat, coords.lon, source === "gps" ? accuracy : undefined);
+      if (!validated.is_coastal_supported) { setNotice(t("loc.inland")); return; }
     setLocation({
       coords,
       label: label ?? formatCoords(coords),
       distanceToCoastKm: check.distanceToCoastKm,
       area: check.area,
-      source: "manual",
+      source,
     });
     navigate("/dashboard");
+    } catch { setNotice(t("state.error")); } finally { setBusy(false); }
   }
 
   return (
@@ -103,7 +113,7 @@ export default function LocationPage() {
             className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted cursor-pointer shadow-xs"
           >
             <ArrowLeft className="size-3.5" />
-            <span>Back</span>
+            <span>{t("cta.back")}</span>
           </button>
         </div>
 
@@ -156,6 +166,7 @@ export default function LocationPage() {
                   type="button"
                   className="flex min-h-12 w-full cursor-pointer flex-col items-start justify-center px-4 py-2.5 text-left text-foreground transition hover:bg-muted"
                   onClick={() => {
+                    setSelected(true); setSource("manual");
                     setCoords(r.coords);
                     setLabel([r.name, r.admin].filter(Boolean).join(", "));
                     setResults([]);
@@ -179,12 +190,12 @@ export default function LocationPage() {
         <section className="space-y-1.5">
           <p className="text-xs font-medium text-muted-foreground">{t("loc.tapMap")}</p>
           <div className="overflow-hidden rounded-md border border-border shadow-xs">
-            <MapPanel center={coords} interactive height={300} onSelect={setCoords} />
+            <MapPanel center={coords} interactive height={300} onSelect={(next) => { setSelected(true); setSource("manual"); setCoords(next); }} />
           </div>
         </section>
 
         {/* Location Assessment & Confirmation Box */}
-        <div className="rounded-md border border-border bg-card p-4 shadow-sm text-card-foreground">
+        {selected ? <div className="rounded-md border border-border bg-card p-4 shadow-sm text-card-foreground">
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="text-base font-bold text-foreground">{label ?? formatCoords(coords)}</p>
@@ -192,7 +203,7 @@ export default function LocationPage() {
             </div>
             <span className="inline-flex items-center gap-1 rounded-full bg-teal-500/15 border border-teal-500/30 px-2.5 py-0.5 text-xs font-semibold text-teal-400">
               <CheckCircle2 className="size-3" />
-              {check.area === "coastal" ? "Coastal Zone" : check.area}
+              {t(check.area === "coastal" ? "loc.confirm" : "loc.inland")}
             </span>
           </div>
 
@@ -214,7 +225,7 @@ export default function LocationPage() {
               <button
                 type="button"
                 className="inline-flex cursor-pointer items-center rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground shadow-xs hover:bg-muted"
-                onClick={() => setCoords(nearestCoastPoint(coords))}
+                onClick={() => { setSelected(true); setSource("manual"); setCoords(nearestCoastPoint(coords)); }}
               >
                 {t("loc.chooseCoastal")}
               </button>
@@ -223,12 +234,12 @@ export default function LocationPage() {
 
           <button
             className="mt-4 flex min-h-12 w-full cursor-pointer items-center justify-center rounded-md bg-teal-500 hover:bg-teal-400 px-4 text-sm font-bold text-slate-950 shadow-md transition-all active:scale-[0.99] disabled:opacity-50"
-            disabled={check.area !== "coastal"}
+            disabled={busy || !selected || check.area !== "coastal"}
             onClick={confirm}
           >
             {t("loc.confirm")}
           </button>
-        </div>
+        </div> : <p role="status" className="text-sm text-muted-foreground">{t("loc.title")}</p>}
       </div>
     </AppShell>
   );

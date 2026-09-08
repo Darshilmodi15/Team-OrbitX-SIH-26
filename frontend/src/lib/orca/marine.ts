@@ -160,6 +160,7 @@ function normalizeBackendCurrent(data: BackendWeather, forecastSource?: string |
     weatherCode: weatherCodeFromForecast(data.forecast),
     fetchedAt: Number.isFinite(fetchedAt) ? fetchedAt : Date.now(),
     sources: sourceList(data.source, forecastSource, tideSource),
+    dataMode: data.cache_status === "stale" ? "stale" : data.cache_status === "cached" ? "cached" : data.cache_status === "unavailable" ? "unavailable" : /open.meteo/i.test(data.source || "") ? "fallback" : "live",
   };
 }
 
@@ -183,24 +184,8 @@ function normalizeBackendForecast(data: BackendForecast | null, current: MarineS
   });
 }
 
-function derivedForecast(current: MarineSnapshot, hours = 12): ForecastPoint[] {
-  const baseMs = Date.parse(current.time);
-  const start = Number.isFinite(baseMs) ? baseMs : Date.now();
-  return Array.from({ length: hours }, (_, index) => {
-    const hour = index + 1;
-    const wave = current.waveHeightM == null ? null : Math.max(0, current.waveHeightM + hour * 0.04);
-    const wind = current.windSpeedKmh == null ? null : Math.max(0, current.windSpeedKmh + hour * 0.6);
-    return {
-      time: new Date(start + hour * 3600000).toISOString(),
-      waveHeightM: wave == null ? null : Math.round(wave * 100) / 100,
-      windSpeedKmh: wind == null ? null : Math.round(wind * 10) / 10,
-      level: safetyFrom(wave, wind, current.visibilityKm),
-    };
-  });
-}
-
 function normalizeTide(data: BackendTide | null): MarineTide | null {
-  if (!data) return null;
+  if (!data || /estimate|pending|sample|mock/i.test(data.source || "")) return null;
   return {
     highTideTime: data.high_tide_time ?? null,
     highTideHeightM: firstNumber(data.high_tide_height_m),
@@ -248,13 +233,14 @@ async function fetchBackendMarineBundle(c: Coords, signal?: AbortSignal): Promis
     apiJson<BackendAlerts>(`/api/alerts?${params}`, signal).catch(() => null),
   ]);
 
+  if (conditions.forecast === "data_unavailable" || conditions.cache_status === "unavailable" || conditions.is_mock === true) throw new Error("MARINE_DATA_UNAVAILABLE");
   const normalizedTide = normalizeTide(tide);
   const current = normalizeBackendCurrent(conditions, forecast?.source ?? null, normalizedTide?.source ?? null);
   const forecastPoints = normalizeBackendForecast(forecast, current);
 
   return {
     current,
-    forecast: forecastPoints.length > 0 ? forecastPoints : derivedForecast(current),
+    forecast: forecastPoints,
     past: [],
     tide: normalizedTide,
     alerts: normalizeAlerts(alerts),
@@ -317,6 +303,7 @@ async function fetchOpenMeteoMarineBundle(c: Coords, signal?: AbortSignal): Prom
     airTemperatureC: at(weather.hourly, "temperature_2m", idx),
     weatherCode: at(weather.hourly, "weather_code", idx),
     fetchedAt: Date.now(),
+    dataMode: "fallback",
     sources,
   };
 
@@ -347,7 +334,7 @@ export async function fetchMarineBundle(c: Coords, signal?: AbortSignal): Promis
 
 export const WEATHER_CODES_LOCALIZED: Record<string, Record<number, string>> = {
   en: {
-    0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
+    0: "Mainly clear", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
     45: "Fog", 48: "Freezing fog", 51: "Light drizzle", 53: "Drizzle",
     55: "Heavy drizzle", 61: "Light rain", 63: "Rain", 65: "Heavy rain",
     71: "Light snow", 80: "Rain showers", 81: "Heavy showers",
