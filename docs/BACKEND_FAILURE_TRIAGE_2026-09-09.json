@@ -1,0 +1,595 @@
+{
+  "baseline": "260 passed, 66 failed, 4 skipped",
+  "totals": {
+    "A": 7,
+    "B": 56,
+    "C": 0,
+    "D": 3
+  },
+  "failures": [
+    {
+      "test_file": "tests/test_assistant_pipeline_comprehensive.py",
+      "test_name": "test_language_priority_rule_english_query",
+      "category": "B",
+      "error": "app.services.provider_health.ProviderUnavailable: AI_PROVIDER_UNAVAILABLE",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_assistant_pipeline_comprehensive.py",
+      "test_name": "test_language_priority_rule_native_gujarati",
+      "category": "B",
+      "error": "app.services.provider_health.ProviderUnavailable: TRANSLATION_UNAVAILABLE",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_assistant_pipeline_comprehensive.py",
+      "test_name": "test_language_priority_rule_native_hindi",
+      "category": "B",
+      "error": "app.services.provider_health.ProviderUnavailable: TRANSLATION_UNAVAILABLE",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_assistant_pipeline_comprehensive.py",
+      "test_name": "test_arbitrary_marine_query_wind_and_waves",
+      "category": "B",
+      "error": "app.services.provider_health.ProviderUnavailable: AI_PROVIDER_UNAVAILABLE",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_assistant_pipeline_comprehensive.py",
+      "test_name": "test_arbitrary_marine_query_sea_surface_temperature",
+      "category": "B",
+      "error": "app.services.provider_health.ProviderUnavailable: AI_PROVIDER_UNAVAILABLE",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_assistant_pipeline_comprehensive.py",
+      "test_name": "test_arbitrary_marine_query_emergency_distress",
+      "category": "B",
+      "error": "app.services.provider_health.ProviderUnavailable: AI_PROVIDER_UNAVAILABLE",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_assistant_pipeline_comprehensive.py",
+      "test_name": "test_arbitrary_marine_query_government_schemes",
+      "category": "B",
+      "error": "app.services.provider_health.ProviderUnavailable: AI_PROVIDER_UNAVAILABLE",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_assistant_pipeline_comprehensive.py",
+      "test_name": "test_arbitrary_marine_query_distance_to_coast_and_eez",
+      "category": "B",
+      "error": "app.services.provider_health.ProviderUnavailable: AI_PROVIDER_UNAVAILABLE",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_assistant_pipeline_comprehensive.py",
+      "test_name": "test_arbitrary_marine_query_nearest_pfz_distance",
+      "category": "B",
+      "error": "app.services.provider_health.ProviderUnavailable: AI_PROVIDER_UNAVAILABLE",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_assistant_pipeline_comprehensive.py",
+      "test_name": "test_multi_turn_context_resolution",
+      "category": "B",
+      "error": "app.services.provider_health.ProviderUnavailable: AI_PROVIDER_UNAVAILABLE",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_assistant_pipeline_comprehensive.py",
+      "test_name": "test_voice_speak_endpoint",
+      "category": "B",
+      "error": "assert 503 == 200; +  where 503 = <Response [503 Service Unavailable]>.status_code",
+      "current_contract": "Valid upstream audio/transcript is returned; absent upstream data returns 503. Exercise success using explicit provider fixtures, not credentials or real network.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_assistant_pipeline_comprehensive.py",
+      "test_name": "test_chat_endpoint_full_pipeline",
+      "category": "B",
+      "error": "assert 503 == 200; +  where 503 = <Response [503 Service Unavailable]>.status_code",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_bhashini.py",
+      "test_name": "TestBhashiniService::test_translation_english_to_gujarati",
+      "category": "B",
+      "error": "app.services.provider_health.ProviderUnavailable: TRANSLATION_UNAVAILABLE",
+      "current_contract": "Return provider translation or explicit unavailable error; identity translation is local. Isolate upstream translation in tests.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_bhashini.py",
+      "test_name": "TestBhashiniService::test_translation_gujarati_to_english",
+      "category": "B",
+      "error": "app.services.provider_health.ProviderUnavailable: TRANSLATION_UNAVAILABLE",
+      "current_contract": "Return provider translation or explicit unavailable error; identity translation is local. Isolate upstream translation in tests.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_chat.py",
+      "test_name": "TestChatAndBhashiniEndpoints::test_chat_english_query",
+      "category": "B",
+      "error": "AssertionError: 503 != 200",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_chat.py",
+      "test_name": "TestChatAndBhashiniEndpoints::test_chat_gujarati_query",
+      "category": "B",
+      "error": "AssertionError: 503 != 200",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_chat.py",
+      "test_name": "TestChatAndBhashiniEndpoints::test_chat_hindi_query",
+      "category": "B",
+      "error": "AssertionError: 503 != 200; AssertionError: 503 != 200",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_chat.py",
+      "test_name": "TestChatAndBhashiniEndpoints::test_multilingual_query_backward_compatibility",
+      "category": "B",
+      "error": "External provider unavailable; expected successful response",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_chat.py",
+      "test_name": "TestChatAndBhashiniEndpoints::test_translate_endpoint",
+      "category": "B",
+      "error": "AssertionError: 503 != 200",
+      "current_contract": "Return provider translation or explicit unavailable error; identity translation is local. Isolate upstream translation in tests.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_chat_quality.py",
+      "test_name": "test_agent_routing_metadata_context_idempotency_and_uniqueness",
+      "category": "B",
+      "error": "AssertionError: {\"detail\":\"AI_PROVIDER_UNAVAILABLE\"}; assert 503 == 200; +  where 503 = <Response [503 Service Unavailable]>.status_code",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_demo_scenario.py",
+      "test_name": "TestDemoScenario::test_dahanu_killer_demo_endpoint",
+      "category": "B",
+      "error": "AssertionError: 503 != 200",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_demo_scenario.py",
+      "test_name": "TestDemoScenario::test_simulate_api_endpoint",
+      "category": "B",
+      "error": "AssertionError: 503 != 200",
+      "current_contract": "A verified current baseline permits labeled simulation; missing baseline returns 503. Test supplies a baseline fixture.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_government.py",
+      "test_name": "TestGovernmentService::test_default_announcements_seeded",
+      "category": "A",
+      "error": "AssertionError: 0 not greater than or equal to 3",
+      "current_contract": "No fabricated startup government data; filtering tests must explicitly create fixture announcements",
+      "change": "test"
+    },
+    {
+      "test_file": "tests/test_government.py",
+      "test_name": "TestGovernmentService::test_filter_by_state",
+      "category": "A",
+      "error": "AssertionError: False is not true",
+      "current_contract": "No fabricated startup government data; filtering tests must explicitly create fixture announcements",
+      "change": "test"
+    },
+    {
+      "test_file": "tests/test_government.py",
+      "test_name": "TestGovernmentService::test_get_documents",
+      "category": "A",
+      "error": "AssertionError: 0 not greater than or equal to 3",
+      "current_contract": "No fabricated startup government data; filtering tests must explicitly create fixture announcements",
+      "change": "test"
+    },
+    {
+      "test_file": "tests/test_government.py",
+      "test_name": "TestGovernmentEndpoints::test_get_announcement_by_id_endpoint",
+      "category": "A",
+      "error": "AssertionError: 404 != 200",
+      "current_contract": "No fabricated startup government data; filtering tests must explicitly create fixture announcements",
+      "change": "test"
+    },
+    {
+      "test_file": "tests/test_government.py",
+      "test_name": "TestGovernmentEndpoints::test_get_announcements_endpoint",
+      "category": "A",
+      "error": "AssertionError: 0 not greater than or equal to 2",
+      "current_contract": "No fabricated startup government data; filtering tests must explicitly create fixture announcements",
+      "change": "test"
+    },
+    {
+      "test_file": "tests/test_government.py",
+      "test_name": "TestGovernmentEndpoints::test_get_documents_endpoint",
+      "category": "A",
+      "error": "AssertionError: 0 not greater than or equal to 2",
+      "current_contract": "No fabricated startup government data; filtering tests must explicitly create fixture announcements",
+      "change": "test"
+    },
+    {
+      "test_file": "tests/test_government.py",
+      "test_name": "TestGovernmentEndpoints::test_post_announcement_endpoint",
+      "category": "D",
+      "error": "AssertionError: 401 != 201",
+      "current_contract": "Authentication must use an account provisioned in the current isolated database, not a stale seeded identity",
+      "change": "test"
+    },
+    {
+      "test_file": "tests/test_incois_query.py",
+      "test_name": "TestIncoisQuery::test_combined_wave_and_wind_conditions_query",
+      "category": "B",
+      "error": "AssertionError: 503 != 200",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_incois_query.py",
+      "test_name": "TestIncoisQuery::test_unrelated_pfz_query_preserves_functionality",
+      "category": "B",
+      "error": "AssertionError: 503 != 200",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_incois_query.py",
+      "test_name": "TestIncoisQuery::test_wave_height_query",
+      "category": "B",
+      "error": "AssertionError: 503 != 200",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_incois_query.py",
+      "test_name": "TestIncoisQuery::test_wind_direction_query",
+      "category": "B",
+      "error": "AssertionError: 503 != 200",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_incois_query.py",
+      "test_name": "TestIncoisQuery::test_wind_speed_query",
+      "category": "B",
+      "error": "AssertionError: 503 != 200",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_marine_boundaries.py",
+      "test_name": "TestMarineBoundaries::test_10_multilingual_query_with_boundary_check",
+      "category": "B",
+      "error": "AssertionError: 503 != 200; AssertionError: 503 != 200; AssertionError: 503 != 200",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_multilingual_assistant_upgrade.py",
+      "test_name": "TestMultilingualAssistantUpgrade::test_arbitrary_boundary_and_coast_distance_query",
+      "category": "B",
+      "error": "External provider unavailable; expected successful response",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_multilingual_assistant_upgrade.py",
+      "test_name": "TestMultilingualAssistantUpgrade::test_arbitrary_emergency_breakdown_query",
+      "category": "B",
+      "error": "External provider unavailable; expected successful response",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_multilingual_assistant_upgrade.py",
+      "test_name": "TestMultilingualAssistantUpgrade::test_arbitrary_government_scheme_query",
+      "category": "B",
+      "error": "AssertionError: 503 != 200",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_multilingual_assistant_upgrade.py",
+      "test_name": "TestMultilingualAssistantUpgrade::test_arbitrary_tide_query",
+      "category": "B",
+      "error": "AssertionError: 503 != 200",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_multilingual_assistant_upgrade.py",
+      "test_name": "TestMultilingualAssistantUpgrade::test_arbitrary_wave_height_query",
+      "category": "B",
+      "error": "AssertionError: 503 != 200",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_multilingual_assistant_upgrade.py",
+      "test_name": "TestMultilingualAssistantUpgrade::test_arbitrary_wind_speed_query",
+      "category": "B",
+      "error": "AssertionError: 503 != 200; AssertionError: 503 != 200; AssertionError: 503 != 200",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_multilingual_assistant_upgrade.py",
+      "test_name": "TestMultilingualAssistantUpgrade::test_language_priority_hindi_input_with_english_dashboard",
+      "category": "B",
+      "error": "External provider unavailable; expected successful response",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_multilingual_assistant_upgrade.py",
+      "test_name": "TestMultilingualAssistantUpgrade::test_language_priority_romanized_gujarati_input_with_english_dashboard",
+      "category": "B",
+      "error": "External provider unavailable; expected successful response",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_multilingual_assistant_upgrade.py",
+      "test_name": "TestMultilingualAssistantUpgrade::test_language_priority_romanized_hindi_input_with_english_dashboard",
+      "category": "B",
+      "error": "External provider unavailable; expected successful response",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_ocean_analytics_and_isro_queries.py",
+      "test_name": "test_scenario_1_marine_weather_advisory",
+      "category": "B",
+      "error": "assert 503 == 200; +  where 503 = <Response [503 Service Unavailable]>.status_code",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_ocean_analytics_and_isro_queries.py",
+      "test_name": "test_scenario_2_potential_fishing_zones",
+      "category": "B",
+      "error": "assert 503 == 200; +  where 503 = <Response [503 Service Unavailable]>.status_code",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_ocean_analytics_and_isro_queries.py",
+      "test_name": "test_scenario_3_safety_risk_assessment",
+      "category": "B",
+      "error": "assert 503 == 200; +  where 503 = <Response [503 Service Unavailable]>.status_code",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_ocean_analytics_and_isro_queries.py",
+      "test_name": "test_scenario_4_maritime_boundary_geofence",
+      "category": "B",
+      "error": "assert 503 == 200; +  where 503 = <Response [503 Service Unavailable]>.status_code",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_ocean_analytics_and_isro_queries.py",
+      "test_name": "test_scenario_5_multi_hazard_cyclone_alert",
+      "category": "B",
+      "error": "assert 503 == 200; +  where 503 = <Response [503 Service Unavailable]>.status_code",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_ocean_analytics_and_isro_queries.py",
+      "test_name": "test_scenario_6_chlorophyll_and_sst_analytics",
+      "category": "B",
+      "error": "assert 503 == 200; +  where 503 = <Response [503 Service Unavailable]>.status_code",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_ocean_analytics_and_isro_queries.py",
+      "test_name": "test_scenario_7_marine_ecological_productivity_decline",
+      "category": "B",
+      "error": "assert 503 == 200; +  where 503 = <Response [503 Service Unavailable]>.status_code",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_ocean_analytics_and_isro_queries.py",
+      "test_name": "test_scenario_8_zone_avoidance_and_safe_routing",
+      "category": "B",
+      "error": "assert 503 == 200; +  where 503 = <Response [503 Service Unavailable]>.status_code",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_pfz_api.py",
+      "test_name": "TestPFZApi::test_pfz_endpoint",
+      "category": "A",
+      "error": "AssertionError: 'unavailable' != 'INCOIS'; - unavailable; + INCOIS",
+      "current_contract": "Unconfigured PFZ remains unavailable with no invented advisory",
+      "change": "test"
+    },
+    {
+      "test_file": "tests/test_query.py",
+      "test_name": "TestQueryEndpoint::test_query_general",
+      "category": "B",
+      "error": "AssertionError: 503 != 200",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_query.py",
+      "test_name": "TestQueryEndpoint::test_query_nearest_pfz",
+      "category": "B",
+      "error": "AssertionError: 503 != 200",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_query.py",
+      "test_name": "TestQueryEndpoint::test_query_safety_check",
+      "category": "B",
+      "error": "AssertionError: 503 != 200",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_query.py",
+      "test_name": "TestQueryEndpoint::test_query_safety_check_with_pfz",
+      "category": "B",
+      "error": "AssertionError: 503 != 200",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_query.py",
+      "test_name": "TestQueryEndpoint::test_query_weather_conditions",
+      "category": "B",
+      "error": "AssertionError: 503 != 200",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_recommendations_and_reasoning.py",
+      "test_name": "test_query_endpoint_delivers_recommendations_and_evidence",
+      "category": "B",
+      "error": "assert 503 == 200; +  where 503 = <Response [503 Service Unavailable]>.status_code",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_recommendations_and_reasoning.py",
+      "test_name": "test_chat_endpoint_delivers_recommendations_and_evidence",
+      "category": "B",
+      "error": "assert 503 == 200; +  where 503 = <Response [503 Service Unavailable]>.status_code",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_recommendations_and_reasoning.py",
+      "test_name": "test_api_recommendations_endpoint",
+      "category": "B",
+      "error": "assert 503 == 200; +  where 503 = <Response [503 Service Unavailable]>.status_code",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_sarvam_language.py",
+      "test_name": "TestVoiceEndpoints::test_query_multilingual_with_sarvam_attribution",
+      "category": "B",
+      "error": "AssertionError: 503 != 200",
+      "current_contract": "Preserve real orchestration, authentication, evidence and response contracts with an explicit test-only synthesis boundary. No fallback model prose or fabricated provider data in production.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_sarvam_language.py",
+      "test_name": "TestVoiceEndpoints::test_voice_speak_endpoint",
+      "category": "B",
+      "error": "assert 503 == 200; +  where 503 = <Response [503 Service Unavailable]>.status_code",
+      "current_contract": "Valid upstream audio/transcript is returned; absent upstream data returns 503. Exercise success using explicit provider fixtures, not credentials or real network.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_sarvam_language.py",
+      "test_name": "TestVoiceEndpoints::test_voice_transcribe_base64_endpoint",
+      "category": "B",
+      "error": "AssertionError: 503 != 200",
+      "current_contract": "Valid upstream audio/transcript is returned; absent upstream data returns 503. Exercise success using explicit provider fixtures, not credentials or real network.",
+      "change": "test",
+      "secondary_note": "After the upstream blocker is isolated, obsolete prose/availability assertions are updated where necessary; this does not change the original first-failure classification."
+    },
+    {
+      "test_file": "tests/test_sarvam_lid.py",
+      "test_name": "TestSarvamLanguageIdentification::test_network_and_api_failure",
+      "category": "D",
+      "error": "AssertionError: 'LOCAL_DETECTED' != 'FALLBACK_DETECTED'; - LOCAL_DETECTED; + FALLBACK_DETECTED",
+      "current_contract": "Local language detection can bypass Sarvam; no invented provider request attribution",
+      "change": "test"
+    },
+    {
+      "test_file": "tests/test_sarvam_lid.py",
+      "test_name": "TestFastAPIDetectLanguageIntegration::test_api_detect_language_sarvam_success",
+      "category": "D",
+      "error": "request_id None != test-req-12345",
+      "current_contract": "Local language detection can bypass Sarvam; no invented provider request attribution",
+      "change": "test"
+    }
+  ]
+}

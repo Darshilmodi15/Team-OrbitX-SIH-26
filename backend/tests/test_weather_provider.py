@@ -21,7 +21,7 @@ class TestOpenMeteoWeatherProvider(unittest.TestCase):
         self.assertEqual(_wmo_code_to_forecast(51), "light drizzle")
         self.assertEqual(_wmo_code_to_forecast(63), "moderate rain")
         self.assertEqual(_wmo_code_to_forecast(95), "stormy")
-        self.assertEqual(_wmo_code_to_forecast(None), "clear")
+        self.assertEqual(_wmo_code_to_forecast(None), "unavailable")
 
     def test_open_meteo_live_or_fallback_structure(self):
         """Validates that get_weather returns compliant dictionary structure."""
@@ -29,23 +29,25 @@ class TestOpenMeteoWeatherProvider(unittest.TestCase):
         data = provider.get_weather(lat=18.9220, lon=72.8347, date="2026-08-24")
 
         self.assertIn("wave_height_m", data)
-        self.assertIsInstance(data["wave_height_m"], (int, float))
+        self.assertTrue(data["wave_height_m"] is None or isinstance(data["wave_height_m"], (int, float)))
         self.assertIn("wind_speed_kmh", data)
-        self.assertIsInstance(data["wind_speed_kmh"], (int, float))
+        self.assertTrue(data["wind_speed_kmh"] is None or isinstance(data["wind_speed_kmh"], (int, float)))
         self.assertIn("forecast", data)
         self.assertIsInstance(data["forecast"], str)
         self.assertIn("source", data)
-        self.assertIn(data["source"], ["open_meteo_marine_api", "mock_marine_weather"])
+        self.assertIn(data["source"], ["open_meteo_marine_api"])
 
     def test_open_meteo_graceful_fallback_on_network_error(self):
-        """Validates automatic fallback to mock data when network fails."""
+        """Validates unavailable values when network fails."""
         provider = OpenMeteoWeatherProvider(timeout_seconds=1.0)
 
         with patch("httpx.Client.get", side_effect=httpx.ConnectTimeout("Network unreachable")):
             data = provider.get_weather(lat=18.9220, lon=72.8347, date="2026-08-24")
 
-            self.assertTrue(data.get("is_mock"))
-            self.assertEqual(data.get("source"), "mock_marine_weather")
+            self.assertFalse(data.get("is_mock"))
+            self.assertEqual(data.get("cache_status"), "unavailable")
+            self.assertIsNone(data["wave_height_m"])
+            self.assertIsNone(data["wind_speed_kmh"])
             self.assertIn("wave_height_m", data)
             self.assertIn("wind_speed_kmh", data)
 
@@ -55,20 +57,13 @@ class TestOpenMeteoWeatherProvider(unittest.TestCase):
         evidence = get_marine_weather(provider=provider, lat=18.9220, lon=72.8347, date="2026-08-24")
 
         self.assertIsInstance(evidence, WeatherEvidence)
-        self.assertGreaterEqual(evidence.wave_height_m, 0.0)
-        self.assertGreaterEqual(evidence.wind_speed_kmh, 0.0)
-        self.assertIn(evidence.source, ["open_meteo_marine_api", "mock_marine_weather"])
+        self.assertTrue(evidence.wave_height_m is None or evidence.wave_height_m >= 0)
+        self.assertTrue(evidence.wind_speed_kmh is None or evidence.wind_speed_kmh >= 0)
+        self.assertIn(evidence.source, ["open_meteo_marine_api"])
 
-    def test_caching_mechanism(self):
-        """Validates that identical coordinate requests hit in-memory cache."""
-        provider = OpenMeteoWeatherProvider(timeout_seconds=4.0)
-        res1 = provider.get_weather(lat=19.7242, lon=72.0794, date="2026-08-24")
-        res2 = provider.get_weather(lat=19.7242, lon=72.0794, date="2026-08-24")
-
-        self.assertEqual(res1, res2)
-        cache_key = (round(19.7242, 3), round(72.0794, 3), "2026-08-24")
-        self.assertIn(cache_key, provider._cache)
-
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_failure_is_not_cached_as_success(self):
+        provider = OpenMeteoWeatherProvider()
+        with patch("httpx.Client.get", side_effect=httpx.ConnectError("offline")) as request:
+            provider.get_weather(19, 72, "2026-09-09")
+            provider.get_weather(19, 72, "2026-09-09")
+        self.assertEqual(request.call_count, 4)

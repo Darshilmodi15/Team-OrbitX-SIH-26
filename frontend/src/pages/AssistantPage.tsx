@@ -125,7 +125,7 @@ function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
           )}
           {evidence.connectivity_mode && (
             <span className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono text-muted-foreground border border-border">
-              {t(evidence.connectivity_mode === "LIVE" ? "state.live" : evidence.connectivity_mode === "CACHED" ? "health.cached" : evidence.connectivity_mode === "STALE" ? "health.stale" : "chat.unavailable")}
+              {t(["FRESH", "LIVE"].includes(evidence.connectivity_mode) ? "state.live" : evidence.connectivity_mode === "CACHED" ? "health.cached" : evidence.connectivity_mode === "STALE" ? "health.stale" : "chat.unavailable")}
             </span>
           )}
         </div>
@@ -247,7 +247,7 @@ export default function AssistantPage() {
   const [input, setInput] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
-  const [chatError, setChatError] = useState(false);
+  const [chatError, setChatError] = useState<"chat.startFailed" | "chat.requestFailed" | null>(null);
   const requestInFlightRef = useRef(false);
 
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
@@ -307,7 +307,7 @@ export default function AssistantPage() {
     stopAudio();
     if (requestInFlightRef.current) return;
     setActiveThreadId("");
-    setChatError(false);
+    setChatError(null);
     setMobileDrawerOpen(false);
     setInput("");
     inputRef.current?.focus();
@@ -317,7 +317,7 @@ export default function AssistantPage() {
     e.stopPropagation();
     stopAudio();
     if (requestInFlightRef.current) return;
-    try { await deleteConversation(id); } catch { setChatError(true); return; }
+    try { await deleteConversation(id); } catch { setChatError("chat.requestFailed"); return; }
     const filtered = threads.filter((th) => th.id !== id);
     setThreads(filtered);
     if (activeThreadId === id) {
@@ -379,7 +379,8 @@ export default function AssistantPage() {
     requestInFlightRef.current = true;
 
     setIsThinking(true);
-    setChatError(false);
+    setChatError(null);
+    let startingConversation = !activeThreadId;
     try {
     stopAudio();
     let targetThreadId = activeThreadId;
@@ -388,6 +389,7 @@ export default function AssistantPage() {
       targetThreadId = created.id;
       setActiveThreadId(targetThreadId);
     }
+    startingConversation = false;
     const now = Date.now();
     const userMsg: ChatMessage = { id: `u_${now}`, role: "user", text: question, at: now };
 
@@ -485,7 +487,7 @@ export default function AssistantPage() {
 
     } catch (err) {
       console.warn("Chat request failed", err);
-      setChatError(true);
+      setChatError(startingConversation ? "chat.startFailed" : "chat.requestFailed");
       setInput(question);
     } finally {
       setIsThinking(false);
@@ -873,7 +875,7 @@ export default function AssistantPage() {
             </div>
           </header>
 
-          {chatError && <p role="alert" className="border-b border-red-500/30 p-3 text-sm text-red-400">{t("state.liveUnavailable")} · {t("cta.retry")}</p>}
+          {chatError && <p role="alert" className="border-b border-red-500/30 p-3 text-sm text-red-400">{t(chatError)} · {t("cta.retry")}</p>}
           {!location && <a href="/location" className="border-b border-border p-3 text-sm text-teal-400">{t("loc.title")}</a>}
           {/* Conversation Stream */}
           <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4 sm:space-y-6">

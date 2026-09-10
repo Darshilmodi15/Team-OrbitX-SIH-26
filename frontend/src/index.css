@@ -213,11 +213,6 @@
   color: #CBD5E1 !important;
 }
 
-.dark button,
-.dark a {
-  color: inherit;
-}
-
 .dark .bg-card,
 .dark .bg-surface {
   color: #F8FAFC;
@@ -257,4 +252,13 @@
 
 .animate-ocean-swell {
   animation: ocean-gentle-swell 16s ease-in-out infinite alternate;
+}
+
+/* Keep browser autofill consistent with the active theme, including Safari. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--foreground);
+  -webkit-box-shadow: 0 0 0 1000px var(--background) inset;
+  caret-color: var(--foreground);
 }

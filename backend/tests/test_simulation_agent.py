@@ -11,10 +11,10 @@ class TestSimulationAgent(unittest.TestCase):
             forecast="calm",
             wave_height_m=1.0,
             wind_speed_kmh=15.0,
-            is_mock=False,
+            is_mock=False, cache_status="fresh",
         )
         baseline_risk = assess_risk(baseline_weather)
-        self.assertEqual(baseline_risk.level, "safe")
+        self.assertEqual(baseline_risk.level, "unknown")
 
         # Simulate +2.0m increase in wave height (total 3.0m)
         sim = run_what_if_simulation(
@@ -23,7 +23,7 @@ class TestSimulationAgent(unittest.TestCase):
             delta_wave_m=2.0,
         )
         self.assertTrue(sim.is_simulation)
-        self.assertEqual(sim.baseline_risk, "SAFE")
+        self.assertEqual(sim.baseline_risk, "UNKNOWN")
         self.assertEqual(sim.simulated_risk, "UNSAFE")
         self.assertIn("escalated", sim.impact_summary.lower())
 
@@ -33,7 +33,7 @@ class TestSimulationAgent(unittest.TestCase):
             forecast="calm",
             wave_height_m=0.8,
             wind_speed_kmh=10.0,
-            is_mock=False,
+            is_mock=False, cache_status="fresh",
         )
         baseline_risk = assess_risk(baseline_weather)
 
@@ -42,7 +42,7 @@ class TestSimulationAgent(unittest.TestCase):
             baseline_risk=baseline_risk,
             target_wind_kmh=45.0,
         )
-        self.assertEqual(sim.baseline_risk, "SAFE")
+        self.assertEqual(sim.baseline_risk, "UNKNOWN")
         self.assertIn(sim.simulated_risk, ["CAUTION", "UNSAFE"])
 
 

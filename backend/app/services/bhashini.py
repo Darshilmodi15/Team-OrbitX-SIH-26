@@ -35,6 +35,44 @@ SUPPORTED_LANGUAGES: Dict[str, str] = {
     "ur": "Urdu (اردو)",
 }
 
+# Bhashini / ULCA Service IDs Catalog
+BHASHINI_MODELS: Dict[str, Dict[str, str]] = {
+    "translation": {
+        "indictrans_v2": "ai4bharat/indictrans-v2-all-gpu--t4",
+        "iiith_all": "bhashini/iiith/nmt-all",
+        "iiith_v1": "Bhashini/IIITH/Trans/V1",
+        "iitb": "iitb/trilingual-en_hi_mr-v1-gpu--t4",
+        "aukbc": "bhashini/aukbc/disco-nmt",
+        "cdac_noida": "bhashini/cdac-noida/nmt",
+        "cdac_pune": "bhashini/cdac-pune/nmt",
+        "default": "ai4bharat/indictrans-v2-all-gpu--t4",
+    },
+    "asr": {
+        "multilingual": "bhashini/ai4bharat/conformer-multilingual-asr",
+        "indo_aryan": "ai4bharat/conformer-multilingual-indo_aryan-gpu--t4",
+        "dravidian": "ai4bharat/conformer-multilingual-dravidian-gpu--t4",
+        "whisper_en": "ai4bharat/whisper-medium-en--gpu--t4",
+        "hindi": "ai4bharat/conformer-hi-gpu--t4",
+        "iitm_dravidian": "bhashini/iitm/asr-dravidian--gpu--t4",
+        "iitm_indoaryan": "bhashini/iitm/asr-indoaryan--gpu--t4",
+        "default": "bhashini/ai4bharat/conformer-multilingual-asr",
+    },
+    "tts": {
+        "iitm": "Bhashini/IITM/TTS",
+        "coqui_dravidian": "ai4bharat/indic-tts-coqui-dravidian-gpu--t4",
+        "coqui_indo_aryan": "ai4bharat/indic-tts-coqui-indo_aryan-gpu--t4",
+        "coqui_misc": "ai4bharat/indic-tts-coqui-misc-gpu--t4",
+        "iisc": "Bhashini/IISC/TTS",
+        "default": "Bhashini/IITM/TTS",
+    },
+    "text_lang_detection": {
+        "all": "bhashini/indic-lang-detection-all",
+        "iiith": "bhashini/iiiith/indic-lang-detection-all",
+        "tld": "bhashini/indic/tld",
+        "default": "bhashini/indic-lang-detection-all",
+    },
+}
+
 # Maritime domain keywords for heuristic language identification and fallback translations
 MARITIME_TRANSLATIONS: Dict[str, Dict[str, str]] = {
     "gu": {
@@ -507,8 +545,8 @@ class BhashiniService:
 
     @property
     def is_configured(self) -> bool:
-        """Checks if live Bhashini API credentials are present."""
-        return bool(self.user_id and self.api_key)
+        """Checks if live Bhashini API credentials are present (either Udyat key pair or direct Inference key)."""
+        return bool((self.user_id and self.api_key) or self.inference_api_key)
 
     @property
     def is_sarvam_configured(self) -> bool:
@@ -533,9 +571,9 @@ class BhashiniService:
         Identifies the language and script of the input text using a strict layered approach:
         
         Priority:
-        1. Sarvam AI Language Identification (/text-lid) if configured
-        2. Fast Deterministic Unicode Script Character Frequency Analyzer (100% accurate for native Indian scripts)
-        3. Romanized Indic & Code-Mixing Pattern Recognizer (for Hindi/Gujarati/Marathi/etc. typed in Latin script)
+        1. Native script and Romanized Indic text analysis
+        2. Plain Latin text defaults to English
+        3. Sarvam identification for unresolved text
         4. Multi-turn session language context (if session_id provided)
         5. Default to 'en-IN' / 'en' (English)
         """
@@ -551,14 +589,6 @@ class BhashiniService:
             )
 
         cleaned_text = text.strip()
-
-        # 1. Primary: Let the provider decide whether live identification is available.
-        if self.sarvam_service:
-            sarvam_res = self.sarvam_service.identify_language(cleaned_text)
-            if sarvam_res is not None:
-                if session_id:
-                    self.set_session_language(session_id, sarvam_res.short_code)
-                return sarvam_res
 
         # 2. Fast Deterministic Unicode Script Character Frequency Analyzer
         script_counts = {
@@ -630,6 +660,26 @@ class BhashiniService:
                 language_name=rom_name,
             )
 
+        # Native script and Romanized Indic markers take precedence over remote
+        # guesses. Plain Latin input must not become Telugu because text-lid
+        # misclassifies a short English phrase (e.g. "Emergency numbers").
+        if re.search(r"[a-zA-Z]", cleaned_text) and all(ord(c) < 128 for c in cleaned_text):
+            if session_id:
+                self.set_session_language(session_id, "en")
+            return LanguageIdentificationResult(
+                language_code="en-IN", script_code="Latn", request_id=None,
+                provider="local_text_analysis", detection_status="LOCAL_DETECTED",
+                short_code="en", language_name="English",
+            )
+
+        # Only unresolved text needs an external identification request.
+        if any(c.isalpha() for c in cleaned_text) and self.sarvam_service:
+            sarvam_res = self.sarvam_service.identify_language(cleaned_text)
+            if sarvam_res is not None:
+                if session_id:
+                    self.set_session_language(session_id, sarvam_res.short_code)
+                return sarvam_res
+
         # 4. Session Language Store (for Latin/ASCII queries in existing regional sessions)
         if session_id and session_id in self._session_languages:
             session_lang = self._session_languages[session_id]
@@ -673,58 +723,71 @@ class BhashiniService:
         if not self.is_configured:
             return None
 
-        headers = {
-            "userID": self.user_id,
-            "ulcaApiKey": self.api_key,
-            "Content-Type": "application/json",
-        }
+        if self.user_id and self.api_key:
+            headers = {
+                "userID": self.user_id,
+                "ulcaApiKey": self.api_key,
+                "Content-Type": "application/json",
+            }
 
-        payload = {
-            "pipelineTasks": [
-                {
-                    "taskType": "translation",
-                    "config": {
-                        "language": {
-                            "sourceLanguage": source_lang,
-                            "targetLanguage": target_lang,
-                        }
-                    },
-                }
-            ],
-            "pipelineRequestConfig": {
-                "pipelineId": self.pipeline_id,
-            },
-        }
+            payload = {
+                "pipelineTasks": [
+                    {
+                        "taskType": "translation",
+                        "config": {
+                            "language": {
+                                "sourceLanguage": source_lang,
+                                "targetLanguage": target_lang,
+                            }
+                        },
+                    }
+                ],
+                "pipelineRequestConfig": {
+                    "pipelineId": self.pipeline_id,
+                },
+            }
 
-        try:
-            with httpx.Client(timeout=8.0) as client:
-                response = client.post(self.pipeline_config_url, headers=headers, json=payload)
-                if response.status_code == 200:
-                    data = response.json()
-                    
-                    # Extract callback URL and inference API keys
-                    callback_url = data.get("pipelineInferenceAPIEndPoint", {}).get("callbackUrl")
-                    inference_auth = data.get("pipelineInferenceAPIEndPoint", {}).get("inferenceApiKey", {})
-                    auth_name = inference_auth.get("name", "Authorization")
-                    auth_value = inference_auth.get("value") or self.inference_api_key or self.api_key
+            try:
+                with httpx.Client(timeout=8.0) as client:
+                    response = client.post(self.pipeline_config_url, headers=headers, json=payload)
+                    if response.status_code == 200:
+                        data = response.json()
 
-                    # Extract service ID
-                    service_id = None
-                    tasks = data.get("pipelineResponseConfig", [])
-                    if tasks and "config" in tasks[0] and tasks[0]["config"]:
-                        service_id = tasks[0]["config"][0].get("serviceId")
+                        # Extract callback URL and inference API keys
+                        callback_url = data.get("pipelineInferenceAPIEndPoint", {}).get("callbackUrl")
+                        inference_auth = data.get("pipelineInferenceAPIEndPoint", {}).get("inferenceApiKey", {})
+                        auth_name = inference_auth.get("name", "Authorization")
+                        auth_value = inference_auth.get("value") or self.inference_api_key or self.api_key
 
-                    if callback_url and service_id:
-                        config_data = {
-                            "callback_url": callback_url,
-                            "service_id": service_id,
-                            "auth_name": auth_name,
-                            "auth_value": auth_value,
-                        }
-                        self._pipeline_cache[cache_key] = config_data
-                        return config_data
-        except Exception as err:
-            logger.warning(f"Bhashini pipeline config call failed: {err}")
+                        # Extract service ID
+                        service_id = None
+                        tasks = data.get("pipelineResponseConfig", [])
+                        if tasks and "config" in tasks[0] and tasks[0]["config"]:
+                            service_id = tasks[0]["config"][0].get("serviceId")
+
+                        if callback_url and service_id:
+                            config_data = {
+                                "callback_url": callback_url,
+                                "service_id": service_id,
+                                "auth_name": auth_name,
+                                "auth_value": auth_value,
+                            }
+                            self._pipeline_cache[cache_key] = config_data
+                            return config_data
+            except Exception as err:
+                logger.warning(f"Bhashini pipeline config call failed: {err}")
+
+        # Fallback to direct Dhruva pipeline inference endpoint when inference key is present
+        if self.inference_api_key:
+            default_service_id = BHASHINI_MODELS["translation"].get("default", "ai4bharat/indictrans-v2-all-gpu--t4")
+            config_data = {
+                "callback_url": "https://dhruva-api.bhashini.gov.in/services/inference/pipeline",
+                "service_id": default_service_id,
+                "auth_name": "Authorization",
+                "auth_value": self.inference_api_key,
+            }
+            self._pipeline_cache[cache_key] = config_data
+            return config_data
 
         return None
 
@@ -832,7 +895,8 @@ class BhashiniService:
         return None
 
     def _translate_with_dictionary(self, text: str, source_lang: str, target_lang: str) -> str:
-        """Domain-specific dictionary fallback for offline / mock testing."""
+        """Quarantined: keyword rewrites are not verified translations."""
+        return text
         if target_lang == "en":
             q = text.lower().strip()
 
@@ -944,6 +1008,31 @@ class BhashiniService:
 
         return translated_text
 
+    def translate_bhashini(
+        self,
+        text: str,
+        source_lang: str,
+        target_lang: str,
+        service_id: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        Translates text directly using Bhashini NMT (MeitY ULCA / Dhruva).
+        Bypasses other providers, returning translated string or None on failure.
+        """
+        if not text or not text.strip() or source_lang == target_lang:
+            return text
+        if not self.is_configured:
+            return None
+
+        config = self._get_pipeline_config(source_lang, target_lang)
+        if config:
+            if service_id:
+                # Custom override service ID if specified by caller
+                config = dict(config)
+                config["service_id"] = service_id
+            return self._call_bhashini_compute(text, source_lang, target_lang, config)
+        return None
+
     def translate(self, text: str, source_lang: str, target_lang: str) -> str:
         """
         Translates text from source_lang to target_lang.
@@ -970,11 +1059,9 @@ class BhashiniService:
 
         # 2. Try Live Bhashini NMT API if credentials are present
         if self.is_configured:
-            config = self._get_pipeline_config(source_lang, target_lang)
-            if config:
-                result = self._call_bhashini_compute(text, source_lang, target_lang, config)
-                if result:
-                    return result
+            bhashini_res = self.translate_bhashini(text, source_lang, target_lang)
+            if bhashini_res:
+                return bhashini_res
 
         # 3. Try Gemini NMT Fallback
         gemini_result = self._translate_with_gemini(text, source_lang, target_lang)
@@ -982,6 +1069,10 @@ class BhashiniService:
             return gemini_result
 
         # 4. Fallback to Maritime domain translation
+        dict_result = self._translate_with_dictionary(text, source_lang, target_lang)
+        if dict_result and dict_result != text:
+            return dict_result
+
         from app.services.provider_health import ProviderUnavailable
         raise ProviderUnavailable("TRANSLATION_UNAVAILABLE")
 

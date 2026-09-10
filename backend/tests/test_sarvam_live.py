@@ -6,6 +6,9 @@ using the SARVAM_API_KEY environment variable.
 CRITICAL SECURITY RULE:
 The API key is NEVER printed, logged, or exposed in test output.
 """
+import pytest
+pytestmark = pytest.mark.external
+
 import os
 import unittest
 from dotenv import load_dotenv
@@ -23,13 +26,13 @@ class TestSarvamLiveIntegration(unittest.TestCase):
     def setUpClass(cls):
         cls.api_key = os.getenv("SARVAM_API_KEY", "").strip()
         if not cls.api_key:
-            raise unittest.SkipTest("SARVAM_API_KEY not configured in backend/.env; skipping live test")
+            raise RuntimeError("SARVAM_API_KEY required for opted-in external test")
         cls.service = SarvamLanguageService(api_key=cls.api_key)
 
     def require_live_result(self, text: str) -> LanguageIdentificationResult:
         result = self.service.identify_language(text)
         if result is None:
-            self.skipTest("Sarvam live LID unavailable from this environment; resilience is covered by fallback tests")
+            self.fail("Opted-in live Sarvam LID request did not return a result")
         return result
 
     def test_live_sarvam_gujarati(self):

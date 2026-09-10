@@ -80,13 +80,15 @@ class MarineWeatherCache:
                 logger.warning(f"Could not connect to Redis at {target_redis_url}: {e}. Falling back to in-memory cache.")
                 self._redis_client = None
 
-    def get_grid_key(self, lat: float, lon: float) -> str:
+    def get_grid_key(self, lat: float, lon: float, target_date: Optional[str] = None) -> str:
         """
         Normalizes coordinates to the nearest grid point to promote cache reuse for nearby locations.
+        Includes target_date in key if specified.
         """
         grid_lat = round(lat / self.grid_resolution) * self.grid_resolution
         grid_lon = round(lon / self.grid_resolution) * self.grid_resolution
-        return f"{grid_lat:.3f}_{grid_lon:.3f}"
+        base_key = f"{grid_lat:.3f}_{grid_lon:.3f}"
+        return f"{base_key}_{target_date}" if target_date else base_key
 
     def get_region_cell(self, lat: float, lon: float) -> str:
         """
@@ -115,22 +117,34 @@ class MarineWeatherCache:
         lat: float,
         lon: float,
         allow_stale: bool = True,
+        target_date: Optional[str] = None,
     ) -> Tuple[Optional[Dict[str, Any]], str]:
         """
-        Retrieves cached marine data for coordinates if available.
+        Retrieves cached marine data for coordinates and optional target date if available.
 
         Returns:
             Tuple of (data_dict or None, status_string)
             status_string can be 'fresh', 'stale', or 'miss'
         """
-        key = self.get_grid_key(lat, lon)
+        key = self.get_grid_key(lat, lon, target_date=target_date)
         record = self._get_record(key)
+        if not record and target_date:
+            # Check if there is an un-dated record that explicitly matches this target date
+            fallback_rec = self._get_record(self.get_grid_key(lat, lon))
+            if fallback_rec and (
+                fallback_rec.data.get("date") == target_date
+                or str(fallback_rec.data.get("forecast_valid_at", ""))[:10] == target_date
+            ):
+                record = fallback_rec
+
         if not record:
             self.misses_count += 1
             return None, "miss"
 
         now = time.time()
-        age = now - record.retrieval_timestamp
+        age = max(0, now - record.retrieval_timestamp)
+        source_age = self._source_age(record.data.get("forecast_valid_at") or record.data.get("forecast_time"), now)
+        age = max(age, source_age) if source_age is not None else self.max_stale + 1
         record.access_count += 1
 
         if age <= self.fresh_ttl:
@@ -164,14 +178,19 @@ class MarineWeatherCache:
         data: Dict[str, Any],
         forecast_time: Optional[str] = None,
         source: str = "INCOIS_OSF_WW3",
+        target_date: Optional[str] = None,
+        issued_at: Optional[str] = None,
+        forecast_valid_at: Optional[str] = None,
+        retrieved_at: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Stores or updates marine data for the given coordinates."""
-        key = self.get_grid_key(lat, lon)
+        eff_target_date = target_date or data.get("date")
+        key = self.get_grid_key(lat, lon, target_date=eff_target_date)
         region_cell = self.get_region_cell(lat, lon)
         grid_lat = round(lat / self.grid_resolution) * self.grid_resolution
         grid_lon = round(lon / self.grid_resolution) * self.grid_resolution
         now_ts = time.time()
-        now_iso = datetime.now(timezone.utc).isoformat()
+        now_iso = retrieved_at or datetime.now(timezone.utc).isoformat()
 
         stored_data = dict(data)
         if "grid_lat" not in stored_data or stored_data["grid_lat"] is None:
@@ -180,10 +199,21 @@ class MarineWeatherCache:
             stored_data["grid_lon"] = round(grid_lon, 4)
         stored_data["region_cell"] = region_cell
         stored_data["source"] = source
+        stored_data["issued_at"] = issued_at or stored_data.get("issued_at")
+        f_valid = forecast_valid_at or forecast_time or stored_data.get("forecast_valid_at") or stored_data.get("forecast_time")
+        stored_data["forecast_valid_at"] = f_valid
+        stored_data["forecast_time"] = f_valid
+        stored_data["retrieved_at"] = now_iso
         stored_data["retrieval_time"] = now_iso
-        stored_data["forecast_time"] = forecast_time or stored_data.get("forecast_time") or now_iso
-        stored_data["freshness"] = "GOOD"
-        stored_data["data_age_sec"] = 0
+
+        source_age = self._source_age(f_valid, now_ts)
+        status = "unavailable" if source_age is None or source_age > self.max_stale else "stale" if source_age > self.fresh_ttl else "fresh"
+        if stored_data.get("is_mock") or stored_data.get("cache_status") == "unavailable":
+            status = "unavailable"
+        stored_data["cache_status"] = status
+        stored_data["is_stale"] = status == "stale"
+        stored_data["freshness"] = {"fresh": "GOOD", "stale": "ACCEPTABLE_STALE", "unavailable": "UNAVAILABLE"}[status]
+        stored_data["data_age_sec"] = int(source_age) if source_age is not None else None
 
         record = CachedMarineRecord(
             grid_key=key,
@@ -192,17 +222,32 @@ class MarineWeatherCache:
             lon=round(grid_lon, 4),
             data=stored_data,
             retrieval_timestamp=now_ts,
-            forecast_timestamp=forecast_time or now_iso,
+            forecast_timestamp=f_valid,
             source=source,
         )
-        self._store_record(key, record)
+        if status != "unavailable":
+            self._store_record(key, record)
+            # Also store under base coordinate key for fallback
+            base_key = self.get_grid_key(lat, lon)
+            if base_key != key:
+                self._store_record(base_key, record)
         return stored_data
+
+    @staticmethod
+    def _source_age(stamp: Optional[str], now: float) -> Optional[float]:
+        try:
+            parsed = datetime.fromisoformat(str(stamp).replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return max(0, now - parsed.timestamp())
+        except (ValueError, TypeError):
+            return None
 
     def _get_record(self, key: str) -> Optional[CachedMarineRecord]:
         """Fetches record from Redis or In-Memory."""
         if self._redis_client:
             try:
-                raw = self._redis_client.get(f"orca:marine:{key}")
+                raw = self._redis_client.get(f"orca:marine:v2:{key}")
                 if raw:
                     payload = json.loads(raw)
                     return CachedMarineRecord(
@@ -239,7 +284,7 @@ class MarineWeatherCache:
                 }
                 # Store with max_stale TTL in Redis
                 self._redis_client.setex(
-                    f"orca:marine:{key}",
+                    f"orca:marine:v2:{key}",
                     int(self.max_stale),
                     json.dumps(payload),
                 )
@@ -251,7 +296,7 @@ class MarineWeatherCache:
         self._memory_cache.clear()
         if self._redis_client:
             try:
-                keys = self._redis_client.keys("orca:marine:*")
+                keys = self._redis_client.keys("orca:marine:v2:*")
                 if keys:
                     self._redis_client.delete(*keys)
             except Exception as e:
@@ -261,7 +306,7 @@ class MarineWeatherCache:
         """Returns the number of active cached grid locations."""
         if self._redis_client:
             try:
-                keys = self._redis_client.keys("orca:marine:*")
+                keys = self._redis_client.keys("orca:marine:v2:*")
                 return len(keys)
             except Exception:
                 pass

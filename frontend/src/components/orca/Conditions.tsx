@@ -36,7 +36,7 @@ function tideTime(time: string | null, height: number | null) {
 
 export function MarineConditions({ data, tide = null }: { data: MarineSnapshot; tide?: MarineTide | null }) {
   const { lang, t } = useI18n();
-  const mode = Date.now() - Date.parse(data.time) > 3600000 ? "stale" : data.dataMode;
+  const mode = data.dataMode === "unavailable" ? "unavailable" : Date.now() - Date.parse(data.time) > 3 * 3600000 ? "stale" : data.dataMode;
   const updatedAt = useMemo(
     () => new Date(data.fetchedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }),
     [data.fetchedAt],
@@ -49,7 +49,7 @@ export function MarineConditions({ data, tide = null }: { data: MarineSnapshot; 
           {t("marine.title")}
         </h2>
         <p className="text-xs text-muted-foreground">
-          {t(mode === "stale" ? "health.stale" : mode === "cached" ? "health.cached" : mode === "fallback" ? "health.fallback" : mode === "live" ? "state.live" : "chat.unavailable")} · {t("state.updated")} {updatedAt} · {t("state.source")}:{" "}
+          {t(mode === "stale" ? "health.stale" : mode === "cached" ? "health.cached" : mode === "fallback" ? "health.fallback" : (mode === "fresh" || mode === "live") ? "state.live" : "chat.unavailable")} · {t("state.updated")} {updatedAt} · {t("state.source")}:{" "}
           {data.sources.join(", ")}
         </p>
       </div>

@@ -33,6 +33,7 @@ from app.data.pfz.base import PFZProvider
 from app.data.pfz.mock import IncoisPFZProvider
 from app.data.weather.base import WeatherProvider
 from app.data.weather.incois import IncoisWeatherProvider
+from app.services.temporal import resolve_query_time, TemporalResolution
 from app.models.agent_models import (
     AgentResult,
     BoundaryEvidence,
@@ -66,7 +67,7 @@ from app.db.models import Conversation
 from app.models.user_models import UserProfile
 from app.services.chat_service import chat_storage_service
 from app.services.rate_limit import rate_limiter
-from app.services.bhashini import SUPPORTED_LANGUAGES, bhashini_service
+from app.services.bhashini import BHASHINI_MODELS, SUPPORTED_LANGUAGES, bhashini_service
 from app.services.dialogue_synthesizer import DialogueSynthesizer
 from app.services.provider_health import ProviderUnavailable
 from app.services.planner import ExecutionPlan, Planner
@@ -168,9 +169,17 @@ def get_marine_conditions_endpoint(
     lat: float = Query(18.9220),
     lon: float = Query(72.8347),
     date: Optional[str] = Query(None),
+    time_hint: Optional[str] = Query(None),
 ):
-    q_date = date or dt_date.today().isoformat()
-    weather = get_marine_weather(provider=weather_provider, lat=lat, lon=lon, date=q_date)
+    temporal_res = resolve_query_time(text=time_hint or "", request_date=date)
+    weather = get_marine_weather(
+        provider=weather_provider,
+        lat=lat,
+        lon=lon,
+        date=temporal_res.target_date,
+        time_hint=temporal_res.time_hint,
+        temporal_res=temporal_res,
+    )
     return weather.model_dump()
 
 
@@ -179,9 +188,17 @@ def get_marine_risk_endpoint(
     lat: float = Query(18.9220),
     lon: float = Query(72.8347),
     date: Optional[str] = Query(None),
+    time_hint: Optional[str] = Query(None),
 ):
-    q_date = date or dt_date.today().isoformat()
-    weather = get_marine_weather(provider=weather_provider, lat=lat, lon=lon, date=q_date)
+    temporal_res = resolve_query_time(text=time_hint or "", request_date=date)
+    weather = get_marine_weather(
+        provider=weather_provider,
+        lat=lat,
+        lon=lon,
+        date=temporal_res.target_date,
+        time_hint=temporal_res.time_hint,
+        temporal_res=temporal_res,
+    )
     risk = assess_risk(weather)
     res = risk.model_dump()
     if risk.profile:
@@ -195,14 +212,26 @@ def get_marine_forecast_endpoint(
     lat: float = Query(18.9220),
     lon: float = Query(72.8347),
     date: Optional[str] = Query(None),
+    time_hint: Optional[str] = Query(None),
 ):
-    q_date = date or dt_date.today().isoformat()
-    weather = get_marine_weather(provider=weather_provider, lat=lat, lon=lon, date=q_date)
+    temporal_res = resolve_query_time(text=time_hint or "", request_date=date)
+    weather = get_marine_weather(
+        provider=weather_provider,
+        lat=lat,
+        lon=lon,
+        date=temporal_res.target_date,
+        time_hint=temporal_res.time_hint,
+        temporal_res=temporal_res,
+    )
     horizon = weather.forecast_horizon or []
     return {
         "location": {"lat": lat, "lon": lon},
         "forecast_horizon": horizon,
-        "source": weather.source,
+        "source": getattr(weather, "source", None),
+        "issued_at": getattr(weather, "issued_at", None),
+        "forecast_valid_at": getattr(weather, "forecast_valid_at", getattr(weather, "forecast_time", None)),
+        "retrieved_at": getattr(weather, "retrieved_at", getattr(weather, "retrieval_time", None)),
+        "target_period": getattr(weather, "target_period", None),
     }
 
 
@@ -425,6 +454,60 @@ def translate_endpoint(request: TranslateRequest):
     }
 
 
+class BhashiniTranslateRequest(BaseModel):
+    text: str = Field(..., description="Text to translate via Bhashini")
+    source_language: str = Field(default="en", description="Source ISO language code (e.g. 'en', 'gu', 'hi')")
+    target_language: str = Field(default="gu", description="Target ISO language code (e.g. 'gu', 'hi', 'en')")
+    service_id: Optional[str] = Field(default=None, description="Optional custom Bhashini Service ID")
+
+
+@app.get("/api/bhashini/status")
+def bhashini_status_endpoint():
+    """Returns configuration status, credential checks, and supported Service IDs for Bhashini."""
+    return {
+        "is_configured": bhashini_service.is_configured,
+        "has_user_id": bool(bhashini_service.user_id),
+        "user_id_preview": (bhashini_service.user_id[:6] + "..." + bhashini_service.user_id[-4:]) if bhashini_service.user_id else None,
+        "has_api_key": bool(bhashini_service.api_key),
+        "has_inference_key": bool(bhashini_service.inference_api_key),
+        "pipeline_id": bhashini_service.pipeline_id,
+        "service_ids": BHASHINI_MODELS,
+    }
+
+
+@app.post("/api/bhashini/translate")
+def bhashini_translate_endpoint(request: BhashiniTranslateRequest):
+    """
+    Directly tests Bhashini translation (MeitY ULCA / Dhruva inference).
+    Use this endpoint to verify live credentials and model responses.
+    """
+    if not bhashini_service.is_configured:
+        raise HTTPException(
+            status_code=400,
+            detail="Bhashini credentials not configured. Please set BHASHINI_USER_ID, BHASHINI_API_KEY, and/or BHASHINI_INFERENCE_API_KEY in backend/.env",
+        )
+    translated = bhashini_service.translate_bhashini(
+        text=request.text,
+        source_lang=request.source_language,
+        target_lang=request.target_language,
+        service_id=request.service_id,
+    )
+    if translated is None:
+        raise HTTPException(
+            status_code=502,
+            detail="Bhashini inference call failed. Verify network connectivity, API key validity, or serviceId.",
+        )
+    return {
+        "status": "success",
+        "provider": "bhashini",
+        "original_text": request.text,
+        "translated_text": translated,
+        "source_language": request.source_language,
+        "target_language": request.target_language,
+        "service_id": request.service_id or BHASHINI_MODELS["translation"]["default"],
+    }
+
+
 @app.get("/api/geofences")
 def get_geofences_endpoint(lat: float = 18.9220, lon: float = 72.8347):
     """Returns all registered maritime geofences and proximity alerts for coordinates."""
@@ -465,6 +548,8 @@ def simulate_endpoint(request: SimulateRequest):
 
     weather = get_marine_weather(provider=weather_provider, lat=lat, lon=lon, date=q_date)
     risk = assess_risk(weather)
+    if weather.wave_height_m is None or weather.wind_speed_kmh is None or weather.cache_status not in {"fresh", "live", "cached"}:
+        raise HTTPException(status_code=503, detail="Current baseline measurements unavailable")
 
     sim = run_what_if_simulation(
         baseline_weather=weather,
@@ -598,6 +683,9 @@ def _process_orca_query(
     location_hint = intent_res.get("location_hint")
     resolved_coords = intent_res.get("resolved_coords")
     time_hint = intent_res.get("time_hint")
+    temporal_res = resolve_query_time(text=english_question, request_date=query_date)
+    time_hint = temporal_res.time_hint or time_hint
+    active_date = temporal_res.target_date
     sim_delta_wave = intent_res.get("simulation_delta_wave")
     sim_delta_wind = intent_res.get("simulation_delta_wind")
 
@@ -623,7 +711,7 @@ def _process_orca_query(
     if location_hint:
         reasoning_desc += f" (station: '{location_hint}')"
     if time_hint:
-        reasoning_desc += f" (timeframe: '{time_hint}')"
+        reasoning_desc += f" (timeframe: '{temporal_res.description}')"
     reasoning.append(f"{reasoning_desc} for query: '{english_question}'.")
 
     # Step 4: Deterministic Task Planning
@@ -632,7 +720,7 @@ def _process_orca_query(
         intent=detected_intent,
         lat=active_lat,
         lon=active_lon,
-        date=query_date,
+        date=active_date,
     )
     sources_used.append("planner")
     agent_results.append(
@@ -687,7 +775,9 @@ def _process_orca_query(
             provider=weather_provider,
             lat=active_lat,
             lon=active_lon,
-            date=query_date,
+            date=active_date,
+            time_hint=time_hint,
+            temporal_res=temporal_res,
         )
         sources_used.append(weather_evidence.source)
         executed_tasks.append("weather_agent:get_marine_conditions")
@@ -699,9 +789,9 @@ def _process_orca_query(
                 evidence=weather_evidence.model_dump(),
             )
         )
-        c_stat = weather_evidence.cache_status or "live"
+        c_stat = weather_evidence.cache_status or "unavailable"
         reasoning.append(
-            f"Evidence (weather_agent): source='{weather_evidence.source}' ({c_stat}), forecast='{weather_evidence.forecast}', wave_height={weather_evidence.wave_height_m:.2f}m, wind_speed={weather_evidence.wind_speed_kmh:.1f} km/h."
+            f"Evidence (weather_agent): source='{weather_evidence.source}' ({c_stat}), target_period='{temporal_res.description}', forecast_valid_at={weather_evidence.forecast_valid_at or 'UNAVAILABLE'}, issued_at={weather_evidence.issued_at or 'N/A'}, retrieved_at={weather_evidence.retrieved_at or 'N/A'}, forecast='{weather_evidence.forecast}', wave_height={weather_evidence.wave_height_m}m, wind_speed={weather_evidence.wind_speed_kmh} km/h."
         )
 
         # Tide data is deliberately omitted until a timestamped authoritative provider is configured.
@@ -713,7 +803,9 @@ def _process_orca_query(
                 provider=weather_provider,
                 lat=active_lat,
                 lon=active_lon,
-                date=query_date,
+                date=active_date,
+                time_hint=time_hint,
+                temporal_res=temporal_res,
             )
             sources_used.append(weather_evidence.source)
         risk_evidence = assess_risk(weather_evidence)
@@ -740,7 +832,7 @@ def _process_orca_query(
             lon=active_lon,
             wave_height_m=wave_h,
         )
-        sources_used.append("incois_derived_pfz_dataset")
+        sources_used.append(pfz_evidence_list[0].source if pfz_evidence_list else "pfz_unavailable")
         executed_tasks.append("pfz_agent:find_nearest_zones")
         agent_results.append(
             AgentResult(
@@ -783,7 +875,7 @@ def _process_orca_query(
             )
 
     # 5d. Route Agent
-    if needs_route and pfz_evidence_list:
+    if needs_route and pfz_evidence_list and weather_evidence and weather_evidence.wave_height_m is not None and weather_evidence.wind_speed_kmh is not None and weather_evidence.cache_status in {"fresh", "live", "cached"}:
         target_pfz = pfz_evidence_list[0]
         route_evidence = plan_safe_marine_route(
             origin_lat=active_lat,
@@ -817,7 +909,7 @@ def _process_orca_query(
             weather=weather_evidence,
             location_name=location_hint or f"Sector ({active_lat:.2f}N, {active_lon:.2f}E)",
         )
-        sources_used.append("incois_hazard_detection_agent")
+        sources_used.append("orca_hazard_heuristic")
         executed_tasks.append("hazard_agent:detect_hazards")
         agent_results.append(
             AgentResult(
@@ -833,10 +925,10 @@ def _process_orca_query(
                 f"Evidence (hazard_agent): detected {len(alert_list)} active hazard alert(s): {'; '.join(alert_titles)}."
             )
         else:
-            reasoning.append("Evidence (hazard_agent): no severe hazard alerts or boundary breaches detected.")
+            reasoning.append("Evidence (hazard_agent): no threshold alerts produced from available inputs; coverage may be incomplete.")
 
     # 5f. Simulation Agent
-    if needs_sim and weather_evidence and risk_evidence:
+    if needs_sim and weather_evidence and risk_evidence and weather_evidence.wave_height_m is not None and weather_evidence.wind_speed_kmh is not None and weather_evidence.cache_status in {"fresh", "live", "cached"}:
         simulation_evidence = run_what_if_simulation(
             baseline_weather=weather_evidence,
             baseline_risk=risk_evidence,
@@ -900,15 +992,10 @@ def _process_orca_query(
             f"Evidence (ocean_analytics_agent): classified {len(zone_avoidance_evidence.avoided_zones)} zone(s) to avoid ({zone_avoidance_evidence.overall_avoidance_status}) with {len(zone_avoidance_evidence.safe_alternative_zones)} safe alternative grounds."
         )
 
-    # Determine Connectivity Mode
-    connectivity_mode = "LIVE"
-    if weather_evidence:
-        if weather_evidence.cache_status == "cached":
-            connectivity_mode = "CACHED"
-        elif weather_evidence.cache_status == "stale":
-            connectivity_mode = "DEGRADED"
-        elif weather_evidence.is_mock or weather_evidence.cache_status == "unavailable":
-            connectivity_mode = "OFFLINE"
+    # Data freshness is separate from whether an AI/network request succeeded.
+    connectivity_mode = {"fresh": "FRESH", "live": "FRESH", "cached": "CACHED", "stale": "STALE"}.get(
+        weather_evidence.cache_status if weather_evidence and not weather_evidence.is_mock else None, "UNAVAILABLE"
+    )
 
     # Construct EvidenceBundle
     evidence_bundle = EvidenceBundle(

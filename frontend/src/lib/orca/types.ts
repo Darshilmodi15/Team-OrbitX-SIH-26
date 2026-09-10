@@ -1,6 +1,6 @@
 import type { Coords, LocationInfo } from "./geo";
 
-export type SafetyLevel = "safe" | "caution" | "dangerous" | "emergency";
+export type SafetyLevel = "safe" | "caution" | "dangerous" | "emergency" | "unknown";
 
 export type MarineSnapshot = {
   time: string;
@@ -13,8 +13,11 @@ export type MarineSnapshot = {
   airTemperatureC: number | null;
   weatherCode: number | null;
   fetchedAt: number;
-  dataMode?: "live" | "cached" | "stale" | "fallback";
+  dataMode?: "fresh" | "live" | "cached" | "stale" | "fallback" | "unavailable";
   sources: string[];
+  issuedAt?: string | null;
+  forecastValidAt?: string | null;
+  retrievedAt?: string | null;
 };
 
 export type ForecastPoint = {

@@ -3,14 +3,18 @@ import { fetchMarineBundle } from "./marine";
 import type { Coords } from "./geo";
 import type { MarineBundle } from "./types";
 
-const CACHE_KEY = "orca.marine.cache.v3";
+const CACHE_KEY = "orca.marine.cache.v4";
 
 function readCache(c: Coords): MarineBundle | null {
   try {
     const raw = window.localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { key: string; bundle: MarineBundle };
-    return parsed.key === cacheKey(c) ? parsed.bundle : null;
+    if (parsed.key !== cacheKey(c)) return null;
+    const current = parsed.bundle.current;
+    const age = Date.now() - Date.parse(current.time);
+    if (!Number.isFinite(age) || age > 24 * 3600000 || current.dataMode === "unavailable") return null;
+    return { ...parsed.bundle, current: { ...current, dataMode: age > 3 * 3600000 || current.dataMode === "stale" ? "stale" : "cached" } };
   } catch {
     return null;
   }
@@ -23,7 +27,7 @@ function cacheKey(c: Coords) {
 export function useMarine(coords: Coords | null) {
   const cached = coords ? readCache(coords) : null;
   return useQuery({
-    queryKey: ["marine-v3", coords ? cacheKey(coords) : "none"],
+    queryKey: ["marine-v4", coords ? cacheKey(coords) : "none"],
     enabled: !!coords,
     staleTime: 10 * 60 * 1000,
     gcTime: 60 * 60 * 1000,

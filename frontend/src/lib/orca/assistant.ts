@@ -54,7 +54,12 @@ function detectQuestionLanguage(text: string, fallback: string): LangCode {
   return (COMPASS_DIRECTIONS[l] ? l : "en") as LangCode;
 }
 
-export function answerQuestion(question: string, ctx: AssistantContext): string {
+export function answerQuestion(_question: string, _ctx: AssistantContext): string {
+  throw new Error("LEGACY_SYNTHETIC_TEMPLATE_DISABLED");
+}
+
+// Quarantined reference implementation: intentionally not exported or called.
+function legacyAnswerQuestion(question: string, ctx: AssistantContext): string {
   const fallback = (ctx.lang as string) || "en";
   const lang = detectQuestionLanguage(question, fallback);
   const q = question.trim();

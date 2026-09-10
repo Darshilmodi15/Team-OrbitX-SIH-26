@@ -21,7 +21,7 @@ class TestMarineEndpoints(unittest.TestCase):
         self.assertIn("wind_speed_kmh", data)
         self.assertIn("forecast", data)
         self.assertIn("source", data)
-        self.assertIsInstance(data["wave_height_m"], (int, float))
+        self.assertTrue(data["wave_height_m"] is None or isinstance(data["wave_height_m"], (int, float)))
 
     def test_marine_risk_endpoint(self):
         """Validates GET /api/marine/risk returns decomposed MarineRiskProfile."""
@@ -36,7 +36,9 @@ class TestMarineEndpoints(unittest.TestCase):
         profile = data["profile"]
         self.assertIn("wave_risk", profile)
         self.assertIn("wind_risk", profile)
-        self.assertIn("visibility_risk", profile)
+        self.assertIn("storm_risk", profile)
+        self.assertIn("missing_evidence", data)
+        self.assertIn("evidence_completeness", data)
 
     def test_marine_forecast_horizon_endpoint(self):
         """Validates GET /api/marine/forecast returns hourly forecast horizon."""

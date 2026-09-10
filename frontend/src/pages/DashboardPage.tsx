@@ -47,7 +47,7 @@ export default function DashboardPage() {
   }
 
   const c = marine.data?.current;
-  const fresh = c && c.dataMode !== "stale" && Date.now() - Date.parse(c.time) <= 3600000;
+  const fresh = c && c.dataMode !== "stale" && c.dataMode !== "unavailable" && Date.now() - Date.parse(c.time) <= 3 * 3600000;
   const level = fresh && c.waveHeightM != null && c.windSpeedKmh != null ? safetyFrom(c.waveHeightM, c.windSpeedKmh, c.visibilityKm) : null;
 
   return (

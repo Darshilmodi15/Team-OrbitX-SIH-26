@@ -119,3 +119,36 @@ def test_missing_forecast_and_tide_are_not_synthesized():
     assert response.status_code == 200
     assert response.json()['forecast_horizon'] == []
     assert client.get('/api/marine/tide?lat=20.9&lon=70.3').status_code == 503
+
+
+@pytest.mark.parametrize("message,expected", [
+    ("Emergency numbers", "en"), ("Emergency Number", "en"),
+    ("What is the coast guard number?", "en"),
+    ("આપાતકાલીન નંબર", "gu"), ("అత్యవసర నంబర్లు", "te"),
+    ("samundar kaisa hai", "hi"), ("dariya ma pavan kevo che", "gu"),
+])
+def test_clear_message_language_cannot_be_overridden_by_remote_guess(message, expected):
+    from app.services.bhashini import BhashiniService
+    from unittest.mock import Mock
+    remote = Mock()
+    remote.identify_language.side_effect = AssertionError("Unnecessary language HTTP request")
+    service = BhashiniService(sarvam_service=remote)
+    service.set_session_language("old", "te")
+    assert service.identify_language(message, session_id="old").short_code == expected
+    remote.identify_language.assert_not_called()
+
+
+@pytest.mark.parametrize("location", [None, {"lat": 20.9, "lon": 70.3}])
+@pytest.mark.parametrize("ui_language", ["en", "gu", "te"])
+def test_emergency_numbers_english_and_no_operational_lookups(location, ui_language):
+    client = authenticate_client(TestClient(app))
+    with patch('app.main.bhashini_service.sarvam_service.identify_language', side_effect=AssertionError("No remote LID")), \
+         patch('app.main.bhashini_service.translate', side_effect=AssertionError("No translation")), \
+         patch('app.main.get_marine_weather', side_effect=AssertionError("No weather lookup")), \
+         patch.object(DialogueSynthesizer, 'synthesize_response', return_value='Emergency contacts') as synthesize:
+        response = client.post('/api/chat', json={'message': 'Emergency numbers', 'language': ui_language, 'location': location})
+    assert response.status_code == 200, response.text
+    assert response.json()['language'] == 'en'
+    assert synthesize.call_args.kwargs['target_lang'] == 'en'
+    if location:
+        assert response.json()['plan']['tasks'] == []

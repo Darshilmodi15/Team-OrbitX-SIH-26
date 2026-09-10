@@ -32,7 +32,7 @@ it('conversation failure leaves an error and permits a subsequent send', async (
   vi.mocked(createConversation).mockRejectedValueOnce(new Error('HTTP 503'));
   mount();
   fireEvent.click(screen.getByRole('button', { name: 'What does PFZ mean?' }));
-  expect(await screen.findByRole('alert')).toHaveTextContent('Live data temporarily unavailable');
+  expect(await screen.findByRole('alert')).toHaveTextContent('Could not start the conversation');
   fireEvent.click(screen.getByRole('button', { name: 'What does PFZ mean?' }));
   expect(await screen.findByText('Provider result')).toBeInTheDocument();
 });
@@ -40,7 +40,7 @@ it('provider failure is an error, not an assistant message', async () => {
   vi.mocked(sendChatMessage).mockRejectedValueOnce(new Error('AI_PROVIDER_UNAVAILABLE'));
   mount();
   fireEvent.click(screen.getByRole('button', { name: 'What does PFZ mean?' }));
-  expect(await screen.findByRole('alert')).toBeInTheDocument();
+  expect(await screen.findByRole('alert')).toHaveTextContent('The chat request could not be completed');
   expect(screen.queryByText('Provider result')).not.toBeInTheDocument();
 });
 

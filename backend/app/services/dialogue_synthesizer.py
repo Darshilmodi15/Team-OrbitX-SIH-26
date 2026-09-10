@@ -1,4 +1,5 @@
 from app.services.provider_health import record, ProviderUnavailable
+from app.services.planner import is_emergency_contact_lookup
 """
 ORCA Marine AI - Conversational Dialogue & Dynamic Reasoning Synthesizer.
 Generates context-aware, explainable, and multi-turn marine safety responses
@@ -136,7 +137,8 @@ CONVERSATION GUIDELINES:
 3. For follow-up questions ("Is that dangerous?", "Why?"): Understand the context of previous conversation turns smoothly.
 4. For definitions ("What does PFZ mean?", "What is IMBL/SST?"): Explain clearly in accessible terms and why it matters to fishermen.
 5. For emergency/engine failure: Give practical distress steps (drop anchor, VHF Ch 16 Pan-Pan/Mayday, DAT-SG beacon, Coast Guard 1554 / Coastal Police 1093).
-6. Format with short paragraphs, clear bullet points for metrics, and a concluding recommendation. Keep length balanced (approximately 80 to 180 words)."""
+6. Answer the exact question first. For a contact-number lookup, give only the requested numbers and their labels, in at most 50 words. Do not add a distress procedure unless asked. For other questions, use short paragraphs and concise bullets as needed.
+7. The current target language overrides the language of previous conversation turns."""
 
         prompt = f"""Conversation History:
 {history_text if history_text else "None (New conversation)"}
@@ -148,10 +150,12 @@ Generate the complete, natural response in language '{target_lang}':"""
         try:
             from google import genai
             client = genai.Client(api_key=api_key, http_options={"timeout": 30000})
+            model = os.getenv("GEMINI_MODEL", "gemini-3.7-flash")
+            config = {"system_instruction": system_instruction}
+            if model == "gemini-3.7-flash" and is_emergency_contact_lookup(english_query):
+                config["thinking_config"] = {"thinking_level": "low"}
             response = client.models.generate_content(
-                model=os.getenv("GEMINI_MODEL", "gemini-3.7-flash"),
-                contents=prompt,
-                config={"system_instruction": system_instruction},
+                model=model, contents=prompt, config=config,
             )
             text = (response.text or "").strip()
             if text:
@@ -178,6 +182,7 @@ Generate the complete, natural response in language '{target_lang}':"""
         High-fidelity deterministic natural reasoning generator.
         Produces structured, articulate, multi-paragraph advisories tailored to query intent.
         """
+        raise ProviderUnavailable("LEGACY_SYNTHETIC_TEMPLATE_DISABLED")
         q_lower = english_query.lower()
         w = evidence.weather
         r = evidence.risk

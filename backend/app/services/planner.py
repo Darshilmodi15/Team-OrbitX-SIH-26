@@ -44,6 +44,16 @@ def _asks_for_weather(question: str) -> bool:
     return any(kw in q for kw in keywords)
 
 
+def is_emergency_contact_lookup(question: str) -> bool:
+    q = question.lower().strip(" ?.!:")
+    return q in {
+        "emergency number", "emergency numbers", "emergency contact",
+        "emergency contacts", "emergency helpline", "coast guard number",
+        "what is the emergency number", "what are the emergency numbers",
+        "what is the coast guard number",
+    }
+
+
 class Planner:
     """
     Deterministic task planner for ORCA multi-agent architecture.
@@ -139,6 +149,10 @@ class Planner:
             add_task("weather_agent", "get_marine_conditions", required=True)
 
         elif intent == "emergency_sos":
+            # A contact lookup does not need the vessel's boundary or hazards.
+            # Keep operational retrieval for actual distress/location questions.
+            if is_emergency_contact_lookup(question):
+                return ExecutionPlan(intent=intent, tasks=[])
             add_task("geospatial_agent", "calculate_distance", required=True)
             add_task("boundary_agent", "check_marine_boundary", required=True)
             add_task("hazard_agent", "detect_hazards", required=True)

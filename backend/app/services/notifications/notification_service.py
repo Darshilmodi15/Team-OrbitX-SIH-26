@@ -25,51 +25,6 @@ class NotificationService:
 
     def __init__(self):
         self._notifications: Dict[str, SafetyNotification] = {}
-        self._seed_default_notifications()
-
-    def _seed_default_notifications(self):
-        """Seeds realistic advisory and government notifications."""
-        now_iso = datetime.now(timezone.utc).isoformat()
-
-        seed_items = [
-            SafetyNotification(
-                id=str(uuid.uuid4()),
-                user_id="global",
-                title="🌊 INCOIS High Wave & Swell Advisory",
-                message="Indian Ocean State Forecast model active: Wave heights in coastal Maharashtra and Gujarat expected between 1.2m and 1.8m today.",
-                severity=NotificationSeverity.INFO,
-                category=NotificationCategory.WEATHER,
-                source="INCOIS Ocean State Forecast",
-                timestamp=now_iso,
-                is_read=False,
-            ),
-            SafetyNotification(
-                id=str(uuid.uuid4()),
-                user_id="global",
-                title="🛑 Maritime Boundary Notice (IMBL)",
-                message="Vessels operating near Kutch / Sir Creek and Palk Strait are reminded to maintain at least 10 NM safe distance from the International Maritime Boundary Line.",
-                severity=NotificationSeverity.MODERATE,
-                category=NotificationCategory.GEOFENCE,
-                source="Indian Coast Guard & Directorate of Fisheries",
-                timestamp=now_iso,
-                is_read=False,
-            ),
-            SafetyNotification(
-                id=str(uuid.uuid4()),
-                user_id="global",
-                title="🐟 New Potential Fishing Zones (PFZ) Released",
-                message="High-probability pelagic chlorophyll fronts mapped off Ratnagiri, Veraval, and Kochi coastlines. Check GIS layer on the tactical map.",
-                severity=NotificationSeverity.LOW,
-                category=NotificationCategory.WEATHER,
-                source="INCOIS PFZ Mission",
-                timestamp=now_iso,
-                is_read=True,
-            ),
-        ]
-
-        for item in seed_items:
-            self._notifications[item.id] = item
-
     def get_notifications_for_user(self, user_id: Optional[str] = None) -> NotificationsResponse:
         """Retrieves all notifications for user or global broadcast."""
         items = list(self._notifications.values())
@@ -153,8 +108,8 @@ class NotificationService:
         previous_lat: Optional[float] = None,
         previous_lon: Optional[float] = None,
         user_id: Optional[str] = None,
-        wave_height_m: float = 1.2,
-        wind_gusts_kmh: float = 25.0,
+        wave_height_m: Optional[float] = None,
+        wind_gusts_kmh: Optional[float] = None,
     ) -> List[SafetyNotification]:
         """
         Dynamically analyzes coordinates and generates safety notifications when conditions warrant.
@@ -214,15 +169,15 @@ class NotificationService:
             generated_alerts.append(alert)
 
         # 4. Severe Wave & Gust Telemetry Alerts
-        if wave_height_m >= 2.5 or wind_gusts_kmh >= 50.0:
+        if (wave_height_m is not None and wave_height_m >= 2.5) or (wind_gusts_kmh is not None and wind_gusts_kmh >= 50.0):
             alert = SafetyNotification(
                 id=str(uuid.uuid4()),
                 user_id=user_id or "global",
                 title="⚠️ Severe Sea Condition Alert",
-                message=f"Dangerous sea conditions detected: Wave height {wave_height_m:.1f}m with wind gusts {wind_gusts_kmh:.0f} km/h. Small craft return to harbor immediately.",
+                message=f"ORCA threshold alert. Wave height (m): {wave_height_m if wave_height_m is not None else 'unavailable'}; wind gusts (km/h): {wind_gusts_kmh if wind_gusts_kmh is not None else 'unavailable'}. Consult official advisories.",
                 severity=NotificationSeverity.CRITICAL,
                 category=NotificationCategory.WEATHER,
-                source="INCOIS OSF Telemetry",
+                source="ORCA heuristic from supplied measurements",
                 timestamp=now_iso,
                 is_read=False,
             )
