@@ -1,0 +1,37 @@
+name: ORCA live provider verification
+
+# Paid and network-dependent checks are deliberately opt-in, never run on fork PRs.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: orca-live-verification
+  cancel-in-progress: false
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: python -m pip install -r backend/requirements.txt
+      - name: Verify local API against real providers
+        env:
+          SARVAM_API_KEY: ${{ secrets.SARVAM_API_KEY }}
+        run: python backend/scripts/verify_live.py --output live-results/report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-provider-evidence
+          path: live-results/report.json
+          if-no-files-found: error
