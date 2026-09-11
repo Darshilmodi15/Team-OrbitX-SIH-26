@@ -862,8 +862,8 @@ class BhashiniService:
         try:
             try:
                 from google import genai
-                client = genai.Client(api_key=gemini_key)
-                for model_name in ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"]:
+                client = genai.Client(api_key=gemini_key.strip(), http_options={"timeout": 15000})
+                for model_name in ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-flash-latest"]:
                     try:
                         response = client.models.generate_content(
                             model=model_name,
@@ -877,8 +877,8 @@ class BhashiniService:
             except (ImportError, AttributeError):
                 try:
                     import google.generativeai as gai
-                    gai.configure(api_key=gemini_key)
-                    for model_name in ["gemini-1.5-flash", "gemini-pro", "gemini-2.0-flash"]:
+                    gai.configure(api_key=gemini_key.strip())
+                    for model_name in ["gemini-3.6-flash", "gemini-flash-latest", "gemini-3.7-flash"]:
                         try:
                             model = gai.GenerativeModel(model_name)
                             response = model.generate_content(prompt)

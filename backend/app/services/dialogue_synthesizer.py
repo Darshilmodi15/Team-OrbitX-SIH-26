@@ -147,21 +147,38 @@ User's Latest Query: {user_query} (English interpretation: {english_query})
 
 Generate the complete, natural response in language '{target_lang}':"""
 
+        api_key = api_key.strip()
         try:
             from google import genai
-            client = genai.Client(api_key=api_key, http_options={"timeout": 30000})
-            model = os.getenv("GEMINI_MODEL", "gemini-3.7-flash")
-            config = {"system_instruction": system_instruction}
-            if model == "gemini-3.7-flash" and is_emergency_contact_lookup(english_query):
-                config["thinking_config"] = {"thinking_level": "low"}
-            response = client.models.generate_content(
-                model=model, contents=prompt, config=config,
-            )
-            text = (response.text or "").strip()
-            if text:
-                record("gemini", success=True, http_status=200)
-                return text
-            record("gemini", success=False, http_status=200, reason="EMPTY_RESPONSE")
+            client = genai.Client(api_key=api_key, http_options={"timeout": 20000})
+            preferred_model = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
+            candidate_models = [preferred_model, "gemini-3.5-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-flash-latest"]
+            seen_models = set()
+            models_to_try = []
+            for m in candidate_models:
+                if m and m not in seen_models:
+                    seen_models.add(m)
+                    models_to_try.append(m)
+
+            last_err = None
+            for model_name in models_to_try:
+                try:
+                    config = {"system_instruction": system_instruction}
+                    if "3.7" in model_name and is_emergency_contact_lookup(english_query):
+                        config["thinking_config"] = {"thinking_level": "low"}
+                    response = client.models.generate_content(
+                        model=model_name, contents=prompt, config=config,
+                    )
+                    text = (response.text or "").strip()
+                    if text:
+                        record("gemini", success=True, http_status=200)
+                        return text
+                except Exception as model_err:
+                    last_err = model_err
+                    logger.warning("Gemini model %s failed: %s", model_name, model_err)
+                    continue
+
+            record("gemini", success=False, http_status=getattr(last_err, "code", 200) if last_err else 200, reason="EMPTY_OR_FAILED")
         except Exception as err:
             status = getattr(err, "code", None)
             record("gemini", success=False, http_status=status if isinstance(status, int) else None, reason=type(err).__name__)

@@ -308,16 +308,15 @@ class IncoisWeatherProvider(WeatherProvider):
                 return point_data, "unverified_temporal_mismatch"
             return point_data, "exact"
 
-        # 2. Search radial offsets for closest ocean cell
+        # 2. Search radial offsets concurrently for closest ocean cell
         offsets = [
-            (-0.05, 0.0), (0.05, 0.0), (0.0, -0.05), (0.0, 0.05),
-            (-0.05, -0.05), (-0.05, 0.05), (0.05, -0.05), (0.05, 0.05),
-            (-0.10, 0.0), (0.10, 0.0), (0.0, -0.10), (0.0, 0.10),
-            (-0.15, -0.15), (-0.15, 0.15), (0.15, -0.15), (0.15, 0.15),
-            (0.0, -0.20), (0.0, 0.20), (-0.20, 0.0), (0.20, 0.0),
+            (-0.15, -0.15), (-0.05, -0.05), (0.0, -0.05), (-0.05, 0.0), (0.0, -0.10),
+            (-0.10, -0.10), (-0.05, 0.05), (0.05, -0.05), (0.0, 0.10), (0.10, 0.0),
+            (-0.10, 0.0), (-0.15, 0.15), (0.15, -0.15), (0.0, -0.20), (0.0, 0.20), (-0.20, 0.0)
         ]
 
-        for dlat, dlon in offsets:
+        def _check_offset(off: Tuple[float, float]) -> Tuple[Optional[Dict[str, Any]], str]:
+            dlat, dlon = off
             try:
                 candidate = self._query_ncss_point(dataset_path, lat + dlat, lon + dlon, temporal_res=temporal_res)
                 if candidate:
@@ -325,7 +324,17 @@ class IncoisWeatherProvider(WeatherProvider):
                         return candidate, "unverified_temporal_mismatch"
                     return candidate, f"nearest_marine_cell(offset dlat={dlat:+.2f}, dlon={dlon:+.2f})"
             except Exception:
-                continue
+                pass
+            return None, "none"
+
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        with ThreadPoolExecutor(max_workers=6) as executor:
+            future_to_offset = {executor.submit(_check_offset, off): off for off in offsets}
+            for fut in as_completed(future_to_offset):
+                cand, meth = fut.result()
+                if cand:
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    return cand, meth
 
         # If coastal dataset missed, try combined Indian Ocean dataset
         combined_path = dataset_path.replace("rsmc_coast_ww3", "rsmc_combined_ww3")

@@ -377,17 +377,23 @@ def parse_intent(question: str, history: Optional[List[Dict[str, str]]] = None) 
         base_res.update(entities)
         return base_res
 
+    # 1. Fast, reliable heuristic intent classification (0.001s response time)
+    heuristic_res = _fallback_intent(question)
+    if heuristic_res["intent"] != "general":
+        return heuristic_res
+
+    # 2. Ambiguous query: consult Gemini with fast timeout
     gemini_key = os.getenv("GEMINI_API_KEY")
     if gemini_key:
         try:
             from google import genai
-            client = genai.Client(api_key=gemini_key)
+            client = genai.Client(api_key=gemini_key.strip())
             prompt_content = question
             if history:
                 history_summary = "\n".join([f"{h.get('role')}: {h.get('text')}" for h in history[-3:]])
                 prompt_content = f"Previous conversation context:\n{history_summary}\n\nCurrent User Query: {question}"
 
-            for model_name in ["gemini-2.0-flash", "gemini-1.5-flash"]:
+            for model_name in ["gemini-3.6-flash", "gemini-flash-latest"]:
                 try:
                     response = client.models.generate_content(
                         model=model_name,
@@ -412,4 +418,4 @@ def parse_intent(question: str, history: Optional[List[Dict[str, str]]] = None) 
         except Exception:
             pass
 
-    return _fallback_intent(question)
+    return heuristic_res

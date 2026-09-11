@@ -697,6 +697,19 @@ def _process_orca_query(
         reasoning.append(
             f"Geospatial Entity Resolution: Resolved location entity '{location_hint}' to coordinates ({active_lat:.4f}°N, {active_lon:.4f}°E)."
         )
+    elif not location_hint:
+        try:
+            from app.services.location.coastal_distance import coastal_distance_service
+            c_info = coastal_distance_service.calculate_coastal_distance(active_lat, active_lon)
+            if c_info and c_info.get("nearest_coastal_point"):
+                np_name = c_info["nearest_coastal_point"]["name"]
+                c_reg = c_info.get("coastal_region")
+                location_hint = f"{np_name} Coast, {c_reg}" if c_reg and c_reg not in np_name else np_name
+                reasoning.append(
+                    f"Coastal Georeferencing: Station at ({active_lat:.4f}°N, {active_lon:.4f}°E) georeferenced to {location_hint}."
+                )
+        except Exception:
+            pass
 
     agent_results.append(
         AgentResult(

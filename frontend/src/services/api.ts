@@ -67,41 +67,64 @@ export interface ChatMessagePayload {
 }
 
 export async function sendChatMessage(payload: ChatMessagePayload) {
+  const endpoint = `${API_BASE_URL}/api/chat`;
+  const startTime = performance.now();
+  
   try {
+    const requestBody = {
+      message: payload.message,
+      location: payload.location || { lat: 18.9220, lon: 72.8347 },
+      date: payload.date || new Date().toISOString().split('T')[0],
+      language: payload.language || 'auto',
+      session_id: payload.session_id,
+      history: payload.history,
+      request_id: payload.request_id,
+    };
+
     const response = await apiFetch(`/api/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        message: payload.message,
-        location: payload.location,
-        date: payload.date || new Date().toISOString().split('T')[0],
-        language: payload.language || 'auto',
-        session_id: payload.session_id,
-        history: payload.history,
-        request_id: payload.request_id,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
+    const elapsedMs = Math.round(performance.now() - startTime);
+
     if (!response.ok) {
-      let errorMsg = `Server error (${response.status})`;
+      let errorDetail = `HTTP ${response.status} ${response.statusText}`;
       try {
         const errorData = await response.json();
         if (errorData.detail) {
-          errorMsg = typeof errorData.detail === 'string' ? errorData.detail : JSON.stringify(errorData.detail);
+          errorDetail = typeof errorData.detail === 'string' ? errorData.detail : JSON.stringify(errorData.detail);
         }
       } catch {
-        // Fallback to generic message
+        // Non-JSON response (e.g. 502/504 gateway or proxy HTML)
+        try {
+          const rawText = await response.text();
+          if (rawText) errorDetail += ` - ${rawText.slice(0, 150)}`;
+        } catch {
+          // ignore
+        }
       }
-      throw new Error(errorMsg);
+
+      console.error(`[ORCA API Error] POST ${endpoint} failed (${response.status}) in ${elapsedMs}ms:`, errorDetail);
+      throw new Error(`API route failed: ${errorDetail} (Endpoint: ${endpoint})`);
     }
 
-    return await response.json();
+    const data = await response.json();
+    console.debug(`[ORCA API Success] POST ${endpoint} completed in ${elapsedMs}ms.`);
+    return data;
   } catch (error: any) {
+    const elapsedMs = Math.round(performance.now() - startTime);
     if (error.name === 'TypeError' && error.message?.includes('fetch')) {
-      throw new Error('Unable to reach ORCA backend. Please ensure the backend server is running at ' + API_BASE_URL);
+      console.error(`[ORCA Network Failure] Unable to reach backend at ${endpoint} (${elapsedMs}ms). Possible causes: backend offline, CORS blocked, or mixed-content (HTTPS/HTTP).`);
+      throw new Error(`Unable to reach ORCA backend at ${API_BASE_URL}. Ensure the backend is active and CORS is allowed.`);
+    } else if (error.name === 'AbortError' || error.message?.includes('timeout')) {
+      console.error(`[ORCA Timeout] Request to ${endpoint} timed out after ${elapsedMs}ms.`);
+      throw new Error(`Request to ORCA conversation API timed out after ${elapsedMs}ms.`);
     }
+    console.error(`[ORCA API Exception] Request to ${endpoint} failed:`, error);
     throw error;
   }
 }
