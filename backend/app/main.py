@@ -1161,6 +1161,7 @@ def handle_query(request: QueryRequest) -> QueryResponse:
 
 
 def generate_operational_fallback(question: str, lang: str, loc_title: str) -> str:
+    raise ProviderUnavailable("LEGACY_SYNTHETIC_TEMPLATE_DISABLED")
     q_low = question.lower()
     is_gujarati = lang == "gu" or any('\u0A80' <= c <= '\u0AFF' for c in question)
     is_hindi = lang == "hi" or (any('\u0900' <= c <= '\u097F' for c in question) and not any(k in question for k in ["आहे", "नाही", "काय"]))
@@ -1345,44 +1346,8 @@ def handle_chat(request: ChatRequest, user: UserProfile = Depends(get_current_us
                 history=history_dicts,
             )
     except ProviderUnavailable:
-        loc_name = f"coordinates {lat:.4f}°N, {lon:.4f}°E" if lat and lon else "your coastal sector"
-        req_l = (request.language or "auto").lower().split("-")[0]
-        if req_l == "auto":
-            req_l = "gu" if any('\u0A80' <= c <= '\u0AFF' for c in request.message) else ("hi" if any('\u0900' <= c <= '\u097F' for c in request.message) else "en")
-        fallback_answer = generate_operational_fallback(
-            question=request.message,
-            lang=req_l,
-            loc_title=loc_name,
-        )
-        result = {
-            "language": req_l,
-            "language_name": SUPPORTED_LANGUAGES.get(req_l, req_l),
-            "original_message": request.message,
-            "english_query": request.message,
-            "answer": fallback_answer,
-            "reasoning": ["Operational fallback: synthesized reliable maritime safety guidance grounded in INCOIS ocean state protocols"],
-            "sources_used": ["INCOIS Operational Ocean State Forecast", "Indian Coast Guard SAR Guidelines"],
-            "plan": ExecutionPlan(intent="safety", tasks=[]),
-            "risk_level": "safe",
-            "weather": None,
-            "nearest_pfz": None,
-            "route": None,
-            "geofences": None,
-            "alerts": [],
-            "boundary": None,
-            "simulation": None,
-            "ocean_analytics": None,
-            "ecology": None,
-            "zone_avoidance": None,
-            "tide": None,
-            "recommendations": [],
-            "connectivity_mode": "OPERATIONAL_FALLBACK",
-            "location": {"lat": lat, "lon": lon, "name": loc_name} if lat and lon else None,
-            "intent": "safety",
-            "agents_used": ["hazard", "safety"],
-            "data_timestamp": datetime.now(timezone.utc).isoformat(),
-            "fallback_used": True,
-        }
+        # Preserve the user turn, but never store a scripted safety answer as AI output.
+        raise
 
     response = ChatResponse(
         language=result["language"],

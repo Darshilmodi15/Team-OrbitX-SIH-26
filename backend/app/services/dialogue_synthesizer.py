@@ -175,7 +175,12 @@ Generate the complete, natural response in language '{target_lang}':"""
                         return text
                 except Exception as model_err:
                     last_err = model_err
-                    logger.warning("Gemini model %s failed: %s", model_name, model_err)
+                    status = getattr(model_err, "code", None)
+                    logger.warning("Gemini model %s failed (%s; status=%s)", model_name, type(model_err).__name__, status)
+                    if status in (401, 403, 429):
+                        # Authentication/quota failures must surface promptly, not fan out
+                        # into more paid requests or a scripted answer.
+                        break
                     continue
 
             record("gemini", success=False, http_status=getattr(last_err, "code", 200) if last_err else 200, reason="EMPTY_OR_FAILED")

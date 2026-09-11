@@ -109,6 +109,9 @@ export async function sendChatMessage(payload: ChatMessagePayload) {
       }
 
       console.error(`[ORCA API Error] POST ${endpoint} failed (${response.status}) in ${elapsedMs}ms:`, errorDetail);
+      if (response.status === 503 && errorDetail === 'AI_PROVIDER_UNAVAILABLE') {
+        throw new Error('ORCA’s AI provider is temporarily unavailable. Please try again later.');
+      }
       throw new Error(`API route failed: ${errorDetail} (Endpoint: ${endpoint})`);
     }
 

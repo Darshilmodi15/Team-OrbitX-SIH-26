@@ -35,6 +35,12 @@ describe('authenticated API contracts', () => {
     expect(fetch).toHaveBeenCalledOnce();
   });
 
+  it('shows a provider outage instead of pretending a chat answer succeeded', async () => {
+    vi.mocked(fetch).mockResolvedValue(jsonResponse({ detail: 'AI_PROVIDER_UNAVAILABLE' }, 503));
+    await expect(sendChatMessage({ message: 'Hello' })).rejects.toThrow('AI provider is temporarily unavailable');
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
   it('sends one chat request with session and request IDs', async () => {
     vi.mocked(fetch).mockResolvedValue(jsonResponse({ answer: 'verified' }));
     await sendChatMessage({ message: 'Weather?', session_id: 's1', request_id: 'r1' });

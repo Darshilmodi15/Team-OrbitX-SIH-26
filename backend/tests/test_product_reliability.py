@@ -45,14 +45,31 @@ def test_chat_missing_location_does_not_assume_city():
     process.assert_not_called()
 
 
-def test_chat_failed_ai_preserves_user_turn_without_fake_assistant():
+@pytest.mark.parametrize('location', [None, {'lat': 20.9, 'lon': 70.3}])
+def test_chat_failed_ai_preserves_user_turn_without_fake_assistant(location):
     client = authenticate_client(TestClient(app))
     conversation = client.post('/api/conversations', json={'title': 'QA'}).json()['id']
-    with patch('app.main._process_orca_query', side_effect=ProviderUnavailable()):
-        response = client.post('/api/chat', json={'message': 'Explain waves', 'location': {'lat': 20.9, 'lon': 70.3}, 'session_id': conversation})
+    with patch('app.main._process_orca_query', side_effect=ProviderUnavailable()), patch.object(DialogueSynthesizer, 'synthesize_response', side_effect=ProviderUnavailable()):
+        response = client.post('/api/chat', json={'message': 'Explain waves', 'location': location, 'session_id': conversation})
     assert response.status_code == 503
+    assert response.json() == {'detail': 'AI_PROVIDER_UNAVAILABLE'}
     stored = client.get('/api/conversations/'+conversation).json()['messages']
     assert [(m['role'], m['content']) for m in stored] == [('user', 'Explain waves')]
+
+
+@pytest.mark.parametrize('status', [401, 403, 429])
+def test_gemini_account_failures_stop_model_retry_chain(monkeypatch, status):
+    from unittest.mock import Mock
+    error = RuntimeError('Provider detail that must not become an answer')
+    error.code = status
+    provider = Mock()
+    provider.models.generate_content.side_effect = error
+    monkeypatch.setenv('GEMINI_API_KEY', 'test-only-key')
+    with patch('google.genai.Client', return_value=provider):
+        with pytest.raises(ProviderUnavailable):
+            DialogueSynthesizer.synthesize_response('Hello', 'Hello', 'general', EvidenceBundle(date='2026-09-11'), 'Not selected')
+    provider.models.generate_content.assert_called_once()
+    assert snapshot('gemini')['http_status'] == status
 
 
 def test_base64_invalid_audio_and_upstream_error():
