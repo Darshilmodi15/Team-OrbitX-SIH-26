@@ -146,17 +146,30 @@ async def unhandled_exception_handler(request, exc):
     logging.getLogger("orca").error("Unhandled exception on %s %s: %s", request.method, request.url.path, exc, exc_info=True)
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
-frontend_origins = [
+frontend_origins = {
     origin.strip()
     for origin in os.getenv(
         "FRONTEND_ORIGIN",
         "https://team-orbit-x-sih-26.vercel.app,http://localhost:5173,http://localhost:3000",
     ).split(",")
     if origin.strip()
-]
+}
+frontend_origins.update([
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "http://127.0.0.1:5175",
+    "http://127.0.0.1:3000",
+    "https://team-orbit-x-sih-26.vercel.app",
+    "https://team-orbitx-sih-26.vercel.app",
+])
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=frontend_origins,
+    allow_origins=list(frontend_origins),
+    allow_origin_regex=r"https://.*\.vercel\.app|http://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -212,6 +212,7 @@ export async function loginUser(email_or_phone: string, password: string) {
   const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    signal: AbortSignal.timeout(60000),
     body: JSON.stringify({ email_or_phone, password }),
   });
   if (!response.ok) {
