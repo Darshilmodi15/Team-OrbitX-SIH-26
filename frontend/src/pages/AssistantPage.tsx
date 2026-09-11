@@ -247,7 +247,7 @@ export default function AssistantPage() {
   const [input, setInput] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
-  const [chatError, setChatError] = useState<"chat.startFailed" | "chat.requestFailed" | null>(null);
+  const [chatError, setChatError] = useState<"chat.startFailed" | "chat.requestFailed" | "chat.providerUnavailable" | null>(null);
   const requestInFlightRef = useRef(false);
 
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
@@ -477,7 +477,8 @@ export default function AssistantPage() {
       });
     } catch (err) {
       console.warn("Chat request failed", err);
-      setChatError(startingConversation ? "chat.startFailed" : "chat.requestFailed");
+      const providerUnavailable = err instanceof Error && 'code' in err && err.code === 'AI_PROVIDER_UNAVAILABLE';
+      setChatError(startingConversation ? "chat.startFailed" : providerUnavailable ? "chat.providerUnavailable" : "chat.requestFailed");
       setInput(question);
     } finally {
       setIsThinking(false);
@@ -865,7 +866,7 @@ export default function AssistantPage() {
             </div>
           </header>
 
-          {chatError && <p role="alert" className="border-b border-red-500/30 p-3 text-sm text-red-400">{t(chatError)} · {t("cta.retry")}</p>}
+          {chatError && <p role="alert" className="border-b border-red-500/30 p-3 text-sm text-red-400">{t(chatError)}</p>}
           {!location && <a href="/location" className="border-b border-border p-3 text-sm text-teal-400">{t("loc.title")}</a>}
           {/* Conversation Stream */}
           <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
