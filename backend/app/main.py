@@ -91,6 +91,16 @@ async def lifespan(app: FastAPI):
     
     def _background_init_and_seed():
         try:
+            # Run alembic migrations first to ensure all schema changes are applied
+            try:
+                from alembic.config import Config
+                from alembic import command
+                alembic_cfg = Config(os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic.ini"))
+                command.upgrade(alembic_cfg, "head")
+                logger.info("Alembic migrations applied successfully.")
+            except Exception as mig_err:
+                logger.warning(f"Alembic migration note (falling back to create_all): {mig_err}")
+            # Fallback: create any tables that may still be missing
             from app.db.session import init_db
             init_db()
             from seed.seed_database import seed_database
@@ -128,6 +138,13 @@ app = FastAPI(
 @app.exception_handler(ProviderUnavailable)
 async def unavailable_provider_handler(request, exc):
     return JSONResponse(status_code=503, content={"detail": "AI_PROVIDER_UNAVAILABLE"})
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request, exc):
+    """Catch-all: ensures 500 errors return JSON with CORS headers instead of bare text."""
+    import logging
+    logging.getLogger("orca").error("Unhandled exception on %s %s: %s", request.method, request.url.path, exc, exc_info=True)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 frontend_origins = [
     origin.strip()

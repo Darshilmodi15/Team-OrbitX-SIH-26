@@ -393,7 +393,7 @@ def parse_intent(question: str, history: Optional[List[Dict[str, str]]] = None) 
                 history_summary = "\n".join([f"{h.get('role')}: {h.get('text')}" for h in history[-3:]])
                 prompt_content = f"Previous conversation context:\n{history_summary}\n\nCurrent User Query: {question}"
 
-            for model_name in ["gemini-3.6-flash", "gemini-flash-latest"]:
+            for model_name in ["gemini-3.7-flash", "gemini-3.6-flash", "gemini-flash-latest"]:
                 try:
                     response = client.models.generate_content(
                         model=model_name,
