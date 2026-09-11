@@ -1,7 +1,8 @@
 import { saveSelectedLocation } from "@/services/api";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Crosshair, MapPin, Search, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Crosshair, MapPin, Search, CheckCircle2, Anchor } from "lucide-react";
+import { INDIAN_PORTS } from "@/data/maritimeData";
 import { AppShell } from "@/components/orca/AppShell";
 import { MapPanel } from "@/components/orca/MapPanel";
 import { SEO } from "@/components/SEO";
@@ -179,6 +180,47 @@ export default function LocationPage() {
             ))}
           </ul>
         )}
+
+        {/* Major Coastal Ports Quick Pick (Jury Showcase) */}
+        <section className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Anchor className="size-3.5 text-teal-500" />
+              Major Indian Coastal Ports & Harbors ({INDIAN_PORTS.length})
+            </h2>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
+            {INDIAN_PORTS.map((port) => {
+              const isCurrent = coords.lat === port.lat && coords.lon === port.lon;
+              return (
+                <button
+                  key={port.id}
+                  type="button"
+                  onClick={() => {
+                    setSelected(true);
+                    setSource("manual");
+                    setCoords({ lat: port.lat, lon: port.lon });
+                    setLabel(`${port.name}, ${port.state}`);
+                    setNotice(null);
+                  }}
+                  className={`flex flex-col items-start p-2.5 rounded-lg border text-left transition cursor-pointer shadow-xs ${
+                    isCurrent
+                      ? "border-teal-500 bg-teal-500/10 text-teal-300 font-semibold"
+                      : "border-border bg-card text-foreground hover:bg-muted"
+                  }`}
+                >
+                  <span className="text-xs font-bold truncate w-full">{port.name}</span>
+                  <div className="flex items-center justify-between w-full mt-1">
+                    <span className="text-[10px] text-muted-foreground">{port.state}</span>
+                    <span className="text-[10px] font-mono text-teal-400 font-semibold">
+                      ~{port.defaultWeather?.wave_height_m}m · {port.defaultWeather?.wind_speed_kmh}km/h
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
 
         {notice && (
           <p className="rounded-md border border-caution/40 bg-caution-surface p-3 text-sm font-medium text-foreground" role="status">

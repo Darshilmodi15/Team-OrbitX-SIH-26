@@ -382,48 +382,44 @@ export default function AssistantPage() {
     setChatError(null);
     let startingConversation = !activeThreadId;
     try {
-    stopAudio();
-    let targetThreadId = activeThreadId;
-    if (!targetThreadId) {
-      const created = await createConversation(question.length > 80 ? question.slice(0, 80) : question);
-      targetThreadId = created.id;
-      setActiveThreadId(targetThreadId);
-    }
-    startingConversation = false;
-    const now = Date.now();
-    const userMsg: ChatMessage = { id: `u_${now}`, role: "user", text: question, at: now };
-
-    setThreads((prev) => {
-      const idx = prev.findIndex((th) => th.id === targetThreadId);
-      if (idx >= 0) {
-        const updated = [...prev];
-        const isFirst = updated[idx].messages.length === 0;
-        updated[idx] = {
-          ...updated[idx],
-          title: isFirst ? (question.length > 28 ? `${question.slice(0, 28)}...` : question) : updated[idx].title,
-          updatedAt: now,
-          messages: [...updated[idx].messages, userMsg],
-        };
-        return updated;
-      } else {
-        const newThread: ChatThread = {
-          id: targetThreadId,
-          title: question.length > 28 ? `${question.slice(0, 28)}...` : question,
-          updatedAt: now,
-          messages: [userMsg],
-        };
-        return [newThread, ...prev];
+      stopAudio();
+      let targetThreadId = activeThreadId;
+      if (!targetThreadId) {
+        const created = await createConversation(question.length > 80 ? question.slice(0, 80) : question);
+        targetThreadId = created.id;
+        setActiveThreadId(targetThreadId);
       }
-    });
+      startingConversation = false;
+      const now = Date.now();
+      const userMsg: ChatMessage = { id: `u_${now}`, role: "user", text: question, at: now };
 
-    setInput("");
-    setInterimTranscript("");
-    setIsThinking(true);
+      setThreads((prev) => {
+        const idx = prev.findIndex((th) => th.id === targetThreadId);
+        if (idx >= 0) {
+          const updated = [...prev];
+          const isFirst = updated[idx].messages.length === 0;
+          updated[idx] = {
+            ...updated[idx],
+            title: isFirst ? (question.length > 28 ? `${question.slice(0, 28)}...` : question) : updated[idx].title,
+            updatedAt: now,
+            messages: [...updated[idx].messages, userMsg],
+          };
+          return updated;
+        } else {
+          const newThread: ChatThread = {
+            id: targetThreadId,
+            title: question.length > 28 ? `${question.slice(0, 28)}...` : question,
+            updatedAt: now,
+            messages: [userMsg],
+          };
+          return [newThread, ...prev];
+        }
+      });
 
-    let reply = "";
-    let evidenceData: ChatEvidence | null = null;
+      setInput("");
+      setInterimTranscript("");
+      setIsThinking(true);
 
-    try {
       const res = await sendChatMessage({
         message: question,
         location: location ? { lat: location.coords.lat, lon: location.coords.lon } : undefined,
@@ -433,9 +429,17 @@ export default function AssistantPage() {
         request_id: crypto.randomUUID(),
       });
 
-      if (res && res.answer) {
-        reply = res.answer;
-        evidenceData = {
+      if (!res || !res.answer) {
+        throw new Error("Empty authoritative response");
+      }
+
+      const botNow = Date.now();
+      const botMsg: ChatMessage = {
+        id: `a_${botNow}`,
+        role: "assistant",
+        text: res.answer,
+        at: botNow,
+        evidence: {
           sources: res.sources_used || [],
           reasoning: res.reasoning || [],
           risk_level: res.risk_level || null,
@@ -455,36 +459,22 @@ export default function AssistantPage() {
           language_name: res.language_name || "English",
           plan: res.plan || null,
           location: res.location || null,
-        };
-      }
-    } catch (err) {
-      throw err;
-    }
-    if (!reply) throw new Error("Empty authoritative response");
+        },
+      };
 
-    const botNow = Date.now();
-    const botMsg: ChatMessage = {
-      id: `a_${botNow}`,
-      role: "assistant",
-      text: reply,
-      at: botNow,
-      evidence: evidenceData,
-    };
-
-    setThreads((prev) => {
-      const idx = prev.findIndex((th) => th.id === targetThreadId);
-      if (idx >= 0) {
-        const updated = [...prev];
-        updated[idx] = {
-          ...updated[idx],
-          updatedAt: botNow,
-          messages: [...updated[idx].messages, botMsg],
-        };
-        return updated;
-      }
-      return prev;
-    });
-
+      setThreads((prev) => {
+        const idx = prev.findIndex((th) => th.id === targetThreadId);
+        if (idx >= 0) {
+          const updated = [...prev];
+          updated[idx] = {
+            ...updated[idx],
+            updatedAt: botNow,
+            messages: [...updated[idx].messages, botMsg],
+          };
+          return updated;
+        }
+        return prev;
+      });
     } catch (err) {
       console.warn("Chat request failed", err);
       setChatError(startingConversation ? "chat.startFailed" : "chat.requestFailed");
