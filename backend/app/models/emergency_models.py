@@ -4,7 +4,7 @@ Emergency Services, SOS Distress, and Maritime SAR Models for ORCA Marine AI.
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class EmergencyNature(str, Enum):
@@ -36,6 +36,29 @@ class SOSBroadcastRequest(BaseModel):
     emergency_nature: EmergencyNature = Field(default=EmergencyNature.OTHER, description="Type of crisis")
     notes: Optional[str] = Field(default="", max_length=2000, description="Additional immediate situation notes")
     contact_phone: Optional[str] = Field(default=None, max_length=50, description="Skipper or contact mobile number")
+
+    @field_validator("emergency_nature", mode="before")
+    @classmethod
+    def normalize_emergency_nature(cls, v: Any) -> EmergencyNature:
+        if isinstance(v, EmergencyNature):
+            return v
+        val = str(v or "").lower()
+        if "engine" in val or "adrift" in val:
+            return EmergencyNature.ENGINE_FAILURE
+        if "capsize" in val or "taking water" in val or "sink" in val:
+            return EmergencyNature.CAPSIZING_WATER
+        if "med" in val or "health" in val or "injur" in val:
+            return EmergencyNature.MEDICAL
+        if "cyclone" in val or "squall" in val or "storm" in val or "weather" in val:
+            return EmergencyNature.CYCLONE_STORM
+        if "collis" in val or "ground" in val or "reef" in val:
+            return EmergencyNature.COLLISION
+        if "border" in val or "imbl" in val or "secur" in val:
+            return EmergencyNature.IMBL_DISTRESS
+        for member in EmergencyNature:
+            if member.value.lower() == val or member.name.lower() == val:
+                return member
+        return EmergencyNature.OTHER
 
 
 class SOSBroadcastResponse(BaseModel):

@@ -33,7 +33,7 @@ export default function EmergencySOSModal({
   const [step, setStep] = useState<'standby' | 'confirming' | 'dispatched'>('standby');
   const [vesselName, setVesselName] = useState('');
   const [registrationNo] = useState('');
-  const [crewCount, setCrewCount] = useState(0);
+  const [crewCount, setCrewCount] = useState(4);
   const [emergencyNature, setEmergencyNature] = useState('General Maritime Distress');
   const [notes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,17 +42,18 @@ export default function EmergencySOSModal({
   if (!isOpen) return null;
 
   const handleTriggerSOS = async () => {
-    if (isSubmitting || crewCount < 1) return;
+    if (isSubmitting) return;
+    const effectiveCrew = crewCount > 0 ? crewCount : 1;
     setFailed(false);
     setIsSubmitting(true);
     try {
       const res = await broadcastSOS({
-        vessel_name: vesselName,
-        registration_no: registrationNo,
+        vessel_name: vesselName || "Fishing Craft",
+        registration_no: registrationNo || "IND-INCOIS-VESSEL",
         lat: userLocation.lat,
         lon: userLocation.lon,
-        crew_count: crewCount,
-        emergency_nature: emergencyNature,
+        crew_count: effectiveCrew,
+        emergency_nature: emergencyNature || "General Maritime Distress",
         notes: notes,
       });
       setDispatchResult(res);
