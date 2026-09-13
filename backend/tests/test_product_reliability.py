@@ -59,15 +59,20 @@ def test_chat_failed_ai_preserves_user_turn_without_fake_assistant(location):
 
 @pytest.mark.parametrize('status', [401, 403, 429])
 def test_gemini_account_failures_stop_model_retry_chain(monkeypatch, status):
+    import sys
+    from types import ModuleType
     from unittest.mock import Mock
     error = RuntimeError('Provider detail that must not become an answer')
     error.code = status
     provider = Mock()
     provider.models.generate_content.side_effect = error
     monkeypatch.setenv('GEMINI_API_KEY', 'test-only-key')
-    with patch('google.genai.Client', return_value=provider):
-        with pytest.raises(ProviderUnavailable):
-            DialogueSynthesizer.synthesize_response('Hello', 'Hello', 'general', EvidenceBundle(date='2026-09-11'), 'Not selected')
+    google_mod = sys.modules.setdefault('google', ModuleType('google'))
+    genai_mod = sys.modules.setdefault('google.genai', ModuleType('google.genai'))
+    monkeypatch.setattr(google_mod, 'genai', genai_mod, raising=False)
+    monkeypatch.setattr(genai_mod, 'Client', Mock(return_value=provider), raising=False)
+    with pytest.raises(ProviderUnavailable):
+        DialogueSynthesizer.synthesize_response('Hello', 'Hello', 'general', EvidenceBundle(date='2026-09-11'), 'Not selected')
     provider.models.generate_content.assert_called_once()
     assert snapshot('gemini')['http_status'] == status
 

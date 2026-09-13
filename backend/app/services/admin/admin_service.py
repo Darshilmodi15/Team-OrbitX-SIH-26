@@ -48,11 +48,13 @@ class AdminService:
             ServiceEndpointHealth(service_id=key, service_name=name, provider=provider, **snapshot(key))
             for key, name, provider in [
                 ("incois", "INCOIS Ocean State Forecast", "INCOIS"),
+                ("incois_pfz", "INCOIS Potential Fishing Zones", "INCOIS"),
                 ("open_meteo", "Open-Meteo Marine Weather", "Open-Meteo"),
                 ("sarvam_stt", "Sarvam speech-to-text", "Sarvam"),
                 ("sarvam_tts", "Sarvam text-to-speech", "Sarvam"),
                 ("sarvam_translation", "Sarvam translation", "Sarvam"),
                 ("gemini", "Gemini assistant", "Gemini"),
+                ("isro_mosdac", "ISRO MOSDAC Ocean Satellite", "ISRO/MOSDAC"),
             ]
         ]
         services.append(ServiceEndpointHealth(service_id="database", service_name="Database storage", status=db_status, latency_ms=db_latency, last_checked=checked, last_successful_response=checked if db_status == "HEALTHY" else None, last_error_summary=db_error, provider="SQL database", real_data_arriving=db_status == "HEALTHY", data_mode="live" if db_status == "HEALTHY" else "unavailable"))

@@ -164,22 +164,7 @@ function normalizeBackendForecast(data: BackendForecast | null, current: MarineS
   const baseTime = Number.isFinite(baseMs) ? baseMs : Date.now();
 
   if (horizon.length === 0) {
-    // Generate 12-hour operational forecast sequence from current conditions
-    const points: ForecastPoint[] = [];
-    const baseWave = current.waveHeightM ?? 0.8;
-    const baseWind = current.windSpeedKmh ?? 14;
-    for (let i = 1; i <= 12; i++) {
-      const time = new Date(baseTime + i * 3600000).toISOString();
-      const wave = Math.max(0.4, Math.round((baseWave + Math.sin(i / 2) * 0.15) * 10) / 10);
-      const wind = Math.max(5, Math.round((baseWind + Math.cos(i / 2) * 2.2) * 10) / 10);
-      points.push({
-        time,
-        waveHeightM: wave,
-        windSpeedKmh: wind,
-        level: safetyFrom(wave, wind),
-      });
-    }
-    return points;
+    return [];
   }
 
   return horizon.slice(0, 24).map((step, index) => {
@@ -197,21 +182,18 @@ function normalizeBackendForecast(data: BackendForecast | null, current: MarineS
   });
 }
 
-function normalizeTide(data: BackendTide | null, current?: MarineSnapshot): MarineTide {
-  const now = new Date();
-  const curHour = now.getHours();
-  const nextHigh = (curHour + 3) % 24;
-  const nextLow = (curHour + 9) % 24;
+function normalizeTide(data: BackendTide | null, _current?: MarineSnapshot): MarineTide | null {
+  if (!data || (!data.high_tide_time && !data.low_tide_time)) return null;
   return {
-    highTideTime: data?.high_tide_time ?? `${String(nextHigh).padStart(2, "0")}:20`,
-    highTideHeightM: firstNumber(data?.high_tide_height_m) ?? 2.7,
-    lowTideTime: data?.low_tide_time ?? `${String(nextLow).padStart(2, "0")}:45`,
-    lowTideHeightM: firstNumber(data?.low_tide_height_m) ?? 0.8,
-    secondaryHighTideTime: data?.secondary_high_tide_time ?? `${String((nextHigh + 12) % 24).padStart(2, "0")}:35`,
-    secondaryHighTideHeightM: firstNumber(data?.secondary_high_tide_height_m) ?? 2.5,
-    tidalPhase: String(data?.tidal_phase ?? (nextHigh > curHour ? "Flood (Rising)" : "Ebb (Falling)")),
-    tidalRangeM: firstNumber(data?.tidal_range_m) ?? 1.9,
-    source: String(data?.source ?? "INCOIS Operational Tide Network"),
+    highTideTime: data.high_tide_time ?? null,
+    highTideHeightM: firstNumber(data.high_tide_height_m),
+    lowTideTime: data.low_tide_time ?? null,
+    lowTideHeightM: firstNumber(data.low_tide_height_m),
+    secondaryHighTideTime: data.secondary_high_tide_time ?? null,
+    secondaryHighTideHeightM: firstNumber(data.secondary_high_tide_height_m),
+    tidalPhase: String(data.tidal_phase ?? ""),
+    tidalRangeM: firstNumber(data.tidal_range_m),
+    source: String(data.source ?? "INCOIS Operational Tide Network"),
   };
 }
 

@@ -22,7 +22,7 @@ export default function MapPage() {
     <AppShell>
       <SEO
         title="Interactive GIS Map & Potential Fishing Zones | ORCA Marine AI"
-        description="High-resolution coastal geospatial chart with chlorophyll-a fronts, sea surface temperature, bathymetry, and IMBL boundaries."
+        description="Coastal reference map with PFZ advisory availability, source dates, and a text-only view."
       />
       <h1 className="text-xl font-semibold text-foreground">{t("map.title")}</h1>
 
@@ -50,7 +50,7 @@ export default function MapPage() {
                 </span>
               </li>
               <li className="flex items-center gap-2">
-                <span className="size-3 rounded-full border-2 border-dashed border-emerald-500 bg-emerald-500/20 shrink-0" aria-hidden />
+                <span className="size-3 rounded-full border-2 border-emerald-500 bg-emerald-500/20 shrink-0" aria-hidden />
                 <span>{lang === "en" ? "PFZ — " : ""}{t("glossary.pfz.full")}</span>
               </li>
               <li className="flex items-center gap-2">

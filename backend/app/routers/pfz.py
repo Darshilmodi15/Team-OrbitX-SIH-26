@@ -1,50 +1,33 @@
-"""Router for Potential Fishing Zone (PFZ) data endpoints."""
-import json
-from pathlib import Path
-from typing import Any, Dict
-from fastapi import APIRouter, HTTPException, status
+"""Public PFZ availability contract; historical fixtures are never current advisories."""
+from typing import Any, Dict, List, Optional
+from fastapi import APIRouter, Query
+from app.services.pfz.incois_pfz_service import incois_pfz_service
 
 router = APIRouter(prefix="/api", tags=["PFZ"])
 
 
-def _find_pfz_file() -> Path:
-    """Locate the PFZ dataset file reliably across different working directories."""
-    current_dir = Path(__file__).resolve().parent
-    candidates = [
-        current_dir.parent.parent.parent / "data" / "pfz" / "pfz_maharashtra.json",  # repo_root/data/pfz/...
-        current_dir.parent.parent / "data" / "pfz" / "pfz_maharashtra.json",
-        Path.cwd() / "data" / "pfz" / "pfz_maharashtra.json",
-        Path.cwd() / "Team-OrbitX-SIH-26" / "data" / "pfz" / "pfz_maharashtra.json",
-    ]
-    for p in candidates:
-        if p.is_file():
-            return p
-    return candidates[0]
-
-
 @router.get("/pfz", summary="Retrieve Potential Fishing Zones dataset")
-def get_pfz_dataset() -> Dict[str, Any]:
-    """
-    Load and return the INCOIS Potential Fishing Zones (PFZ) dataset for Maharashtra.
-    """
-    file_path = _find_pfz_file()
-    if not file_path.is_file():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"PFZ dataset file not found at expected path: {file_path.name}",
-        )
+def get_pfz_dataset(
+    sector: Optional[str] = Query(None, description="Coastal sector code (e.g. maharashtra, gujarat)"),
+    lat: Optional[float] = Query(None, description="User latitude coordinate for sector auto-detection"),
+    lon: Optional[float] = Query(None, description="User longitude coordinate for sector auto-detection"),
+    language: str = Query("en", description="Target language code"),
+) -> Dict[str, Any]:
+    """Return verified INCOIS PFZ advisory or explicit availability.
 
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return {"source": "unavailable", "data_mode": "unavailable", "pfz_zones": [], "reason": "No timestamped current PFZ advisory feed is configured"}
-    except json.JSONDecodeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to parse PFZ dataset: {str(exc)}",
-        )
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error reading PFZ dataset: {str(exc)}",
-        )
+    Advisories include source, data_mode, timezone-aware issued_at/valid_until,
+    sector metadata, issuing authority, and numeric latitude/longitude in pfz_zones.
+    No repository fixture, request time, or screenshot date is a live feed.
+    """
+    return incois_pfz_service.get_advisory(
+        sector=sector,
+        lat=lat,
+        lon=lon,
+        language=language,
+    )
+
+
+@router.get("/pfz/sectors", summary="List official coastal sectors and advisory status")
+def get_pfz_sectors() -> List[Dict[str, Any]]:
+    """Returns official INCOIS coastal sectors with geographical bounds and landing centres."""
+    return incois_pfz_service.get_sectors()

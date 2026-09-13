@@ -328,13 +328,44 @@ export async function fetchMarineTide(lat: number, lon: number) {
   return await response.json();
 }
 
-export async function fetchPFZDataset() {
-  const response = await fetch(`${API_BASE_URL}/api/pfz`);
+export async function fetchPFZDataset(sector?: string, lat?: number, lon?: number, language?: string) {
+  const params = new URLSearchParams();
+  if (sector) params.set('sector', sector);
+  if (lat != null && Number.isFinite(lat)) params.set('lat', String(lat));
+  if (lon != null && Number.isFinite(lon)) params.set('lon', String(lon));
+  if (language) params.set('language', language);
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  const response = await fetch(`${API_BASE_URL}/api/pfz${qs}`, { signal: AbortSignal.timeout(15000) });
   if (!response.ok) {
     throw new Error('Failed to fetch Potential Fishing Zone dataset');
   }
   return await response.json();
 }
+
+export async function fetchPFZSectors() {
+  const response = await fetch(`${API_BASE_URL}/api/pfz/sectors`, { signal: AbortSignal.timeout(10000) });
+  if (!response.ok) {
+    throw new Error('Failed to fetch coastal sectors');
+  }
+  return await response.json();
+}
+
+export async function fetchProviderHealth() {
+  const response = await fetch(`${API_BASE_URL}/api/health/providers`, { signal: AbortSignal.timeout(10000) });
+  if (!response.ok) {
+    throw new Error('Failed to fetch provider health');
+  }
+  return await response.json();
+}
+
+export async function fetchSatelliteStatus() {
+  const response = await fetch(`${API_BASE_URL}/api/satellite/status`, { signal: AbortSignal.timeout(10000) });
+  if (!response.ok) {
+    throw new Error('Failed to fetch satellite status');
+  }
+  return await response.json();
+}
+
 
 /* ==========================================================================
    Marine Boundaries & GIS APIs

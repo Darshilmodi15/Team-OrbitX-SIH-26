@@ -69,7 +69,7 @@ from app.services.chat_service import chat_storage_service
 from app.services.rate_limit import rate_limiter
 from app.services.bhashini import BHASHINI_MODELS, SUPPORTED_LANGUAGES, bhashini_service
 from app.services.dialogue_synthesizer import DialogueSynthesizer
-from app.services.provider_health import ProviderUnavailable
+from app.services.provider_health import ProviderUnavailable, snapshot
 from app.services.planner import ExecutionPlan, Planner
 from app.services.recommendation_engine import RecommendationReasoningEngine
 
@@ -192,6 +192,16 @@ app.include_router(chat_router)
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
+
+
+@app.get("/api/health/providers")
+def get_providers_health():
+    """Returns non-secret public health and data provenance for all marine providers."""
+    providers = ["incois", "incois_pfz", "open_meteo", "gemini", "isro_mosdac", "sarvam_stt", "sarvam_tts", "sarvam_translation"]
+    return {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "providers": {p: snapshot(p) for p in providers},
+    }
 
 
 @app.get("/api/marine/conditions")
@@ -1444,8 +1454,19 @@ def get_recommendations_endpoint(
 @app.get("/api/analytics/ocean")
 def get_ocean_analytics_endpoint(lat: float = Query(18.9220), lon: float = Query(72.8347), region: Optional[str] = Query(None)):
     """Returns satellite ocean color, chlorophyll-a concentration, and thermal front analytics."""
-    weather = get_marine_weather(provider=weather_provider, lat=lat, lon=lon, date=dt_date.today().isoformat())
+    from app.services.satellite.mosdac_service import mosdac_service
+    if mosdac_service.is_configured:
+        obs = mosdac_service.get_satellite_observations(lat=lat, lon=lon)
+        if obs.get("status") == "HEALTHY":
+            return obs
     raise HTTPException(status_code=503, detail="SATELLITE_OBSERVATIONS_UNAVAILABLE")
+
+
+@app.get("/api/satellite/status")
+def get_satellite_status():
+    """Returns status and metadata for ISRO MOSDAC satellite integration."""
+    from app.services.satellite.mosdac_service import mosdac_service
+    return mosdac_service.get_satellite_observations(lat=18.9220, lon=72.8347)
 
 
 

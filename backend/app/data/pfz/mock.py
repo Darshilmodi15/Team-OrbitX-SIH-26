@@ -47,7 +47,24 @@ class IncoisPFZProvider(PFZProvider):
                     pass
 
     def get_pfz_zones(self, lat: float, lon: float) -> List[Dict[str, Any]]:
-        """No current advisory feed: undated bundled reference coordinates are not live PFZs."""
+        """Queries incois_pfz_service for verified current advisory points for the given coordinates."""
+        from app.services.pfz.incois_pfz_service import incois_pfz_service
+        advisory = incois_pfz_service.get_advisory(lat=lat, lon=lon)
+        if advisory.get("status") == "current":
+            return [
+                {
+                    "zone_id": z.get("id"),
+                    "name": f"PFZ - {z.get('landing_centre', 'Offshore')}",
+                    "lat": z.get("latitude"),
+                    "lon": z.get("longitude"),
+                    "distance_km": z.get("distance_km", 0.0),
+                    "depth_m": z.get("depth_m"),
+                    "dominant_species": ", ".join(z.get("species", ["Pelagic Species"])),
+                    "bearing_deg": z.get("bearing_deg"),
+                    "landing_centre": z.get("landing_centre"),
+                }
+                for z in advisory.get("pfz_zones", [])
+            ]
         return []
 
 

@@ -1,24 +1,13 @@
-import { useEffect, useRef, useCallback, useMemo } from "react";
+import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import type { Map as LeafletMap, Marker, Circle, Polyline, LayerGroup } from "leaflet";
 import { useQuery } from "@tanstack/react-query";
 import { useI18n } from "@/lib/orca/i18n";
-import { useMarine } from "@/lib/orca/use-marine";
-import { COASTAL_BUFFER_KM, INDIA_BOUNDS, haversineKm, type Coords } from "@/lib/orca/geo";
+import { usePFZ } from "@/lib/orca/use-pfz";
+import { mapCopy } from "@/lib/orca/map-copy";
+import { COASTAL_BUFFER_KM, INDIA_BOUNDS, type Coords } from "@/lib/orca/geo";
 import { COASTAL_CITIES } from "@/data/maritimeData";
 import { getLocalizedCityName } from "@/data/localizedGeo";
-import { fetchGeofences, fetchPFZDataset } from "@/services/api";
-
-type RawPFZZone = {
-  id?: string;
-  landing_centre?: string;
-  latitude?: number | string;
-  longitude?: number | string;
-  bearing_deg?: number | string | null;
-  direction?: string | null;
-  depth_m?: number | string | { min?: number; max?: number };
-  distance_km?: number | string | { min?: number; max?: number };
-  dominant_species?: string;
-};
+import { fetchGeofences } from "@/services/api";
 
 type RawGeofence = {
   id?: string;
@@ -37,26 +26,6 @@ function asNumber(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function depthValue(depth: RawPFZZone["depth_m"]): number | null {
-  if (typeof depth === "object" && depth) {
-    const min = asNumber(depth.min);
-    const max = asNumber(depth.max);
-    if (min != null && max != null) return (min + max) / 2;
-    return min ?? max;
-  }
-  return asNumber(depth);
-}
-
-function distanceRangeText(distance: RawPFZZone["distance_km"], fallback: number): string {
-  if (typeof distance === "object" && distance) {
-    const min = asNumber(distance.min);
-    const max = asNumber(distance.max);
-    if (min != null && max != null) return `${min}-${max} km`;
-  }
-  const numeric = asNumber(distance);
-  return `${(numeric ?? fallback).toFixed(1)} km`;
-}
-
 function escapeHtml(value: unknown): string {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -66,21 +35,15 @@ function escapeHtml(value: unknown): string {
     .replace(/'/g, "&#39;");
 }
 
-/**
- * Tactical Marine GIS Map with Satellite / Satellite-Hybrid Base Layer:
- * - Esri World Satellite Imagery base layer
- * - Coastal & Marine reference boundaries layer
- * - PFZ (Potential Fishing Zone) active hotspot circle & interactive pin
- * - IMBL (International Maritime Boundary Line) dashed boundary polyline & pin
- * - User GPS coastal circle and priority coastal city pins
- * - Multilingual synchronized map markers, tooltips, popups, and city pins
- */
+/** Reference map: provider points do not imply a navigable route or zone extent. */
 export default function CoastMap({
   center,
   interactive = true,
   height = 420,
   onSelect,
+  satellite = false,
 }: {
+  satellite?: boolean;
   center: Coords;
   interactive?: boolean | undefined;
   height?: number | undefined;
@@ -91,8 +54,9 @@ export default function CoastMap({
   const leafletRef = useRef<typeof import("leaflet") | null>(null);
   const markerRef = useRef<Marker | null>(null);
   const bufferCircleRef = useRef<Circle | null>(null);
-  const pfzMarkerRef = useRef<Marker | null>(null);
-  const pfzCircleRef = useRef<Circle | null>(null);
+  const pfzLayerRef = useRef<LayerGroup | null>(null);
+  const [ready, setReady] = useState(false);
+  const [tileError, setTileError] = useState(false);
   const imblLineRef = useRef<Polyline | null>(null);
   const imblMarkerRef = useRef<Marker | null>(null);
   const cityLayerRef = useRef<LayerGroup | null>(null);
@@ -101,62 +65,16 @@ export default function CoastMap({
   selectRef.current = onSelect;
   const { t, lang } = useI18n();
 
-  // Retrieve marine conditions for popup tooltips
-  const { data: marine } = useMarine(center);
-  const { data: pfzDataset } = useQuery({
-    queryKey: ["pfz-dataset"],
-    queryFn: fetchPFZDataset,
-    staleTime: 60 * 60 * 1000,
-    retry: 1,
-  });
+  const { advisory } = usePFZ();
   const { data: geofenceDataset } = useQuery({
     queryKey: ["geofences", center.lat.toFixed(2), center.lon.toFixed(2)],
     queryFn: () => fetchGeofences(center.lat, center.lon),
     staleTime: 15 * 60 * 1000,
     retry: 1,
   });
-  const sst =
-    marine?.current.seaTemperatureC != null
-      ? `${marine.current.seaTemperatureC.toFixed(1)}°C`
-      : "\u2014";
-
-  const nearestPfz = useMemo(() => {
-    const zones = ((pfzDataset as { pfz_zones?: RawPFZZone[] } | undefined)?.pfz_zones ?? [])
-      .map((zone) => {
-        const lat = asNumber(zone.latitude);
-        const lon = asNumber(zone.longitude);
-        if (lat == null || lon == null) return null;
-        const distanceKm = haversineKm(center, { lat, lon });
-        return {
-          coords: [lat, lon] as [number, number],
-          landingCentre: zone.landing_centre ?? "Offshore",
-          depthM: depthValue(zone.depth_m),
-          distanceKm,
-          distanceRange: distanceRangeText(zone.distance_km, distanceKm),
-          bearingDeg: asNumber(zone.bearing_deg),
-          direction: zone.direction ?? null,
-          species: zone.dominant_species ?? "Pelagic aggregation potential",
-          source: "INCOIS PFZ advisory dataset",
-        };
-      })
-      .filter(Boolean) as Array<{
-        coords: [number, number];
-        landingCentre: string;
-        depthM: number | null;
-        distanceKm: number;
-        distanceRange: string;
-        bearingDeg: number | null;
-        direction: string | null;
-        species: string;
-        source: string;
-      }>;
-    zones.sort((a, b) => a.distanceKm - b.distanceKm);
-    return zones[0] ?? null;
-  }, [center, pfzDataset]);
-
   const nearestImbl = useMemo(() => {
     const geofences = ((geofenceDataset as { geofences?: RawGeofence[] } | null | undefined)?.geofences ?? [])
-      .filter((zone) => zone.category === "IMBL" && Array.isArray(zone.coordinates) && zone.coordinates.length >= 2)
+      .filter((zone) => !zone.is_demonstration && zone.category === "IMBL" && Array.isArray(zone.coordinates) && zone.coordinates.length >= 2)
       .map((zone) => ({
         name: zone.name ?? t("glossary.imbl.full"),
         description: zone.description ?? t("map.imblBuffer"),
@@ -175,9 +93,11 @@ export default function CoastMap({
     if (!map || !L) return;
 
     // 1. Update view and User Vessel Marker
-    map.setView([center.lat, center.lon], map.getZoom());
+
     if (markerRef.current) {
       markerRef.current.setLatLng([center.lat, center.lon]);
+      markerRef.current.getElement()?.setAttribute("title", t("map.yourPin"));
+      markerRef.current.getElement()?.setAttribute("aria-label", t("map.yourPin"));
       markerRef.current.bindTooltip(t("map.yourPin"), { direction: "top", offset: [0, -8] });
     }
 
@@ -187,46 +107,20 @@ export default function CoastMap({
       bufferCircleRef.current.bindTooltip(`${t("map.coastalZone")} (${COASTAL_BUFFER_KM} km)`);
     }
 
-    for (const layer of [pfzCircleRef.current, pfzMarkerRef.current]) {
-      if (layer) { if (nearestPfz) layer.addTo(mapRef.current!); else layer.remove(); }
+    pfzLayerRef.current?.clearLayers();
+    for (const point of advisory.points) {
+      // A point advisory does not establish a fishing-zone radius or polygon.
+      const popup = document.createElement("div");
+      popup.textContent = `${point.name} · ${point.lat.toFixed(4)}, ${point.lon.toFixed(4)} · ${advisory.source}`;
+      const tooltip = document.createElement("span");
+      tooltip.textContent = point.name;
+      const pin = L.circleMarker([point.lat, point.lon], { radius: 7, color: "#047857", fillColor: "#34d399", fillOpacity: 0.9, weight: 2 })
+        .bindTooltip(tooltip).bindPopup(popup);
+      pfzLayerRef.current?.addLayer(pin);
     }
     for (const layer of [imblLineRef.current, imblMarkerRef.current]) {
-      if (layer) { if (nearestImbl) layer.addTo(mapRef.current!); else layer.remove(); }
+      if (layer) { if (nearestImbl) layer.addTo(map); else layer.remove(); }
     }
-    // 3. Update PFZ (Potential Fishing Zone)
-    const fallbackPfzLat = center.lat + 0.05;
-    const fallbackPfzLon = center.lon < 78 ? center.lon - 0.28 : center.lon + 0.28;
-    const pfzLat = nearestPfz?.coords[0] ?? fallbackPfzLat;
-    const pfzLon = nearestPfz?.coords[1] ?? fallbackPfzLon;
-    const pfzDepth = nearestPfz?.depthM == null ? "\u2014" : `~${Math.round(nearestPfz.depthM)}m`;
-    const pfzDistance = nearestPfz ? nearestPfz.distanceRange : "estimated display overlay";
-    const pfzBearing = nearestPfz?.bearingDeg == null
-      ? nearestPfz?.direction ?? "\u2014"
-      : `${Math.round(nearestPfz.bearingDeg)}°${nearestPfz.direction ? ` ${nearestPfz.direction}` : ""}`;
-
-    if (pfzCircleRef.current) {
-      pfzCircleRef.current.setLatLng([pfzLat, pfzLon]);
-      pfzCircleRef.current.setRadius(nearestPfz ? 9000 : 12000);
-      pfzCircleRef.current.bindTooltip(t("glossary.pfz.full"));
-    }
-
-    if (pfzMarkerRef.current) {
-      pfzMarkerRef.current.setLatLng([pfzLat, pfzLon]);
-      const pfzPopupHtml = `
-        <div style="font-family:sans-serif;font-size:12px;color:#0f172a;line-height:1.4;min-width:180px;">
-          <b style="color:#059669;font-size:13px;display:block;margin-bottom:2px;">🐟 ${t("glossary.pfz.full")}</b>
-          <span style="color:#475569;font-size:11px;display:block;margin-bottom:4px;">${escapeHtml(nearestPfz?.landingCentre ?? t("map.pfzFront"))}</span>
-          <div style="border-top:1px solid #e2e8f0;padding-top:4px;margin-top:2px;">
-            <b>${t("map.sstLabel")}:</b> ${sst} · <b>${t("map.pfzDepth")}:</b> ${pfzDepth}<br/>
-            <b>Distance:</b> ${escapeHtml(pfzDistance)} · <b>Bearing:</b> ${escapeHtml(pfzBearing)}<br/>
-            <b>${t("map.pfzTarget")}:</b> ${escapeHtml(nearestPfz?.species ?? t("map.pfzSpecies"))}<br/>
-            <b>${t("state.source")}:</b> ${escapeHtml(nearestPfz?.source ?? "ORCA visual fallback")}
-          </div>
-        </div>
-      `;
-      pfzMarkerRef.current.setPopupContent(pfzPopupHtml);
-    }
-
     // 4. Update IMBL (International Maritime Boundary Line)
     const isWestCoast = center.lon < 78;
     const fallbackImblCoords: [number, number][] = isWestCoast
@@ -286,10 +180,12 @@ export default function CoastMap({
         cityLayerRef.current?.addLayer(marker);
       });
     }
-  }, [center, lang, nearestImbl, nearestPfz, sst, t]);
+  }, [center, lang, nearestImbl, advisory, t]);
 
   useEffect(() => {
     let disposed = false;
+    setReady(false);
+    setTileError(false);
 
     (async () => {
       const L = (await import("leaflet")).default;
@@ -313,24 +209,16 @@ export default function CoastMap({
         minZoom: 4,
       });
 
-      // ─── 1. Satellite Base Layer (Esri World Imagery) ───
-      L.tileLayer(
-        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        {
-          maxZoom: 18,
-          attribution:
-            "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and GIS User Community",
-        }
-      ).addTo(map);
-
-      // ─── 2. Satellite-Hybrid Coastal Borders & Places Overlay ───
-      L.tileLayer(
-        "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
-        {
-          maxZoom: 18,
-          opacity: 0.75,
-        }
-      ).addTo(map);
+      const tiles = L.tileLayer(satellite
+        ? "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+        : "https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 18,
+        updateWhenIdle: true,
+        keepBuffer: 1,
+        attribution: satellite ? "Tiles &copy; Esri" : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      });
+      tiles.on("tileerror", () => { if (!disposed) setTileError(true); });
+      tiles.addTo(map);
 
       // User Vessel Pin
       const icon = L.divIcon({
@@ -353,28 +241,7 @@ export default function CoastMap({
         fillOpacity: 0.08,
       }).addTo(map);
 
-      // ─── 3. PFZ (Potential Fishing Zone) Visual Layer ───
-      const pfzLat = center.lat + 0.05;
-      const pfzLon = center.lon < 78 ? center.lon - 0.28 : center.lon + 0.28;
-
-      pfzCircleRef.current = L.circle([pfzLat, pfzLon], {
-        radius: 12000,
-        color: "#10b981",
-        fillColor: "#10b981",
-        fillOpacity: 0.22,
-        weight: 2,
-        dashArray: "4, 4",
-      });
-
-      const pfzIcon = L.divIcon({
-        className: "orca-pfz-pin",
-        html: `<div style="display:inline-flex;align-items:center;gap:4px;background:rgba(6,78,59,0.94);color:#34d399;font-size:10px;font-weight:700;padding:2px 7px;border-radius:12px;border:1.5px solid #10b981;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.5);cursor:pointer;"><span style="width:6px;height:6px;border-radius:50%;background:#34d399;box-shadow:0 0 6px #34d399;"></span>🐟 PFZ</div>`,
-        iconSize: [90, 22],
-        iconAnchor: [45, 11],
-      });
-
-      pfzMarkerRef.current = L.marker([pfzLat, pfzLon], { icon: pfzIcon })
-        .bindPopup("");
+      pfzLayerRef.current = L.layerGroup().addTo(map);
 
       // ─── 4. IMBL (International Maritime Boundary Line) Visual Layer ───
       const isWestCoast = center.lon < 78;
@@ -419,9 +286,9 @@ export default function CoastMap({
       }
 
       mapRef.current = map;
-      updateMapLayers();
-      setTimeout(() => map.invalidateSize(), 60);
-    })();
+      setReady(true);
+      map.invalidateSize();
+    })().catch(() => { if (!disposed) setTileError(true); });
 
     return () => {
       disposed = true;
@@ -430,20 +297,23 @@ export default function CoastMap({
       leafletRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [satellite, interactive]);
 
   // Update map and layers whenever center, language, translations or marine conditions change
   useEffect(() => {
     updateMapLayers();
-  }, [updateMapLayers]);
+  }, [updateMapLayers, ready, satellite]);
+
+  useEffect(() => { mapRef.current?.setView([center.lat, center.lon], mapRef.current.getZoom()); }, [center.lat, center.lon, ready, satellite]);
 
   return (
-    <div
-      ref={el}
-      style={{ height }}
-      className="w-full overflow-hidden rounded-md border border-border shadow-xs"
-      role="application"
-      aria-label={t("map.title")}
-    />
+    <div className="space-y-2">
+      {interactive && <button type="button" disabled={!advisory.points.length} className="min-h-10 rounded-md border px-3 text-sm disabled:opacity-50" onClick={() => {
+        const L = leafletRef.current;
+        if (L && advisory.points.length) mapRef.current?.fitBounds(L.latLngBounds(advisory.points.map(p => [p.lat, p.lon] as [number, number])), { padding: [28, 28], maxZoom: 10 });
+      }}>{mapCopy[lang].fit}</button>}
+      {tileError && <p role="status" className="text-sm text-muted-foreground">{mapCopy[lang].tiles}</p>}
+      <div ref={el} style={{ height }} className="w-full overflow-hidden rounded-md border border-border shadow-xs" role="region" aria-label={t("map.title")} />
+    </div>
   );
 }

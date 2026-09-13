@@ -1,10 +1,9 @@
-import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { AppShell } from "@/components/orca/AppShell";
 import { SafetyStatusCard } from "@/components/orca/SafetyStatus";
 import { MarineConditions, ForecastTimeline } from "@/components/orca/Conditions";
 import { MapPanel } from "@/components/orca/MapPanel";
-import { LoadingState, ErrorState, EmptyState } from "@/components/orca/States";
+import { LoadingState, EmptyState } from "@/components/orca/States";
 import { SEO } from "@/components/SEO";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
@@ -53,16 +52,7 @@ export default function DashboardPage() {
   const rawLevel = c && c.waveHeightM != null && c.windSpeedKmh != null ? safetyFrom(c.waveHeightM, c.windSpeedKmh, c.visibilityKm) : null;
   const level = isStale || rawLevel === "unknown" ? null : rawLevel;
 
-  const displayCurrent = useMemo(() => {
-    if (!c) return null;
-    return {
-      ...c,
-      visibilityKm: c.visibilityKm ?? 15.0,
-      seaTemperatureC: c.seaTemperatureC ?? 28.4,
-      wavePeriodS: c.wavePeriodS ?? 7,
-      weatherCode: c.weatherCode ?? 1,
-    };
-  }, [c]);
+  const displayCurrent = c;
 
   return (
     <AppShell>
@@ -75,7 +65,7 @@ export default function DashboardPage() {
 
         {/* Safety status */}
         {marine.isError ? (
-          <SafetyStatusCard level="safe" note="Operating with cached regional telemetry" />
+          <EmptyState>{t("status.title")}: {t("chat.unavailable")}</EmptyState>
         ) : marine.isPending ? (
           <LoadingState label={t("state.loadingMarine")} />
         ) : level ? (
