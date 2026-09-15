@@ -335,7 +335,11 @@ class IncoisWeatherProvider(WeatherProvider):
             from app.data.weather.open_meteo import OpenMeteoWeatherProvider
             open_meteo = OpenMeteoWeatherProvider(timeout_seconds=self.timeout_sec)
             om_data = open_meteo.get_weather(lat=lat, lon=lon, date=date)
-            if om_data and not om_data.get("is_mock", False):
+            if (
+                om_data
+                and not om_data.get("is_mock", False)
+                and om_data.get("cache_status") != "unavailable"
+            ):
                 om_data["cache_status"] = "live"
                 om_res = self.cache.set(
                     lat=lat,

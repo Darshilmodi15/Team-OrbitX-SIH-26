@@ -114,8 +114,8 @@ class NotificationService:
         previous_lat: Optional[float] = None,
         previous_lon: Optional[float] = None,
         user_id: Optional[str] = None,
-        wave_height_m: float = 1.2,
-        wind_gusts_kmh: float = 25.0,
+        wave_height_m: Optional[float] = None,
+        wind_gusts_kmh: Optional[float] = None,
     ) -> List[SafetyNotification]:
         """
         Dynamically analyzes coordinates and generates safety notifications when conditions warrant.
@@ -175,12 +175,20 @@ class NotificationService:
             generated_alerts.append(alert)
 
         # 4. Severe Wave & Gust Telemetry Alerts
-        if wave_height_m >= 2.5 or wind_gusts_kmh >= 50.0:
+        if (
+            (wave_height_m is not None and wave_height_m >= 2.5)
+            or (wind_gusts_kmh is not None and wind_gusts_kmh >= 50.0)
+        ):
             alert = SafetyNotification(
                 id=str(uuid.uuid4()),
                 user_id=user_id or "global",
                 title="⚠️ Severe Sea Condition Alert",
-                message=f"Dangerous sea conditions detected: Wave height {wave_height_m:.1f}m with wind gusts {wind_gusts_kmh:.0f} km/h. Small craft return to harbor immediately.",
+                message=(
+                    "Dangerous sea conditions detected: "
+                    f"wave height {f'{wave_height_m:.1f} m' if wave_height_m is not None else 'unavailable'} "
+                    f"and wind gusts {f'{wind_gusts_kmh:.0f} km/h' if wind_gusts_kmh is not None else 'unavailable'}. "
+                    "Small craft should consult verified marine safety broadcasts."
+                ),
                 severity=NotificationSeverity.CRITICAL,
                 category=NotificationCategory.WEATHER,
                 source="INCOIS OSF Telemetry",

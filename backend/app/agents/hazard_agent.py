@@ -16,7 +16,7 @@ def detect_proactive_hazards(
     if weather:
         wave_h = weather.wave_height_m
         wind_spd = weather.wind_speed_kmh
-        fc = weather.forecast.lower()
+        fc = weather.forecast.lower() if weather.forecast else None
 
         if wave_h > 2.8:
             alerts.append(
@@ -72,7 +72,7 @@ def detect_proactive_hazards(
                 )
             )
 
-        if 'storm' in fc or 'cyclone' in fc:
+        if fc and ('storm' in fc or 'cyclone' in fc):
             alerts.append(
                 HazardAlertEvidence(
                     id=f'alert-cyclone-{round(lat, 2)}-{round(lon, 2)}',
@@ -97,7 +97,7 @@ def detect_proactive_hazards(
                     freshness='LIVE' if weather.cache_status == 'live' else 'CACHED',
                 )
             )
-        elif 'rain' in fc:
+        elif fc and 'rain' in fc:
             alerts.append(
                 HazardAlertEvidence(
                     id=f'alert-lightning-adv-{round(lat, 2)}-{round(lon, 2)}',

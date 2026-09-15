@@ -28,6 +28,23 @@ def analyze_chlorophyll_and_sst(
     Evaluates ocean color and thermal satellite Earth Observation data (ISRO Oceansat OCM / INSAT-3D / NOAA MODIS).
     Identifies high chlorophyll blooms, optimal SST gradients (thermal fronts), and coastal upwelling zones.
     """
+    # No dated satellite product is connected to this agent yet. Never expose
+    # regional demo profiles as current scientific observations.
+    return OceanAnalyticsEvidence(
+        region_name=region_name,
+        mean_chlorophyll_mg_m3=None,
+        mean_sst_c=None,
+        optimal_sst_range=None,
+        upwelling_index=None,
+        thermal_front_detected=None,
+        thermal_front_description=None,
+        favorable_sectors=[],
+        satellite_source=None,
+        summary="No dated chlorophyll or SST product is available for this request.",
+    )
+
+    # Legacy regional profile code is retained below for reference only and is
+    # unreachable until it is replaced by a provider-backed implementation.
     base_sst = weather.sea_surface_temperature_c if (weather and weather.sea_surface_temperature_c) else 28.2
     
     # Regional environmental profiles

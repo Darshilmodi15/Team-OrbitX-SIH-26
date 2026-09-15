@@ -119,8 +119,8 @@ class TestIncoisProvider(unittest.TestCase):
         self.assertEqual(res["source"], "INCOIS_OSF_WW3")
         self.assertEqual(res["cache_status"], "unavailable")
         self.assertEqual(res["forecast"], "data_unavailable")
-        self.assertEqual(res["wave_height_m"], 0.0)
-        self.assertEqual(res["wind_speed_ms"], 0.0)
+        self.assertIsNone(res["wave_height_m"])
+        self.assertIsNone(res["wind_speed_ms"])
 
     def test_incois_provider_landmask_radial_search(self):
         """When exact coordinate is on land (NaN), provider radial searches nearest ocean cell."""

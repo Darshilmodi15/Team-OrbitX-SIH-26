@@ -191,14 +191,28 @@ Generate the complete, natural response in language '{target_lang}':"""
         zone_av = evidence.zone_avoidance
         loc = location_title or "your coastal sector"
 
-        wave_h = (w.wave_height_m if (w and w.wave_height_m is not None) else 0.8)
+        wave_h = w.wave_height_m if w else None
         wave_per = f", wave period {w.wave_period_s:.0f}s" if (w and w.wave_period_s is not None) else ""
-        wind_spd = (w.wind_speed_kmh if (w and w.wind_speed_kmh is not None) else 12.0)
-        wind_deg = (w.wind_direction_deg if (w and w.wind_direction_deg is not None) else 270.0)
-        wind_dir = (w.wind_direction_cardinal if (w and w.wind_direction_cardinal) else ("W" if abs(wind_deg - 270) < 30 else "West"))
-        vis_km = (w.visibility_km if (w and w.visibility_km is not None) else 12.0)
-        sst_c = ((w.sea_surface_temperature_c or w.temperature_c) if (w and (w.sea_surface_temperature_c is not None or w.temperature_c is not None)) else 28.5)
-        risk_lvl = r.level if r else ("unsafe" if wave_h > 2.2 or wind_spd > 35 else ("caution" if wave_h > 1.5 or wind_spd > 25 else "safe"))
+        wind_spd = w.wind_speed_kmh if w else None
+        wind_deg = w.wind_direction_deg if w else None
+        wind_dir = (
+            w.wind_direction_cardinal
+            if w and w.wind_direction_cardinal
+            else "Unavailable"
+        )
+        vis_km = w.visibility_km if w else None
+        sst_c = (
+            w.sea_surface_temperature_c
+            if w and w.sea_surface_temperature_c is not None
+            else (w.temperature_c if w else None)
+        )
+        risk_lvl = r.level if r else "unknown"
+        if wave_h is None or wind_spd is None:
+            return (
+                f"**Marine evidence unavailable near {location_title}.**\n\n"
+                "ORCA could not obtain both wave-height and sustained-wind measurements for this request. "
+                "No safety or zone-clearance conclusion is available; consult a verified marine broadcast."
+            )
 
         # Dedicated Dahanu Demo Multi-Agent Scenario
         if "dahanu" in q_lower and ("killer demo" in q_lower or (pfz and route)):

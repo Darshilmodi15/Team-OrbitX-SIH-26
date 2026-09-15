@@ -21,7 +21,7 @@ class TestOpenMeteoWeatherProvider(unittest.TestCase):
         self.assertEqual(_wmo_code_to_forecast(51), "light drizzle")
         self.assertEqual(_wmo_code_to_forecast(63), "moderate rain")
         self.assertEqual(_wmo_code_to_forecast(95), "stormy")
-        self.assertEqual(_wmo_code_to_forecast(None), "clear")
+        self.assertEqual(_wmo_code_to_forecast(None), "unavailable")
 
     def test_open_meteo_live_or_fallback_structure(self):
         """Validates that get_weather returns compliant dictionary structure."""
@@ -44,10 +44,11 @@ class TestOpenMeteoWeatherProvider(unittest.TestCase):
         with patch("httpx.Client.get", side_effect=httpx.ConnectTimeout("Network unreachable")):
             data = provider.get_weather(lat=18.9220, lon=72.8347, date="2026-08-24")
 
-            self.assertTrue(data.get("is_mock"))
-            self.assertEqual(data.get("source"), "mock_marine_weather")
-            self.assertIn("wave_height_m", data)
-            self.assertIn("wind_speed_kmh", data)
+            self.assertFalse(data.get("is_mock"))
+            self.assertEqual(data.get("source"), "open_meteo_marine_api")
+            self.assertEqual(data.get("cache_status"), "unavailable")
+            self.assertIsNone(data.get("wave_height_m"))
+            self.assertIsNone(data.get("wind_speed_kmh"))
 
     def test_weather_agent_integration_with_open_meteo(self):
         """Validates that WeatherAgent correctly packages live data into WeatherEvidence."""

@@ -82,15 +82,15 @@ export default function SafetyStatusBanner() {
     },
   };
 
-  const currentLevel: SafetyLevel = statusConfigs[riskLevel] ? riskLevel : 'safe';
+  const currentLevel: SafetyLevel = statusConfigs[riskLevel] ? riskLevel : 'caution';
   const statusConfig = statusConfigs[currentLevel];
   const StatusIcon = statusConfig.icon;
 
   // Evidence calculation metrics
   const waveVal = weather.wave_height_m;
   const windVal = weather.wind_speed_kmh;
-  const isWaveSafe = waveVal == null || waveVal < 1.5;
-  const isWindSafe = windVal == null || windVal < 30.0;
+  const isWaveSafe = waveVal != null && waveVal < 1.5;
+  const isWindSafe = windVal != null && windVal < 30.0;
 
   return (
     <section className={`rounded-2xl border ${statusConfig.cardBg} p-4 shadow-xs transition-all`}>
@@ -157,12 +157,12 @@ export default function SafetyStatusBanner() {
                   <Waves className="h-3.5 w-3.5 text-sky-600" />
                   <span>{t.waveHeight}</span>
                 </div>
-                <span className={`text-xs font-bold ${isWaveSafe ? 'text-emerald-700' : 'text-amber-700'}`}>
+                <span className={`text-xs font-bold ${waveVal == null ? 'text-slate-500' : isWaveSafe ? 'text-emerald-700' : 'text-amber-700'}`}>
                   {waveVal == null ? 'Unavailable' : `${waveVal.toFixed(2)} m`}
                 </span>
               </div>
               <p className="mt-1 text-[11px] text-slate-500">
-                {isWaveSafe ? 'Within safe threshold (< 1.50m)' : 'Above calm threshold (1.5m - 2.0m)'}
+                {waveVal == null ? 'No verified wave measurement' : isWaveSafe ? 'Below ORCA heuristic threshold (< 1.50m)' : 'Above ORCA heuristic threshold'}
               </p>
             </div>
 
@@ -173,12 +173,12 @@ export default function SafetyStatusBanner() {
                   <Wind className="h-3.5 w-3.5 text-slate-600" />
                   <span>{t.windSpeed}</span>
                 </div>
-                <span className={`text-xs font-bold ${isWindSafe ? 'text-emerald-700' : 'text-amber-700'}`}>
+                <span className={`text-xs font-bold ${windVal == null ? 'text-slate-500' : isWindSafe ? 'text-emerald-700' : 'text-amber-700'}`}>
                   {windVal == null ? 'Unavailable' : `${windVal.toFixed(1)} km/h`}
                 </span>
               </div>
               <p className="mt-1 text-[11px] text-slate-500">
-                {isWindSafe ? 'Moderate breeze (< 30.0 km/h)' : 'Gusty winds detected (> 30.0 km/h)'}
+                {windVal == null ? 'No verified wind measurement' : isWindSafe ? 'Below ORCA heuristic threshold (< 30.0 km/h)' : 'Above ORCA heuristic threshold'}
               </p>
             </div>
 
@@ -189,7 +189,7 @@ export default function SafetyStatusBanner() {
                   <Compass className="h-3.5 w-3.5 text-[#0D9488]" />
                   <span>{t.imblBoundary}</span>
                 </div>
-                <span className="text-xs font-bold text-emerald-700">CLEAR</span>
+                <span className="text-xs font-bold text-slate-500">Unavailable</span>
               </div>
               <p className="mt-1 text-[11px] text-slate-500">
                 {coastInfo.distanceKm.toFixed(1)} km from coastline ({coastInfo.coastalRegion})

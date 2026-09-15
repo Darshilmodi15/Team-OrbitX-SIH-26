@@ -28,7 +28,8 @@ class TestRiskEngine(unittest.TestCase):
         self.assertEqual(risk.profile.status_label, "SAFE")
         self.assertEqual(risk.profile.wave_risk.level, "LOW")
         self.assertEqual(risk.profile.wind_risk.level, "LOW")
-        self.assertIn("SAFE TO SAIL", risk.reason)
+        self.assertIn("ORCA heuristic assessment", risk.reason)
+        self.assertNotIn("SAFE TO SAIL", risk.reason)
         self.assertTrue(len(risk.profile.recommendations) > 0)
 
     def test_moderate_wave_height_caution(self):
@@ -88,7 +89,8 @@ class TestRiskEngine(unittest.TestCase):
         self.assertEqual(risk.profile.status_label, "UNSAFE")
         self.assertEqual(risk.profile.storm_risk.level, "HIGH")
         self.assertEqual(risk.profile.gust_risk.level, "HIGH")
-        self.assertIn("UNSAFE FOR SAILING", risk.reason)
+        self.assertIn("ORCA heuristic assessment", risk.reason)
+        self.assertNotIn("UNSAFE FOR SAILING", risk.reason)
 
     def test_forecast_horizon_deterioration_trend(self):
         """Verifies that a deteriorating 6-hour forecast triggers proactive caution."""

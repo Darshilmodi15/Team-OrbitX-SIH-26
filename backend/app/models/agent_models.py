@@ -195,12 +195,12 @@ class TideInfo(BaseModel):
 class OceanAnalyticsEvidence(BaseModel):
     """Structured satellite ocean color and thermal front analytics."""
     region_name: str = Field(..., description="Coastal region analyzed")
-    mean_chlorophyll_mg_m3: float = Field(..., description="Mean Chlorophyll-a density in mg/m3")
-    mean_sst_c: float = Field(..., description="Sea Surface Temperature in Celsius")
+    mean_chlorophyll_mg_m3: Optional[float] = Field(default=None, description="Mean Chlorophyll-a density in mg/m3")
+    mean_sst_c: Optional[float] = Field(default=None, description="Sea Surface Temperature in Celsius")
     optimal_sst_range: str = Field(default="26.5°C - 28.8°C", description="Optimal SST range for pelagic aggregation")
     upwelling_index: str = Field(default="MODERATE", description="Coastal upwelling intensity index")
-    thermal_front_detected: bool = Field(default=True, description="Whether an active thermal front gradient is detected")
-    thermal_front_description: str = Field(..., description="Detailed description of thermal front and chlorophyll bloom")
+    thermal_front_detected: Optional[bool] = Field(default=None, description="Whether an active thermal front gradient is detected")
+    thermal_front_description: Optional[str] = Field(default=None, description="Detailed description of thermal front and chlorophyll bloom")
     favorable_sectors: List[Dict[str, Any]] = Field(default_factory=list, description="Specific sectors showing high chlorophyll & favorable SST")
     satellite_source: str = Field(default="ISRO Oceansat-3 OCM & INSAT-3D Thermal Imager", description="Satellite data provenance")
     summary: str = Field(..., description="Executive ocean analytics summary")
