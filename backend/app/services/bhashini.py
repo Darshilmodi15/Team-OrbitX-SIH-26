@@ -911,7 +911,7 @@ class BhashiniService:
                 dominant_lang = norm_profile
                 fallback_used = True
                 confidence = 0.8
-            elif norm_requested and norm_requested in SUPPORTED_LANGUAGES and norm_requested not in ("en", "auto"):
+            elif transcription_provider != "typed" and norm_requested and norm_requested in SUPPORTED_LANGUAGES and norm_requested not in ("en", "auto"):
                 chosen_lang = norm_requested
                 dominant_lang = norm_requested
                 fallback_used = True

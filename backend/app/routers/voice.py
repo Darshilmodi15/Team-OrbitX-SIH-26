@@ -153,7 +153,7 @@ async def transcribe_audio_file(
         return JSONResponse(status_code=503, content={
             "success": False,
             "error_code": "STT_UPSTREAM_UNAVAILABLE",
-            "message": "Speech transcription temporarily unavailable.",
+            "message": "Voice transcription is temporarily unavailable.",
         })
 
     raw_transcript = result.get("transcript", "")

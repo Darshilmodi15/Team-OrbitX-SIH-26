@@ -275,10 +275,6 @@ class IncoisPFZService:
                     return self._unavailable("", language, "SECTOR_SELECTION_REQUIRED", "Choose an advisory sector; coordinates do not resolve unambiguously")
         sector = sector or ""
         if not self.api_url:
-            if sector == "maharashtra" or (not sector and lat is None and lon is None):
-                local_advisory = self._get_local_maharashtra_advisory(language=language)
-                if local_advisory:
-                    return local_advisory
             return self._unavailable(sector, language, "NOT_CONFIGURED", "No timestamped current PFZ advisory feed is configured")
         # Keys are bounded by the sector/language catalogue. Coordinates are not cache keys.
         key = (sector, language)
