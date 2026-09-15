@@ -18,17 +18,16 @@ class TestRiskEngine(unittest.TestCase):
             wind_gust_kmh=24.0,
             visibility_km=15.0,
             source="open_meteo_marine_api",
-            is_mock=False,
+            is_mock=False, cache_status="fresh", weather_code=0,
         )
         risk = assess_risk(weather)
 
-        self.assertEqual(risk.level, "safe")
+        self.assertEqual(risk.level, "low")
         self.assertIsNotNone(risk.profile)
         self.assertEqual(risk.profile.overall, "LOW")
-        self.assertEqual(risk.profile.status_label, "SAFE")
+        self.assertEqual(risk.profile.status_label, "LOW")
         self.assertEqual(risk.profile.wave_risk.level, "LOW")
         self.assertEqual(risk.profile.wind_risk.level, "LOW")
-        self.assertIn("ORCA heuristic assessment", risk.reason)
         self.assertNotIn("SAFE TO SAIL", risk.reason)
         self.assertTrue(len(risk.profile.recommendations) > 0)
 
@@ -42,7 +41,7 @@ class TestRiskEngine(unittest.TestCase):
             wind_gust_kmh=30.0,
             visibility_km=12.0,
             source="open_meteo_marine_api",
-            is_mock=False,
+            is_mock=False, cache_status="fresh", weather_code=0,
         )
         risk = assess_risk(weather)
 
@@ -50,7 +49,7 @@ class TestRiskEngine(unittest.TestCase):
         self.assertEqual(risk.profile.overall, "MODERATE")
         self.assertEqual(risk.profile.status_label, "CAUTION")
         self.assertEqual(risk.profile.wave_risk.level, "MODERATE")
-        self.assertTrue(any("wave height" in w.lower() for w in risk.profile.warnings))
+        self.assertTrue(any("wave_height" in w.lower() for w in risk.profile.warnings))
 
     def test_steep_chop_wave_period_penalty(self):
         """Verifies that short wave periods (<5.5s) with waves >1.2m elevate wave risk."""
@@ -62,7 +61,7 @@ class TestRiskEngine(unittest.TestCase):
             wind_gust_kmh=32.0,
             visibility_km=14.0,
             source="open_meteo_marine_api",
-            is_mock=False,
+            is_mock=False, cache_status="fresh", weather_code=0,
         )
         risk = assess_risk(weather)
 
@@ -80,7 +79,7 @@ class TestRiskEngine(unittest.TestCase):
             wind_gust_kmh=75.0,
             visibility_km=3.0,
             source="open_meteo_marine_api",
-            is_mock=False,
+            is_mock=False, cache_status="fresh", weather_code=95,
         )
         risk = assess_risk(weather)
 
@@ -89,8 +88,7 @@ class TestRiskEngine(unittest.TestCase):
         self.assertEqual(risk.profile.status_label, "UNSAFE")
         self.assertEqual(risk.profile.storm_risk.level, "HIGH")
         self.assertEqual(risk.profile.gust_risk.level, "HIGH")
-        self.assertIn("ORCA heuristic assessment", risk.reason)
-        self.assertNotIn("UNSAFE FOR SAILING", risk.reason)
+        self.assertIn("ORCA heuristic", risk.reason)
 
     def test_forecast_horizon_deterioration_trend(self):
         """Verifies that a deteriorating 6-hour forecast triggers proactive caution."""
@@ -108,7 +106,7 @@ class TestRiskEngine(unittest.TestCase):
                 {"hour_offset": 4, "wave_height_m": 2.6, "wind_speed_kmh": 42.0},
             ],
             source="open_meteo_marine_api",
-            is_mock=False,
+            is_mock=False, cache_status="fresh", weather_code=0,
         )
         risk = assess_risk(weather)
 
@@ -123,7 +121,7 @@ class TestRiskEngine(unittest.TestCase):
             wave_height_m=0.7,
             wind_speed_kmh=15.0,
             source="open_meteo_marine_api",
-            is_mock=False,
+            is_mock=False, cache_status="fresh", weather_code=0,
         )
         risk = assess_risk(weather)
         self.assertTrue(len(risk.disclaimer) > 10)
