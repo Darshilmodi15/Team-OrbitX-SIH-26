@@ -173,6 +173,7 @@ def test_voice_speakers_endpoint():
 
 def test_voice_speak_endpoint():
     """Check /api/voice/speak TTS endpoint."""
+    authenticate_client(client)
     response = client.post(
         "/api/voice/speak",
         json={

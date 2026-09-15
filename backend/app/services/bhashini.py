@@ -876,11 +876,19 @@ class BhashiniService:
             chosen_lang = latest_lang
             dominant_lang = latest_lang
             confidence = 0.95
-            # Priority 2: Explicit English query stays English.
-            # When the user asks a substantive question in English, it remains English
-            # regardless of dashboard UI language (requested_lang) or saved profile preference.
-        else:
-            # No substantive question present (e.g. only greetings, acknowledgments, numbers, or empty)
+        # Fallback hierarchy if substantive query is in English / Latin script without non-English markers:
+        # Check: Saved profile preference -> requested_lang -> session language -> English
+        emergency_number_markers = (
+            "emergency number",
+            "emergency numbers",
+            "emergency contact",
+            "emergency contacts",
+            "emergency helpline",
+            "coast guard number",
+        )
+        preserve_english_for_emergency_lookup = any(marker in cleaned_text.lower() for marker in emergency_number_markers)
+
+        if chosen_lang == "en" and not any(l != "en" for l in detected_languages) and not preserve_english_for_emergency_lookup:
             norm_profile = (user_profile_lang or "").lower().split("-")[0]
             norm_requested = (requested_lang or "").lower().split("-")[0]
             session_lang = self.get_session_language(session_id) if session_id else None
@@ -891,8 +899,7 @@ class BhashiniService:
                 dominant_lang = norm_profile
                 fallback_used = True
                 confidence = 0.8
-            # Priority 3b: UI requested language
-            elif norm_requested and norm_requested in SUPPORTED_LANGUAGES and norm_requested not in ("en", "auto"):
+            elif transcription_provider != "typed" and norm_requested and norm_requested in SUPPORTED_LANGUAGES and norm_requested not in ("en", "auto"):
                 chosen_lang = norm_requested
                 dominant_lang = norm_requested
                 fallback_used = True
@@ -903,18 +910,18 @@ class BhashiniService:
                 dominant_lang = session_lang
                 fallback_used = True
                 confidence = 0.75
-            elif greeting_segments:
-                # Regional greeting present (e.g. "Kem cho?", "Namaste")
-                for _, g_lang in greeting_segments:
-                    if g_lang != "en":
-                        chosen_lang = g_lang
-                        dominant_lang = g_lang
-                        if g_lang not in detected_languages:
-                            detected_languages.append(g_lang)
-                        break
-                if chosen_lang == "en" and greeting_segments:
-                    chosen_lang = greeting_segments[-1][1]
-                    dominant_lang = chosen_lang
+        elif greeting_segments:
+            # Regional greeting present (e.g. "Kem cho?", "Namaste")
+            for _, g_lang in greeting_segments:
+                if g_lang != "en":
+                    chosen_lang = g_lang
+                    dominant_lang = g_lang
+                    if g_lang not in detected_languages:
+                        detected_languages.append(g_lang)
+                    break
+            if chosen_lang == "en" and greeting_segments:
+                chosen_lang = greeting_segments[-1][1]
+                dominant_lang = chosen_lang
 
         if session_id and chosen_lang in SUPPORTED_LANGUAGES:
             self.set_session_language(session_id, chosen_lang)

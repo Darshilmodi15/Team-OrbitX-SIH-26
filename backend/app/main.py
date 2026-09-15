@@ -674,7 +674,7 @@ def _process_orca_query(
         text=question_raw,
         requested_lang=requested_lang,
         session_id=session_id,
-        user_profile_lang=requested_lang if requested_lang not in ("auto", "en") else None,
+        user_profile_lang=None,
         transcription_provider="typed",
     )
     detected_lang = decision.response_language
