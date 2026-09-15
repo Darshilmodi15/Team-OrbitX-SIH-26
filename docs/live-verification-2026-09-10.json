@@ -1,0 +1,148 @@
+{
+  "checked_at": "2026-09-10T06:55:18.673429+00:00",
+  "scope": "local HTTP API -> real providers; isolated DB/cache; lifespan disabled",
+  "coordinates": {
+    "lat": 18.9,
+    "lon": 72.5
+  },
+  "checks": {
+    "incois": {
+      "http_status": 200,
+      "elapsed_seconds": 0.55,
+      "passed": true,
+      "source": "INCOIS_OSF_WW3",
+      "cache_status": "fresh",
+      "is_mock": false,
+      "wave_height_m": 1.33,
+      "wind_speed_kmh": 13.2,
+      "wave_period_s": null,
+      "wind_gust_kmh": null,
+      "forecast_valid_at": "2026-09-10T06:00:00Z",
+      "forecast_time": "2026-09-10T06:00:00Z",
+      "issued_at": "2026-09-09T00:00:00Z",
+      "retrieved_at": "2026-09-10T06:55:20.262496+00:00",
+      "valid_time_age_seconds": 3320
+    },
+    "cache": {
+      "http_status": 200,
+      "cache_status": "cached",
+      "passed": true
+    },
+    "risk": {
+      "http_status": 200,
+      "evidence_completeness": "partial",
+      "assessment_type": "ORCA_HEURISTIC",
+      "profile": {
+        "overall": "UNKNOWN",
+        "status_label": "UNKNOWN",
+        "wave_risk": {
+          "level": "LOW",
+          "score": null,
+          "description": "ORCA threshold assessment of wave_height_m=1.33; not a safety clearance"
+        },
+        "wind_risk": {
+          "level": "LOW",
+          "score": null,
+          "description": "ORCA threshold assessment of wind_speed_kmh=13.2; not a safety clearance"
+        },
+        "storm_risk": {
+          "level": "UNKNOWN",
+          "score": null,
+          "description": "Storm evidence unavailable"
+        },
+        "gust_risk": {
+          "level": "UNKNOWN",
+          "score": null,
+          "description": "Current evidence unavailable"
+        },
+        "forecast_trend": "unknown",
+        "recommendations": [
+          "Consult current official marine advisories before making navigation decisions."
+        ],
+        "warnings": [
+          "Missing: wave_period_s, wind_gust_kmh, visibility_km, weather_code"
+        ]
+      },
+      "passed": true
+    },
+    "vliz": {
+      "http_status": 200,
+      "elapsed_seconds": 2.24,
+      "retrieval_status": "live_wfs",
+      "feature_count": 1,
+      "passed": true
+    },
+    "vliz_boundary": {
+      "http_status": 200,
+      "inside_eez": true,
+      "distance_to_boundary_km": 31.0,
+      "passed": true
+    },
+    "sarvam_tts": {
+      "http_status": 200,
+      "source": "sarvam_bulbul_v3",
+      "passed": true,
+      "audio_bytes": 101650,
+      "duration_seconds": 2.3
+    },
+    "sarvam_stt": {
+      "http_status": 200,
+      "source": "sarvam_saaras_v3",
+      "transcript": "This is an Orca voice integration test.",
+      "passed": true
+    },
+    "open-meteo": {
+      "http_status": 200,
+      "elapsed_seconds": 1.32,
+      "passed": true,
+      "source": "open_meteo_marine_api",
+      "cache_status": "fresh",
+      "is_mock": false,
+      "wave_height_m": 1.16,
+      "wind_speed_kmh": 9.6,
+      "wave_period_s": 7.55,
+      "wind_gust_kmh": 17.6,
+      "forecast_valid_at": "2026-09-10T06:45",
+      "forecast_time": "2026-09-10T06:45",
+      "issued_at": "2026-09-10T06:45",
+      "retrieved_at": "2026-09-10T06:55:27.155881+00:00",
+      "valid_time_age_seconds": 627
+    }
+  },
+  "provider_telemetry": {
+    "provider_health.incois": {
+      "status": "HEALTHY",
+      "last_checked": "2026-09-10T06:55:20.275278+00:00",
+      "last_error_summary": null,
+      "data_mode": "live",
+      "real_data_arriving": true,
+      "http_status": 200,
+      "fallback_in_use": false,
+      "data_timestamp": "2026-09-10T06:00:00Z",
+      "last_successful_response": "2026-09-10T06:55:20.275278+00:00"
+    },
+    "provider_health.sarvam_tts": {
+      "status": "HEALTHY",
+      "last_checked": "2026-09-10T06:55:23.777920+00:00",
+      "last_error_summary": null,
+      "data_mode": "live",
+      "real_data_arriving": true,
+      "http_status": 200,
+      "fallback_in_use": false,
+      "data_timestamp": null,
+      "last_successful_response": "2026-09-10T06:55:23.777920+00:00"
+    },
+    "provider_health.sarvam_stt": {
+      "status": "HEALTHY",
+      "last_checked": "2026-09-10T06:55:24.547468+00:00",
+      "last_error_summary": null,
+      "data_mode": "live",
+      "real_data_arriving": true,
+      "http_status": 200,
+      "fallback_in_use": false,
+      "data_timestamp": null,
+      "last_successful_response": "2026-09-10T06:55:24.547468+00:00"
+    }
+  },
+  "passed": true
+}

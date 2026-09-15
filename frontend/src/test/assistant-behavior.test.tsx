@@ -32,16 +32,24 @@ it('conversation failure leaves an error and permits a subsequent send', async (
   vi.mocked(createConversation).mockRejectedValueOnce(new Error('HTTP 503'));
   mount();
   fireEvent.click(screen.getByRole('button', { name: 'What does PFZ mean?' }));
-  expect(await screen.findByRole('alert')).toHaveTextContent('Live data temporarily unavailable');
+  expect(await screen.findByRole('alert')).toHaveTextContent('Could not start the conversation');
   fireEvent.click(screen.getByRole('button', { name: 'What does PFZ mean?' }));
   expect(await screen.findByText('Provider result')).toBeInTheDocument();
 });
 it('provider failure is an error, not an assistant message', async () => {
-  vi.mocked(sendChatMessage).mockRejectedValueOnce(new Error('AI_PROVIDER_UNAVAILABLE'));
+  vi.mocked(sendChatMessage).mockRejectedValueOnce(Object.assign(new Error('Provider unavailable'), { code: 'AI_PROVIDER_UNAVAILABLE' }));
   mount();
   fireEvent.click(screen.getByRole('button', { name: 'What does PFZ mean?' }));
-  expect(await screen.findByRole('alert')).toBeInTheDocument();
+  expect(await screen.findByRole('alert')).toHaveTextContent('ORCA’s AI provider is temporarily unavailable');
   expect(screen.queryByText('Provider result')).not.toBeInTheDocument();
+});
+
+it('keeps unrelated server errors generic without exposing technical details', async () => {
+  vi.mocked(sendChatMessage).mockRejectedValueOnce(new Error('Internal database exception'));
+  mount();
+  fireEvent.click(screen.getByRole('button', { name: 'What does PFZ mean?' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('The chat request could not be completed');
+  expect(screen.queryByText('Internal database exception')).not.toBeInTheDocument();
 });
 
 it('microphone denial leaves an error and sends no audio or chat', async () => {

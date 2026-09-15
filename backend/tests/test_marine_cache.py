@@ -1,4 +1,5 @@
 """Unit tests for the MarineWeatherCache geospatial and temporal caching layer."""
+from datetime import datetime, timezone
 import time
 import unittest
 from app.data.weather.cache import MarineWeatherCache
@@ -23,7 +24,7 @@ class TestMarineCache(unittest.TestCase):
             "wind_direction_cardinal": "WSW",
             "forecast": "calm / clear",
         }
-        cache.set(18.9220, 72.8347, payload, forecast_time="2026-08-24T15:00:00Z", source="INCOIS_OSF_WW3")
+        cache.set(18.9220, 72.8347, payload, forecast_time=datetime.now(timezone.utc).isoformat(), source="INCOIS_OSF_WW3")
         
         self.assertEqual(cache.size(), 1)
         cached_data, status = cache.get(18.9220, 72.8347)
@@ -41,7 +42,7 @@ class TestMarineCache(unittest.TestCase):
         payload = {"wave_height_m": 1.12, "wind_speed_ms": 5.4, "wind_speed_kmh": 19.4}
         
         # Set for Vessel A at 18.918, 72.832
-        cache.set(18.918, 72.832, payload, forecast_time="2026-08-24T15:00:00Z")
+        cache.set(18.918, 72.832, payload, forecast_time=datetime.now(timezone.utc).isoformat())
         
         # Query for Vessel B at 18.921, 72.834 (very close)
         cached_data, status = cache.get(18.921, 72.834)
@@ -54,7 +55,7 @@ class TestMarineCache(unittest.TestCase):
         # Cache with 0.1s fresh TTL and 0.5s max stale
         cache = MarineWeatherCache(fresh_ttl_seconds=0.1, max_stale_seconds=0.4)
         payload = {"wave_height_m": 0.9}
-        cache.set(19.0, 72.0, payload)
+        cache.set(19.0, 72.0, payload, forecast_time=datetime.now(timezone.utc).isoformat())
 
         # Immediately fresh
         d1, s1 = cache.get(19.0, 72.0)

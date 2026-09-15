@@ -23,3 +23,12 @@ createRoot(document.getElementById("root")!).render(
     </ErrorBoundary>
   </StrictMode>,
 );
+
+// The worker stores only a public offline reader; authenticated pages and APIs stay network-only.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/trip-worker.js", { scope: "/" }).catch(() => {
+      // The downloaded standalone file remains usable if browser storage is denied.
+    });
+  });
+}

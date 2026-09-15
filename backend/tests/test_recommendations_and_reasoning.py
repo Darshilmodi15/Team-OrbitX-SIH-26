@@ -29,111 +29,22 @@ def client():
     return authenticate_client(TestClient(app))
 
 
-def test_recommendation_generation_safe_conditions():
-    """Verifies that safe marine conditions produce verified departure recommendations with evidence and reasoning."""
-    weather = WeatherEvidence(
-        forecast="clear",
-        wave_height_m=0.85,
-        wind_speed_kmh=18.0,
-        wind_speed_ms=5.0,
-        wave_period_s=8.0,
-        source="INCOIS_OSF_WW3",
-        is_mock=False,
-    )
-    risk = RiskEvidence(
-        level="safe",
-        reason="Wave height 0.85m and wind 18.0 km/h are within safe craft limits.",
-        factors=["wave_height=0.85m", "wind_speed=18.0 km/h"],
-        safety_label="SAFE TO VENTURE",
-    )
-    bundle = EvidenceBundle(
-        weather=weather,
-        risk=risk,
-        location_lat=18.9220,
-        location_lon=72.8347,
-        date="2026-08-27",
-    )
-
-    recs = RecommendationReasoningEngine.generate_recommendations(bundle)
-    assert len(recs) >= 1
-    saf_rec = next(r for r in recs if r.category == "SAFETY")
-    assert saf_rec.priority == "MEDIUM"
-    assert saf_rec.confidence_score >= 0.90
-    assert "Optimal Marine Conditions" in saf_rec.title
-    assert "Normal fishing and navigation operations are cleared" in saf_rec.directive
-    assert len(saf_rec.supporting_evidence) >= 3
-    assert any("0.85m" in e for e in saf_rec.supporting_evidence)
-    assert "1. Multi-vector physics check" in saf_rec.reasoning
-    assert "SAFE TO VENTURE" in saf_rec.reasoning
-
-
-def test_recommendation_generation_caution_conditions():
-    """Verifies that elevated wave or wind conditions generate caution directives with evidence and reasoning."""
-    weather = WeatherEvidence(
-        forecast="rainy",
-        wave_height_m=1.95,
-        wind_speed_kmh=42.0,
-        wind_speed_ms=11.67,
-        wave_period_s=5.0,
-        source="INCOIS_OSF_WW3",
-        is_mock=False,
-    )
-    risk = RiskEvidence(
-        level="caution",
-        reason="Elevated wave height of 1.95m and squalls require heightened vigilance.",
-        factors=["wave_height=1.95m", "wind_speed=42.0 km/h"],
-        safety_label="CAUTION ADVISED",
-    )
-    bundle = EvidenceBundle(
-        weather=weather,
-        risk=risk,
-        location_lat=18.9220,
-        location_lon=72.8347,
-        date="2026-08-27",
-    )
-
-    recs = RecommendationReasoningEngine.generate_recommendations(bundle)
-    saf_rec = next(r for r in recs if r.category == "SAFETY")
-    assert saf_rec.priority == "HIGH"
-    assert "Restricted Coastal Operations" in saf_rec.title
-    assert "within 5 Nautical Miles" in saf_rec.directive
-    assert any("1.95m" in e for e in saf_rec.supporting_evidence)
-    assert "CAUTION ADVISED" in saf_rec.reasoning
-
-
-def test_recommendation_generation_unsafe_storm_conditions():
-    """Verifies that extreme storm conditions generate critical venture prohibitions with evidence and reasoning."""
-    weather = WeatherEvidence(
-        forecast="stormy",
-        wave_height_m=3.40,
-        wind_speed_kmh=62.0,
-        wind_speed_ms=17.22,
-        wave_period_s=4.2,
-        source="INCOIS_OSF_WW3",
-        is_mock=False,
-    )
-    risk = RiskEvidence(
-        level="unsafe",
-        reason="Severe wave height of 3.40m and gale winds exceed safety thresholds.",
-        factors=["wave_height=3.40m", "wind_speed=62.0 km/h", "stormy"],
-        safety_label="UNSAFE — SEVERE HAZARD",
-    )
-    bundle = EvidenceBundle(
-        weather=weather,
-        risk=risk,
-        location_lat=18.9220,
-        location_lon=72.8347,
-        date="2026-08-27",
-    )
-
-    recs = RecommendationReasoningEngine.generate_recommendations(bundle)
-    saf_rec = next(r for r in recs if r.category == "SAFETY")
-    assert saf_rec.priority == "CRITICAL"
-    assert saf_rec.confidence_score >= 0.95
-    assert "Vessel Venture Prohibition" in saf_rec.title
-    assert "Suspend all vessel departures" in saf_rec.directive
-    assert any("3.40m" in e for e in saf_rec.supporting_evidence)
-    assert "capsizing stability margins" in saf_rec.reasoning
+@pytest.mark.parametrize("wave,wind,level,priority", [(0.85,18,"unknown","INFO"), (1.95,42,"caution","HIGH"), (3.4,62,"unsafe","CRITICAL")])
+def test_recommendation_generation_evidence_contract(wave, wind, level, priority):
+    from app.agents.risk_agent import assess_risk
+    weather = WeatherEvidence(forecast="unavailable", wave_height_m=wave, wind_speed_kmh=wind,
+        source="INCOIS_OSF_WW3", is_mock=False, cache_status="fresh")
+    risk = assess_risk(weather)
+    bundle = EvidenceBundle(weather=weather, risk=risk, date="2026-09-09")
+    rec = RecommendationReasoningEngine.generate_recommendations(bundle)[0]
+    assert risk.level == level
+    assert rec.priority == priority
+    assert rec.confidence_score is None
+    assert rec.reliability_tier == "ORCA_HEURISTIC"
+    assert f"wave_height_m: {wave}" in rec.supporting_evidence
+    assert "ORCA heuristic" in rec.title
+    assert "does not issue departure clearance" in rec.directive
+    assert "Missing evidence:" in " ".join(rec.supporting_evidence)
 
 
 def test_recommendation_generation_pfz_and_fishing():
@@ -158,12 +69,14 @@ def test_recommendation_generation_pfz_and_fishing():
 
     recs = RecommendationReasoningEngine.generate_recommendations(bundle)
     pfz_rec = next(r for r in recs if r.category == "FISHING")
-    assert pfz_rec.priority == "HIGH"
+    assert pfz_rec.priority == "INFO"
+    assert pfz_rec.confidence_score is None
     assert "Shelf Break Hotspot Alpha" in pfz_rec.title
-    assert "225° (SW)" in pfz_rec.directive
-    assert "Tuna, Kingfish, Mackerel" in pfz_rec.directive
+    assert "225°" not in pfz_rec.directive
+    assert any("Tuna, Kingfish, Mackerel" in e for e in pfz_rec.supporting_evidence)
     assert any("14.2 km" in e for e in pfz_rec.supporting_evidence)
-    assert "Catch-Per-Unit-Effort" in pfz_rec.reasoning
+    assert "Catch-Per-Unit-Effort" not in pfz_rec.reasoning
+    assert "does not establish" in pfz_rec.reasoning
 
 
 def test_recommendation_generation_navigation_route():
@@ -225,8 +138,8 @@ def test_recommendation_generation_boundary_and_geofence():
     recs_inside = RecommendationReasoningEngine.generate_recommendations(bundle_inside)
     geo_rec = next(r for r in recs_inside if r.category == "GEOFENCE")
     assert geo_rec.priority == "INFO"
-    assert "Indian EEZ Verified" in geo_rec.title
-    assert "legal fishing operations" in geo_rec.reasoning
+    assert geo_rec.reliability_tier == "REFERENCE_ESTIMATE"
+    assert "does not establish legal" in geo_rec.directive
 
     # Test border proximity warning
     bound_border = BoundaryEvidence(
@@ -247,9 +160,9 @@ def test_recommendation_generation_boundary_and_geofence():
     )
     recs_border = RecommendationReasoningEngine.generate_recommendations(bundle_border)
     geo_crit = next(r for r in recs_border if r.category == "GEOFENCE")
-    assert geo_crit.priority == "CRITICAL"
-    assert "Alter course immediately toward the Indian mainland" in geo_crit.directive
-    assert any("8.2 km" in e for e in geo_crit.supporting_evidence)
+    assert geo_crit.priority == "HIGH"
+    assert "current official charts" in geo_crit.directive
+    assert any("8.2" in e for e in geo_crit.supporting_evidence)
 
 
 def test_query_endpoint_delivers_recommendations_and_evidence(client):
@@ -281,7 +194,7 @@ def test_query_endpoint_delivers_recommendations_and_evidence(client):
         assert len(rec["reasoning"]) > 10
 
     # Ensure answer text includes the formatted recommendation section
-    assert "Operational Recommendations, Evidence & Reasoning Derivation" in data["answer"]
+    assert data['answer'].startswith("TEST_PROVIDER_RESPONSE ")
 
 
 def test_chat_endpoint_delivers_recommendations_and_evidence(client):
@@ -312,3 +225,8 @@ def test_api_recommendations_endpoint(client):
     assert "evidence_summary" in data
     assert "reasoning_trace" in data
     assert "sources_used" in data
+
+
+# Explicit upstream fixtures: these tests exercise orchestration, not live model prose.
+import pytest
+pytestmark = pytest.mark.usefixtures("pipeline_providers")

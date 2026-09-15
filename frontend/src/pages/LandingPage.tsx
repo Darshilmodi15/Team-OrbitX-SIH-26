@@ -288,7 +288,7 @@ export default function LandingPage() {
       </section>
 
       {/* Real Contact & Operations Footer */}
-      <footer className="border-t border-border bg-card/60 backdrop-blur-sm pt-8 pb-28 lg:pb-8 text-xs text-muted-foreground">
+      <footer className="border-t border-border bg-card/60 backdrop-blur-sm pt-8 pb-40 lg:pb-8 text-xs text-muted-foreground">
         <div className="orca-container space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>

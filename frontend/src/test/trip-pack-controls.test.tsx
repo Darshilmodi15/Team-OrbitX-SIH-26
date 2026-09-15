@@ -1,0 +1,33 @@
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { it, expect, vi, afterEach } from "vitest";
+import { TripPack } from "@/components/orca/TripPack";
+import type { MarineBundle, LocationInfo } from "@/lib/orca/types";
+const mocks = vi.hoisted(() => ({ encrypt: vi.fn(), prepare: vi.fn() }));
+vi.mock("@/lib/orca/i18n", () => ({ useI18n: () => ({ lang: "en" }) }));
+vi.mock("@/lib/orca/use-pfz", () => ({ usePFZ: () => ({ isPending: false, advisory: { status: "unavailable", points: [] } }) }));
+vi.mock("@/lib/orca/offline/trip-pack", () => ({ encryptTripPack: mocks.encrypt, prepareTripPack: mocks.prepare }));
+afterEach(() => vi.restoreAllMocks());
+const location = { coords: { lat: 18.9, lon: 72.6 }, label: "Public reference" } as LocationInfo;
+const bundle: MarineBundle = { current: { time: "", waveHeightM: null, wavePeriodS: null, seaTemperatureC: null, windSpeedKmh: null, windDirectionDeg: null, visibilityKm: null, airTemperatureC: null, weatherCode: null, fetchedAt: null, sources: [] }, forecast: [], past: [] };
+it("shows preparation failure without claiming storage or delivery", async () => {
+  mocks.prepare.mockReturnValue({}); mocks.encrypt.mockRejectedValue(new Error("crypto denied"));
+  render(<TripPack location={location} bundle={bundle}/>);
+  fireEvent.change(screen.getByLabelText(/Trip password/), { target: { value: "test-password-long" } });
+  fireEvent.submit(screen.getByRole("button", { name: "Download trip pack" }).closest("form")!);
+  await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("No pack was confirmed saved"));
+  expect(screen.getByRole("button", { name: "Download trip pack" })).toBeEnabled();
+});
+it("requests an explicit download, clears password and reports exact contents", async () => {
+  mocks.prepare.mockReturnValue({ savedAt: Date.now(), readings: [1, 2], forecast: [1], pfz: { status: "unavailable" } });
+  mocks.encrypt.mockResolvedValue("<html>encrypted pack</html>");
+  const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  Object.defineProperty(URL, "createObjectURL", { value: vi.fn(() => "blob:trip-test"), configurable: true });
+  Object.defineProperty(URL, "revokeObjectURL", { value: vi.fn(), configurable: true });
+  render(<TripPack location={location} bundle={bundle}/>);
+  fireEvent.change(screen.getByLabelText(/Trip password/), { target: { value: "test-password-long" } });
+  fireEvent.submit(screen.getByRole("button", { name: "Download trip pack" }).closest("form")!);
+  await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("2 readings, 1 forecast times; PFZ unavailable"));
+  expect(click).toHaveBeenCalledOnce();
+  expect(screen.getByLabelText(/Trip password/)).toHaveValue("");
+  expect(screen.getByRole("status")).toHaveTextContent("does not confirm the file was saved");
+});

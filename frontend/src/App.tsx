@@ -8,6 +8,7 @@ import { AppProvider } from "./context/AppContext";
 import { CookieBanner } from "./components/CookieBanner";
 import { RouteAnalyticsListener } from "./lib/orca/analytics";
 import { OrcaLogo } from "./components/orca/Logo";
+import { LocationGate } from "./components/orca/LocationGate";
 import { Radio } from "lucide-react";
 
 const LandingPage = lazy(() => import("./pages/LandingPage"));
@@ -30,17 +31,17 @@ function RouteFallback() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#06182C] px-4 text-slate-100 selection:bg-teal-500/30">
       <div className="relative flex size-20 items-center justify-center rounded-3xl bg-slate-900/90 border border-teal-500/30 shadow-2xl shadow-teal-500/20 backdrop-blur-xl">
-        <OrcaLogo className="size-10 drop-shadow-[0_0_15px_rgba(45,212,191,0.5)] animate-pulse" />
-        <div className="absolute -inset-1 rounded-3xl border border-teal-500/20 animate-ping opacity-40 pointer-events-none" />
+        <OrcaLogo className="size-10 drop-shadow-[0_0_15px_rgba(45,212,191,0.5)] motion-safe:animate-pulse" />
+        <div className="absolute -inset-1 rounded-3xl border border-teal-500/20 motion-safe:animate-ping opacity-40 pointer-events-none" />
       </div>
 
       <div className="mt-6 flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-teal-300">
-        <Radio className="size-3.5 text-teal-400 animate-pulse" />
-        <span>INITIALIZING OCEAN TELEMETRY...</span>
+        <Radio className="size-3.5 text-teal-400 motion-safe:animate-pulse" />
+        <span>ORCA</span>
       </div>
 
       <div className="mt-3 h-1 w-36 overflow-hidden rounded-full bg-slate-800">
-        <div className="h-full w-full bg-gradient-to-r from-teal-500 via-sky-400 to-teal-500 animate-[shimmer_1.5s_infinite_linear] [background-size:200%_100%]" />
+        <div className="h-full w-full bg-gradient-to-r from-teal-500 via-sky-400 to-teal-500 motion-safe:animate-[shimmer_1.5s_infinite_linear] [background-size:200%_100%]" />
       </div>
     </div>
   );
@@ -65,7 +66,7 @@ function DashboardRoute() {
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === "admin") return <Navigate to="/admin" replace />;
   if (user.role === "government") return <Navigate to="/officer" replace />;
-  return <DashboardPage />;
+  return <LocationGate><DashboardPage /></LocationGate>;
 }
 
 export default function App() {
@@ -87,9 +88,9 @@ export default function App() {
                   <Route path="/officer" element={<RoleRoute roles={["government"]}><OperationsPage /></RoleRoute>} />
                   <Route path="/admin" element={<RoleRoute roles={["admin"]}><OperationsPage /></RoleRoute>} />
                   <Route path="/home" element={<Navigate to="/dashboard" replace />} />
-                  <Route path="/map" element={<ProtectedRoute><MapPage /></ProtectedRoute>} />
-                  <Route path="/assistant" element={<ProtectedRoute><AssistantPage /></ProtectedRoute>} />
-                  <Route path="/alerts" element={<ProtectedRoute><AlertsPage /></ProtectedRoute>} />
+                  <Route path="/map" element={<ProtectedRoute><LocationGate><MapPage /></LocationGate></ProtectedRoute>} />
+                  <Route path="/assistant" element={<ProtectedRoute><LocationGate><AssistantPage /></LocationGate></ProtectedRoute>} />
+                  <Route path="/alerts" element={<ProtectedRoute><LocationGate><AlertsPage /></LocationGate></ProtectedRoute>} />
                   <Route path="/services" element={<ProtectedRoute><ServicesPage /></ProtectedRoute>} />
                   <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
                   <Route path="/privacy" element={<PrivacyPage />} />

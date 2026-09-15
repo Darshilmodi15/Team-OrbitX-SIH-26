@@ -10,7 +10,7 @@ class TestHazardAgent(unittest.TestCase):
             forecast="rough",
             wave_height_m=3.2,
             wind_speed_kmh=25.0,
-            is_mock=False,
+            is_mock=False, cache_status="fresh",
         )
         alerts = detect_proactive_hazards(lat=19.9700, lon=72.7300, weather=weather, location_name="Dahanu")
         self.assertTrue(any(a.severity == "critical" and "High Wave" in a.title for a in alerts))
@@ -21,7 +21,7 @@ class TestHazardAgent(unittest.TestCase):
             forecast="windy",
             wave_height_m=1.2,
             wind_speed_kmh=55.0,
-            is_mock=False,
+            is_mock=False, cache_status="fresh",
         )
         alerts = detect_proactive_hazards(lat=19.9700, lon=72.7300, weather=weather, location_name="Dahanu")
         self.assertTrue(any(a.severity == "critical" and "Wind" in a.title for a in alerts))
@@ -32,7 +32,7 @@ class TestHazardAgent(unittest.TestCase):
             forecast="calm",
             wave_height_m=0.8,
             wind_speed_kmh=12.0,
-            is_mock=False,
+            is_mock=False, cache_status="fresh",
         )
         alerts = detect_proactive_hazards(lat=18.9220, lon=72.8347, weather=weather, location_name="Mumbai Port")
         weather_alerts = [a for a in alerts if "wave" in a.id or "wind" in a.id or "storm" in a.id]

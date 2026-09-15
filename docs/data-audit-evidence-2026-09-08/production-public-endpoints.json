@@ -1,0 +1,163 @@
+[
+  {
+    "path": "/api/marine/conditions?lat=18.9&lon=72.7",
+    "status": 200,
+    "body": {
+      "forecast": "moderate",
+      "wave_height_m": 1.32,
+      "wind_speed_kmh": 19.5,
+      "wind_speed_ms": 5.43,
+      "wave_period_s": null,
+      "wind_gust_kmh": null,
+      "wind_direction_deg": 291.8,
+      "wind_direction_cardinal": "WNW",
+      "temperature_c": null,
+      "sea_surface_temperature_c": null,
+      "visibility_km": null,
+      "forecast_time": "2026-09-08T15:00:00Z",
+      "retrieval_time": "2026-09-08T15:10:10.384120+00:00",
+      "cache_status": "live",
+      "grid_lat": 18.9,
+      "grid_lon": 72.7,
+      "resolution_method": "exact",
+      "data_age_sec": 0,
+      "forecast_horizon": null,
+      "source": "INCOIS_OSF_WW3",
+      "is_mock": false
+    }
+  },
+  {
+    "path": "/api/marine/conditions?lat=20.9&lon=70.3&date=2026-09-09",
+    "status": 200,
+    "body": {
+      "forecast": "moderate",
+      "wave_height_m": 1.32,
+      "wind_speed_kmh": 20.0,
+      "wind_speed_ms": 5.56,
+      "wave_period_s": null,
+      "wind_gust_kmh": null,
+      "wind_direction_deg": 271.3,
+      "wind_direction_cardinal": "W",
+      "temperature_c": null,
+      "sea_surface_temperature_c": null,
+      "visibility_km": null,
+      "forecast_time": "2026-09-08T15:00:00Z",
+      "retrieval_time": "2026-09-08T15:09:02.741471+00:00",
+      "cache_status": "cached",
+      "grid_lat": 20.9,
+      "grid_lon": 70.3,
+      "resolution_method": "exact",
+      "data_age_sec": 67,
+      "forecast_horizon": null,
+      "source": "INCOIS_OSF_WW3",
+      "is_mock": false
+    }
+  },
+  {
+    "path": "/api/marine/risk?lat=20.9&lon=70.3",
+    "status": 200,
+    "body": {
+      "level": "safe",
+      "reason": "SAFE TO SAIL: Wave height is 1.32m (<=1.5m), wind speed is 20.0 km/h (<=40 km/h), with moderate forecast. Normal marine and fishing activities may proceed.",
+      "factors": [
+        "wave_height=1.32m (<=1.5m)",
+        "wind_speed=20.0 km/h (<=40 km/h)",
+        "forecast='moderate'"
+      ],
+      "safety_label": "SAFE TO VENTURE",
+      "confidence": "HIGH (Authoritative INCOIS Model Coverage)",
+      "risk_score": 0.26,
+      "freshness_status": "CACHED",
+      "wave_status": "Calm / Safe (<=1.5m)",
+      "wind_status": "Gentle / Moderate (<=40 km/h)",
+      "profile": {
+        "overall": "LOW",
+        "status_label": "SAFE",
+        "wave_risk": {
+          "level": "LOW",
+          "score": 0.2,
+          "description": "Calm sea state"
+        },
+        "wind_risk": {
+          "level": "LOW",
+          "score": 0.2,
+          "description": "Gentle breeze"
+        },
+        "storm_risk": {
+          "level": "LOW",
+          "score": 0.1,
+          "description": "Clear sky"
+        },
+        "gust_risk": {
+          "level": "LOW",
+          "score": 0.2,
+          "description": "Light gusts"
+        },
+        "forecast_trend": "stable",
+        "recommendations": [
+          "Conditions are optimal for fishing operations."
+        ],
+        "warnings": []
+      },
+      "disclaimer": "ORCA Risk Assessment is decision support intelligence. Always consult official Coast Guard and IMD broadcasts.",
+      "source": "risk_assessment_agent"
+    }
+  },
+  {
+    "path": "/api/marine/forecast?lat=20.9&lon=70.3",
+    "status": 200,
+    "body": {
+      "location": {
+        "lat": 20.9,
+        "lon": 70.3
+      },
+      "forecast_horizon": [],
+      "source": "INCOIS_OSF_WW3"
+    }
+  },
+  {
+    "path": "/api/pfz",
+    "status": 200,
+    "body": {
+      "source": "unavailable",
+      "data_mode": "unavailable",
+      "pfz_zones": [],
+      "reason": "No timestamped current PFZ advisory feed is configured"
+    }
+  },
+  {
+    "path": "/api/marine/tide?lat=20.9&lon=70.3",
+    "status": 503,
+    "body": {
+      "detail": "TIDE_FEED_UNAVAILABLE"
+    }
+  },
+  {
+    "path": "/api/analytics/ocean?lat=20.9&lon=70.3",
+    "status": 503,
+    "body": {
+      "detail": "SATELLITE_OBSERVATIONS_UNAVAILABLE"
+    }
+  },
+  {
+    "path": "/api/analytics/zone-avoidance?lat=20.9&lon=70.3",
+    "status": 200,
+    "body": {
+      "overall_avoidance_status": "ALL_ZONES_CLEAR",
+      "avoided_zones": [],
+      "safe_alternative_zones": [],
+      "summary": "Zone Avoidance Evaluation: Identified 0 zone(s) requiring avoidance or caution. Operate within safe designated corridors.",
+      "source": "ORCA Multi-Agent Hazard & Geofencing Avoidance Engine"
+    }
+  },
+  {
+    "path": "/api/government/announcements",
+    "status": 200,
+    "body": []
+  },
+  {
+    "path": "/api/government/documents",
+    "status": 200,
+    "body": []
+  }
+]

@@ -250,7 +250,7 @@ class TestSarvamLanguageIdentification(unittest.TestCase):
         bhashini = BhashiniService(sarvam_service=self.service)
         fallback = bhashini.identify_language("Is it safe to sail?")
         self.assertEqual(fallback.short_code, "en")
-        self.assertEqual(fallback.detection_status, "FALLBACK_DETECTED")
+        self.assertEqual(fallback.detection_status, "LOCAL_DETECTED")
 
     # 11. Successful Sarvam Response Parsing with All Fields
     @patch("httpx.Client.post")
@@ -337,9 +337,10 @@ class TestFastAPIDetectLanguageIntegration(unittest.TestCase):
         self.assertEqual(data["language"], "gu")
         self.assertEqual(data["language_code"], "gu-IN")
         self.assertEqual(data["script_code"], "Gujr")
-        self.assertEqual(data["request_id"], "test-req-12345")
-        self.assertEqual(data["provider"], "sarvam")
-        self.assertEqual(data["detection_status"], "SARVAM_DETECTED")
+        self.assertIsNone(data["request_id"])
+        mock_identify.assert_not_called()
+        self.assertEqual(data["provider"], "deterministic_fallback")
+        self.assertEqual(data["detection_status"], "FALLBACK_DETECTED")
         self.assertEqual(data["language_name"], "Gujarati (ગુજરાતી)")
 
     @patch("app.services.sarvam.SarvamLanguageService.identify_language")

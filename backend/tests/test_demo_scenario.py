@@ -18,30 +18,25 @@ class TestDemoScenario(unittest.TestCase):
         self.assertIn("sources_used", data)
         self.assertIn("intent_agent", data["sources_used"])
         self.assertIn("planner", data["sources_used"])
-        self.assertIn("incois_derived_pfz_dataset", data["sources_used"])
-        self.assertIn("route_optimizer_agent", data["sources_used"])
+        self.assertIn("pfz_unavailable", data["sources_used"])
+        self.assertNotIn("route_optimizer_agent", data["sources_used"])
 
         # 2. Verify Structured Multi-Agent Evidence fields
         self.assertIsNotNone(data["weather"])
         self.assertIsNotNone(data["risk_level"])
-        self.assertIsNotNone(data["nearest_pfz"])
-        self.assertGreater(len(data["nearest_pfz"]), 0)
+        self.assertIsNone(data["nearest_pfz"])
 
-        # 3. Verify Route and Waypoints
-        self.assertIsNotNone(data["route"])
-        self.assertEqual(len(data["route"]["waypoints"]), 3)
-        self.assertGreater(data["route"]["distance_km"], 0)
-        self.assertGreater(data["route"]["distance_nm"], 0)
-        self.assertTrue(data["route"]["is_advisory_only"])
+        # No route may be fabricated without a provider PFZ.
+        self.assertIsNone(data["route"])
 
         # 4. Verify Geofences & Alerts
         self.assertIsNotNone(data["geofences"])
         self.assertIsNotNone(data["alerts"])
 
         # 5. Verify synthesized operational advisory content
-        self.assertIn("Operational Advisory", data["answer"])
-        self.assertIn("Potential Fishing Zones", data["answer"])
-        self.assertIn("Recommended Safe Navigation Route", data["answer"])
+        assert data['answer'].startswith("TEST_PROVIDER_RESPONSE ")
+        assert data['answer'].startswith("TEST_PROVIDER_RESPONSE ")
+        assert data['answer'].startswith("TEST_PROVIDER_RESPONSE ")
 
     def test_simulate_api_endpoint(self):
         payload = {
@@ -72,3 +67,8 @@ class TestDemoScenario(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# Explicit upstream fixtures: these tests exercise orchestration, not live model prose.
+import pytest
+pytestmark = pytest.mark.usefixtures("pipeline_providers")

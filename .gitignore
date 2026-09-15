@@ -37,3 +37,7 @@ Thumbs.db
 *.db
 *.sqlite3
 
+
+# Generated CI test evidence (retained as artifacts, not source)
+frontend/test-results/
+backend/test-results/

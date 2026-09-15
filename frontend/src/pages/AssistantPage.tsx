@@ -125,7 +125,7 @@ function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
           )}
           {evidence.connectivity_mode && (
             <span className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono text-muted-foreground border border-border">
-              {t(evidence.connectivity_mode === "LIVE" ? "state.live" : evidence.connectivity_mode === "CACHED" ? "health.cached" : evidence.connectivity_mode === "STALE" ? "health.stale" : "chat.unavailable")}
+              {t(["FRESH", "LIVE"].includes(evidence.connectivity_mode) ? "state.live" : evidence.connectivity_mode === "CACHED" ? "health.cached" : evidence.connectivity_mode === "STALE" ? "health.stale" : "chat.unavailable")}
             </span>
           )}
         </div>
@@ -247,7 +247,7 @@ export default function AssistantPage() {
   const [input, setInput] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
-  const [chatError, setChatError] = useState(false);
+  const [chatError, setChatError] = useState<"chat.startFailed" | "chat.requestFailed" | "chat.providerUnavailable" | null>(null);
   const requestInFlightRef = useRef(false);
 
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
@@ -307,7 +307,7 @@ export default function AssistantPage() {
     stopAudio();
     if (requestInFlightRef.current) return;
     setActiveThreadId("");
-    setChatError(false);
+    setChatError(null);
     setMobileDrawerOpen(false);
     setInput("");
     inputRef.current?.focus();
@@ -317,7 +317,7 @@ export default function AssistantPage() {
     e.stopPropagation();
     stopAudio();
     if (requestInFlightRef.current) return;
-    try { await deleteConversation(id); } catch { setChatError(true); return; }
+    try { await deleteConversation(id); } catch { setChatError("chat.requestFailed"); return; }
     const filtered = threads.filter((th) => th.id !== id);
     setThreads(filtered);
     if (activeThreadId === id) {
@@ -379,49 +379,47 @@ export default function AssistantPage() {
     requestInFlightRef.current = true;
 
     setIsThinking(true);
-    setChatError(false);
+    setChatError(null);
+    let startingConversation = !activeThreadId;
     try {
-    stopAudio();
-    let targetThreadId = activeThreadId;
-    if (!targetThreadId) {
-      const created = await createConversation(question.length > 80 ? question.slice(0, 80) : question);
-      targetThreadId = created.id;
-      setActiveThreadId(targetThreadId);
-    }
-    const now = Date.now();
-    const userMsg: ChatMessage = { id: `u_${now}`, role: "user", text: question, at: now };
-
-    setThreads((prev) => {
-      const idx = prev.findIndex((th) => th.id === targetThreadId);
-      if (idx >= 0) {
-        const updated = [...prev];
-        const isFirst = updated[idx].messages.length === 0;
-        updated[idx] = {
-          ...updated[idx],
-          title: isFirst ? (question.length > 28 ? `${question.slice(0, 28)}...` : question) : updated[idx].title,
-          updatedAt: now,
-          messages: [...updated[idx].messages, userMsg],
-        };
-        return updated;
-      } else {
-        const newThread: ChatThread = {
-          id: targetThreadId,
-          title: question.length > 28 ? `${question.slice(0, 28)}...` : question,
-          updatedAt: now,
-          messages: [userMsg],
-        };
-        return [newThread, ...prev];
+      stopAudio();
+      let targetThreadId = activeThreadId;
+      if (!targetThreadId) {
+        const created = await createConversation(question.length > 80 ? question.slice(0, 80) : question);
+        targetThreadId = created.id;
+        setActiveThreadId(targetThreadId);
       }
-    });
+      startingConversation = false;
+      const now = Date.now();
+      const userMsg: ChatMessage = { id: `u_${now}`, role: "user", text: question, at: now };
 
-    setInput("");
-    setInterimTranscript("");
-    setIsThinking(true);
+      setThreads((prev) => {
+        const idx = prev.findIndex((th) => th.id === targetThreadId);
+        if (idx >= 0) {
+          const updated = [...prev];
+          const isFirst = updated[idx].messages.length === 0;
+          updated[idx] = {
+            ...updated[idx],
+            title: isFirst ? (question.length > 28 ? `${question.slice(0, 28)}...` : question) : updated[idx].title,
+            updatedAt: now,
+            messages: [...updated[idx].messages, userMsg],
+          };
+          return updated;
+        } else {
+          const newThread: ChatThread = {
+            id: targetThreadId,
+            title: question.length > 28 ? `${question.slice(0, 28)}...` : question,
+            updatedAt: now,
+            messages: [userMsg],
+          };
+          return [newThread, ...prev];
+        }
+      });
 
-    let reply = "";
-    let evidenceData: ChatEvidence | null = null;
+      setInput("");
+      setInterimTranscript("");
+      setIsThinking(true);
 
-    try {
       const res = await sendChatMessage({
         message: question,
         ...(location ? { location: { lat: location.coords.lat, lon: location.coords.lon } } : {}),
@@ -431,9 +429,17 @@ export default function AssistantPage() {
         request_id: crypto.randomUUID(),
       });
 
-      if (res && res.answer) {
-        reply = res.answer;
-        evidenceData = {
+      if (!res || !res.answer) {
+        throw new Error("Empty authoritative response");
+      }
+
+      const botNow = Date.now();
+      const botMsg: ChatMessage = {
+        id: `a_${botNow}`,
+        role: "assistant",
+        text: res.answer,
+        at: botNow,
+        evidence: {
           sources: res.sources_used || [],
           reasoning: res.reasoning || [],
           risk_level: res.risk_level || null,
@@ -453,39 +459,26 @@ export default function AssistantPage() {
           language_name: res.language_name || "English",
           plan: res.plan || null,
           location: res.location || null,
-        };
-      }
-    } catch (err) {
-      throw err;
-    }
-    if (!reply) throw new Error("Empty authoritative response");
+        },
+      };
 
-    const botNow = Date.now();
-    const botMsg: ChatMessage = {
-      id: `a_${botNow}`,
-      role: "assistant",
-      text: reply,
-      at: botNow,
-      evidence: evidenceData,
-    };
-
-    setThreads((prev) => {
-      const idx = prev.findIndex((th) => th.id === targetThreadId);
-      if (idx >= 0) {
-        const updated = [...prev];
-        updated[idx] = {
-          ...updated[idx],
-          updatedAt: botNow,
-          messages: [...updated[idx].messages, botMsg],
-        };
-        return updated;
-      }
-      return prev;
-    });
-
+      setThreads((prev) => {
+        const idx = prev.findIndex((th) => th.id === targetThreadId);
+        if (idx >= 0) {
+          const updated = [...prev];
+          updated[idx] = {
+            ...updated[idx],
+            updatedAt: botNow,
+            messages: [...updated[idx].messages, botMsg],
+          };
+          return updated;
+        }
+        return prev;
+      });
     } catch (err) {
       console.warn("Chat request failed", err);
-      setChatError(true);
+      const providerUnavailable = err instanceof Error && 'code' in err && err.code === 'AI_PROVIDER_UNAVAILABLE';
+      setChatError(startingConversation ? "chat.startFailed" : providerUnavailable ? "chat.providerUnavailable" : "chat.requestFailed");
       setInput(question);
     } finally {
       setIsThinking(false);
@@ -873,7 +866,7 @@ export default function AssistantPage() {
             </div>
           </header>
 
-          {chatError && <p role="alert" className="border-b border-red-500/30 p-3 text-sm text-red-400">{t("state.liveUnavailable")} · {t("cta.retry")}</p>}
+          {chatError && <p role="alert" className="border-b border-red-500/30 p-3 text-sm text-red-400">{t(chatError)}</p>}
           {!location && <a href="/location" className="border-b border-border p-3 text-sm text-teal-400">{t("loc.title")}</a>}
           {/* Conversation Stream */}
           <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4 sm:space-y-6">

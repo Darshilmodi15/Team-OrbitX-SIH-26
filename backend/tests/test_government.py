@@ -3,6 +3,8 @@ import unittest
 from fastapi.testclient import TestClient
 
 from app.main import app
+from tests.auth_helpers import authenticate_client
+from app.models.user_models import UserRole
 from app.models.government_models import AnnouncementCategory, CreateAnnouncementRequest
 from app.services.government import government_service
 
@@ -11,13 +13,10 @@ class TestGovernmentService(unittest.TestCase):
     """Tests for GovernmentService logic and filtering."""
 
     def test_default_announcements_seeded(self):
-        announcements = government_service.get_announcements()
-        self.assertGreaterEqual(len(announcements), 3)
-        ban_ann = next((a for a in announcements if a.category == AnnouncementCategory.SAFETY_BAN), None)
-        self.assertIsNotNone(ban_ann)
-        self.assertIn("Monsoon Fishing Ban", ban_ann.title)
+        self.assertEqual(government_service.get_announcements(), [])
 
     def test_filter_by_state(self):
+        government_service.create_announcement(CreateAnnouncementRequest(title="Test bulletin", issuing_authority="Test authority", state_or_national="Gujarat", summary="Fixture only", full_text="Explicit test fixture, not a real bulletin", category=AnnouncementCategory.SAFETY_BAN))
         gujarat_items = government_service.get_announcements(state="Gujarat")
         self.assertTrue(any("Gujarat" in a.state_or_national for a in gujarat_items))
 
@@ -43,10 +42,7 @@ class TestGovernmentService(unittest.TestCase):
         self.assertEqual(created.title, req.title)
 
     def test_get_documents(self):
-        docs = government_service.get_documents()
-        self.assertGreaterEqual(len(docs), 3)
-        pmmsy_doc = next((d for d in docs if "PMMSY" in d.title), None)
-        self.assertIsNotNone(pmmsy_doc)
+        self.assertEqual(government_service.get_documents(), [])
 
 
 class TestGovernmentEndpoints(unittest.TestCase):
@@ -54,22 +50,19 @@ class TestGovernmentEndpoints(unittest.TestCase):
 
     def setUp(self):
         self.client = TestClient(app)
-        login = self.client.post("/api/auth/login", json={"email_or_phone": "officer@fisheries.gov.in", "password": "govpassword123"})
-        self.gov_headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+        authenticate_client(self.client, UserRole.GOVERNMENT)
+        self.gov_headers = dict(self.client.headers)
 
     def test_get_announcements_endpoint(self):
         res = self.client.get("/api/government/announcements")
         self.assertEqual(res.status_code, 200)
         data = res.json()
         self.assertIsInstance(data, list)
-        self.assertGreaterEqual(len(data), 2)
+        self.assertEqual(data, [])
 
     def test_get_announcement_by_id_endpoint(self):
         res = self.client.get("/api/government/announcements/GOV-ANN-2026-01")
-        self.assertEqual(res.status_code, 200)
-        data = res.json()
-        self.assertEqual(data["id"], "GOV-ANN-2026-01")
-        self.assertIn("Monsoon Fishing Ban", data["title"])
+        self.assertEqual(res.status_code, 404)
 
     def test_post_announcement_endpoint(self):
         payload = {
@@ -80,7 +73,7 @@ class TestGovernmentEndpoints(unittest.TestCase):
             "summary": "State sales tax refund on high-speed diesel for registered mechanized fishing boats.",
             "full_text": "Fishermen cooperatives can submit biometric logbook verification at Sassoon Dock.",
             "category": "Government Schemes & PMMSY Subsidy",
-            "reference_number=":"MH-FISH-2026-99",
+            "reference_number":"MH-FISH-2026-99",
             "is_urgent": False,
         }
         res = self.client.post("/api/government/announcements", json=payload, headers=self.gov_headers)
@@ -93,7 +86,7 @@ class TestGovernmentEndpoints(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         data = res.json()
         self.assertIsInstance(data, list)
-        self.assertGreaterEqual(len(data), 2)
+        self.assertEqual(data, [])
 
 
 if __name__ == "__main__":

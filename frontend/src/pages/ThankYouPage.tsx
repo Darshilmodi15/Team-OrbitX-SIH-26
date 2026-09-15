@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import confetti from "canvas-confetti";
+
 import {
   CheckCircle2,
   ArrowRight,
@@ -24,38 +24,16 @@ export default function ThankYouPage() {
   const email = searchParams.get("email") || "";
 
   useEffect(() => {
-    // Generate persistent realistic maritime telemetry ID
-    const randomHex = Math.random().toString(16).substring(2, 8).toUpperCase();
-    const generatedTxId = `ORCA-IN-${new Date().getFullYear()}-${randomHex}`;
-    setTxId(generatedTxId);
-    setFormattedDate(
-      new Date().toLocaleString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        dateStyle: "medium",
-        timeStyle: "medium",
-      })
-    );
-
-    // Fire celebratory confetti on mount
-    try {
-      confetti({
-        particleCount: 80,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ["#2dd4bf", "#38bdf8", "#34d399", "#60a5fa"],
-      });
-    } catch {
-      // Ignore confetti errors if canvas unavailable
-    }
-
-    trackEvent("thank_you_page_viewed", { reason, txId: generatedTxId });
+    setTxId("Unavailable");
+    setFormattedDate("Unavailable");
+    trackEvent("thank_you_page_viewed", { reason });
   }, [reason]);
 
   return (
     <div className="relative flex min-h-screen flex-col justify-between bg-[#06182C] text-slate-100 selection:bg-teal-500/30">
       <SEO
-        title="Submission Confirmed | ORCA Marine AI"
-        description="Your maritime telemetry submission, vessel inquiry, or notification dispatch has been successfully recorded."
+        title="Submission Status | ORCA Marine AI"
+        description="No verified submission or delivery receipt is available on this page."
       />
 
       {/* Top Header */}
@@ -75,7 +53,7 @@ export default function ThankYouPage() {
 
           <div className="flex items-center gap-2 text-xs font-mono text-emerald-400 border border-emerald-500/30 bg-emerald-950/40 px-3 py-1 rounded-full">
             <ShieldCheck className="size-3.5" />
-            <span>TRANSMISSION RECORDED</span>
+            <span>DELIVERY UNVERIFIED</span>
           </div>
         </div>
       </header>
@@ -89,20 +67,16 @@ export default function ThankYouPage() {
           </div>
 
           <h1 className="mt-5 text-2xl sm:text-4xl font-bold tracking-tight text-white font-sans">
-            Transmission Confirmed
+            Submission not verified
           </h1>
 
           <p className="mx-auto mt-2 max-w-md text-sm sm:text-base text-slate-300">
-            {reason === "sos"
-              ? "Your emergency beacon distress telemetry has been routed to the Indian Coast Guard MRCC and local harbour master."
-              : reason === "contact"
-              ? "Thank you for reaching out to ORCA Marine Operations. Our maritime support desk will review your inquiry shortly."
-              : "Your vessel details and advisory preferences have been synchronized with the central INCOIS coastal intelligence node."}
+            No verified submission, emergency dispatch, or receipt is available here. Check the originating service for its recorded status. For an emergency, contact local authorities directly.
           </p>
 
           {email && (
             <p className="mt-1 text-xs text-teal-300 font-mono">
-              Confirmation receipt sent to: {email}
+              Email supplied in link; delivery unverified: {email}
             </p>
           )}
 
@@ -122,11 +96,11 @@ export default function ThankYouPage() {
               </div>
               <div>
                 <span className="text-slate-500 text-[11px] block">DATA NODE</span>
-                <span className="text-slate-300">INCOIS Coastal Ground Station #04</span>
+                <span className="text-slate-300">Not verified</span>
               </div>
               <div>
                 <span className="text-slate-500 text-[11px] block">ENCRYPTION STATUS</span>
-                <span className="text-emerald-400">AES-256 Validated</span>
+                <span className="text-emerald-400">Not verified</span>
               </div>
             </div>
           </div>
@@ -155,7 +129,7 @@ export default function ThankYouPage() {
               className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900 px-4 text-xs font-medium text-slate-400 hover:text-slate-200"
             >
               <Printer className="size-3.5" />
-              <span className="hidden sm:inline">Print Receipt</span>
+              <span className="hidden sm:inline">Print Status</span>
             </button>
           </div>
         </div>

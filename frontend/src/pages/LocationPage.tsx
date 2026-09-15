@@ -1,5 +1,6 @@
+import { guideCopy } from "@/lib/orca/guide-copy";
 import { saveSelectedLocation } from "@/services/api";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Crosshair, MapPin, Search, CheckCircle2 } from "lucide-react";
 import { AppShell } from "@/components/orca/AppShell";
@@ -10,7 +11,6 @@ import { useSession } from "@/lib/orca/session";
 import {
   classifyLocation,
   formatCoords,
-  nearestCoastPoint,
   reverseLabel,
   searchIndianPlaces,
   type Coords,
@@ -20,8 +20,9 @@ import {
 const DEFAULT_CENTER: Coords = { lat: 19.076, lon: 72.877 };
 
 export default function LocationPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const navigate = useNavigate();
+  const route = useLocation();
   const { location, setLocation } = useSession();
 
   const [coords, setCoords] = useState<Coords>(location?.coords ?? DEFAULT_CENTER);
@@ -31,21 +32,34 @@ export default function LocationPage() {
   const [accuracy, setAccuracy] = useState<number | undefined>();
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PlaceResult[]>([]);
   const abort = useRef<AbortController | null>(null);
 
   const check = classifyLocation(coords);
+  function choose(next: Coords) {
+    if (busy) return;
+    setSelected(true); setSource("manual"); setAccuracy(undefined); setLabel(null); setCoords(next); setNotice(null);
+  }
+  function enterCoordinates(event: React.FormEvent) {
+    event.preventDefault();
+    const lat = Number(latitude), lon = Number(longitude);
+    if (!latitude.trim() || !longitude.trim() || !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) { setNotice(t("state.error")); return; }
+    choose({lat, lon});
+  }
 
   useEffect(() => {
+    if (!selected) return;
     let cancelled = false;
-    reverseLabel(coords).then((l) => {
+    reverseLabel({ lat: coords.lat, lon: coords.lon }).then((l) => {
       if (!cancelled && l) setLabel(l);
     });
     return () => {
       cancelled = true;
     };
-  }, [coords.lat, coords.lon]);
+  }, [coords.lat, coords.lon, selected]);
 
   function useGps() {
     if (!("geolocation" in navigator)) return setNotice(t("loc.unavailable"));
@@ -56,7 +70,7 @@ export default function LocationPage() {
         setBusy(false);
         setNotice(null);
         setSelected(true); setSource("gps"); setAccuracy(pos.coords.accuracy);
-        setCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+        setLabel(null); setCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
       },
       () => {
         setBusy(false);
@@ -87,11 +101,13 @@ export default function LocationPage() {
     setLocation({
       coords,
       label: label ?? formatCoords(coords),
-      distanceToCoastKm: check.distanceToCoastKm,
-      area: check.area,
+      distanceToCoastKm: validated.distance_to_coast_km,
+      admin: validated.coastal_region,
+      area: "coastal",
       source,
     });
-    navigate("/dashboard");
+    const from = route.state?.from;
+    navigate(["/dashboard", "/map", "/assistant", "/alerts"].includes(from) ? from : "/dashboard", { replace: true });
     } catch { setNotice(t("state.error")); } finally { setBusy(false); }
   }
 
@@ -136,6 +152,8 @@ export default function LocationPage() {
           </button>
         </div>
 
+        <p className="rounded-md border p-3 text-sm">{guideCopy[lang].pin}</p>
+
         {/* Search Indian Coastal Places */}
         <form onSubmit={runSearch} className="flex gap-2">
           <div className="relative flex-1">
@@ -157,6 +175,12 @@ export default function LocationPage() {
           </button>
         </form>
 
+        <form onSubmit={enterCoordinates} className="flex flex-wrap items-end gap-2">
+          <label className="text-sm">Latitude (°)<input className="block min-h-11 w-36 rounded-md border p-2" aria-label="Latitude" inputMode="decimal" type="number" step="any" min={-90} max={90} required value={latitude} onChange={e => setLatitude(e.target.value)} /></label>
+          <label className="text-sm">Longitude (°)<input className="block min-h-11 w-36 rounded-md border p-2" aria-label="Longitude" inputMode="decimal" type="number" step="any" min={-180} max={180} required value={longitude} onChange={e => setLongitude(e.target.value)} /></label>
+          <button className="min-h-11 rounded-md border px-3" type="submit" disabled={busy}>{t("loc.manual")}</button>
+        </form>
+
         {/* Search Results Dropdown */}
         {results.length > 0 && (
           <ul className="max-h-56 divide-y divide-border overflow-y-auto rounded-md border border-border bg-card shadow-lg">
@@ -166,8 +190,7 @@ export default function LocationPage() {
                   type="button"
                   className="flex min-h-12 w-full cursor-pointer flex-col items-start justify-center px-4 py-2.5 text-left text-foreground transition hover:bg-muted"
                   onClick={() => {
-                    setSelected(true); setSource("manual");
-                    setCoords(r.coords);
+                    choose(r.coords);
                     setLabel([r.name, r.admin].filter(Boolean).join(", "));
                     setResults([]);
                   }}
@@ -190,7 +213,7 @@ export default function LocationPage() {
         <section className="space-y-1.5">
           <p className="text-xs font-medium text-muted-foreground">{t("loc.tapMap")}</p>
           <div className="overflow-hidden rounded-md border border-border shadow-xs">
-            <MapPanel center={coords} interactive height={300} onSelect={(next) => { setSelected(true); setSource("manual"); setCoords(next); }} />
+            <MapPanel center={coords} interactive={!busy} height={300} onSelect={choose} />
           </div>
         </section>
 
@@ -222,19 +245,13 @@ export default function LocationPage() {
               <p className="text-sm font-medium" role="alert">
                 {t("loc.inland")}
               </p>
-              <button
-                type="button"
-                className="inline-flex cursor-pointer items-center rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground shadow-xs hover:bg-muted"
-                onClick={() => { setSelected(true); setSource("manual"); setCoords(nearestCoastPoint(coords)); }}
-              >
-                {t("loc.chooseCoastal")}
-              </button>
+
             </div>
           )}
 
           <button
             className="mt-4 flex min-h-12 w-full cursor-pointer items-center justify-center rounded-md bg-teal-500 hover:bg-teal-400 px-4 text-sm font-bold text-slate-950 shadow-md transition-all active:scale-[0.99] disabled:opacity-50"
-            disabled={busy || !selected || check.area !== "coastal"}
+            disabled={busy || !selected}
             onClick={confirm}
           >
             {t("loc.confirm")}

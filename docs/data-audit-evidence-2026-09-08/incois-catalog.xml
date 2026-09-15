@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<catalog xmlns="http://www.unidata.ucar.edu/namespaces/thredds/InvCatalog/v1.0" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.2">
+  <service name="all" serviceType="compound" base="">
+    <service name="odap" serviceType="OpenDAP" base="/thredds/dodsC/" />
+    <service name="d4dap" serviceType="DAP4" base="/thredds/dap4/" />
+    <service name="http" serviceType="HTTPServer" base="/thredds/fileServer/" />
+    <service name="wcs" serviceType="WCS" base="/thredds/wcs/" />
+    <service name="wms" serviceType="WMS" base="/thredds/wms/" />
+    <service name="ncssGrid" serviceType="NetcdfSubset" base="/thredds/ncss/grid/" />
+    <service name="ncssPoint" serviceType="NetcdfSubset" base="/thredds/ncss/point/" />
+    <service name="cdmremote" serviceType="CdmRemote" base="/thredds/cdmremote/" />
+  </service>
+  <dataset name="OSF_ww3">
+    <property name="DatasetScan" value="true" />
+    <metadata inherited="true">
+      <serviceName>all</serviceName>
+      <dataType>Grid</dataType>
+    </metadata>
+    <dataset name="io_ww3_20250930.nc" ID="OSF15/io_ww3_20250930.nc" urlPath="osf/ww3/io_ww3_20250930.nc">
+      <dataSize units="Mbytes">146.7</dataSize>
+      <date type="modified">2025-10-01T02:42:05.527Z</date>
+    </dataset>
+    <dataset name="nio_ww3_20260211.nc" ID="OSF15/nio_ww3_20260211.nc" urlPath="osf/ww3/nio_ww3_20260211.nc">
+      <dataSize units="Mbytes">201.0</dataSize>
+      <date type="modified">2026-02-12T03:11:42.160Z</date>
+    </dataset>
+    <dataset name="pacific_ww3_20260905.nc" ID="OSF15/pacific_ww3_20260905.nc" urlPath="osf/ww3/pacific_ww3_20260905.nc">
+      <dataSize units="Gbytes">1.629</dataSize>
+      <date type="modified">2026-09-06T00:01:51.939Z</date>
+    </dataset>
+    <dataset name="pacific_ww3_20260906.nc" ID="OSF15/pacific_ww3_20260906.nc" urlPath="osf/ww3/pacific_ww3_20260906.nc">
+      <dataSize units="Gbytes">1.629</dataSize>
+      <date type="modified">2026-09-07T00:01:54.867Z</date>
+    </dataset>
+    <dataset name="pacific_ww3_20260907.nc" ID="OSF15/pacific_ww3_20260907.nc" urlPath="osf/ww3/pacific_ww3_20260907.nc">
+      <dataSize units="Gbytes">1.629</dataSize>
+      <date type="modified">2026-09-08T00:01:50.817Z</date>
+    </dataset>
+    <dataset name="rsmc_coast_ww3_20260905.nc" ID="OSF15/rsmc_coast_ww3_20260905.nc" urlPath="osf/ww3/rsmc_coast_ww3_20260905.nc">
+      <dataSize units="Mbytes">325.2</dataSize>
+      <date type="modified">2026-09-06T00:09:45.926Z</date>
+    </dataset>
+    <dataset name="rsmc_coast_ww3_20260906.nc" ID="OSF15/rsmc_coast_ww3_20260906.nc" urlPath="osf/ww3/rsmc_coast_ww3_20260906.nc">
+      <dataSize units="Mbytes">325.2</dataSize>
+      <date type="modified">2026-09-07T00:09:08.009Z</date>
+    </dataset>
+    <dataset name="rsmc_coast_ww3_20260907.nc" ID="OSF15/rsmc_coast_ww3_20260907.nc" urlPath="osf/ww3/rsmc_coast_ww3_20260907.nc">
+      <dataSize units="Mbytes">325.2</dataSize>
+      <date type="modified">2026-09-08T00:09:15.115Z</date>
+    </dataset>
+    <dataset name="rsmc_combined_ww3_20260905.nc" ID="OSF15/rsmc_combined_ww3_20260905.nc" urlPath="osf/ww3/rsmc_combined_ww3_20260905.nc">
+      <dataSize units="Gbytes">6.910</dataSize>
+      <date type="modified">2026-09-06T00:10:44.753Z</date>
+    </dataset>
+    <dataset name="rsmc_combined_ww3_20260906.nc" ID="OSF15/rsmc_combined_ww3_20260906.nc" urlPath="osf/ww3/rsmc_combined_ww3_20260906.nc">
+      <dataSize units="Gbytes">6.910</dataSize>
+      <date type="modified">2026-09-07T00:10:06.822Z</date>
+    </dataset>
+    <dataset name="rsmc_combined_ww3_20260907.nc" ID="OSF15/rsmc_combined_ww3_20260907.nc" urlPath="osf/ww3/rsmc_combined_ww3_20260907.nc">
+      <dataSize units="Gbytes">6.910</dataSize>
+      <date type="modified">2026-09-08T00:10:13.942Z</date>
+    </dataset>
+    <dataset name="rsmc_io_ww3_20260905.nc" ID="OSF15/rsmc_io_ww3_20260905.nc" urlPath="osf/ww3/rsmc_io_ww3_20260905.nc">
+      <dataSize units="Gbytes">4.364</dataSize>
+      <date type="modified">2026-09-06T00:11:23.241Z</date>
+    </dataset>
+    <dataset name="rsmc_io_ww3_20260906.nc" ID="OSF15/rsmc_io_ww3_20260906.nc" urlPath="osf/ww3/rsmc_io_ww3_20260906.nc">
+      <dataSize units="Gbytes">4.364</dataSize>
+      <date type="modified">2026-09-07T00:10:44.383Z</date>
+    </dataset>
+    <dataset name="rsmc_io_ww3_20260907.nc" ID="OSF15/rsmc_io_ww3_20260907.nc" urlPath="osf/ww3/rsmc_io_ww3_20260907.nc">
+      <dataSize units="Gbytes">4.364</dataSize>
+      <date type="modified">2026-09-08T00:10:51.398Z</date>
+    </dataset>
+    <dataset name="rsmc_nio_ww3_20260905.nc" ID="OSF15/rsmc_nio_ww3_20260905.nc" urlPath="osf/ww3/rsmc_nio_ww3_20260905.nc">
+      <dataSize units="Gbytes">1.248</dataSize>
+      <date type="modified">2026-09-06T00:11:34.437Z</date>
+    </dataset>
+    <dataset name="rsmc_nio_ww3_20260906.nc" ID="OSF15/rsmc_nio_ww3_20260906.nc" urlPath="osf/ww3/rsmc_nio_ww3_20260906.nc">
+      <dataSize units="Gbytes">1.248</dataSize>
+      <date type="modified">2026-09-07T00:10:55.181Z</date>
+    </dataset>
+    <dataset name="rsmc_nio_ww3_20260907.nc" ID="OSF15/rsmc_nio_ww3_20260907.nc" urlPath="osf/ww3/rsmc_nio_ww3_20260907.nc">
+      <dataSize units="Gbytes">1.248</dataSize>
+      <date type="modified">2026-09-08T00:11:02.393Z</date>
+    </dataset>
+    <dataset name="rsmc_ww3_combined_temp_20260201.nc" ID="OSF15/rsmc_ww3_combined_temp_20260201.nc" urlPath="osf/ww3/rsmc_ww3_combined_temp_20260201.nc">
+      <dataSize units="Gbytes">5.455</dataSize>
+      <date type="modified">2026-02-02T04:43:20.136Z</date>
+    </dataset>
+  </dataset>
+</catalog>

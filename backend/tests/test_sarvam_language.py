@@ -182,3 +182,8 @@ class TestVoiceEndpoints(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# Explicit upstream fixtures: these tests exercise orchestration, not live model prose.
+import pytest
+pytestmark = pytest.mark.usefixtures("pipeline_providers")

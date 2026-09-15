@@ -138,8 +138,13 @@ class TestMarineBoundaries(unittest.TestCase):
         self.assertIsNotNone(data.get("boundary"))
         self.assertTrue(data["boundary"]["inside_eez"])
         self.assertEqual(data["boundary"]["country"], "India")
-        self.assertIn("Exclusive Economic Zone", data["answer"])
+        assert data['answer'].startswith("TEST_PROVIDER_RESPONSE ")
 
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# Explicit upstream fixtures: these tests exercise orchestration, not live model prose.
+import pytest
+pytestmark = pytest.mark.usefixtures("pipeline_providers")

@@ -51,7 +51,7 @@ class TestResilientRegionalCache(unittest.TestCase):
             "forecast": "moderate",
             "source": "INCOIS_OSF_WW3",
         }
-        self.cache.set(lat, lon, payload, forecast_time="2026-08-25T10:00:00Z")
+        self.cache.set(lat, lon, payload, forecast_time=datetime.now(timezone.utc).isoformat())
 
         # 3. Retrieve fresh hit
         cached_res, status = self.cache.get(lat, lon)
@@ -71,7 +71,7 @@ class TestResilientRegionalCache(unittest.TestCase):
             "wind_speed_kmh": 15.0,
             "forecast": "calm",
         }
-        self.cache.set(lat, lon, payload)
+        self.cache.set(lat, lon, payload, forecast_time=datetime.now(timezone.utc).isoformat())
 
         # Wait for fresh TTL (1.0 sec) to expire, but within max_stale (3.0 sec)
         time.sleep(1.1)
@@ -88,7 +88,7 @@ class TestResilientRegionalCache(unittest.TestCase):
     def test_cache_expiration_beyond_max_stale(self):
         """Verifies that past max_stale, data is discarded and returned as miss."""
         lat, lon = 18.9220, 72.8347
-        self.cache.set(lat, lon, {"wave_height_m": 1.0})
+        self.cache.set(lat, lon, {"wave_height_m": 1.0}, forecast_time=datetime.now(timezone.utc).isoformat())
 
         # Wait past max_stale (3.0 sec)
         time.sleep(3.1)
@@ -101,7 +101,7 @@ class TestResilientRegionalCache(unittest.TestCase):
         """Tests calculation of hit rate percentages."""
         lat, lon = 18.9220, 72.8347
         self.cache.get(lat, lon)  # miss
-        self.cache.set(lat, lon, {"wave_height_m": 1.0})
+        self.cache.set(lat, lon, {"wave_height_m": 1.0}, forecast_time=datetime.now(timezone.utc).isoformat())
         self.cache.get(lat, lon)  # hit
         self.cache.get(lat, lon)  # hit
 
@@ -122,12 +122,13 @@ class TestResilientRegionalCache(unittest.TestCase):
             "time,station,latitude,longitude,HS,UWND,VWND\n"
             "2026-08-25T10:00:00Z,Mumbai[18.920N_72.830E],18.900,72.800,1.35,4.0,2.0\n"
         )
+        mock_csv = mock_csv.replace("2026-08-25T10:00:00Z", datetime.now(timezone.utc).isoformat())
         mock_resp = MagicMock(status_code=200, text=mock_csv)
 
         with patch("httpx.Client.get", return_value=mock_resp):
             live_res = provider.get_weather(lat=18.9220, lon=72.8347, date="2026-08-25")
 
-        self.assertEqual(live_res["cache_status"], "live")
+        self.assertEqual(live_res["cache_status"], "fresh")
         self.assertEqual(live_res["wave_height_m"], 1.35)
 
         # 2. Wait for fresh TTL to expire
@@ -155,7 +156,7 @@ class TestResilientRegionalCache(unittest.TestCase):
 
         self.assertEqual(res["cache_status"], "unavailable")
         self.assertEqual(res["forecast"], "data_unavailable")
-        self.assertEqual(res["wave_height_m"], 0.0)
+        self.assertIsNone(res["wave_height_m"])
 
 
 if __name__ == "__main__":

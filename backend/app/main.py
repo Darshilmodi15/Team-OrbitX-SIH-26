@@ -33,6 +33,7 @@ from app.data.pfz.base import PFZProvider
 from app.data.pfz.mock import IncoisPFZProvider
 from app.data.weather.base import WeatherProvider
 from app.data.weather.incois import IncoisWeatherProvider
+from app.services.temporal import resolve_query_time, TemporalResolution
 from app.models.agent_models import (
     AgentResult,
     BoundaryEvidence,
@@ -66,14 +67,17 @@ from app.db.models import Conversation
 from app.models.user_models import UserProfile
 from app.services.chat_service import chat_storage_service
 from app.services.rate_limit import rate_limiter
-from app.services.bhashini import SUPPORTED_LANGUAGES, bhashini_service
+from app.services.bhashini import BHASHINI_MODELS, SUPPORTED_LANGUAGES, bhashini_service
 from app.services.dialogue_synthesizer import DialogueSynthesizer
-from app.services.provider_health import ProviderUnavailable
+from app.services.provider_health import ProviderUnavailable, snapshot
 from app.services.planner import ExecutionPlan, Planner
 from app.services.recommendation_engine import RecommendationReasoningEngine
 
 # Initialize authoritative INCOIS data provider with low-bandwidth geospatial cache
-weather_provider: WeatherProvider = IncoisWeatherProvider()
+from app.data.weather.combined import CombinedWeatherProvider
+
+incois_provider = IncoisWeatherProvider()
+weather_provider: WeatherProvider = CombinedWeatherProvider(incois_provider)
 pfz_provider: PFZProvider = IncoisPFZProvider()
 geofence_provider: GeofenceProvider = SpatialGeofenceProvider()
 
@@ -90,6 +94,16 @@ async def lifespan(app: FastAPI):
     
     def _background_init_and_seed():
         try:
+            # Run alembic migrations first to ensure all schema changes are applied
+            try:
+                from alembic.config import Config
+                from alembic import command
+                alembic_cfg = Config(os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic.ini"))
+                command.upgrade(alembic_cfg, "head")
+                logger.info("Alembic migrations applied successfully.")
+            except Exception as mig_err:
+                logger.warning(f"Alembic migration note (falling back to create_all): {mig_err}")
+            # Fallback: create any tables that may still be missing
             from app.db.session import init_db
             init_db()
             from seed.seed_database import seed_database
@@ -104,7 +118,7 @@ async def lifespan(app: FastAPI):
 
     # Launch continuous background INCOIS ingestion task
     ingestion_task = asyncio.create_task(
-        continuous_incois_ingestion_loop(provider=weather_provider)
+        continuous_incois_ingestion_loop(provider=incois_provider)
     )
     
     yield
@@ -128,17 +142,37 @@ app = FastAPI(
 async def unavailable_provider_handler(request, exc):
     return JSONResponse(status_code=503, content={"detail": "AI_PROVIDER_UNAVAILABLE"})
 
-frontend_origins = [
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request, exc):
+    """Catch-all: ensures 500 errors return JSON with CORS headers instead of bare text."""
+    import logging
+    logging.getLogger("orca").error("Unhandled exception on %s %s: %s", request.method, request.url.path, exc, exc_info=True)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
+frontend_origins = {
     origin.strip()
     for origin in os.getenv(
         "FRONTEND_ORIGIN",
         "https://team-orbit-x-sih-26.vercel.app,http://localhost:5173,http://localhost:3000",
     ).split(",")
     if origin.strip()
-]
+}
+frontend_origins.update([
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "http://127.0.0.1:5175",
+    "http://127.0.0.1:3000",
+    "https://team-orbit-x-sih-26.vercel.app",
+    "https://team-orbitx-sih-26.vercel.app",
+])
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=frontend_origins,
+    allow_origins=list(frontend_origins),
+    allow_origin_regex=r"https://.*\.vercel\.app|http://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -163,14 +197,32 @@ def health_check():
     return {"status": "healthy"}
 
 
+@app.get("/api/health/providers")
+def get_providers_health():
+    """Returns non-secret public health and data provenance for all marine providers."""
+    providers = ["incois", "incois_pfz", "open_meteo", "gemini", "isro_mosdac", "sarvam_stt", "sarvam_tts", "sarvam_translation"]
+    return {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "providers": {p: snapshot(p) for p in providers},
+    }
+
+
 @app.get("/api/marine/conditions")
 def get_marine_conditions_endpoint(
     lat: float = Query(18.9220),
     lon: float = Query(72.8347),
     date: Optional[str] = Query(None),
+    time_hint: Optional[str] = Query(None),
 ):
-    q_date = date or dt_date.today().isoformat()
-    weather = get_marine_weather(provider=weather_provider, lat=lat, lon=lon, date=q_date)
+    temporal_res = resolve_query_time(text=time_hint or "", request_date=date)
+    weather = get_marine_weather(
+        provider=weather_provider,
+        lat=lat,
+        lon=lon,
+        date=temporal_res.target_date,
+        time_hint=temporal_res.time_hint,
+        temporal_res=temporal_res,
+    )
     return weather.model_dump()
 
 
@@ -179,9 +231,17 @@ def get_marine_risk_endpoint(
     lat: float = Query(18.9220),
     lon: float = Query(72.8347),
     date: Optional[str] = Query(None),
+    time_hint: Optional[str] = Query(None),
 ):
-    q_date = date or dt_date.today().isoformat()
-    weather = get_marine_weather(provider=weather_provider, lat=lat, lon=lon, date=q_date)
+    temporal_res = resolve_query_time(text=time_hint or "", request_date=date)
+    weather = get_marine_weather(
+        provider=weather_provider,
+        lat=lat,
+        lon=lon,
+        date=temporal_res.target_date,
+        time_hint=temporal_res.time_hint,
+        temporal_res=temporal_res,
+    )
     risk = assess_risk(weather)
     res = risk.model_dump()
     if risk.profile:
@@ -195,14 +255,26 @@ def get_marine_forecast_endpoint(
     lat: float = Query(18.9220),
     lon: float = Query(72.8347),
     date: Optional[str] = Query(None),
+    time_hint: Optional[str] = Query(None),
 ):
-    q_date = date or dt_date.today().isoformat()
-    weather = get_marine_weather(provider=weather_provider, lat=lat, lon=lon, date=q_date)
+    temporal_res = resolve_query_time(text=time_hint or "", request_date=date)
+    weather = get_marine_weather(
+        provider=weather_provider,
+        lat=lat,
+        lon=lon,
+        date=temporal_res.target_date,
+        time_hint=temporal_res.time_hint,
+        temporal_res=temporal_res,
+    )
     horizon = weather.forecast_horizon or []
     return {
         "location": {"lat": lat, "lon": lon},
         "forecast_horizon": horizon,
-        "source": weather.source,
+        "source": getattr(weather, "source", None),
+        "issued_at": getattr(weather, "issued_at", None),
+        "forecast_valid_at": getattr(weather, "forecast_valid_at", getattr(weather, "forecast_time", None)),
+        "retrieved_at": getattr(weather, "retrieved_at", getattr(weather, "retrieval_time", None)),
+        "target_period": getattr(weather, "target_period", None),
     }
 
 
@@ -425,6 +497,60 @@ def translate_endpoint(request: TranslateRequest):
     }
 
 
+class BhashiniTranslateRequest(BaseModel):
+    text: str = Field(..., description="Text to translate via Bhashini")
+    source_language: str = Field(default="en", description="Source ISO language code (e.g. 'en', 'gu', 'hi')")
+    target_language: str = Field(default="gu", description="Target ISO language code (e.g. 'gu', 'hi', 'en')")
+    service_id: Optional[str] = Field(default=None, description="Optional custom Bhashini Service ID")
+
+
+@app.get("/api/bhashini/status")
+def bhashini_status_endpoint():
+    """Returns configuration status, credential checks, and supported Service IDs for Bhashini."""
+    return {
+        "is_configured": bhashini_service.is_configured,
+        "has_user_id": bool(bhashini_service.user_id),
+        "user_id_preview": (bhashini_service.user_id[:6] + "..." + bhashini_service.user_id[-4:]) if bhashini_service.user_id else None,
+        "has_api_key": bool(bhashini_service.api_key),
+        "has_inference_key": bool(bhashini_service.inference_api_key),
+        "pipeline_id": bhashini_service.pipeline_id,
+        "service_ids": BHASHINI_MODELS,
+    }
+
+
+@app.post("/api/bhashini/translate")
+def bhashini_translate_endpoint(request: BhashiniTranslateRequest):
+    """
+    Directly tests Bhashini translation (MeitY ULCA / Dhruva inference).
+    Use this endpoint to verify live credentials and model responses.
+    """
+    if not bhashini_service.is_configured:
+        raise HTTPException(
+            status_code=400,
+            detail="Bhashini credentials not configured. Please set BHASHINI_USER_ID, BHASHINI_API_KEY, and/or BHASHINI_INFERENCE_API_KEY in backend/.env",
+        )
+    translated = bhashini_service.translate_bhashini(
+        text=request.text,
+        source_lang=request.source_language,
+        target_lang=request.target_language,
+        service_id=request.service_id,
+    )
+    if translated is None:
+        raise HTTPException(
+            status_code=502,
+            detail="Bhashini inference call failed. Verify network connectivity, API key validity, or serviceId.",
+        )
+    return {
+        "status": "success",
+        "provider": "bhashini",
+        "original_text": request.text,
+        "translated_text": translated,
+        "source_language": request.source_language,
+        "target_language": request.target_language,
+        "service_id": request.service_id or BHASHINI_MODELS["translation"]["default"],
+    }
+
+
 @app.get("/api/geofences")
 def get_geofences_endpoint(lat: float = 18.9220, lon: float = 72.8347):
     """Returns all registered maritime geofences and proximity alerts for coordinates."""
@@ -470,6 +596,8 @@ def simulate_endpoint(request: SimulateRequest):
 
     weather = get_marine_weather(provider=weather_provider, lat=lat, lon=lon, date=q_date)
     risk = assess_risk(weather)
+    if weather.wave_height_m is None or weather.wind_speed_kmh is None or weather.cache_status not in {"fresh", "live", "cached"}:
+        raise HTTPException(status_code=503, detail="Current baseline measurements unavailable")
 
     sim = run_what_if_simulation(
         baseline_weather=weather,
@@ -603,6 +731,9 @@ def _process_orca_query(
     location_hint = intent_res.get("location_hint")
     resolved_coords = intent_res.get("resolved_coords")
     time_hint = intent_res.get("time_hint")
+    temporal_res = resolve_query_time(text=english_question, request_date=query_date)
+    time_hint = temporal_res.time_hint or time_hint
+    active_date = temporal_res.target_date
     sim_delta_wave = intent_res.get("simulation_delta_wave")
     sim_delta_wind = intent_res.get("simulation_delta_wind")
 
@@ -614,6 +745,19 @@ def _process_orca_query(
         reasoning.append(
             f"Geospatial Entity Resolution: Resolved location entity '{location_hint}' to coordinates ({active_lat:.4f}°N, {active_lon:.4f}°E)."
         )
+    elif not location_hint:
+        try:
+            from app.services.location.coastal_distance import coastal_distance_service
+            c_info = coastal_distance_service.calculate_coastal_distance(active_lat, active_lon)
+            if c_info and c_info.get("nearest_coastal_point"):
+                np_name = c_info["nearest_coastal_point"]["name"]
+                c_reg = c_info.get("coastal_region")
+                location_hint = f"{np_name} Coast, {c_reg}" if c_reg and c_reg not in np_name else np_name
+                reasoning.append(
+                    f"Coastal Georeferencing: Station at ({active_lat:.4f}°N, {active_lon:.4f}°E) georeferenced to {location_hint}."
+                )
+        except Exception:
+            pass
 
     agent_results.append(
         AgentResult(
@@ -628,7 +772,7 @@ def _process_orca_query(
     if location_hint:
         reasoning_desc += f" (station: '{location_hint}')"
     if time_hint:
-        reasoning_desc += f" (timeframe: '{time_hint}')"
+        reasoning_desc += f" (timeframe: '{temporal_res.description}')"
     reasoning.append(f"{reasoning_desc} for query: '{english_question}'.")
 
     # Step 4: Deterministic Task Planning
@@ -637,7 +781,7 @@ def _process_orca_query(
         intent=detected_intent,
         lat=active_lat,
         lon=active_lon,
-        date=query_date,
+        date=active_date,
     )
     sources_used.append("planner")
     agent_results.append(
@@ -692,7 +836,9 @@ def _process_orca_query(
             provider=weather_provider,
             lat=active_lat,
             lon=active_lon,
-            date=query_date,
+            date=active_date,
+            time_hint=time_hint,
+            temporal_res=temporal_res,
         )
         sources_used.append(weather_evidence.source)
         executed_tasks.append("weather_agent:get_marine_conditions")
@@ -704,9 +850,9 @@ def _process_orca_query(
                 evidence=weather_evidence.model_dump(),
             )
         )
-        c_stat = weather_evidence.cache_status or "live"
+        c_stat = weather_evidence.cache_status or "unavailable"
         reasoning.append(
-            f"Evidence (weather_agent): source='{weather_evidence.source}' ({c_stat}), forecast='{weather_evidence.forecast}', wave_height={weather_evidence.wave_height_m:.2f}m, wind_speed={weather_evidence.wind_speed_kmh:.1f} km/h."
+            f"Evidence (weather_agent): source='{weather_evidence.source}' ({c_stat}), target_period='{temporal_res.description}', forecast_valid_at={weather_evidence.forecast_valid_at or 'UNAVAILABLE'}, issued_at={weather_evidence.issued_at or 'N/A'}, retrieved_at={weather_evidence.retrieved_at or 'N/A'}, forecast='{weather_evidence.forecast}', wave_height={weather_evidence.wave_height_m}m, wind_speed={weather_evidence.wind_speed_kmh} km/h."
         )
 
         # Tide data is deliberately omitted until a timestamped authoritative provider is configured.
@@ -718,7 +864,9 @@ def _process_orca_query(
                 provider=weather_provider,
                 lat=active_lat,
                 lon=active_lon,
-                date=query_date,
+                date=active_date,
+                time_hint=time_hint,
+                temporal_res=temporal_res,
             )
             sources_used.append(weather_evidence.source)
         risk_evidence = assess_risk(weather_evidence)
@@ -745,7 +893,7 @@ def _process_orca_query(
             lon=active_lon,
             wave_height_m=wave_h,
         )
-        sources_used.append("incois_derived_pfz_dataset")
+        sources_used.append(pfz_evidence_list[0].source if pfz_evidence_list else "pfz_unavailable")
         executed_tasks.append("pfz_agent:find_nearest_zones")
         agent_results.append(
             AgentResult(
@@ -788,7 +936,7 @@ def _process_orca_query(
             )
 
     # 5d. Route Agent
-    if needs_route and pfz_evidence_list:
+    if needs_route and pfz_evidence_list and weather_evidence and weather_evidence.wave_height_m is not None and weather_evidence.wind_speed_kmh is not None and weather_evidence.cache_status in {"fresh", "live", "cached"}:
         target_pfz = pfz_evidence_list[0]
         route_evidence = plan_safe_marine_route(
             origin_lat=active_lat,
@@ -822,7 +970,7 @@ def _process_orca_query(
             weather=weather_evidence,
             location_name=location_hint or f"Sector ({active_lat:.2f}N, {active_lon:.2f}E)",
         )
-        sources_used.append("incois_hazard_detection_agent")
+        sources_used.append("orca_hazard_heuristic")
         executed_tasks.append("hazard_agent:detect_hazards")
         agent_results.append(
             AgentResult(
@@ -838,10 +986,10 @@ def _process_orca_query(
                 f"Evidence (hazard_agent): detected {len(alert_list)} active hazard alert(s): {'; '.join(alert_titles)}."
             )
         else:
-            reasoning.append("Evidence (hazard_agent): no severe hazard alerts or boundary breaches detected.")
+            reasoning.append("Evidence (hazard_agent): no threshold alerts produced from available inputs; coverage may be incomplete.")
 
     # 5f. Simulation Agent
-    if needs_sim and weather_evidence and risk_evidence:
+    if needs_sim and weather_evidence and risk_evidence and weather_evidence.wave_height_m is not None and weather_evidence.wind_speed_kmh is not None and weather_evidence.cache_status in {"fresh", "live", "cached"}:
         simulation_evidence = run_what_if_simulation(
             baseline_weather=weather_evidence,
             baseline_risk=risk_evidence,
@@ -905,15 +1053,10 @@ def _process_orca_query(
             f"Evidence (ocean_analytics_agent): classified {len(zone_avoidance_evidence.avoided_zones)} zone(s) to avoid ({zone_avoidance_evidence.overall_avoidance_status}) with {len(zone_avoidance_evidence.safe_alternative_zones)} safe alternative grounds."
         )
 
-    # Determine Connectivity Mode
-    connectivity_mode = "LIVE"
-    if weather_evidence:
-        if weather_evidence.cache_status == "cached":
-            connectivity_mode = "CACHED"
-        elif weather_evidence.cache_status == "stale":
-            connectivity_mode = "DEGRADED"
-        elif weather_evidence.is_mock or weather_evidence.cache_status == "unavailable":
-            connectivity_mode = "OFFLINE"
+    # Data freshness is separate from whether an AI/network request succeeded.
+    connectivity_mode = {"fresh": "FRESH", "live": "FRESH", "cached": "CACHED", "stale": "STALE"}.get(
+        weather_evidence.cache_status if weather_evidence and not weather_evidence.is_mock else None, "UNAVAILABLE"
+    )
 
     # Construct EvidenceBundle
     evidence_bundle = EvidenceBundle(
@@ -1035,6 +1178,139 @@ def handle_query(request: QueryRequest) -> QueryResponse:
     )
 
 
+def generate_operational_fallback(question: str, lang: str, loc_title: str) -> str:
+    raise ProviderUnavailable("LEGACY_SYNTHETIC_TEMPLATE_DISABLED")
+    q_low = question.lower()
+    is_gujarati = lang == "gu" or any('\u0A80' <= c <= '\u0AFF' for c in question)
+    is_hindi = lang == "hi" or (any('\u0900' <= c <= '\u097F' for c in question) and not any(k in question for k in ["आहे", "नाही", "काय"]))
+    is_marathi = lang == "mr" or any(k in question for k in ["आहे", "नाही", "काय", "करावे"])
+
+    # 1. Emergency SOS
+    if any(k in q_low for k in ["emergency", "sos", "help", "contact", "police", "coast guard", "નંબર", "ઇમરજન્સી", "કટોકટી", "મદદ", "સહાય", "मदद", "नंबर", "आपातकालीन"]):
+        if is_gujarati:
+            return (
+                "🚨 **દરિયાઈ કટોકટી અને બચાવ સહાય નંબરો (24/7 કાર્યરત)**:\n\n"
+                "• **ભારતીય કોસ્ટ ગાર્ડ (Indian Coast Guard)**: **1554** (ટોલ-ફ્રી)\n"
+                "• **દરિયાઈ સુરક્ષા પોલીસ (Coastal Security Police)**: **1093**\n"
+                "• **રાષ્ટ્રીય આપત્તિ કટોકટી (National Emergency)**: **112**\n"
+                "• **VHF મરીન રેડિયો**: ચેનલ **16** (Mayday / Pan-Pan કટોકટી કોલ)\n\n"
+                "દરિયામાં બોટનું એન્જિન બંધ પડે કે કોઈ કટોકટી સર્જાય ત્યારે તુરંત જ લંગર (Anchor) નાખો જેથી બોટ આંતરરાષ્ટ્રીય સરહદ તરફ ન તણાય અને VHF Ch 16 પર તાત્કાલિક સંદેશ આપો."
+            )
+        elif is_hindi or is_marathi:
+            return (
+                "🚨 **समुद्री आपातकालीन एवं बचाव संपर्क नंबर (24x7 सक्रिय)**:\n\n"
+                "• **भारतीय तटरक्षक बल (Indian Coast Guard)**: **1554** (टोल-फ्री)\n"
+                "• **तटीय सुरक्षा पुलिस (Coastal Police)**: **1093**\n"
+                "• **राष्ट्रीय आपातकाल (National Emergency)**: **112**\n"
+                "• **VHF मरीन रेडियो**: चैनल **16** (Mayday / Pan-Pan कॉल)\n\n"
+                "यदि समुद्र में नाव का इंजन खराब हो या आपातकाल हो, तो तुरंत लंगर (Anchor) डालें ताकि नाव अंतरराष्ट्रीय सीमा की ओर न बहे, और VHF चैनल 16 पर सहायता मांगें।"
+            )
+        else:
+            return (
+                "🚨 **Maritime Emergency Distress & Search-and-Rescue Directory**:\n\n"
+                "• **Indian Coast Guard**: **1554** (24/7 Toll-Free)\n"
+                "• **Coastal Security Police**: **1093**\n"
+                "• **National Emergency Service**: **112**\n"
+                "• **VHF Marine Radio Watch**: Channel **16** (Distress / Mayday / Pan-Pan)\n\n"
+                "If experiencing engine failure or distress, immediately drop anchor to prevent drifting toward hazards or international borders, activate your DAT-SG transponder, and broadcast on VHF Ch 16."
+            )
+
+    # 2. Wind & Sea State
+    if any(k in q_low for k in ["wind", "speed", "breeze", "પવન", "ઝડપ", "ગતિ", "हवा", "रफ्तार", "वार"]):
+        if is_gujarati:
+            return (
+                f"**{loc_title} નજીક વર્તમાન પવન અને દરિયાઈ સ્થિતિ**:\n\n"
+                "• **પવનની ઝડપ**: ૧૩ થી ૧૮ કિમી/કલાક (હળવાથી મધ્યમ પવન)\n"
+                "• **પવનની દિશા**: પશ્ચિમ-દક્ષિણપશ્ચિમ (WSW) તરફથી\n"
+                "• **મોજાની ઊંચાઈ**: ૦.૭ થી ૧.૧ મીટર (સામાન્ય અને અનુકૂળ)\n"
+                "• **દૃશ્યતા**: ૧૪-૧૬ કિમી (ચોખ્ખું વાતાવરણ)\n\n"
+                "પવનની ગતિ સામાન્ય મર્યાદામાં છે અને તમામ પ્રકારની માછીમારી બોટ માટે સ્થિતિ અનુકૂળ છે."
+            )
+        elif is_hindi or is_marathi:
+            return (
+                f"**{loc_title} के पास वर्तमान हवा और समुद्री स्थिति**:\n\n"
+                "• **हवा की गति**: 13 से 18 किमी/घंटा (मध्यम और अनुकूल)\n"
+                "• **हवा की दिशा**: पश्चिम / दक्षिण-पश्चिम\n"
+                "• **लहरों की ऊंचाई**: 0.7 से 1.1 मीटर (शांत समुद्र)\n"
+                "• **दृश्यता**: लगभग 15 किमी (साफ मौसम)\n\n"
+                "हवा की गति सुरक्षित सीमा में है और नाव संचालन के लिए समुद्र अनुकूल है।"
+            )
+        else:
+            return (
+                f"**Current Wind & Oceanographic Telemetry near {loc_title}**:\n\n"
+                "• **Wind Speed**: 13 to 18 km/h (Light to Moderate breeze)\n"
+                "• **Wind Direction**: West-Southwest (WSW ~250°)\n"
+                "• **Significant Wave Height**: 0.7 to 1.1 m (Favorable sea state)\n"
+                "• **Surface Visibility**: ~15 km (Clear)\n\n"
+                "Current surface wind speeds are well within safe operating limits for mechanized and artisanal fishing vessels."
+            )
+
+    # 3. PFZ (Potential Fishing Zone)
+    if any(k in q_low for k in ["pfz", "fish", "zone", "ઝોન", "માછલી", "મત્સ્ય", "मछली", "ज़ोन"]):
+        if is_gujarati:
+            return (
+                f"**પોટેન્શિયલ ફિશિંગ ઝોન (PFZ - Potential Fishing Zone)**:\n\n"
+                "ISRO અને INCOIS ઉપગ્રહ દ્વારા સમુદ્રમાં **ક્લોરોફિલ-a (પ્લેન્કટોન)** અને **સમુદ્ર સપાટી તાપમાન (SST Fronts)** નું પૃથક્કરણ કરીને માછલીઓનો મોટો જથ્થો મળવાની શક્યતા ધરાવતા વિસ્તારો નક્કી કરવામાં આવે છે.\n\n"
+                "• **મુખ્ય લાભો**: નિર્દેશિત PFZ કોઓર્ડિનેટ્સ પર સીધા જવાથી ડીઝલના વપરાશમાં ૩૦% થી ૫૦% ની બચત થાય છે અને ટુના, પાપલેટ, બંગડા જેવી ગુણવત્તાયુક્ત માછલીઓ વધુ પ્રમાણમાં પકડાય છે.\n"
+                f"• {loc_title} નજીકના સક્રિય PFZ ઝોન તમે ORCA ટેક્ટિકલ મેપ પર સીધા જોઈ શકો છો."
+            )
+        elif is_hindi or is_marathi:
+            return (
+                f"**पोटेंशियल फिशिंग ज़ोन (PFZ - Potential Fishing Zone)**:\n\n"
+                "इसरो (ISRO) और इनकोइस (INCOIS) उपग्रह डेटा द्वारा समुद्र में क्लोरोफिल और थर्मल फ्रन्ट्स (SST) के आधार पर उच्च मछली घनत्व वाले क्षेत्रों की पहचान की जाती है।\n\n"
+                "• **लाभ**: सीधे PFZ निर्देशांकों पर जाने से नौका के डीजल में 30% से 50% तक की बचत होती है और बेहतर मछली पकड़ मिलती है।\n"
+                f"• {loc_title} के पास सक्रिय PFZ क्षेत्र ORCA मैप पर देख सकते हैं।"
+            )
+        else:
+            return (
+                f"**Potential Fishing Zones (PFZ) Overview near {loc_title}**:\n\n"
+                "Potential Fishing Zones are ocean sectors identified via ISRO Ocean Colour and Sea Surface Temperature (SST) satellite observations where ocean upwelling concentrates nutrient-rich plankton and pelagic fish schools.\n\n"
+                "• **Fishermen Benefits**: Direct navigation to advisory coordinates reduces search time and diesel consumption by 30–50% while significantly boosting target catch (Tuna, Mackerel, Pomfret).\n"
+                "• View real-time plotted PFZ zones directly on the ORCA Tactical Map."
+            )
+
+    # 4. Default: Safety to Fish / Sail
+    if is_gujarati:
+        return (
+            f"✅ **માછીમારી અને સફર માટે દરિયાઈ સ્થિતિ સંપૂર્ણ સલામત છે**\n\n"
+            f"{loc_title} નજીકના સેટેલાઇટ દરિયાઈ નિરીક્ષણ મુજબ સ્થિતિ સામાન્ય અને અનુકૂળ છે:\n"
+            "• **મોજાની ઊંચાઈ**: **૦.૭ થી ૧.૧ મીટર** (સલામત મર્યાદામાં)\n"
+            "• **પવનની ઝડપ**: **૧૩ થી ૧૮ કિમી/કલાક** (પશ્ચિમ દિશા તરફથી)\n"
+            "• **દૃશ્યતા**: **૧૫ કિમી** (ચોખ્ખું વાતાવરણ)\n"
+            "• **સમુદ્ર તાપમાન**: **૨૮.૫°C**\n\n"
+            "**સલામતી સૂચનાઓ**:\n"
+            "1. બોટ રવાના કરતાં પહેલાં તમામ ક્રૂ સભ્યોએ લાઈફ જેકેટ પહેરેલું હોવું ફરજિયાત છે.\n"
+            "2. VHF મરીન રેડિયો ચેનલ 16 પર નિયમિત મોનિટરિંગ રાખો.\n"
+            "3. આપત્તિ ચેતવણી ટ્રાન્સપોન્ડર (DAT-SG) ચાલુ રાખો."
+        )
+    elif is_hindi or is_marathi:
+        return (
+            f"✅ **मछली पकड़ने और नौकायन के लिए समुद्र सामान्य एवं सुरक्षित है**\n\n"
+            f"{loc_title} के पास वर्तमान समुद्री टेलीमेट्री के अनुसार स्थिति अनुकूल है:\n"
+            "• **लहरों की ऊंचाई**: **0.7 से 1.1 मीटर** (सुरक्षित सीमा में)\n"
+            "• **हवा की गति**: **13 से 18 किमी/घंटा** (पश्चिम से)\n"
+            "• **दृश्यता**: **15 किमी** (साफ मौसम)\n"
+            "• **समुद्री सतह तापमान**: **28.5°C**\n\n"
+            "**सुरक्षा दिशानिर्देश**:\n"
+            "1. प्रस्थान से पहले सभी कर्मी अनिवार्य रूप से लाइफ जैकेट पहनें।\n"
+            "2. वीएचएफ मरीन रेडियो चैनल 16 पर निरंतर संपर्क बनाए रखें।\n"
+            "3. आपातकालीन ट्रांसपोंडर (DAT-SG) की जांच कर लें।"
+        )
+    else:
+        return (
+            f"✅ **CONDITIONS ARE GENERALLY SAFE FOR FISHING & SAILING**\n\n"
+            f"Based on operational oceanographic telemetry near {loc_title}, conditions are favorable for marine activities:\n"
+            "• **Significant Wave Height**: **0.7 to 1.1 m** (Well within safe operating limits)\n"
+            "• **Wind Speed & Direction**: **13 to 18 km/h** from West-Southwest\n"
+            "• **Surface Visibility**: **~15 km** (Clear atmosphere)\n"
+            "• **Sea Surface Temperature**: **28.5°C**\n\n"
+            "**Standard Precautions**:\n"
+            "1. All crew must wear certified life jackets before casting off.\n"
+            "2. Maintain continuous watch on VHF Marine Radio Channel 16.\n"
+            "3. Verify fuel, emergency rations, and distress beacon battery before leaving harbor."
+        )
+
+
 @app.post("/api/chat", response_model=ChatResponse)
 def handle_chat(request: ChatRequest, user: UserProfile = Depends(get_current_user_from_header), db: Session = Depends(get_db)) -> ChatResponse:
     """Dedicated conversational endpoint with Bhashini multilingual orchestration."""
@@ -1088,7 +1364,8 @@ def handle_chat(request: ChatRequest, user: UserProfile = Depends(get_current_us
                 history=history_dicts,
             )
     except ProviderUnavailable:
-        raise HTTPException(status_code=503, detail="AI_PROVIDER_UNAVAILABLE")
+        # Preserve the user turn, but never store a scripted safety answer as AI output.
+        raise
 
     response = ChatResponse(
         language=result["language"],
@@ -1185,8 +1462,19 @@ def get_recommendations_endpoint(
 @app.get("/api/analytics/ocean")
 def get_ocean_analytics_endpoint(lat: float = Query(18.9220), lon: float = Query(72.8347), region: Optional[str] = Query(None)):
     """Returns satellite ocean color, chlorophyll-a concentration, and thermal front analytics."""
-    weather = get_marine_weather(provider=weather_provider, lat=lat, lon=lon, date=dt_date.today().isoformat())
+    from app.services.satellite.mosdac_service import mosdac_service
+    if mosdac_service.is_configured:
+        obs = mosdac_service.get_satellite_observations(lat=lat, lon=lon)
+        if obs.get("status") == "HEALTHY":
+            return obs
     raise HTTPException(status_code=503, detail="SATELLITE_OBSERVATIONS_UNAVAILABLE")
+
+
+@app.get("/api/satellite/status")
+def get_satellite_status():
+    """Returns status and metadata for ISRO MOSDAC satellite integration."""
+    from app.services.satellite.mosdac_service import mosdac_service
+    return mosdac_service.get_satellite_observations(lat=18.9220, lon=72.8347)
 
 
 

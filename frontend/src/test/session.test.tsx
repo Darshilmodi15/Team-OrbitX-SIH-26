@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 
 vi.mock('@/services/api', () => ({ loginUser: vi.fn(), registerUser: vi.fn(), getUserProfile: vi.fn(), fetchSavedLocation: vi.fn().mockResolvedValue(null), setAuthFailureHandler: vi.fn() }));
-import { getUserProfile, loginUser } from '@/services/api';
+import { getUserProfile, loginUser, fetchSavedLocation } from '@/services/api';
 import { SessionProvider, useSession } from '@/lib/orca/session';
 
 const wrapper = ({ children }: { children: ReactNode }) => <SessionProvider>{children}</SessionProvider>;
@@ -38,7 +38,11 @@ describe('session lifecycle', () => {
     const { result } = renderHook(() => useSession(), { wrapper });
     await waitFor(() => expect(result.current.ready).toBe(true));
     await act(() => result.current.signIn({ contact: 'm@example.com', password: 'secret', remember: false }));
+    localStorage.setItem("orca.marine.cache.v4", "old location");
+    sessionStorage.setItem("orca.marine.cache.v5.u1", "selected location");
     act(() => result.current.signOut());
+    expect(localStorage.getItem("orca.marine.cache.v4")).toBeNull();
+    expect(sessionStorage.getItem("orca.marine.cache.v5.u1")).toBeNull();
     expect(result.current.user).toBeNull();
     expect(sessionStorage.getItem('orca.auth.session')).toBeNull();
     expect(localStorage.getItem('orca.user')).toBeNull();
@@ -56,4 +60,39 @@ describe('session lifecycle', () => {
     expect(localStorage.getItem('orca_assistant_threads_v1')).toBeNull();
     expect(localStorage.getItem('orca.user')).toBeNull();
   });
+});
+
+it('clears marine cache namespaces without removing unrelated preferences', async () => {
+  localStorage.setItem('orca.marine.cache.v4', 'old location');
+  sessionStorage.setItem('orca.marine.cache.v5.user', 'selected location');
+  localStorage.setItem('orca.language', 'gu');
+  const { clearMarineCaches } = await import('@/lib/orca/marine-cache');
+  clearMarineCaches();
+  expect(localStorage.getItem('orca.marine.cache.v4')).toBeNull();
+  expect(sessionStorage.getItem('orca.marine.cache.v5.user')).toBeNull();
+  expect(localStorage.getItem('orca.language')).toBe('gu');
+});
+
+it('does not restore an old saved location over an explicit new selection', async () => {
+  let resolveSaved!: (value: any) => void;
+  vi.mocked(fetchSavedLocation).mockReturnValueOnce(new Promise(resolve => { resolveSaved = resolve; }));
+  vi.mocked(loginUser).mockResolvedValue(authResult);
+  const { result } = renderHook(() => useSession(), { wrapper });
+  await waitFor(() => expect(result.current.ready).toBe(true));
+  await act(() => result.current.signIn({contact:'m@example.com', password:'test', remember:false}));
+  const chosen = {coords:{lat:7,lon:93.6},area:'coastal' as const,source:'manual' as const,distanceToCoastKm:1};
+  act(() => result.current.setLocation(chosen));
+  await act(async () => resolveSaved({is_coastal_supported:true,lat:19,lon:72,distance_to_coast_km:2}));
+  expect(result.current.location).toEqual(chosen);
+  expect(result.current.locationReady).toBe(true);
+});
+it('does not resurrect a session when profile restoration finishes after sign-out', async () => {
+  let resolveProfile!: (value: any) => void;
+  sessionStorage.setItem('orca.auth.session', authResult.access_token);
+  vi.mocked(getUserProfile).mockReturnValueOnce(new Promise(resolve => { resolveProfile = resolve; }));
+  const { result } = renderHook(() => useSession(), { wrapper });
+  act(() => result.current.signOut());
+  await act(async () => resolveProfile(authResult.user));
+  expect(result.current.user).toBeNull();
+  expect(result.current.token).toBeNull();
 });

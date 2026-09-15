@@ -1,4 +1,5 @@
 from app.services.provider_health import record, ProviderUnavailable
+from app.services.planner import is_emergency_contact_lookup
 """
 ORCA Marine AI - Conversational Dialogue & Dynamic Reasoning Synthesizer.
 Generates context-aware, explainable, and multi-turn marine safety responses
@@ -136,7 +137,8 @@ CONVERSATION GUIDELINES:
 3. For follow-up questions ("Is that dangerous?", "Why?"): Understand the context of previous conversation turns smoothly.
 4. For definitions ("What does PFZ mean?", "What is IMBL/SST?"): Explain clearly in accessible terms and why it matters to fishermen.
 5. For emergency/engine failure: Give practical distress steps (drop anchor, VHF Ch 16 Pan-Pan/Mayday, DAT-SG beacon, Coast Guard 1554 / Coastal Police 1093).
-6. Format with short paragraphs, clear bullet points for metrics, and a concluding recommendation. Keep length balanced (approximately 80 to 180 words)."""
+6. Answer the exact question first. For a contact-number lookup, give only the requested numbers and their labels, in at most 50 words. Do not add a distress procedure unless asked. For other questions, use short paragraphs and concise bullets as needed.
+7. The current target language overrides the language of previous conversation turns."""
 
         prompt = f"""Conversation History:
 {history_text if history_text else "None (New conversation)"}
@@ -145,19 +147,43 @@ User's Latest Query: {user_query} (English interpretation: {english_query})
 
 Generate the complete, natural response in language '{target_lang}':"""
 
+        api_key = api_key.strip()
         try:
             from google import genai
-            client = genai.Client(api_key=api_key, http_options={"timeout": 30000})
-            response = client.models.generate_content(
-                model=os.getenv("GEMINI_MODEL", "gemini-3.7-flash"),
-                contents=prompt,
-                config={"system_instruction": system_instruction},
-            )
-            text = (response.text or "").strip()
-            if text:
-                record("gemini", success=True, http_status=200)
-                return text
-            record("gemini", success=False, http_status=200, reason="EMPTY_RESPONSE")
+            client = genai.Client(api_key=api_key, http_options={"timeout": 20000})
+            preferred_model = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
+            candidate_models = [preferred_model, "gemini-3.5-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-flash-latest"]
+            seen_models = set()
+            models_to_try = []
+            for m in candidate_models:
+                if m and m not in seen_models:
+                    seen_models.add(m)
+                    models_to_try.append(m)
+
+            last_err = None
+            for model_name in models_to_try:
+                try:
+                    config = {"system_instruction": system_instruction}
+                    if "3.7" in model_name and is_emergency_contact_lookup(english_query):
+                        config["thinking_config"] = {"thinking_level": "low"}
+                    response = client.models.generate_content(
+                        model=model_name, contents=prompt, config=config,
+                    )
+                    text = (response.text or "").strip()
+                    if text:
+                        record("gemini", success=True, http_status=200)
+                        return text
+                except Exception as model_err:
+                    last_err = model_err
+                    status = getattr(model_err, "code", None)
+                    logger.warning("Gemini model %s failed (%s; status=%s)", model_name, type(model_err).__name__, status)
+                    if status in (401, 403, 429):
+                        # Authentication/quota failures must surface promptly, not fan out
+                        # into more paid requests or a scripted answer.
+                        break
+                    continue
+
+            record("gemini", success=False, http_status=getattr(last_err, "code", 200) if last_err else 200, reason="EMPTY_OR_FAILED")
         except Exception as err:
             status = getattr(err, "code", None)
             record("gemini", success=False, http_status=status if isinstance(status, int) else None, reason=type(err).__name__)
@@ -178,6 +204,7 @@ Generate the complete, natural response in language '{target_lang}':"""
         High-fidelity deterministic natural reasoning generator.
         Produces structured, articulate, multi-paragraph advisories tailored to query intent.
         """
+        raise ProviderUnavailable("LEGACY_SYNTHETIC_TEMPLATE_DISABLED")
         q_lower = english_query.lower()
         w = evidence.weather
         r = evidence.risk

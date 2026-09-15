@@ -8,6 +8,7 @@ import {
   Settings,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { TaskGuide } from "./TaskGuide";
 import { OrcaWordmark } from "./Logo";
 import { LanguageMenu } from "./LanguageMenu";
 import { Footer } from "@/components/Footer";
@@ -35,6 +36,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground selection:bg-teal-500/30">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:p-3">{t("cta.continue")}</a>
       <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur">
         <div className="orca-container flex h-14 items-center justify-between gap-3">
           <Link to="/dashboard" className="min-w-0 flex-1">
@@ -48,6 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Link
                   key={to}
                   to={to}
+                  aria-current={isActive ? "page" : undefined}
                   className={cn(
                     "inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all",
                     isActive
@@ -63,9 +66,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="flex shrink-0 items-center gap-1.5">
-            <span className="hidden rounded-full border border-teal-500/30 bg-teal-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-teal-300 sm:inline">
+            {user?.role !== "user" && <span className="hidden rounded-full border border-teal-500/30 bg-teal-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-teal-300 sm:inline">
               {t(user?.role === "government" ? "ops.officer" : user?.role === "admin" ? "ops.admin" : "nav.dashboard")}
-            </span>
+            </span>}
             <LanguageMenu />
             <Link
               to="/settings"
@@ -88,7 +91,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
       </header>
 
-      <main className="orca-container w-full flex-1 py-4 pb-24 lg:pb-8">{children}</main>
+      <main id="main-content" tabIndex={-1} className="orca-container w-full flex-1 py-4 pb-24 lg:pb-8">{user?.role === "user" && <TaskGuide />}{children}</main>
 
       {/* Official Footnote / Contact info on desktop & mobile */}
       <Footer />
@@ -105,6 +108,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <li key={to}>
                 <Link
                   to={to}
+                  aria-current={isActive ? "page" : undefined}
                   className={cn(
                     "flex min-h-14 flex-col items-center justify-center gap-1 px-1 py-2 text-[11px] font-medium transition-colors",
                     isActive ? "text-teal-400 font-bold" : "text-muted-foreground hover:text-foreground",

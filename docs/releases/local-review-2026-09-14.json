@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-09-14T15:54:52.231921+00:00",
+  "git_commit": "64d303df7a3e57dab07233c3bd09f66c269b51f9",
+  "working_tree_dirty": true,
+  "build_files_sha256": {
+    "android-chrome-192x192.png": "dfa6c5f9a219bbb82849e1049647cf0cbb71b2fcae20d3bb70c8be7ad889c084",
+    "android-chrome-512x512.png": "5e35226fb1f23f04011ffa7b0ed45eb045c7a618075c8ec8a554b676d416d724",
+    "apple-touch-icon.png": "ddd888f65463ea807eb90abddac929e349233526852cce4397200fc20fe255dc",
+    "assets/AlertsPage-MTDkdntc.js": "e4340413a3c713ed6e3139d749bc8a6ca49c1601dd5fca24a498b064a520f854",
+    "assets/AppShell-DI792Y8E.js": "d1723da2c1db6093661310318e2c90d0b2f6cd266ded06e14134aaaf48a7974e",
+    "assets/AssistantPage-Dhpnu83s.js": "b465521a44a841bf969a136072bdc272f8d29c3e98e6f75a6533aca6d7f15e7c",
+    "assets/AuthPage-BD49MyT3.js": "f938d9eff52a9e40c4103193c43c3c6bd4575102fb876839a68ed0e3ebd5d88a",
+    "assets/CoastMap-CuSdtgZQ.js": "0d6e7d34d1a100d7d4cb1e132aba037d4614846e78469dd0725ffc6dea77584e",
+    "assets/DashboardPage-CF0E7gOM.js": "1bcaef84a5468a7f1cdbe48669e3f4d1cb25dc11aa4e24b73e62aa95759630a2",
+    "assets/LandingPage-41H2smv9.js": "5045bcd4e895cdc50ccb7fc499fb264992d56b8e3442e02828bb76a8b895bb21",
+    "assets/LanguagePage-BJ1fmMT2.js": "57dbb3aab046e7100ff5dfa184601c5dc0f7a1ba1b7445b3807f1c147b566dac",
+    "assets/LocationPage-CqCQrDdp.js": "dd782e0cca774f086d436d9b50f9d358ec1d23e2db422afbfe9883c808e51580",
+    "assets/MapPage-DIFWM7PX.js": "30cf9b1bf0484200850ad1ca438cc63e18f8cea05ceccb7088ab92e1bb8bd8bf",
+    "assets/MapPanel-DRG5kIzu.js": "b723a625a847fd134aebb9860d5c54591fafcf11dc967e3672712f805baeee05",
+    "assets/NotFoundPage-BCQ7dz9W.js": "b2175dd75cc68f23cd728c80f6fd30b3edaa186d1203f6a03770da8ded828d6c",
+    "assets/OperationsPage-BuAb6TEp.js": "0e85c9944bc10246d5981e491785fb78da588f1c9c090dd1bea12b4db2f1e136",
+    "assets/PrivacyPage-waXMpjbI.js": "b3918bcf9a52a0cc27ca51ddea1ead6e004f1057401bebf293e1f20ea8715b92",
+    "assets/SEO-DkqExvGU.js": "2bf9168423e09754a24c79de7756d7100c64abcc0757bd4a59ae9a8518d5b923",
+    "assets/ServicesPage-8AP6rasc.js": "04786b5c6a5f97df88eaf985b5b000aa9f7128ea181aafe1cbce5de9b3dbdc9c",
+    "assets/SettingsPage-CDxC2PzC.js": "d830b5dd5fb773907ea703c54c06db9ef0c2dc33b11aed0d33eda4880837a1b5",
+    "assets/States-B-sNt7Xo.js": "7d00bb323b08509a8f7c8916073a8f580e3f0f6005cb92ba2995031ccf45d357",
+    "assets/TermsPage-D6THAAjF.js": "df8a3dc270e4f2be5266b6cbddf70aaabe44fec97e9049a56f97aab444542007",
+    "assets/ThankYouPage-BKADqtLX.js": "0b19cecdddc38fe37786918573c50e76e75c6e62a64ceaf1b37ca07e43cd6eea",
+    "assets/arrow-left-Cu0wNlhm.js": "48f5712309307ff8dd75049d6d911ae3f047a9d858455a5882b7622adc4ecbb9",
+    "assets/arrow-right-DdOP1XWD.js": "39028ad020117df56aa856ab43b399a53a9302217d3d651fb7767160bdad0aed",
+    "assets/circle-check-DfmD2yIv.js": "48ce70f14ad623801d9f1d6dedd65da65c037189701d08b300d432ec62e4a31a",
+    "assets/clock-XAeEk_s2.js": "d44de25a9a1a231b1757032f735549b9659d4853853acd5a80b4516fc6aa92b9",
+    "assets/compass-DT6jM3Kb.js": "9863e39a54f722205881d54c44e599bde31e5b6c50f586e8c60936966db18c3d",
+    "assets/eye-BZzkoG3n.js": "87cbb6883ba7936a35ed9ae13afc858c0db23f41c99ec2d16f7550845d189d5d",
+    "assets/geo-LTYlcRwl.js": "05c8a5b9ba5a11188bce43b105ac95539553599377190a1a702d969991627912",
+    "assets/index-Dup3DF6X.css": "6c7d9907a1bb18a6a6b7f1e56e161be2ec5982cac770347dfe7977e15be7769e",
+    "assets/index-uUAvdmtb.js": "45a9004a9a326a3acf8e7aa9bca69b2ed8946171cea96f346e160d6b02086850",
+    "assets/leaflet-src-Bv4pEK9w.js": "62a9a3cda2f6f9e3457b235e017c53904c1613d6b38ebfb75b066ba23bd4c7df",
+    "assets/leaflet-vh-t_kPv.css": "86d3d093fad979e1d185c8a93258f5f124d863fd13ca894c0b9f50bb68b66997",
+    "assets/lock-FWV2Y8wi.js": "a711f94bb37a5a383152247f5abeb6c07e7d2608b28210c9c90071723c18695d",
+    "assets/map-CyCu8n50.js": "41bf6aa74754e5deae9717f437aac6a3feda94171d44b0b68e285d72f7437ef3",
+    "assets/message-square-B-uosU85.js": "9d62156cdf0ee2d1fc378820ca85e77f8faf943aafa27b2d16bd7ff684bea300",
+    "assets/phone-BPqqTvjV.js": "d99ebc84892b24f0e0331a62843521f394b43a85dea223ec1e6ab8b234f3a171",
+    "assets/phone-call-78A9-hU-.js": "b7ffc07846ecf83e91c562c1160f13b5ee01431ffaf5738c1939d49541a1f219",
+    "assets/preload-helper-LqPBfyZ9.js": "4cf11cfb84caa2c60a5d9f0bdd0d4eadc229e953ec38df704121f17f4a142028",
+    "assets/rolldown-runtime-CbXtAM7H.js": "bbf7c5086ae414dc3f33777e3eebf16ea8631325b8bb4690d25091c03567f31a",
+    "assets/rotate-ccw-C1qZd1fM.js": "6c2c3d51da9e802c18c4c7324eaa7d27815071e0cfcfa62001d4cb6e4dfbf786",
+    "assets/send-B0ImMNqe.js": "2ffead3aa94a1e1b916608c3d63495d0d131116f3a26a5feeee10e0be8b466e3",
+    "assets/shield-alert-_HqFMIS7.js": "91677346f1a0edf54c7194cdb791083ce02a0ab5557d96eade530b732b88f7d6",
+    "assets/shield-check-B30ceU1H.js": "111be68473ede961ac012ea220e43607919d26b6d9e5bddec6729b87def3ca0d",
+    "assets/sparkles-9g7OnbPQ.js": "635b90d7cd3ef49650eaa3444a290c8b0d2bf5ada28af554b6ed17fcd4878c19",
+    "assets/sun-CTpvqJg0.js": "76049830728201241b69c07c41bcd76e6fe163ef0a46403d407e684c6795eccf",
+    "assets/trip-pack-BnsYnaeP.js": "2a894d0adb15689cc156f916854c0dfcab203efca18b43e6ac27c9cb45dad522",
+    "assets/use-marine-CKX5OlmV.js": "06f371fc13b91b84e7ccdacc9613b797e15883345e6014d41e4de16ef31778fc",
+    "assets/useQuery-DWCNtY-z.js": "93c58dac2fe0962ef5851bf8d0a9176b619db0318a2e586b76bc0a001438c161",
+    "assets/user-CEJxQGAi.js": "73df25e257adba2e97bd9ad42961fefc0ed45cb4886c64e045e24667680909c5",
+    "assets/utils-CFyFKaqh.js": "7c801fc533e0b2279c5ca42814071c7834a9f90ca50548a43b8b620a61278292",
+    "assets/wind-ebQ_hdm9.js": "2c60293a0ef07706d68018d300b8df73ca24c66e39b3f570d4c32618aea85ddf",
+    "favicon-16x16.png": "49cd6056515282e4665f0add996c677b2dcb907636a7acb13876fb2d5d55755d",
+    "favicon-32x32.png": "c7989262c66261d0c406c25de406631820a8644f4eb33f88ba7ceab3b2bb30b5",
+    "favicon.ico": "19a7438a814e5052e69eb57b57b109a118c20e2743f2523dff257e0ab6e96546",
+    "favicon.svg": "cada940f0e006faad0faa372355b40a94a18d064ee36b079eddc1b55d5cc43bf",
+    "hero-light-ocean.jpg": "3915a644d44cd22b119ec1eff69636534e4abead0e1900d2d16086137aa8ca10",
+    "hero-light-ocean.webp": "89d3e7b2ce364d47263f7b6d9b8a284589a28b78ab82230b6f0489cf83a1822f",
+    "hero-ocean-surface.jpg": "bddf37d12af1e9c0cdd4eabc07e05cf9ec7539bbd91b1e28e4b6c7626e61d84b",
+    "hero-ocean-surface.webp": "b5c3d6c42461ec2522b5a25dfc606a245e0f61c5e74b82d588080d8c8ca5a8c9",
+    "hero-ocean.jpg": "b9546bb5dc22b99d8e5bd013b6514859f3164e59eaadac6349e38edf3ad3758f",
+    "hero-ocean.webp": "cac9159225b80ea4821f524195806fa6b6a056aaf9a109e853a358935246a06a",
+    "icons.svg": "b45fa506195cfcdef406ba9f0c77b36ddc1a7c224040926ec70abc2fdea7b93a",
+    "index.html": "f6ea9a14430daf0ea7d01012ffcbf4e07d7540b21bc75dd4da53fdbd3c74dada",
+    "offline-trip-reader.html": "152416232af6ef588b20f06b9d413458eb740ee198a1d1ccb94e5aeefd005953",
+    "og-image.png": "1013a63d874b9225d47a54e171e84a81a385102a068a59f0c265e2efe9df7156",
+    "robots.txt": "38f2baec0c9cbb853b7bf3005fe07ec456128aa6262a96b15913190ad19d4674",
+    "site.webmanifest": "bdbac0d5660c18fb950469e3333b17e11d44257154750738b36568ab9f0656ec",
+    "sitemap.xml": "8d7d7b4dfb2beccd011561ca185b66500941a5fa30000ae0d90c1dd7627f2985",
+    "trip-worker.js": "b981d35720ae0c70631ef3323435b57750005a8e043b7fa01a8e650f29fdec16"
+  },
+  "frontend": {
+    "url": null,
+    "deployment_id": null
+  },
+  "backend": {
+    "url": null,
+    "deployment_id": null,
+    "git_commit": null
+  },
+  "database": {
+    "revision": null,
+    "compatible_revisions": [],
+    "restore_evidence": null
+  },
+  "previous_verified_pair": {
+    "frontend_deployment_id": null,
+    "backend_deployment_id": null,
+    "database_revision": null
+  },
+  "checks": {
+    "frontend_tests": {
+      "status": "not_run",
+      "evidence": null
+    },
+    "backend_tests": {
+      "status": "not_run",
+      "evidence": null
+    },
+    "authenticated_chat": {
+      "status": "not_run",
+      "evidence": null
+    },
+    "account_isolation": {
+      "status": "not_run",
+      "evidence": null
+    },
+    "location_mainland_islands": {
+      "status": "not_run",
+      "evidence": null
+    },
+    "pfz_validity": {
+      "status": "not_run",
+      "evidence": null
+    },
+    "marine_provenance": {
+      "status": "not_run",
+      "evidence": null
+    },
+    "voice": {
+      "status": "not_run",
+      "evidence": null
+    },
+    "offline_phone_restart": {
+      "status": "not_run",
+      "evidence": null
+    },
+    "offline_expiry": {
+      "status": "not_run",
+      "evidence": null
+    },
+    "offline_worker_reconnect": {
+      "status": "not_run",
+      "evidence": null
+    },
+    "language_accessibility": {
+      "status": "not_run",
+      "evidence": null
+    },
+    "redis_cross_worker": {
+      "status": "not_run",
+      "evidence": null
+    },
+    "database_restore": {
+      "status": "not_run",
+      "evidence": null
+    },
+    "compatible_rollback": {
+      "status": "not_run",
+      "evidence": null
+    },
+    "no_false_sos_delivery": {
+      "status": "not_run",
+      "evidence": null
+    }
+  },
+  "limitations": [
+    "Build hashes are not proof of provider connectivity, tests, deployment or rollback."
+  ]
+}

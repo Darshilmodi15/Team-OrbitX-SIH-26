@@ -2,8 +2,9 @@ import { Link } from "react-router-dom";
 import { AppShell } from "@/components/orca/AppShell";
 import { SafetyStatusCard } from "@/components/orca/SafetyStatus";
 import { MarineConditions, ForecastTimeline } from "@/components/orca/Conditions";
+import { TripPack } from "@/components/orca/TripPack";
 import { MapPanel } from "@/components/orca/MapPanel";
-import { LoadingState, ErrorState, EmptyState } from "@/components/orca/States";
+import { LoadingState, EmptyState } from "@/components/orca/States";
 import { SEO } from "@/components/SEO";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
@@ -47,8 +48,12 @@ export default function DashboardPage() {
   }
 
   const c = marine.data?.current;
-  const fresh = c && c.dataMode !== "stale" && Date.now() - Date.parse(c.time) <= 3600000;
-  const level = fresh && c.waveHeightM != null && c.windSpeedKmh != null ? safetyFrom(c.waveHeightM, c.windSpeedKmh, c.visibilityKm) : null;
+  const isTimeFresh = c?.time ? (Date.now() - Date.parse(c.time) <= 18 * 3600000) : true;
+  const isStale = c?.dataMode === "stale" || c?.dataMode === "unavailable" || !isTimeFresh;
+  const rawLevel = c && c.waveHeightM != null && c.windSpeedKmh != null ? safetyFrom(c.waveHeightM, c.windSpeedKmh, c.visibilityKm) : null;
+  const level = isStale || rawLevel === "unknown" ? null : rawLevel;
+
+  const displayCurrent = c;
 
   return (
     <AppShell>
@@ -61,12 +66,14 @@ export default function DashboardPage() {
 
         {/* Safety status */}
         {marine.isError ? (
-          <ErrorState description={t("state.offline")} onRetry={() => marine.refetch()} />
+          <EmptyState>{t("status.title")}: {t("chat.unavailable")}</EmptyState>
         ) : marine.isPending ? (
           <LoadingState label={t("state.loadingMarine")} />
         ) : level ? (
           <SafetyStatusCard level={level} />
-        ) : <EmptyState>{t("status.title")}: {t("chat.unavailable")}</EmptyState>}
+        ) : (
+          <EmptyState>{t("status.title")}: {t("chat.unavailable")}</EmptyState>
+        )}
 
         {/* Quick actions */}
         <section>
@@ -86,10 +93,16 @@ export default function DashboardPage() {
         </section>
 
         {/* Marine conditions */}
-        {c && <MarineConditions data={c} tide={marine.data?.tide ?? null} />}
+        {displayCurrent && <MarineConditions data={displayCurrent} tide={marine.data?.tide ?? null} />}
+
+        {marine.data && <TripPack key={`${location.coords.lat},${location.coords.lon}`} location={location} bundle={marine.data} />}
 
         {/* Forecast */}
-        {marine.data?.forecast && (marine.data.forecast.length > 0 ? <ForecastTimeline points={marine.data.forecast} /> : <p className="text-sm text-muted-foreground">{t("forecast.title")}: {t("chat.unavailable")}</p>)}
+        {marine.data?.forecast && (marine.data.forecast.length > 0 ? (
+          <ForecastTimeline points={marine.data.forecast} />
+        ) : (
+          <p className="text-sm text-muted-foreground">{t("forecast.title")}: {t("chat.unavailable")}</p>
+        ))}
 
         {/* Map preview */}
         <section className="space-y-2">

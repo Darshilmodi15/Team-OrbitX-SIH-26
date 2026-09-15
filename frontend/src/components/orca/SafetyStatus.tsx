@@ -4,6 +4,7 @@ import type { SafetyLevel } from "@/lib/orca/types";
 import { cn } from "@/lib/utils";
 
 const MAP = {
+  unknown: { Icon: ShieldAlert, label: "chat.unavailable" as const, desc: "chat.unavailable" as const, cls: "border-border bg-card text-muted-foreground" },
   safe: { Icon: CheckCircle2, label: "status.safe" as const, desc: "status.safeDesc" as const, cls: "border-safe/40 bg-safe-surface text-safe" },
   caution: { Icon: AlertTriangle, label: "status.caution" as const, desc: "status.cautionDesc" as const, cls: "border-caution/40 bg-caution-surface text-caution" },
   dangerous: { Icon: ShieldAlert, label: "status.dangerous" as const, desc: "status.dangerousDesc" as const, cls: "border-danger/40 bg-danger-surface text-danger" },

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { loginUser, sendChatMessage, transcribeVoiceAudio } from '@/services/api';
+import { API_BASE_URL, getUserProfile, loginUser, sendChatMessage, transcribeVoiceAudio } from '@/services/api';
 
 const jsonResponse = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status, headers: { 'Content-Type': 'application/json' },
@@ -20,6 +20,25 @@ describe('authenticated API contracts', () => {
   it('throws the backend wrong-password message', async () => {
     vi.mocked(fetch).mockResolvedValue(jsonResponse({ detail: 'Invalid password.' }, 401));
     await expect(loginUser('fish@example.com', 'wrong')).rejects.toThrow('Invalid password.');
+  });
+
+  it('never fabricates a login or forwards credentials to another backend after an outage', async () => {
+    vi.mocked(fetch).mockRejectedValue(new TypeError('Failed to fetch'));
+    await expect(loginUser('fisherman@orca.marine', 'password123')).rejects.toThrow('Failed to fetch');
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(vi.mocked(fetch).mock.calls[0][0]).toBe(`${API_BASE_URL}/api/auth/login`);
+  });
+
+  it('validates legacy demo tokens against the real profile endpoint', async () => {
+    vi.mocked(fetch).mockResolvedValue(jsonResponse({ detail: 'Invalid token' }, 401));
+    await expect(getUserProfile('demo-token-fisherman-session')).rejects.toThrow();
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it('shows a provider outage instead of pretending a chat answer succeeded', async () => {
+    vi.mocked(fetch).mockResolvedValue(jsonResponse({ detail: 'AI_PROVIDER_UNAVAILABLE' }, 503));
+    await expect(sendChatMessage({ message: 'Hello' })).rejects.toThrow('AI provider is temporarily unavailable');
+    expect(fetch).toHaveBeenCalledOnce();
   });
 
   it('sends one chat request with session and request IDs', async () => {

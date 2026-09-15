@@ -39,109 +39,18 @@ class RecommendationReasoningEngine:
         if bundle.risk and bundle.weather:
             risk = bundle.risk
             w = bundle.weather
-            wave_h = w.wave_height_m
-            wind_spd = w.wind_speed_kmh
-            gust_spd = w.wind_gust_kmh or (wind_spd * 1.3)
-            wave_per = w.wave_period_s or 7.5
-            forecast = w.forecast.lower()
-            source = w.source
-
-            if risk.level == "unsafe":
-                rec_id = f"REC-SAF-{rec_index:02d}"
-                rec_index += 1
-                evidence = [
-                    f"Significant Wave Height (Hs): {wave_h:.2f}m (Severe safety threshold > 2.50m exceeded)",
-                    f"Sustained Wind Speed: {wind_spd:.1f} km/h (Gale warning threshold > 50.0 km/h exceeded)",
-                    f"Peak Wind Gusts: {gust_spd:.1f} km/h (Squall threshold > 60.0 km/h)",
-                    f"Forecast Meteorological Sea State: '{forecast.capitalize()}'",
-                    f"Data Provenance: {source} (Status: {w.cache_status or 'Live'})",
-                ]
-                reasoning = (
-                    f"1. Physical limit analysis: Wave height of {wave_h:.2f}m produces severe dynamic hydrostatic loading "
-                    f"exceeding craft capsizing stability margins.\n"
-                    f"2. Aerodynamic drag analysis: Sustained wind of {wind_spd:.1f} km/h creates heavy chop and spray, severely reducing steering control.\n"
-                    f"3. Risk matrix verdict: 4-Vector safety engine classified conditions as UNSAFE ({risk.safety_label or 'SEVERE HAZARD'}).\n"
-                    f"4. Derivation: Operating in these conditions carries high risk of vessel swamping and hull damage.\n"
-                    f"5. Actionable directive: Immediate cessation of sea ventures is mandatory for life safety."
-                )
-                recommendations.append(
-                    OperationalRecommendation(
-                        id=rec_id,
-                        category="SAFETY",
-                        title="Vessel Venture Prohibition: Severe Marine Hazard",
-                        directive="Suspend all vessel departures and remain moored in harbor. If currently offshore, return to the nearest designated shelter port immediately and maintain VHF Channel 16 distress watch.",
-                        priority="CRITICAL",
-                        confidence_score=0.98,
-                        reliability_tier="AUTHORITATIVE_VERIFIED",
-                        supporting_evidence=evidence,
-                        reasoning=reasoning,
-                        source="orca_marine_risk_engine",
-                    )
-                )
-
-            elif risk.level == "caution":
-                rec_id = f"REC-SAF-{rec_index:02d}"
-                rec_index += 1
-                evidence = [
-                    f"Significant Wave Height (Hs): {wave_h:.2f}m (Moderate swell envelope: 1.50m - 2.50m)",
-                    f"Sustained Wind Speed: {wind_spd:.1f} km/h (Elevated breeze envelope: 35.0 - 50.0 km/h)",
-                    f"Wave Period: {wave_per:.1f}s (Steep chop index: {'Elevated' if wave_per < 5.5 else 'Normal'})",
-                    f"Forecast Condition: '{forecast.capitalize()}'",
-                    f"Data Lineage: {source}",
-                ]
-                reasoning = (
-                    f"1. Sea state physics: Wave height ({wave_h:.2f}m) and wind speed ({wind_spd:.1f} km/h) are elevated above standard calm thresholds but below extreme hazard limits.\n"
-                    f"2. Vessel vulnerability: Small artisanal non-mechanized craft (<10m) face elevated roll motion, whereas larger trawlers can operate with heightened vigilance.\n"
-                    f"3. Risk evaluation: Classified as CAUTION ADVISED due to localized squalls and moderate swell.\n"
-                    f"4. Derivation: Limiting operational radius to nearshore waters ensures rapid harbor return if conditions deteriorate.\n"
-                    f"5. Actionable directive: Implement mandatory lifejacket wear, restrict operating distance to within 5 NM, and monitor hourly weather updates."
-                )
-                recommendations.append(
-                    OperationalRecommendation(
-                        id=rec_id,
-                        category="SAFETY",
-                        title="Restricted Coastal Operations: Heightened Vigilance",
-                        directive="Operate only with mechanized, seaworthy craft within 5 Nautical Miles (NM) of the shoreline. Ensure all crew wear certified lifejackets and maintain continuous radio watch on VHF Channel 16.",
-                        priority="HIGH",
-                        confidence_score=0.92,
-                        reliability_tier="AUTHORITATIVE_VERIFIED",
-                        supporting_evidence=evidence,
-                        reasoning=reasoning,
-                        source="orca_marine_risk_engine",
-                    )
-                )
-
-            else:  # safe
-                rec_id = f"REC-SAF-{rec_index:02d}"
-                rec_index += 1
-                evidence = [
-                    f"Significant Wave Height (Hs): {wave_h:.2f}m (Within safe limits <= 1.50m)",
-                    f"Sustained Wind Speed: {wind_spd:.1f} km/h (Gentle/Moderate breeze <= 40.0 km/h)",
-                    f"Wave Period: {wave_per:.1f}s (Laminar swell profile)",
-                    f"Forecast Condition: '{forecast.capitalize()}'",
-                    f"Authoritative Source: {source}",
-                ]
-                reasoning = (
-                    f"1. Multi-vector physics check: Wave height ({wave_h:.2f}m) and sustained wind ({wind_spd:.1f} km/h) are within safe navigation envelopes.\n"
-                    f"2. Hydrodynamic stability: No steep wave chop or squall turbulence detected (period: {wave_per:.1f}s).\n"
-                    f"3. Risk classification: SAFE TO VENTURE across all 4 maritime vectors.\n"
-                    f"4. Derivation: Atmospheric and oceanic conditions support safe transit, fishing, and commercial operations.\n"
-                    f"5. Actionable directive: Vessel departures cleared under standard maritime protocols."
-                )
-                recommendations.append(
-                    OperationalRecommendation(
-                        id=rec_id,
-                        category="SAFETY",
-                        title="Vessel Departure Clearance: Optimal Marine Conditions",
-                        directive="Normal fishing and navigation operations are cleared to proceed. Maintain standard safety protocols, pre-departure engine checks, and active GPS positioning.",
-                        priority="MEDIUM",
-                        confidence_score=0.96,
-                        reliability_tier="AUTHORITATIVE_VERIFIED",
-                        supporting_evidence=evidence,
-                        reasoning=reasoning,
-                        source="orca_marine_risk_engine",
-                    )
-                )
+            recommendations.append(OperationalRecommendation(
+                id=f"REC-SAF-{rec_index:02d}", category="SAFETY",
+                title=f"ORCA heuristic assessment: {risk.level}",
+                directive="Consult current official marine advisories before making navigation decisions. ORCA does not issue departure clearance.",
+                priority="CRITICAL" if risk.level == "unsafe" else "HIGH" if risk.level == "caution" else "INFO",
+                confidence_score=None, reliability_tier="ORCA_HEURISTIC",
+                supporting_evidence=[f"{key}: {value}" for key, value in risk.available_evidence.items()]
+                    + [f"Missing evidence: {', '.join(risk.missing_evidence) or 'none in the assessed input set'}",
+                       f"Evidence completeness: {risk.evidence_completeness}", f"Source: {w.source}; status: {w.cache_status or 'unavailable'}"],
+                reasoning=risk.reason, source="orca_marine_risk_engine",
+            ))
+            rec_index += 1
 
         # -------------------------------------------------------------
         # 2. Potential Fishing Zone (PFZ) & Pelagic Strategy
@@ -150,40 +59,21 @@ class RecommendationReasoningEngine:
             best_pfz: PFZEvidence = bundle.pfz_zones[0]
             rec_id = f"REC-PFZ-{rec_index:02d}"
             rec_index += 1
-            bearing_str = f"{int(best_pfz.bearing_deg)}° ({cls._deg_to_cardinal(best_pfz.bearing_deg)})" if best_pfz.bearing_deg is not None else "N/A"
-            depth_str = f"~{int(best_pfz.depth_m)}m" if best_pfz.depth_m is not None else "25-45m"
-            suit_score = best_pfz.suitability_score or 88.0
-
             evidence = [
-                f"Top Target Fishing Zone: '{best_pfz.name}' located at ({best_pfz.latitude:.4f}°N, {best_pfz.longitude:.4f}°E)",
-                f"Geodesic Distance from Port/Vessel: {best_pfz.distance_km:.1f} km ({best_pfz.distance_km / 1.852:.1f} NM)",
-                f"True Compass Heading: {bearing_str}",
-                f"Bathymetric Seafloor Depth: {depth_str}",
-                f"Dominant Target Pelagic Species: {', '.join(best_pfz.species)}",
-                f"Operational Suitability Score: {suit_score:.0f}/100",
-                f"Data Provenance: {best_pfz.source}",
+                f"Advisory point: {best_pfz.name} ({best_pfz.latitude:.4f}, {best_pfz.longitude:.4f})",
+                f"Straight-line distance from selected location: {best_pfz.distance_km:.1f} km; not a navigable route",
+                f"Published depth: {str(best_pfz.depth_m) + ' m' if best_pfz.depth_m is not None else 'unavailable'}",
+                f"Published species: {', '.join(best_pfz.species) or 'unavailable'}",
+                f"Source: {best_pfz.source}",
             ]
-            reasoning = (
-                f"1. Oceanographic front detection: Satellite Earth Observation identifies active chlorophyll-a aggregation and thermal boundaries at {best_pfz.name}.\n"
-                f"2. Distance-fuel optimization: At {best_pfz.distance_km:.1f} km, this hotspot represents the highest Catch-Per-Unit-Effort (CPUE) to fuel-consumption ratio.\n"
-                f"3. Bathymetric ecology: Seafloor depth of {depth_str} matches optimal feeding contours for {', '.join(best_pfz.species[:2])}.\n"
-                f"4. Navigational feasibility: Compass heading {bearing_str} provides direct open-water transit clear of known shoals.\n"
-                f"5. Actionable directive: Steer designated heading, deploy drift gillnets or longlines at targeted depth."
-            )
-            recommendations.append(
-                OperationalRecommendation(
-                    id=rec_id,
-                    category="FISHING",
-                    title=f"Optimal Fishing Ground Advisory: {best_pfz.name}",
-                    directive=f"Set navigational heading to {bearing_str} towards {best_pfz.name} ({best_pfz.distance_km:.1f} km). Target pelagic shoals of {', '.join(best_pfz.species)} at depth {depth_str} using appropriate hook sizes or gillnets.",
-                    priority="HIGH",
-                    confidence_score=0.94,
-                    reliability_tier="AUTHORITATIVE_VERIFIED",
-                    supporting_evidence=evidence,
-                    reasoning=reasoning,
-                    source="orca_pfz_advisory_agent",
-                )
-            )
+            recommendations.append(OperationalRecommendation(
+                id=rec_id, category="FISHING", title=f"PFZ advisory reference: {best_pfz.name}",
+                directive="Review the current source advisory and official marine warnings before planning a fishing trip.",
+                priority="INFO", confidence_score=None, reliability_tier="REFERENCE_ESTIMATE",
+                supporting_evidence=evidence,
+                reasoning="This is a published advisory point. The available evidence does not establish catch probability, optimal depth, fuel efficiency or a safe route to it.",
+                source=best_pfz.source,
+            ))
 
         # -------------------------------------------------------------
         # 3. Safe Navigational Route Recommendation
@@ -229,64 +119,17 @@ class RecommendationReasoningEngine:
         # 4. Maritime Boundary & Geofence Compliance
         # -------------------------------------------------------------
         if bundle.boundary:
-            b = bundle.boundary
-            rec_id = f"REC-GEO-{rec_index:02d}"
+            boundary = bundle.boundary
+            recommendations.append(OperationalRecommendation(
+                id=f"REC-GEO-{rec_index:02d}", category="GEOFENCE",
+                title="ORCA boundary reference assessment",
+                directive="Consult current official charts and restrictions. Reference geometry does not establish legal or navigational clearance.",
+                priority="HIGH" if not boundary.inside_eez or (boundary.distance_to_boundary_km is not None and boundary.distance_to_boundary_km < 15) else "INFO",
+                supporting_evidence=[f"Source: {boundary.source}", f"Inside reference polygon: {boundary.inside_eez}", f"Distance to reference boundary (km): {boundary.distance_to_boundary_km}"],
+                reasoning=boundary.status_message or "Reference boundary estimate only.",
+                source="orca_boundary_reference", reliability_tier="REFERENCE_ESTIMATE", confidence_score=None,
+            ))
             rec_index += 1
-
-            if not b.inside_eez or (b.distance_to_boundary_km is not None and b.distance_to_boundary_km < 15.0):
-                evidence = [
-                    f"Vessel EEZ Status: {'Inside EEZ' if b.inside_eez else 'OUTSIDE EEZ / IN INTERNATIONAL OR FOREIGN JURISDICTION'}",
-                    f"Distance to Maritime Boundary: {b.distance_to_boundary_km:.1f} km" if b.distance_to_boundary_km is not None else "Proximity alert active",
-                    f"Jurisdiction Zone: {b.country or 'India'} ({b.zone_name or 'EEZ'})",
-                    f"Boundary Source: {b.source} ({b.dataset_version})",
-                ]
-                reasoning = (
-                    f"1. Spatial polygon containment: Flanders Marine Institute (VLIZ) World EEZ v12 ray-casting shows vessel is near or beyond sovereign EEZ bounds.\n"
-                    f"2. Legal & security implications: Approaching within 15 km of International Maritime Boundary Lines (IMBL) triggers coast guard interception and foreign authority detention risks.\n"
-                    f"3. Proximity derivation: Margin of safety is insufficient for unmonitored drift.\n"
-                    f"4. Actionable directive: Immediate course alteration to head inward toward Indian territorial waters."
-                )
-                recommendations.append(
-                    OperationalRecommendation(
-                        id=rec_id,
-                        category="GEOFENCE",
-                        title="Critical Boundary Warning: International Border Proximity",
-                        directive="Alter course immediately toward the Indian mainland. Do not deploy nets across international boundary lines and maintain minimum 15 km buffer from foreign EEZ limits.",
-                        priority="CRITICAL",
-                        confidence_score=0.99,
-                        reliability_tier="AUTHORITATIVE_VERIFIED",
-                        supporting_evidence=evidence,
-                        reasoning=reasoning,
-                        source="orca_boundary_agent",
-                    )
-                )
-            else:
-                evidence = [
-                    f"Vessel EEZ Status: Confirmed inside sovereign Indian Exclusive Economic Zone (EEZ)",
-                    f"Distance to Nearest International Boundary: {b.distance_to_boundary_km:.1f} km (Safe clearance > 25 km)" if b.distance_to_boundary_km is not None else "Safe margin inside EEZ",
-                    f"Jurisdiction Authority: Republic of India ({b.zone_name or 'India EEZ'})",
-                    f"Authoritative Dataset: {b.source} ({b.dataset_version})",
-                ]
-                reasoning = (
-                    f"1. Boundary geometry check: Vessel coordinates verified well within Indian EEZ polygon boundaries.\n"
-                    f"2. Geofence safety clearance: Ample spatial buffer exists before reaching any contested or foreign maritime waters.\n"
-                    f"3. Compliance verdict: Unrestricted legal fishing operations permitted under Indian maritime jurisdiction.\n"
-                    f"4. Actionable directive: Maintain standard AIS/VMS transponder operation and carry valid fishing license."
-                )
-                recommendations.append(
-                    OperationalRecommendation(
-                        id=rec_id,
-                        category="GEOFENCE",
-                        title="Maritime Boundary Compliance: Indian EEZ Verified",
-                        directive="Vessel is operating legally inside Indian Exclusive Economic Zone. Maintain active transponder and ensure registration documents are aboard.",
-                        priority="INFO",
-                        confidence_score=0.99,
-                        reliability_tier="AUTHORITATIVE_VERIFIED",
-                        supporting_evidence=evidence,
-                        reasoning=reasoning,
-                        source="orca_boundary_agent",
-                    )
-                )
 
         # -------------------------------------------------------------
         # 5. Proactive Hazard & Weather Alerts
@@ -301,14 +144,9 @@ class RecommendationReasoningEngine:
                     f"Headline: {alert.title}",
                     f"Affected Geographic Sector: {alert.location_desc or 'Coastal Zone'}",
                     f"Issuing Agency: {alert.source}",
-                    f"Freshness: {alert.freshness or 'LIVE'}",
+                    f"Freshness: {alert.freshness or 'UNAVAILABLE'}",
                 ]
-                reasoning = (
-                    f"1. Early warning assessment: INCOIS/IMD coastal radar and wave model triggered an active proactive hazard alert.\n"
-                    f"2. Physical risk: Elevated risk of localized sea surges, high breaking waves at harbor mouths, or squall line arrival.\n"
-                    f"3. Safety protocol: Preemptive tactical adjustments required to prevent vessel grounding or capsize.\n"
-                    f"4. Actionable directive: Comply with alert precautions and alert nearby vessels."
-                )
+                reasoning = "ORCA derived this alert from the supplied evidence. It is not a retrieved government bulletin."
                 prio = "CRITICAL" if alert.severity.lower() in ["critical", "warning"] else "HIGH"
                 recommendations.append(
                     OperationalRecommendation(
@@ -317,11 +155,11 @@ class RecommendationReasoningEngine:
                         title=f"Coastal Hazard Advisory: {alert.title}",
                         directive=f"{alert.message}. Relay warning to crew and avoid low-lying coastal sandbars.",
                         priority=prio,
-                        confidence_score=0.95,
-                        reliability_tier="AUTHORITATIVE_VERIFIED",
+                        confidence_score=None,
+                        reliability_tier="ORCA_HEURISTIC",
                         supporting_evidence=evidence,
                         reasoning=reasoning,
-                        source="incois_hazard_detection_agent",
+                        source="orca_heuristic",
                     )
                 )
 
@@ -407,40 +245,16 @@ class RecommendationReasoningEngine:
         # -------------------------------------------------------------
         # 8. Hazardous Zone Avoidance Strategy
         # -------------------------------------------------------------
-        if bundle.zone_avoidance and bundle.zone_avoidance.avoided_zones:
+        if bundle.zone_avoidance:
             za = bundle.zone_avoidance
-            rec_id = f"REC-AVD-{rec_index:02d}"
+            recommendations.append(OperationalRecommendation(
+                id=f"REC-ZONE-{rec_index:02d}", category="SAFETY",
+                title="ORCA zone coverage assessment", priority="HIGH" if za.avoided_zones else "INFO",
+                directive="Review identified restrictions and current official advisories. No safe alternative is established by incomplete coverage.",
+                supporting_evidence=[item.reason for item in za.avoided_zones] + ["Missing evidence: " + ", ".join(za.missing_evidence)],
+                reasoning=za.summary, source="orca_heuristic", reliability_tier="ORCA_HEURISTIC", confidence_score=None,
+            ))
             rec_index += 1
-            avoid_names = ", ".join([z.zone_name for z in za.avoided_zones])
-            safe_alt_names = ", ".join([s["name"] for s in za.safe_alternative_zones[:2]]) if za.safe_alternative_zones else "Marked safe harbor channels"
-
-            evidence = [
-                f"Overall Avoidance Status: {za.overall_avoidance_status}",
-                f"Flagged Avoidance Zones ({len(za.avoided_zones)}): {avoid_names}",
-                f"Flagged Reasons: {'; '.join([f'{z.zone_name} ({z.category}): {z.reason}' for z in za.avoided_zones[:2]])}",
-                f"Recommended Safe Alternative Grounds: {safe_alt_names}",
-                f"Provenance: {za.source}",
-            ]
-            reasoning = (
-                f"1. Multi-factor hazard screening: Spatial intersection of vessel operating area with active weather squalls and Marine Protected Areas.\n"
-                f"2. Hazard isolation: Flagged sectors ({avoid_names}) present unacceptable risks of gear loss, vessel damage, or regulatory violations.\n"
-                f"3. Alternative routing: Identified safe grounds ({safe_alt_names}) offer calm wave states (<1.2m) with legal operational clearance.\n"
-                f"4. Actionable directive: Divert transit path around avoided polygons toward designated safe alternative grounds."
-            )
-            recommendations.append(
-                OperationalRecommendation(
-                    id=rec_id,
-                    category="SAFETY",
-                    title=f"Hazard & Geofence Avoidance Directive: {za.overall_avoidance_status}",
-                    directive=f"Steer clear of flagged hazard zones ({avoid_names}). Redirect fishing activities toward verified safe alternative grounds ({safe_alt_names}).",
-                    priority="HIGH",
-                    confidence_score=0.95,
-                    reliability_tier="AUTHORITATIVE_VERIFIED",
-                    supporting_evidence=evidence,
-                    reasoning=reasoning,
-                    source="orca_zone_avoidance_engine",
-                )
-            )
 
         # -------------------------------------------------------------
         # 9. Tidal Navigational Windows
@@ -468,14 +282,14 @@ class RecommendationReasoningEngine:
                 OperationalRecommendation(
                     id=rec_id,
                     category="TIDAL",
-                    title="Tidal Window Optimization: Harbor Channel Navigation",
+                    title="Tidal Window Advisory: Harbor Channel Navigation",
                     directive=f"Plan harbor entry and departure during High Tide window around {t.high_tide_time} ({t.high_tide_height_m:.2f}m). Exercise caution near shallow sandbars during Low Tide at {t.low_tide_time} ({t.low_tide_height_m:.2f}m).",
                     priority="INFO",
-                    confidence_score=0.97,
-                    reliability_tier="AUTHORITATIVE_VERIFIED",
+                    confidence_score=0.85,
+                    reliability_tier="REFERENCE_ESTIMATE",
                     supporting_evidence=evidence,
                     reasoning=reasoning,
-                    source="incois_tidal_harmonic_service",
+                    source=t.source or "incois_tidal_harmonic_service",
                 )
             )
 
@@ -527,7 +341,8 @@ class RecommendationReasoningEngine:
         ]
         for r in recs:
             icon = "🚨" if r.priority == "CRITICAL" else ("⚠️" if r.priority == "HIGH" else "ℹ️")
-            lines.append(f"#### {icon} {r.title} [{r.priority} Priority | {int(r.confidence_score * 100)}% Confidence]")
+            confidence = f"{int(r.confidence_score * 100)}% Confidence" if r.confidence_score is not None else "Confidence unavailable"
+            lines.append(f"#### {icon} {r.title} [{r.priority} Priority | {confidence}]")
             lines.append(f"**Action Directive**: {r.directive}\n")
             lines.append("**Supporting Evidence**:")
             for ev in r.supporting_evidence:

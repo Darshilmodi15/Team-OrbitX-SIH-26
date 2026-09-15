@@ -1,0 +1,2 @@
+time,station,latitude[unit="degrees_north"],longitude[unit="degrees_east"],HS[unit=""],UWND[unit=""],VWND[unit=""]
+2026-09-08T15:00:00Z,GridPointRequestedAt[20.900N_70.300E],20.900,70.300,1.3177003860473633,5.560758590698242,-0.1228904277086258

@@ -1,4 +1,5 @@
 """Unit and integration tests for IncoisWeatherProvider."""
+from datetime import datetime, timezone
 import math
 import time
 import unittest
@@ -37,10 +38,10 @@ class TestIncoisProvider(unittest.TestCase):
         self.assertEqual(cardinal, "SW")
 
     def test_derive_forecast_condition(self):
-        self.assertEqual(derive_forecast_condition(wave_height_m=3.2, wind_speed_kmh=40.0), "stormy")
-        self.assertEqual(derive_forecast_condition(wave_height_m=1.0, wind_speed_kmh=55.0), "stormy")
+        self.assertEqual(derive_forecast_condition(wave_height_m=3.2, wind_speed_kmh=40.0), "elevated wave/wind measurements")
+        self.assertEqual(derive_forecast_condition(wave_height_m=1.0, wind_speed_kmh=55.0), "elevated wave/wind measurements")
         self.assertEqual(derive_forecast_condition(wave_height_m=2.0, wind_speed_kmh=30.0), "choppy / moderate")
-        self.assertEqual(derive_forecast_condition(wave_height_m=0.8, wind_speed_kmh=15.0), "calm / clear")
+        self.assertEqual(derive_forecast_condition(wave_height_m=0.8, wind_speed_kmh=15.0), "low wave/wind measurements")
 
     def test_incois_provider_mocked_ncss_success(self):
         """Verifies NCSS CSV response parsing and evidence normalization."""
@@ -49,6 +50,7 @@ class TestIncoisProvider(unittest.TestCase):
             "2026-08-24T15:00:00Z,GridPointRequestedAt[18.920N_72.830E],18.900,72.800,0.75,5.0,2.5\n"
         )
 
+        mock_csv = mock_csv.replace("2026-08-24T15:00:00Z", datetime.now(timezone.utc).isoformat())
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.text = mock_csv
@@ -64,8 +66,8 @@ class TestIncoisProvider(unittest.TestCase):
         self.assertEqual(res["wave_height_m"], 0.75)
         self.assertEqual(res["wind_speed_ms"], round(math.hypot(5.0, 2.5), 2))
         self.assertEqual(res["wind_speed_kmh"], round(res["wind_speed_ms"] * 3.6, 1))
-        self.assertEqual(res["forecast_time"], "2026-08-24T15:00:00Z")
-        self.assertEqual(res["cache_status"], "live")
+        self.assertEqual(res["forecast_time"], mock_csv.splitlines()[1].split(",")[0])
+        self.assertEqual(res["cache_status"], "fresh")
         self.assertEqual(res["resolution_method"], "exact")
         self.assertEqual(res["grid_lat"], 18.900)
         self.assertEqual(res["grid_lon"], 72.800)
@@ -93,7 +95,7 @@ class TestIncoisProvider(unittest.TestCase):
                 "source": "INCOIS_OSF_WW3",
                 "is_mock": False,
             },
-            forecast_time="2026-08-24T12:00:00Z",
+            forecast_time=datetime.now(timezone.utc).isoformat(),
         )
 
         time.sleep(0.02)

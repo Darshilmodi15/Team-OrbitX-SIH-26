@@ -5,17 +5,18 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.models.notification_models import NotificationCategory, NotificationSeverity
 from app.services.notifications import notification_service
+from app.services.notifications.notification_service import NotificationService
 
 
 class TestNotificationService(unittest.TestCase):
     """Tests for NotificationService business logic and alert generation."""
 
-    def test_default_seeded_notifications(self):
-        res = notification_service.get_notifications_for_user()
-        self.assertGreaterEqual(len(res.notifications), 3)
-        self.assertGreaterEqual(res.unread_count, 1)
+    def test_no_fabricated_startup_notifications(self):
+        service = NotificationService()
+        self.assertEqual(service._notifications, {})
 
     def test_mark_as_read(self):
+        notification_service.evaluate_location_alerts(lat=18.92, lon=72.83, wave_height_m=3.2)
         res = notification_service.get_notifications_for_user()
         unread_notif = next((n for n in res.notifications if not n.is_read), None)
         self.assertIsNotNone(unread_notif)

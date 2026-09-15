@@ -1,6 +1,8 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useI18n } from "@/lib/orca/i18n";
 import type { Coords } from "@/lib/orca/geo";
+import { PFZAdvisory } from "./PFZAdvisory";
+import { mapCopy } from "@/lib/orca/map-copy";
 
 const CoastMap = lazy(() => import("./CoastMap"));
 
@@ -15,9 +17,22 @@ export function MapPanel({
   height?: number;
   onSelect?: (c: Coords) => void;
 }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const [selectedSector, setSelectedSector] = useState("");
+  const [mode, setMode] = useState<"text" | "map" | "satellite">(() => {
+    try { return localStorage.getItem("orca.map.mode") === "text" && !onSelect ? "text" : "map"; } catch { return "map"; }
+  });
   return (
-    <Suspense
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2" role="group" aria-label={t("map.layers")}>
+        {(["text", "map", "satellite"] as const).filter(item => !onSelect || item !== "text").map(item => <button type="button" key={item} aria-pressed={mode === item}
+          className={`min-h-11 rounded-md border px-4 text-sm ${mode === item ? "bg-primary text-primary-foreground" : "bg-card"}`}
+          onClick={() => { setMode(item); try { localStorage.setItem("orca.map.mode", item); } catch { /* Storage is optional. */ } }}>
+          {mapCopy[lang][item]}
+        </button>)}
+      </div>
+      {!onSelect && <PFZAdvisory showPoints={mode === "text"} selectedSector={selectedSector} onSectorChange={setSelectedSector} coords={center} />}
+      {mode !== "text" && <Suspense
       fallback={
         <div
           style={{ height }}
@@ -27,7 +42,8 @@ export function MapPanel({
         </div>
       }
     >
-      <CoastMap center={center} interactive={interactive} height={height} onSelect={onSelect} />
-    </Suspense>
+      <CoastMap center={center} interactive={interactive} height={height} onSelect={onSelect} satellite={mode === "satellite"} selectedSector={selectedSector} />
+    </Suspense>}
+    </div>
   );
 }
