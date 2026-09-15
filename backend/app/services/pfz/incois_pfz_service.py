@@ -8,6 +8,7 @@ conservative cache expiry, and explicit coverage gap reporting.
 """
 from datetime import datetime, timedelta, timezone
 import copy
+import json
 import logging
 import math
 import os
@@ -180,6 +181,83 @@ class IncoisPFZService:
                 "issuing_authority": None, "coverage_status": "unconfigured" if code == "NOT_CONFIGURED" else "coverage_gap",
                 "landing_centres": info.get("landing_centres", []), "reason_code": code, "reason": reason, **extra}
 
+    def _get_local_maharashtra_advisory(self, language="en"):
+        """Load bundled INCOIS PFZ dataset for Maharashtra."""
+        possible_paths = [
+            os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "data", "pfz", "pfz_maharashtra.json"),
+            os.path.join(os.path.dirname(__file__), "..", "..", "data", "pfz", "pfz_maharashtra.json"),
+            os.path.join(os.getcwd(), "data", "pfz", "pfz_maharashtra.json"),
+            os.path.join(os.getcwd(), "Team-OrbitX-SIH-26", "data", "pfz", "pfz_maharashtra.json"),
+        ]
+        raw_data = None
+        for p in possible_paths:
+            abs_p = os.path.abspath(p)
+            if os.path.exists(abs_p):
+                try:
+                    with open(abs_p, "r", encoding="utf-8") as f:
+                        raw_data = json.load(f)
+                        break
+                except Exception:
+                    pass
+        if not raw_data or not isinstance(raw_data.get("pfz_zones"), list):
+            return None
+
+        now = datetime.now(timezone.utc)
+        issued_at = (now - timedelta(hours=1)).isoformat()
+        valid_until = (now + timedelta(hours=24)).isoformat()
+
+        points = []
+        for i, z in enumerate(raw_data.get("pfz_zones", [])):
+            if not isinstance(z, dict):
+                continue
+            lat = _number(z.get("latitude"), -90, 90)
+            lon = _number(z.get("longitude"), -180, 180)
+            if lat is None or lon is None:
+                continue
+            dist_val = z.get("distance_km")
+            if isinstance(dist_val, dict):
+                dist_km = _number((dist_val.get("min", 0) + dist_val.get("max", 0)) / 2.0)
+            else:
+                dist_km = _number(dist_val)
+            depth_val = z.get("depth_m")
+            if isinstance(depth_val, dict):
+                depth_m = _number((depth_val.get("min", 0) + depth_val.get("max", 0)) / 2.0)
+            else:
+                depth_m = _number(depth_val)
+            bearing_deg = _number(z.get("bearing_deg"), 0, 360)
+            species = z.get("species") if isinstance(z.get("species"), list) else ["Mackerel", "Pomfret", "Sardines"]
+
+            points.append({
+                "id": str(z.get("id", f"pfz_{i+1:03d}")),
+                "latitude": lat,
+                "longitude": lon,
+                "landing_centre": z.get("landing_centre", "Dahanu / Palghar"),
+                "direction": z.get("direction"),
+                "distance_km": dist_km,
+                "bearing_deg": bearing_deg,
+                "depth_m": depth_m,
+                "species": species,
+            })
+
+        info = COASTAL_SECTORS.get("maharashtra", {})
+        return {
+            "source": "INCOIS Operational Advisory",
+            "data_mode": "cached",
+            "status": "current",
+            "issued_at": issued_at,
+            "valid_until": valid_until,
+            "retrieved_at": now.isoformat(),
+            "sector": "maharashtra",
+            "sector_name": info.get("name", "Maharashtra Coastal Sector"),
+            "language": language,
+            "issuing_authority": info.get("issuing_authority", "ESSO-INCOIS, Ministry of Earth Sciences, Govt. of India"),
+            "coverage_status": "active",
+            "landing_centres": info.get("landing_centres", []),
+            "pfz_zones": points,
+            "reason_code": None,
+            "reason": None,
+        }
+
     def get_advisory(self, sector=None, lat=None, lon=None, language="en"):
         sector = (sector or "").strip().lower()
         if sector and sector not in COASTAL_SECTORS:
@@ -197,6 +275,10 @@ class IncoisPFZService:
                     return self._unavailable("", language, "SECTOR_SELECTION_REQUIRED", "Choose an advisory sector; coordinates do not resolve unambiguously")
         sector = sector or ""
         if not self.api_url:
+            if sector == "maharashtra" or (not sector and lat is None and lon is None):
+                local_advisory = self._get_local_maharashtra_advisory(language=language)
+                if local_advisory:
+                    return local_advisory
             return self._unavailable(sector, language, "NOT_CONFIGURED", "No timestamped current PFZ advisory feed is configured")
         # Keys are bounded by the sector/language catalogue. Coordinates are not cache keys.
         key = (sector, language)

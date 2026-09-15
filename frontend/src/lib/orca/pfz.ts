@@ -1,5 +1,15 @@
 /** Only timestamped provider data may be plotted as a current advisory. */
-export type PFZPoint = { id: string; name: string; lat: number; lon: number };
+export type PFZPoint = {
+  id: string;
+  name: string;
+  lat: number;
+  lon: number;
+  distanceKm?: number | null;
+  bearingDeg?: number | null;
+  depthM?: number | null;
+  species?: string[];
+  landingCentre?: string | null;
+};
 export type PFZAdvisory = {
   status: "current" | "expired" | "unavailable";
   source: string | null;
@@ -61,7 +71,17 @@ export function normalizePFZ(value: unknown, now = Date.now()): PFZAdvisory {
     const lat = z.latitude;
     const lon = z.longitude;
     if (typeof lat !== "number" || typeof lon !== "number" || !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180 || z.is_demonstration === true || z.is_mock === true) return [];
-    return [{ id: String(z.id ?? index), name: typeof z.landing_centre === "string" ? z.landing_centre : "PFZ", lat, lon }];
+    return [{
+      id: String(z.id ?? index),
+      name: typeof z.landing_centre === "string" ? z.landing_centre : "PFZ",
+      lat,
+      lon,
+      distanceKm: typeof z.distance_km === "number" ? z.distance_km : null,
+      bearingDeg: typeof z.bearing_deg === "number" ? z.bearing_deg : null,
+      depthM: typeof z.depth_m === "number" ? z.depth_m : null,
+      species: Array.isArray(z.species) ? z.species.map(String) : [],
+      landingCentre: typeof z.landing_centre === "string" ? z.landing_centre : null,
+    }];
   });
   return {
     ...base,

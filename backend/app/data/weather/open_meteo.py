@@ -7,6 +7,21 @@ from app.data.weather.base import WeatherProvider
 
 logger = logging.getLogger(__name__)
 
+MARINE_FIELDS = {
+    "wave_height": "wave_height_m",
+    "wave_period": "wave_period_s",
+    "wave_direction": "wave_direction_deg",
+    "wind_wave_height": "wind_wave_height_m",
+    "wind_wave_period": "wind_wave_period_s",
+    "wind_wave_direction": "wind_wave_direction_deg",
+    "swell_wave_height": "swell_wave_height_m",
+    "swell_wave_period": "swell_wave_period_s",
+    "swell_wave_direction": "swell_wave_direction_deg",
+    "ocean_current_velocity": "ocean_current_speed_kmh",
+    "ocean_current_direction": "ocean_current_direction_deg",
+    "sea_surface_temperature": "sea_surface_temperature_c",
+}
+
 # WMO Weather interpretation codes (WW)
 WMO_FORECAST_MAP = {
     0: "clear",

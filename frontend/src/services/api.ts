@@ -306,8 +306,16 @@ export async function fetchMarineTide(lat: number, lon: number) {
   return await response.json();
 }
 
-export async function fetchPFZDataset() {
-  const response = await fetch(`${API_BASE_URL}/api/pfz`);
+export async function fetchPFZDataset(sector?: string, lat?: number, lon?: number, language: string = 'en') {
+  const params = new URLSearchParams();
+  if (sector) params.set('sector', sector);
+  if (lat !== undefined && lon !== undefined) {
+    params.set('lat', String(lat));
+    params.set('lon', String(lon));
+  }
+  if (language) params.set('language', language);
+  const query = params.toString() ? `?${params.toString()}` : '';
+  const response = await fetch(`${API_BASE_URL}/api/pfz${query}`);
   if (!response.ok) {
     throw new Error('Failed to fetch Potential Fishing Zone dataset');
   }

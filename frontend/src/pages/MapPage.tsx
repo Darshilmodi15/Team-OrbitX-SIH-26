@@ -50,7 +50,10 @@ export default function MapPage() {
                 </span>
               </li>
               <li className="flex items-center gap-2">
-                <span className="size-3 rounded-full border-2 border-emerald-500 bg-emerald-500/20 shrink-0" aria-hidden />
+                <span className="relative flex size-3.5 items-center justify-center shrink-0" aria-hidden="true">
+                  <span className="absolute size-3.5 rounded-full border border-emerald-400/80 bg-emerald-500/20 border-dashed" />
+                  <span className="size-1.5 rounded-full bg-emerald-400 ring-1 ring-white" />
+                </span>
                 <span>{lang === "en" ? "PFZ — " : ""}{t("glossary.pfz.full")}</span>
               </li>
               <li className="flex items-center gap-2">

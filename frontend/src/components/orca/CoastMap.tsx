@@ -113,12 +113,60 @@ export default function CoastMap({
     for (const point of advisory.points) {
       // A point advisory does not establish a fishing-zone radius or polygon.
       const popup = document.createElement("div");
-      popup.textContent = `${point.name} · ${point.lat.toFixed(4)}, ${point.lon.toFixed(4)} · ${advisory.source}`;
+      const details = [
+        point.distanceKm != null ? `${point.distanceKm} km` : null,
+        point.bearingDeg != null ? `${point.bearingDeg}°` : null,
+        point.depthM != null ? `${point.depthM} m depth` : null,
+        point.species && point.species.length > 0 ? point.species.join(", ") : null,
+      ].filter(Boolean).join(" · ");
+      popup.innerHTML = `
+        <div style="font-family:sans-serif;font-size:12px;color:#0f172a;line-height:1.4;min-width:180px;">
+          <b style="color:#047857;font-size:13px;display:block;margin-bottom:2px;">🐟 ${escapeHtml(point.name)}</b>
+          <span style="color:#475569;font-size:11px;display:block;margin-bottom:4px;">${point.lat.toFixed(4)}°N, ${point.lon.toFixed(4)}°E</span>
+          ${details ? `<div style="color:#334155;font-size:11px;margin-bottom:4px;">${escapeHtml(details)}</div>` : ""}
+          <div style="border-top:1px solid #e2e8f0;padding-top:4px;margin-top:2px;font-size:10px;color:#64748b;">
+            <b>Source:</b> ${escapeHtml(advisory.source ?? "INCOIS PFZ Advisory")}
+          </div>
+        </div>
+      `;
       const tooltip = document.createElement("span");
-      tooltip.textContent = point.name;
-      const pin = L.circleMarker([point.lat, point.lon], { radius: 7, color: "#047857", fillColor: "#34d399", fillOpacity: 0.9, weight: 2 })
-        .bindTooltip(tooltip).bindPopup(popup);
-      pfzLayerRef.current?.addLayer(pin);
+      tooltip.textContent = `🐟 ${point.name}`;
+
+      // 1. Translucent outer circular zone / area-of-interest with subtle dashed boundary
+      const zone = L.circleMarker([point.lat, point.lon], {
+        radius: 20,
+        color: "#10b981",
+        weight: 1.2,
+        opacity: 0.65,
+        dashArray: "4, 4",
+        fillColor: "#059669",
+        fillOpacity: 0.20,
+      }).bindTooltip(tooltip).bindPopup(popup);
+
+      // 2. Soft inner radial glow around the center
+      const glow = L.circleMarker([point.lat, point.lon], {
+        radius: 10,
+        color: "#34d399",
+        weight: 1,
+        opacity: 0.35,
+        fillColor: "#34d399",
+        fillOpacity: 0.25,
+        interactive: false,
+      });
+
+      // 3. Bright green/teal center point marker with crisp light outline
+      const centerPin = L.circleMarker([point.lat, point.lon], {
+        radius: 4.5,
+        color: "#ffffff",
+        weight: 1.5,
+        opacity: 1,
+        fillColor: "#10b981",
+        fillOpacity: 1,
+      }).bindTooltip(tooltip).bindPopup(popup);
+
+      pfzLayerRef.current?.addLayer(zone);
+      pfzLayerRef.current?.addLayer(glow);
+      pfzLayerRef.current?.addLayer(centerPin);
     }
     for (const layer of [imblLineRef.current, imblMarkerRef.current]) {
       if (layer) { if (nearestImbl) layer.addTo(map); else layer.remove(); }

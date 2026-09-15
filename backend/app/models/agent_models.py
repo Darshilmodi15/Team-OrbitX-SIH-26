@@ -244,7 +244,7 @@ class OperationalRecommendation(BaseModel):
     title: str = Field(..., description="Clear, concise recommendation headline")
     directive: str = Field(..., description="Imperative actionable instruction for mariner / operator")
     priority: str = Field(default="MEDIUM", description="Urgency priority tier ('CRITICAL', 'HIGH', 'MEDIUM', 'INFO')")
-    confidence_score: float = Field(default=0.95, description="Confidence / reliability score from 0.0 to 1.0")
+    confidence_score: Optional[float] = Field(default=0.95, description="Confidence / reliability score from 0.0 to 1.0")
     reliability_tier: str = Field(default="AUTHORITATIVE_VERIFIED", description="Reliability grade ('AUTHORITATIVE_VERIFIED', 'MODEL_DERIVED', 'CACHED_ESTIMATE', 'ADVISORY')")
     supporting_evidence: List[str] = Field(default_factory=list, description="Specific quantitative observations, thresholds, and data points supporting this recommendation")
     reasoning: str = Field(..., description="Deductive step-by-step physical, regulatory, or ecological reasoning used to derive this recommendation")

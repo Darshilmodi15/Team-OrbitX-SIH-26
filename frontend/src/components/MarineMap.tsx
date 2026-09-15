@@ -76,19 +76,19 @@ const createSelectedPinIcon = () =>
     iconAnchor: [18, 36],
   });
 
-const createPFZIcon = (yieldLevel = 'High') =>
+const createPFZIcon = (_yieldLevel = 'High') =>
   L.divIcon({
     className: 'custom-pfz-marker',
     html: `
-      <div class="relative flex items-center justify-center w-8 h-8 cursor-pointer group">
-        <div class="absolute w-8 h-8 rounded-full bg-emerald-400/20 group-hover:scale-125 transition"></div>
-        <div class="w-6 h-6 rounded-full bg-emerald-600 border-2 border-white shadow-md flex items-center justify-center text-white text-[11px] font-bold">
-          🐟
+      <div class="relative flex items-center justify-center w-10 h-10 cursor-pointer group">
+        <div class="absolute w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-400/60 border-dashed group-hover:scale-110 transition"></div>
+        <div class="absolute w-5 h-5 rounded-full bg-emerald-400/30"></div>
+        <div class="w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-md flex items-center justify-center text-white text-[8px] font-bold">
         </div>
       </div>
     `,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
   });
 
 const createPortMarkerIcon = (portName?: string) =>
