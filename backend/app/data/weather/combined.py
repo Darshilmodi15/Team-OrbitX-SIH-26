@@ -50,7 +50,7 @@ class CombinedWeatherProvider(WeatherProvider):
         primary = self.primary.get_weather(lat=lat, lon=lon, date=date,
             time_hint=time_hint, temporal_res=temporal_res, **kwargs)
         if (primary.get("source") != "INCOIS_OSF_WW3" or primary.get("is_mock", True)
-                or primary.get("cache_status") not in {"live", "fresh", "cached", "hit"}):
+                or primary.get("cache_status") not in {"live", "fresh", "cached", "hit", "stale"}):
             return primary
         missing = [field for field in MARINE_FIELDS.values() if primary.get(field) is None]
         if not missing:

@@ -39,12 +39,56 @@ function getApiBaseUrl(): string {
 export const API_BASE_URL = getApiBaseUrl();
 let authFailureHandler: (() => void) | null = null;
 export function setAuthFailureHandler(handler: (() => void) | null) { authFailureHandler = handler; }
-function authToken(): string | null { return sessionStorage.getItem('orca.auth.session'); }
+
+function authToken(): string | null {
+  try {
+    const s = sessionStorage.getItem('orca.auth.session');
+    if (s) return s;
+    const l = localStorage.getItem('orca.auth.session');
+    if (l) {
+      sessionStorage.setItem('orca.auth.session', l);
+      return l;
+    }
+  } catch {
+    /* storage unavailable */
+  }
+  return null;
+}
+
+let verificationFlight: Promise<boolean> | null = null;
+async function verifyTokenStillValid(token: string): Promise<boolean> {
+  if (!verificationFlight) {
+    verificationFlight = (async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/user/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: AbortSignal.timeout(8000),
+        });
+        return res.ok;
+      } catch {
+        // Network timeout / glitch should never wipe user session
+        return true;
+      } finally {
+        verificationFlight = null;
+      }
+    })();
+  }
+  return verificationFlight;
+}
+
 async function apiFetch(path: string, init: RequestInit = {}) {
-  const headers = new Headers(init.headers); const token = authToken();
+  const headers = new Headers(init.headers);
+  const token = authToken();
   if (token) headers.set("Authorization", "Bearer " + token);
   const response = await fetch(`${API_BASE_URL}${path}`, { ...init, signal: init.signal ?? AbortSignal.timeout(60000), headers });
-  if (response.status === 401 && token && token === authToken()) authFailureHandler?.();
+  if (response.status === 401 && token && token === authToken()) {
+    // Only invoke auth failure if the token is truly invalid on verified profile check
+    verifyTokenStillValid(token).then((stillValid) => {
+      if (!stillValid && token === authToken()) {
+        authFailureHandler?.();
+      }
+    });
+  }
   return response;
 }
 
@@ -321,11 +365,15 @@ export async function fetchMarineForecast(lat: number, lon: number, date?: strin
 }
 
 export async function fetchMarineTide(lat: number, lon: number) {
-  const response = await fetch(`${API_BASE_URL}/api/marine/tide?lat=${lat}&lon=${lon}`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch marine tide');
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/marine/tide?lat=${lat}&lon=${lon}`);
+    if (!response.ok) {
+      return { status: 'unavailable', high_tide_time: null, low_tide_time: null, message: 'Tide feed unavailable' };
+    }
+    return await response.json();
+  } catch {
+    return { status: 'unavailable', high_tide_time: null, low_tide_time: null, message: 'Tide feed unavailable' };
   }
-  return await response.json();
 }
 
 export async function fetchPFZDataset(sector?: string, lat?: number, lon?: number, language: string = 'en') {

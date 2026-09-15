@@ -151,8 +151,8 @@ Generate the complete, natural response in language '{target_lang}':"""
         try:
             from google import genai
             client = genai.Client(api_key=api_key, http_options={"timeout": 20000})
-            preferred_model = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
-            candidate_models = [preferred_model, "gemini-3.5-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-flash-latest"]
+            preferred_model = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
+            candidate_models = [preferred_model, "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-flash-latest"]
             seen_models = set()
             models_to_try = []
             for m in candidate_models:
@@ -176,11 +176,17 @@ Generate the complete, natural response in language '{target_lang}':"""
                 except Exception as model_err:
                     last_err = model_err
                     status = getattr(model_err, "code", None)
-                    logger.warning("Gemini model %s failed (%s; status=%s)", model_name, type(model_err).__name__, status)
+                    logger.warning(
+                        "[ORCA AI Diagnostic] model=%s status=%s error=%s category=%s",
+                        model_name,
+                        status,
+                        type(model_err).__name__,
+                        "QUOTA_EXHAUSTED" if status == 429 else "AUTH_FAILED" if status in (401, 403) else "MODEL_FAILED"
+                    )
                     if status in (401, 403, 429):
-                        # Authentication/quota failures must surface promptly, not fan out
-                        # into more paid requests or a scripted answer.
+                        # API key invalid, forbidden, or account quota exhausted; stop retry chain
                         break
+                    # On 429 (per-model free-tier quota) or model not found, try next candidate
                     continue
 
             record("gemini", success=False, http_status=getattr(last_err, "code", 200) if last_err else 200, reason="QUOTA_EXHAUSTED" if getattr(last_err, "code", None) == 429 else "EMPTY_OR_FAILED")
