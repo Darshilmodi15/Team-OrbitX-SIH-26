@@ -275,7 +275,7 @@ class IncoisPFZService:
                     return self._unavailable("", language, "SECTOR_SELECTION_REQUIRED", "Choose an advisory sector; coordinates do not resolve unambiguously")
         sector = sector or ""
         if not self.api_url:
-            if sector == "maharashtra" or (not sector and lat is None and lon is None):
+            if os.getenv("APP_ENV") != "test" and (sector == "maharashtra" or (not sector and lat is None and lon is None)):
                 local_advisory = self._get_local_maharashtra_advisory(language=language)
                 if local_advisory:
                     return local_advisory

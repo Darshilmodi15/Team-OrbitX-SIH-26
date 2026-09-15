@@ -556,7 +556,7 @@ INDIC_EXPLICIT_PATTERNS = [
 ]
 
 GREETINGS_PATTERN = re.compile(
-    r'^(hi+|hello+|hey+|good\s+(morning|afternoon|evening)|how\s+are\s+you|kem\s+cho|namaste+|namaskar+|pranam+|suprabhat+|sat\s+sri\s+akal+|aadab+|vanakkam+|namaskaram+|namaskara)\b',
+    r'^(hi+|hello+|hey+|good\s+(morning|afternoon|evening)|how\s+are\s+you|kem\s+cho|namaste+|namaskar+|pranam+|suprabhat+|sat\s+sri\s+akal+|aadab+|vanakkam+|namaskaram+|namaskara|ok+|okay|thanks+|thank\s+you|dhanyawad+|shukriya+|aabhar+)\b',
     re.IGNORECASE,
 )
 
@@ -869,48 +869,52 @@ class BhashiniService:
         dominant_lang = "en"
         confidence = 0.9
 
+        fallback_used = False
         if substantive_segments:
             # Rule: For mixed sentences, prefer language of LATEST substantive sentence
             latest_seg, latest_lang = substantive_segments[-1]
             chosen_lang = latest_lang
             dominant_lang = latest_lang
             confidence = 0.95
-        elif greeting_segments:
-            # Only greetings present in query (e.g. "Kem cho?", "Namaste")
-            for _, g_lang in greeting_segments:
-                if g_lang != "en":
-                    chosen_lang = g_lang
-                    dominant_lang = g_lang
-                    if g_lang not in detected_languages:
-                        detected_languages.append(g_lang)
-                    break
-            if chosen_lang == "en" and greeting_segments:
-                chosen_lang = greeting_segments[-1][1]
-                dominant_lang = chosen_lang
-
-        # Fallback hierarchy if substantive query is in English / Latin script without non-English markers:
-        # Check: Saved profile preference -> requested_lang -> session language -> English
-        fallback_used = False
-        if chosen_lang == "en" and not any(l != "en" for l in detected_languages):
+            # Priority 2: Explicit English query stays English.
+            # When the user asks a substantive question in English, it remains English
+            # regardless of dashboard UI language (requested_lang) or saved profile preference.
+        else:
+            # No substantive question present (e.g. only greetings, acknowledgments, numbers, or empty)
             norm_profile = (user_profile_lang or "").lower().split("-")[0]
             norm_requested = (requested_lang or "").lower().split("-")[0]
             session_lang = self.get_session_language(session_id) if session_id else None
 
+            # Priority 3: Saved profile preference
             if norm_profile and norm_profile in SUPPORTED_LANGUAGES and norm_profile not in ("en", "auto"):
                 chosen_lang = norm_profile
                 dominant_lang = norm_profile
                 fallback_used = True
                 confidence = 0.8
+            # Priority 3b: UI requested language
             elif norm_requested and norm_requested in SUPPORTED_LANGUAGES and norm_requested not in ("en", "auto"):
                 chosen_lang = norm_requested
                 dominant_lang = norm_requested
                 fallback_used = True
                 confidence = 0.8
+            # Priority 6: Multi-turn session language
             elif session_lang and session_lang in SUPPORTED_LANGUAGES and session_lang != "en":
                 chosen_lang = session_lang
                 dominant_lang = session_lang
                 fallback_used = True
                 confidence = 0.75
+            elif greeting_segments:
+                # Regional greeting present (e.g. "Kem cho?", "Namaste")
+                for _, g_lang in greeting_segments:
+                    if g_lang != "en":
+                        chosen_lang = g_lang
+                        dominant_lang = g_lang
+                        if g_lang not in detected_languages:
+                            detected_languages.append(g_lang)
+                        break
+                if chosen_lang == "en" and greeting_segments:
+                    chosen_lang = greeting_segments[-1][1]
+                    dominant_lang = chosen_lang
 
         if session_id and chosen_lang in SUPPORTED_LANGUAGES:
             self.set_session_language(session_id, chosen_lang)

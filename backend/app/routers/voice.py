@@ -32,9 +32,12 @@ MAX_RECORDING_SECONDS = 45.0  # Hard server limit 45s
 
 
 def _resolve_caller_rate_key(request: Request, authorization: Optional[str] = None) -> str:
-    user = get_optional_current_user(authorization)
-    if user:
-        return f"user:{user.id}"
+    try:
+        user = get_optional_current_user(authorization)
+        if user:
+            return f"user:{user.id}"
+    except Exception:
+        pass
     client_ip = request.client.host if request.client else "127.0.0.1"
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
@@ -153,7 +156,7 @@ async def transcribe_audio_file(
         return JSONResponse(status_code=503, content={
             "success": False,
             "error_code": "STT_UPSTREAM_UNAVAILABLE",
-            "message": "Speech transcription temporarily unavailable.",
+            "message": "Voice transcription is temporarily unavailable.",
         })
 
     raw_transcript = result.get("transcript", "")
@@ -166,21 +169,31 @@ async def transcribe_audio_file(
         })
 
     transcript = raw_transcript.strip()
+    stt_detected = result.get("detected_iso")
+    stt_lang = stt_detected if (stt_detected and stt_detected != "auto") else (language if language and language != "auto" else None)
     from app.services.bhashini import bhashini_service
     decision = bhashini_service.determine_query_language(
         text=transcript,
-        requested_lang=language,
+        requested_lang=stt_lang or language,
+        user_profile_lang=stt_lang,
         transcription_provider="sarvam",
     )
-    sarvam_code = to_sarvam_code(decision.response_language)
-    lang_name = SUPPORTED_LANGUAGES.get(decision.response_language, decision.response_language.upper())
+    resp_lang = decision.response_language
+    if stt_lang and stt_lang not in ("en", "auto") and (resp_lang == "en" and not any(ord(c) >= 128 for c in transcript)):
+        resp_lang = stt_lang
+
+    sarvam_code = to_sarvam_code(resp_lang)
+    lang_name = SUPPORTED_LANGUAGES.get(resp_lang, resp_lang.upper())
+    eng_trans = decision.english_normalized_query
+    if resp_lang != "en" and eng_trans == transcript:
+        eng_trans = language_service.translate(transcript, source_lang=resp_lang, target_lang="en")
 
     return TranscribeResponse(
         transcript=transcript,
-        language=decision.response_language,
+        language=resp_lang,
         language_code=sarvam_code,
         language_name=lang_name,
-        english_transcript=decision.english_normalized_query,
+        english_transcript=eng_trans,
         source=result.get("source", "sarvam_saaras_v3"),
         is_mock=False,
         provider="sarvam",
@@ -241,21 +254,31 @@ def transcribe_base64_audio(
         raise HTTPException(status_code=400, detail="NO_SPEECH_DETECTED")
 
     transcript = raw_transcript.strip()
+    stt_detected = result.get("detected_iso")
+    stt_lang = stt_detected if (stt_detected and stt_detected != "auto") else (payload.language if payload.language and payload.language != "auto" else None)
     from app.services.bhashini import bhashini_service
     decision = bhashini_service.determine_query_language(
         text=transcript,
-        requested_lang=payload.language,
+        requested_lang=stt_lang or payload.language,
+        user_profile_lang=stt_lang,
         transcription_provider="sarvam",
     )
-    sarvam_code = to_sarvam_code(decision.response_language)
-    lang_name = SUPPORTED_LANGUAGES.get(decision.response_language, decision.response_language.upper())
+    resp_lang = decision.response_language
+    if stt_lang and stt_lang not in ("en", "auto") and (resp_lang == "en" and not any(ord(c) >= 128 for c in transcript)):
+        resp_lang = stt_lang
+
+    sarvam_code = to_sarvam_code(resp_lang)
+    lang_name = SUPPORTED_LANGUAGES.get(resp_lang, resp_lang.upper())
+    eng_trans = decision.english_normalized_query
+    if resp_lang != "en" and eng_trans == transcript:
+        eng_trans = language_service.translate(transcript, source_lang=resp_lang, target_lang="en")
 
     return TranscribeResponse(
         transcript=transcript,
-        language=decision.response_language,
+        language=resp_lang,
         language_code=sarvam_code,
         language_name=lang_name,
-        english_transcript=decision.english_normalized_query,
+        english_transcript=eng_trans,
         source=result.get("source", "sarvam_saaras_v3"),
         is_mock=False,
         provider="sarvam",
