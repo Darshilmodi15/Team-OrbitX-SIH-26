@@ -76,19 +76,23 @@ const createSelectedPinIcon = () =>
     iconAnchor: [18, 36],
   });
 
-const createPFZIcon = (_yieldLevel = 'High') =>
+const PFZ_COLOR_PALETTE = [
+  { border: '#00D9C5', fill: '#00D9C5', name: 'Cyan / Teal' },
+  { border: '#FFD84D', fill: '#FFD84D', name: 'Yellow / Gold' },
+  { border: '#A78BFA', fill: '#A78BFA', name: 'Purple / Violet' },
+];
+
+const createPFZIcon = (color = '#00D9C5') =>
   L.divIcon({
     className: 'custom-pfz-marker',
     html: `
-      <div class="relative flex items-center justify-center w-10 h-10 cursor-pointer group">
-        <div class="absolute w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-400/60 border-dashed group-hover:scale-110 transition"></div>
-        <div class="absolute w-5 h-5 rounded-full bg-emerald-400/30"></div>
-        <div class="w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-md flex items-center justify-center text-white text-[8px] font-bold">
-        </div>
+      <div class="relative flex items-center justify-center w-8 h-8 cursor-pointer group">
+        <div class="absolute w-7 h-7 rounded-full border border-dashed group-hover:scale-110 transition" style="background-color: ${color}22; border-color: ${color}99;"></div>
+        <div class="w-3 h-3 rounded-full border-2 border-white shadow-md" style="background-color: ${color};"></div>
       </div>
     `,
-    iconSize: [40, 40],
-    iconAnchor: [20, 20],
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
   });
 
 const createPortMarkerIcon = (portName?: string) =>
@@ -212,6 +216,7 @@ export default function MarineMap({
     showFarFromCoastWarning,
     dismissFarFromCoastWarning,
     handleSendMessage,
+    weather: contextWeather,
   } = useAppContext();
 
   const t = getStrings(currentLang);
@@ -223,6 +228,7 @@ export default function MarineMap({
 
   // ── Layer Toggles ──
   const [showPFZ, setShowPFZ] = useState(true);
+  const [showPFZCorridor, setShowPFZCorridor] = useState(true);
   const [showGeofences, setShowGeofences] = useState(true);
   const [showAlerts, setShowAlerts] = useState(true);
   const [showPorts, setShowPorts] = useState(true);
@@ -358,38 +364,75 @@ export default function MarineMap({
           icon={createUserVesselIcon()}
         />
 
-        {/* ── 2. Potential Fishing Zones (PFZ) ── */}
+        {/* ── 2A. Potential Fishing Zones (PFZ) Translucent Overlays (Compact, Dashed, Color-Coded) ── */}
         {showPFZ &&
-          activePfzZones.map((zone, idx) => (
-            <Marker
-              key={zone.id || `pfz-${idx}`}
-              position={[zone.latitude, zone.longitude]}
-              icon={createPFZIcon()}
-              eventHandlers={{
-                click: () => {
-                  setSelectedZone(zone);
-                  setHighlightedMapTarget({
-                    lat: zone.latitude,
-                    lon: zone.longitude,
-                    title: zone.name,
-                    type: 'pfz',
-                    zoom: 10,
-                  });
-                },
-              }}
-            >
-              <Tooltip direction="top" offset={[0, -10]} opacity={0.95}>
-                <div className="text-xs font-sans p-1 bg-white rounded-md text-slate-900 shadow-md">
-                  <p className="font-bold text-emerald-800 flex items-center gap-1">
-                    <span>🐟</span> {zone.name}
-                  </p>
-                  <p className="text-[10px] text-slate-600">
-                    Depth: {zone.depth_m || 45}m • {zone.species?.join(', ') || 'Pelagic'}
-                  </p>
-                </div>
-              </Tooltip>
-            </Marker>
-          ))}
+          showPFZCorridor &&
+          activePfzZones.map((zone, idx) => {
+            const colorScheme = PFZ_COLOR_PALETTE[idx % PFZ_COLOR_PALETTE.length];
+            const pad = 0.012; // Compact visual bounding box (~1.3 km pad)
+            const positions: [number, number][] = [
+              [zone.latitude - pad, zone.longitude - pad],
+              [zone.latitude - pad, zone.longitude + pad],
+              [zone.latitude + pad, zone.longitude + pad],
+              [zone.latitude + pad, zone.longitude - pad],
+            ];
+            return (
+              <Polygon
+                key={`pfz-zone-sq-${zone.id || idx}`}
+                positions={positions}
+                pathOptions={{
+                  color: colorScheme.border,
+                  weight: 2,
+                  opacity: 0.85,
+                  dashArray: '5, 5',
+                  fillColor: colorScheme.fill,
+                  fillOpacity: 0.14,
+                }}
+              >
+                <Tooltip direction="top" opacity={0.95}>
+                  <div className="text-xs font-sans font-bold text-slate-900 p-1">
+                    🐟 PFZ Zone {idx + 1}: {zone.name}
+                  </div>
+                </Tooltip>
+              </Polygon>
+            );
+          })}
+
+        {/* ── 2B. Potential Fishing Zones (PFZ) Station Points ── */}
+        {showPFZ &&
+          activePfzZones.map((zone, idx) => {
+            const colorScheme = PFZ_COLOR_PALETTE[idx % PFZ_COLOR_PALETTE.length];
+            return (
+              <Marker
+                key={zone.id || `pfz-${idx}`}
+                position={[zone.latitude, zone.longitude]}
+                icon={createPFZIcon(colorScheme.border)}
+                eventHandlers={{
+                  click: () => {
+                    setSelectedZone(zone);
+                    setHighlightedMapTarget({
+                      lat: zone.latitude,
+                      lon: zone.longitude,
+                      title: zone.name,
+                      type: 'pfz',
+                      zoom: 10,
+                    });
+                  },
+                }}
+              >
+                <Tooltip direction="top" offset={[0, -10]} opacity={0.95}>
+                  <div className="text-xs font-sans p-1 bg-white rounded-md text-slate-900 shadow-md">
+                    <p className="font-bold text-slate-900 flex items-center gap-1">
+                      <span>🐟</span> PFZ Zone {idx + 1}: {zone.name}
+                    </p>
+                    <p className="text-[10px] text-slate-600">
+                      Depth: {zone.depth_m || 45}m • {zone.species?.join(', ') || 'Pelagic'}
+                    </p>
+                  </div>
+                </Tooltip>
+              </Marker>
+            );
+          })}
 
         {/* ── 3. Maritime Geofences & Sovereign Boundaries (Localized) ── */}
         {showGeofences &&
@@ -503,26 +546,45 @@ export default function MarineMap({
             );
           })}
 
-        {/* ── 5. Optional Weather Vector Arrows ── */}
-        {showWeatherVectors && (
-          <CircleMarker
-            center={[activeUserLocation.lat + 0.05, activeUserLocation.lon + 0.05]}
-            radius={24}
-            pathOptions={{
-              color: '#0EA5E9',
-              fillColor: '#0EA5E9',
-              fillOpacity: 0.2,
-              weight: 2,
-              dashArray: '3, 3',
-            }}
-          >
-            <Tooltip direction="top" opacity={0.95}>
-              <div className="text-xs font-sans font-bold text-sky-800 p-1">
-                💨 Wind: 18.5 km/h WSW • Waves: 1.2m
-              </div>
-            </Tooltip>
-          </CircleMarker>
-        )}
+        {/* ── 6. Wind / Current Direction Vector Field ── */}
+        {showWeatherVectors && contextWeather && typeof contextWeather.wind_direction_deg === 'number' && (() => {
+          const windDir = contextWeather.wind_direction_deg;
+          const windSpeed = contextWeather.wind_speed_kmh;
+          const cardinal = contextWeather.wind_direction_cardinal || '';
+          const offsets = [-0.18, 0.0, 0.18];
+          return offsets.flatMap((dLat) =>
+            offsets.map((dLon) => {
+              const vLat = activeUserLocation.lat + dLat;
+              const vLon = activeUserLocation.lon + dLon;
+              const arrowIcon = L.divIcon({
+                className: 'custom-vector-marker',
+                html: `
+                  <div style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;transform:rotate(${windDir}deg);cursor:pointer;" title="Wind Vector: ${windSpeed != null ? `${windSpeed.toFixed(1)} km/h · ` : ''}${windDir}° (${cardinal})">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.75;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.35));">
+                      <line x1="12" y1="19" x2="12" y2="5"></line>
+                      <polyline points="6 11 12 5 18 11"></polyline>
+                    </svg>
+                  </div>
+                `,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12],
+              });
+              return (
+                <Marker
+                  key={`vec-${vLat.toFixed(3)}-${vLon.toFixed(3)}`}
+                  position={[vLat, vLon]}
+                  icon={arrowIcon}
+                >
+                  <Tooltip direction="top" opacity={0.95}>
+                    <div className="text-xs font-sans font-bold text-sky-800 p-1">
+                      💨 Wind: {windSpeed != null ? `${windSpeed.toFixed(1)} km/h · ` : ''}${windDir}° {cardinal ? `(${cardinal})` : ''}
+                    </div>
+                  </Tooltip>
+                </Marker>
+              );
+            })
+          );
+        })()}
       </MapContainer>
 
       {/* ═════════════════════════════════════════════════════
@@ -635,6 +697,20 @@ export default function MarineMap({
           </div>
 
           <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() => setShowPFZCorridor(!showPFZCorridor)}
+              className={`w-full flex items-center justify-between p-2 rounded-xl transition cursor-pointer ${
+                showPFZCorridor ? 'bg-emerald-950/70 border border-emerald-500/40 text-emerald-300' : 'bg-slate-800/60 text-slate-400'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <span className="size-3.5 rounded-xs border border-emerald-400/80 bg-emerald-500/20 border-dashed shrink-0" />
+                <span>PFZ Corridor</span>
+              </span>
+              <span className="font-mono text-[10px] font-bold">{showPFZCorridor ? 'ON' : 'OFF'}</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setShowPFZ(!showPFZ)}

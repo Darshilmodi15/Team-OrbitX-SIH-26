@@ -51,10 +51,16 @@ export default function MapPage() {
               </li>
               <li className="flex items-center gap-2">
                 <span className="relative flex size-3.5 items-center justify-center shrink-0" aria-hidden="true">
-                  <span className="absolute size-3.5 rounded-full border border-emerald-400/80 bg-emerald-500/20 border-dashed" />
-                  <span className="size-1.5 rounded-full bg-emerald-400 ring-1 ring-white" />
+                  <span className="absolute size-3.5 rounded-xs border-2 border-[#00D9C5] bg-[#00D9C5]/20 border-dashed" />
+                  <span className="size-1.5 rounded-full bg-[#00D9C5] ring-1 ring-white" />
                 </span>
-                <span>{lang === "en" ? "PFZ — " : ""}{t("glossary.pfz.full")}</span>
+                <span>{lang === "en" ? "PFZ Fishing Zone — " : ""}{t("glossary.pfz.full")}</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="flex size-3.5 items-center justify-center shrink-0 text-sky-500 font-bold text-xs" aria-hidden="true">
+                  ➔
+                </span>
+                <span>{lang === "en" ? "Wind / Current Vectors — " : ""}Direction & Speed</span>
               </li>
               <li className="flex items-center gap-2">
                 <span className="h-0.5 w-4 border-t-2 border-dashed border-red-500 shrink-0" aria-hidden />

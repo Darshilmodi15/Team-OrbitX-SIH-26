@@ -1,8 +1,10 @@
 import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import type { Map as LeafletMap, Marker, Circle, Polyline, LayerGroup } from "leaflet";
 import { useQuery } from "@tanstack/react-query";
+import { Layers, Fish, ShieldAlert, Wind, MapPin, X } from "lucide-react";
 import { useI18n } from "@/lib/orca/i18n";
 import { usePFZ } from "@/lib/orca/use-pfz";
+import { fetchMarineBundle } from "@/lib/orca/marine";
 import { mapCopy } from "@/lib/orca/map-copy";
 import { COASTAL_BUFFER_KM, INDIA_BOUNDS, type Coords } from "@/lib/orca/geo";
 import { COASTAL_CITIES } from "@/data/maritimeData";
@@ -49,6 +51,13 @@ function escapeHtml(value: unknown): string {
     .replace(/'/g, "&#39;");
 }
 
+function degToCardinal(deg?: number | null): string {
+  if (deg == null) return "";
+  const val = Math.round(deg / 22.5);
+  const points = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
+  return points[val % 16] || "";
+}
+
 /** Reference map: provider points do not imply a navigable route or zone extent. */
 export default function CoastMap({
   center,
@@ -71,16 +80,35 @@ export default function CoastMap({
   const markerRef = useRef<Marker | null>(null);
   const bufferCircleRef = useRef<Circle | null>(null);
   const pfzLayerRef = useRef<LayerGroup | null>(null);
-  const [ready, setReady] = useState(false);
-  const [tileError, setTileError] = useState(false);
+  const corridorLayerRef = useRef<LayerGroup | null>(null);
+  const vectorLayerRef = useRef<LayerGroup | null>(null);
   const imblLayerRef = useRef<LayerGroup | null>(null);
   const cityLayerRef = useRef<LayerGroup | null>(null);
+
+  const [ready, setReady] = useState(false);
+  const [tileError, setTileError] = useState(false);
+
+  // ── Tactical Layer Controls State ──
+  const [showPFZ, setShowPFZ] = useState(true);
+  const [showPFZCorridor, setShowPFZCorridor] = useState(true);
+  const [showVectors, setShowVectors] = useState(true);
+  const [showBoundaries, setShowBoundaries] = useState(true);
+  const [showCities, setShowCities] = useState(true);
+  const [showLayersMenu, setShowLayersMenu] = useState(false);
 
   const selectRef = useRef(onSelect);
   selectRef.current = onSelect;
   const { t, lang } = useI18n();
 
   const { advisory } = usePFZ(selectedSector || undefined, selectedSector ? undefined : center, lang);
+
+  const { data: marineBundle } = useQuery({
+    queryKey: ["marine-weather-map", center.lat.toFixed(2), center.lon.toFixed(2)],
+    queryFn: ({ signal }) => fetchMarineBundle(center, signal),
+    staleTime: 10 * 60 * 1000,
+    retry: 1,
+  });
+
   const { data: geofenceDataset } = useQuery({
     queryKey: ["geofences", center.lat.toFixed(2), center.lon.toFixed(2)],
     queryFn: () => fetchGeofences(center.lat, center.lon),
@@ -194,7 +222,6 @@ export default function CoastMap({
       }
 
       if (list.length > 0) {
-        // Tag primary representative segment for label pin
         Object.values(longestSegmentByPair).forEach(({ idx }) => {
           if (list[idx]) {
             list[idx].isPrimaryRepresentative = true;
@@ -258,142 +285,257 @@ export default function CoastMap({
       bufferCircleRef.current.bindTooltip(`${t("map.coastalZone")} (${COASTAL_BUFFER_KM} km)`);
     }
 
+const PFZ_COLOR_PALETTE = [
+  { border: "#00D9C5", fill: "#00D9C5", name: "Cyan / Teal" },
+  { border: "#FFD84D", fill: "#FFD84D", name: "Yellow / Gold" },
+  { border: "#A78BFA", fill: "#A78BFA", name: "Purple / Violet" },
+];
+
+    // 3. Update PFZ Points and Compact Translucent Overlays
     pfzLayerRef.current?.clearLayers();
-    for (const point of advisory.points) {
-      // A point advisory does not establish a fishing-zone radius or polygon.
-      const popup = document.createElement("div");
-      const details = [
-        point.distanceKm != null ? `${point.distanceKm} km` : null,
-        point.bearingDeg != null ? `${point.bearingDeg}°` : null,
-        point.depthM != null ? `${point.depthM} m depth` : null,
-        point.species && point.species.length > 0 ? point.species.join(", ") : null,
-      ].filter(Boolean).join(" · ");
-      popup.innerHTML = `
-        <div style="font-family:sans-serif;font-size:12px;color:#0f172a;line-height:1.4;min-width:180px;">
-          <b style="color:#047857;font-size:13px;display:block;margin-bottom:2px;">🐟 ${escapeHtml(point.name)}</b>
-          <span style="color:#475569;font-size:11px;display:block;margin-bottom:4px;">${point.lat.toFixed(4)}°N, ${point.lon.toFixed(4)}°E</span>
-          ${details ? `<div style="color:#334155;font-size:11px;margin-bottom:4px;">${escapeHtml(details)}</div>` : ""}
-          <div style="border-top:1px solid #e2e8f0;padding-top:4px;margin-top:2px;font-size:10px;color:#64748b;">
-            <b>Source:</b> ${escapeHtml(advisory.source ?? "INCOIS PFZ Advisory")}
-          </div>
-        </div>
-      `;
-      const tooltip = document.createElement("span");
-      tooltip.textContent = `🐟 ${point.name}`;
+    corridorLayerRef.current?.clearLayers();
 
-      // 1. Translucent outer circular zone / area-of-interest with subtle dashed boundary
-      const zone = L.circleMarker([point.lat, point.lon], {
-        radius: 20,
-        color: "#10b981",
-        weight: 1.2,
-        opacity: 0.65,
-        dashArray: "4, 4",
-        fillColor: "#059669",
-        fillOpacity: 0.20,
-      }).bindTooltip(tooltip).bindPopup(popup);
+    if (showPFZ && advisory.points.length > 0) {
+      advisory.points.forEach((point, idx) => {
+        const colorScheme = PFZ_COLOR_PALETTE[idx % PFZ_COLOR_PALETTE.length];
 
-      // 2. Soft inner radial glow around the center
-      const glow = L.circleMarker([point.lat, point.lon], {
-        radius: 10,
-        color: "#34d399",
-        weight: 1,
-        opacity: 0.35,
-        fillColor: "#34d399",
-        fillOpacity: 0.25,
-        interactive: false,
-      });
+        // 3A. Translucent Compact PFZ Zone Overlay (Small, translucent, dashed square around station)
+        if (showPFZCorridor) {
+          const pad = 0.012; // Compact visual bounding square (~1.3 km pad)
+          const zoneBounds: [[number, number], [number, number]] = [
+            [point.lat - pad, point.lon - pad],
+            [point.lat + pad, point.lon + pad],
+          ];
 
-      // 3. Bright green/teal center point marker with crisp light outline
-      const centerPin = L.circleMarker([point.lat, point.lon], {
-        radius: 4.5,
-        color: "#ffffff",
-        weight: 1.5,
-        opacity: 1,
-        fillColor: "#10b981",
-        fillOpacity: 1,
-      }).bindTooltip(tooltip).bindPopup(popup);
+          const zoneRect = L.rectangle(zoneBounds, {
+            color: colorScheme.border,
+            weight: 2,
+            opacity: 0.85,
+            dashArray: "5, 5",
+            fillColor: colorScheme.fill,
+            fillOpacity: 0.14,
+          });
 
-      pfzLayerRef.current?.addLayer(zone);
-      pfzLayerRef.current?.addLayer(glow);
-      pfzLayerRef.current?.addLayer(centerPin);
-    }
+          const zonePopup = `
+            <div style="font-family:sans-serif;font-size:12px;color:#0f172a;line-height:1.4;min-width:190px;">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                <span style="font-size:13px;">🐟</span>
+                <b style="color:${colorScheme.border};font-size:12px;">PFZ Zone ${idx + 1}: ${escapeHtml(point.name)}</b>
+              </div>
+              <span style="display:inline-block;padding:1px 6px;border-radius:4px;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;font-size:10px;font-weight:700;margin-bottom:6px;">
+                Potential Fishing Zone
+              </span>
+              <div style="font-size:11px;color:#334155;margin-bottom:4px;">
+                <b>Coordinates:</b> ${point.lat.toFixed(4)}°N, ${point.lon.toFixed(4)}°E<br/>
+                ${point.depthM != null ? `<b>Depth:</b> ${point.depthM} m<br/>` : ""}
+                ${point.species && point.species.length > 0 ? `<b>Species:</b> ${escapeHtml(point.species.join(", "))}<br/>` : ""}
+                ${point.distanceKm != null ? `<b>Distance:</b> ${point.distanceKm} km` : ""}
+              </div>
+              <div style="border-top:1px solid #e2e8f0;padding-top:4px;font-size:10px;color:#64748b;">
+                <b>Source:</b> ${escapeHtml(advisory.issuingAuthority ?? advisory.source ?? "ESSO-INCOIS, Govt. of India")}<br/>
+                ${advisory.validUntil ? `<b>Valid Until:</b> ${new Date(advisory.validUntil).toLocaleString()}` : ""}
+              </div>
+            </div>
+          `;
 
-    // 4. Update IMBL (International Maritime Boundary Line) Visual Layers
-    if (imblLayerRef.current) {
-      imblLayerRef.current.clearLayers();
-      for (const segment of allBoundarySegments) {
-        const polyline = L.polyline(segment.coordinates, {
-          color: "#ef4444",
-          weight: 2.5,
-          dashArray: "6, 6",
-          opacity: 0.85,
-        });
+          zoneRect.bindTooltip(`🐟 PFZ Zone ${idx + 1} (${escapeHtml(point.name)})`, {
+            direction: "top",
+            sticky: true,
+          });
+          zoneRect.bindPopup(zonePopup);
+          corridorLayerRef.current?.addLayer(zoneRect);
+        }
 
-        const midIdx = Math.floor(segment.coordinates.length / 2);
-        const midPt = segment.coordinates[midIdx] ?? segment.coordinates[0];
-        const distInfo = segment.distanceToVesselKm != null
-          ? `${segment.distanceToVesselKm.toFixed(1)} km from vessel`
-          : (nearestImbl && nearestImbl.name.includes(segment.countryPair.split("—")[1]?.trim() || "") && nearestImbl.distanceToVesselKm != null)
-          ? `${nearestImbl.distanceToVesselKm.toFixed(1)} km from vessel`
-          : null;
-
-        const imblPopupHtml = `
-          <div style="font-family:sans-serif;font-size:12px;color:#0f172a;line-height:1.4;min-width:200px;">
-            <b style="color:#dc2626;font-size:13px;display:block;margin-bottom:2px;">🚨 International Maritime Boundary</b>
-            <span style="font-weight:700;color:#0f172a;font-size:12px;display:block;margin-bottom:2px;">${escapeHtml(segment.countryPair)}</span>
-            <span style="color:#475569;font-size:11px;display:block;margin-bottom:4px;">
-              <b>Type:</b> ${escapeHtml(segment.lineType)}${segment.lengthKm ? ` · ${segment.lengthKm.toFixed(1)} km` : ""}
-              ${distInfo ? `<br/><span style="color:#dc2626;font-weight:600;">${escapeHtml(distInfo)}</span>` : ""}
-            </span>
+        // 3B. Individual PFZ Advisory Station Point inside the square
+        const popup = document.createElement("div");
+        const details = [
+          point.distanceKm != null ? `${point.distanceKm} km` : null,
+          point.bearingDeg != null ? `${point.bearingDeg}°` : null,
+          point.depthM != null ? `${point.depthM} m depth` : null,
+          point.species && point.species.length > 0 ? point.species.join(", ") : null,
+        ].filter(Boolean).join(" · ");
+        popup.innerHTML = `
+          <div style="font-family:sans-serif;font-size:12px;color:#0f172a;line-height:1.4;min-width:180px;">
+            <b style="color:#047857;font-size:13px;display:block;margin-bottom:2px;">🐟 ${escapeHtml(point.name)}</b>
+            <span style="color:#475569;font-size:11px;display:block;margin-bottom:4px;">${point.lat.toFixed(4)}°N, ${point.lon.toFixed(4)}°E</span>
+            ${details ? `<div style="color:#334155;font-size:11px;margin-bottom:4px;">${escapeHtml(details)}</div>` : ""}
             <div style="border-top:1px solid #e2e8f0;padding-top:4px;margin-top:2px;font-size:10px;color:#64748b;">
-              <b>Source:</b> ${escapeHtml(segment.source)}<br/>
-              ${segment.docDate ? `<b>Date:</b> ${escapeHtml(segment.docDate.replace("Z", ""))}` : ""}
+              <b>Source:</b> ${escapeHtml(advisory.source ?? "INCOIS PFZ Advisory")}
             </div>
           </div>
         `;
+        const tooltip = document.createElement("span");
+        tooltip.textContent = `🐟 ${point.name}`;
 
-        polyline.bindTooltip(`🚨 ${segment.countryPair}${segment.lineType ? ` (${segment.lineType})` : ""}${distInfo ? ` · ${distInfo}` : ""}`, {
-          sticky: true,
-          direction: "top",
+        // Outer radial zone marker
+        const zone = L.circleMarker([point.lat, point.lon], {
+          radius: 12,
+          color: colorScheme.border,
+          weight: 1.2,
+          opacity: 0.65,
+          dashArray: "3, 3",
+          fillColor: colorScheme.fill,
+          fillOpacity: 0.20,
+        }).bindTooltip(tooltip).bindPopup(popup);
+
+        // Soft inner glow
+        const glow = L.circleMarker([point.lat, point.lon], {
+          radius: 6,
+          color: colorScheme.border,
+          weight: 1,
+          opacity: 0.35,
+          fillColor: colorScheme.fill,
+          fillOpacity: 0.25,
+          interactive: false,
         });
-        polyline.bindPopup(imblPopupHtml);
-        imblLayerRef.current.addLayer(polyline);
 
-        if (segment.isPrimaryRepresentative && midPt) {
-          const imblIcon = L.divIcon({
-            className: "orca-imbl-pin",
-            html: `<div style="display:inline-flex;align-items:center;gap:4px;background:rgba(127,29,29,0.94);color:#fca5a5;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;border:1.5px dashed #ef4444;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.5);cursor:pointer;"><span style="width:6px;height:6px;border-radius:50%;background:#ef4444;box-shadow:0 0 6px #ef4444;"></span>🚨 ${escapeHtml(segment.countryPair)}</div>`,
-            iconSize: [120, 22],
-            iconAnchor: [60, 11],
+        // Crisp center pin marker
+        const centerPin = L.circleMarker([point.lat, point.lon], {
+          radius: 4,
+          color: "#ffffff",
+          weight: 1.5,
+          opacity: 1,
+          fillColor: colorScheme.border,
+          fillOpacity: 1,
+        }).bindTooltip(tooltip).bindPopup(popup);
+
+        pfzLayerRef.current?.addLayer(zone);
+        pfzLayerRef.current?.addLayer(glow);
+        pfzLayerRef.current?.addLayer(centerPin);
+      });
+    }
+
+    // 4. Update Wind / Current Direction Vectors (Only when legitimate data exists)
+    vectorLayerRef.current?.clearLayers();
+    const currentMarine = marineBundle?.current;
+    const isWindAvailable = currentMarine && currentMarine.windDirectionDeg != null && currentMarine.dataMode !== "unavailable";
+
+    if (showVectors && isWindAvailable && currentMarine) {
+      const windDir = currentMarine.windDirectionDeg!;
+      const windSpeed = currentMarine.windSpeedKmh;
+      const cardinal = degToCardinal(windDir);
+
+      // Lightweight 3x3 marine vector grid around the vessel/center
+      const offsets = [-0.18, 0.0, 0.18];
+      offsets.forEach((dLat) => {
+        offsets.forEach((dLon) => {
+          const vLat = center.lat + dLat;
+          const vLon = center.lon + dLon;
+
+          const arrowHtml = `
+            <div style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;transform:rotate(${windDir}deg);cursor:pointer;" title="Wind Vector: ${windSpeed != null ? `${windSpeed.toFixed(1)} km/h · ` : ''}${windDir}° (${cardinal})">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.75;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.35));">
+                <line x1="12" y1="19" x2="12" y2="5"></line>
+                <polyline points="6 11 12 5 18 11"></polyline>
+              </svg>
+            </div>
+          `;
+
+          const arrowIcon = L.divIcon({
+            className: "orca-vector-arrow",
+            html: arrowHtml,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
           });
 
-          const pinMarker = L.marker([midPt[0], midPt[1]], { icon: imblIcon }).bindPopup(imblPopupHtml);
-          imblLayerRef.current.addLayer(pinMarker);
+          const vectorMarker = L.marker([vLat, vLon], {
+            icon: arrowIcon,
+            interactive: true,
+          });
+
+          vectorMarker.bindTooltip(
+            `<div style="font-family:sans-serif;font-size:11px;font-weight:700;color:#0369a1;padding:2px;">
+              💨 Wind: ${windSpeed != null ? `${windSpeed.toFixed(1)} km/h · ` : ''}${windDir}° (${cardinal})
+              <div style="font-size:9px;color:#64748b;font-weight:normal;">Source: ${escapeHtml(currentMarine.primarySource ?? "Marine Weather Feed")}</div>
+            </div>`,
+            { direction: "top", opacity: 0.95 }
+          );
+
+          vectorLayerRef.current?.addLayer(vectorMarker);
+        });
+      });
+    }
+
+    // 5. Update IMBL (International Maritime Boundary Line) Visual Layers
+    if (imblLayerRef.current) {
+      imblLayerRef.current.clearLayers();
+      if (showBoundaries) {
+        for (const segment of allBoundarySegments) {
+          const polyline = L.polyline(segment.coordinates, {
+            color: "#ef4444",
+            weight: 2.5,
+            dashArray: "6, 6",
+            opacity: 0.85,
+          });
+
+          const midIdx = Math.floor(segment.coordinates.length / 2);
+          const midPt = segment.coordinates[midIdx] ?? segment.coordinates[0];
+          const distInfo = segment.distanceToVesselKm != null
+            ? `${segment.distanceToVesselKm.toFixed(1)} km from vessel`
+            : (nearestImbl && nearestImbl.name.includes(segment.countryPair.split("—")[1]?.trim() || "") && nearestImbl.distanceToVesselKm != null)
+            ? `${nearestImbl.distanceToVesselKm.toFixed(1)} km from vessel`
+            : null;
+
+          const imblPopupHtml = `
+            <div style="font-family:sans-serif;font-size:12px;color:#0f172a;line-height:1.4;min-width:200px;">
+              <b style="color:#dc2626;font-size:13px;display:block;margin-bottom:2px;">🚨 International Maritime Boundary</b>
+              <span style="font-weight:700;color:#0f172a;font-size:12px;display:block;margin-bottom:2px;">${escapeHtml(segment.countryPair)}</span>
+              <span style="color:#475569;font-size:11px;display:block;margin-bottom:4px;">
+                <b>Type:</b> ${escapeHtml(segment.lineType)}${segment.lengthKm ? ` · ${segment.lengthKm.toFixed(1)} km` : ""}
+                ${distInfo ? `<br/><span style="color:#dc2626;font-weight:600;">${escapeHtml(distInfo)}</span>` : ""}
+              </span>
+              <div style="border-top:1px solid #e2e8f0;padding-top:4px;margin-top:2px;font-size:10px;color:#64748b;">
+                <b>Source:</b> ${escapeHtml(segment.source)}<br/>
+                ${segment.docDate ? `<b>Date:</b> ${escapeHtml(segment.docDate.replace("Z", ""))}` : ""}
+              </div>
+            </div>
+          `;
+
+          polyline.bindTooltip(`🚨 ${segment.countryPair}${segment.lineType ? ` (${segment.lineType})` : ""}${distInfo ? ` · ${distInfo}` : ""}`, {
+            sticky: true,
+            direction: "top",
+          });
+          polyline.bindPopup(imblPopupHtml);
+          imblLayerRef.current.addLayer(polyline);
+
+          if (segment.isPrimaryRepresentative && midPt) {
+            const imblIcon = L.divIcon({
+              className: "orca-imbl-pin",
+              html: `<div style="display:inline-flex;align-items:center;gap:4px;background:rgba(127,29,29,0.94);color:#fca5a5;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;border:1.5px dashed #ef4444;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.5);cursor:pointer;"><span style="width:6px;height:6px;border-radius:50%;background:#ef4444;box-shadow:0 0 6px #ef4444;"></span>🚨 ${escapeHtml(segment.countryPair)}</div>`,
+              iconSize: [120, 22],
+              iconAnchor: [60, 11],
+            });
+
+            const pinMarker = L.marker([midPt[0], midPt[1]], { icon: imblIcon }).bindPopup(imblPopupHtml);
+            imblLayerRef.current.addLayer(pinMarker);
+          }
         }
       }
     }
 
-    // 5. Update Localized Coastal Cities
+    // 6. Update Localized Coastal Cities
     if (cityLayerRef.current) {
       cityLayerRef.current.clearLayers();
-      COASTAL_CITIES.filter((c) => c.priority).forEach((city) => {
-        const localizedName = getLocalizedCityName(city.id, city.name, lang);
-        const cityIcon = L.divIcon({
-          className: "orca-city-pin",
-          html: `<div style="display:inline-flex;align-items:center;gap:3px;background:rgba(15,23,42,0.88);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;border:1px solid rgba(255,255,255,0.5);white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.4);cursor:pointer;"><span style="width:4px;height:4px;border-radius:50%;background:#38bdf8;"></span>${localizedName}</div>`,
-          iconSize: [80, 20],
-          iconAnchor: [40, 10],
+      if (showCities) {
+        COASTAL_CITIES.filter((c) => c.priority).forEach((city) => {
+          const localizedName = getLocalizedCityName(city.id, city.name, lang);
+          const cityIcon = L.divIcon({
+            className: "orca-city-pin",
+            html: `<div style="display:inline-flex;align-items:center;gap:3px;background:rgba(15,23,42,0.88);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;border:1px solid rgba(255,255,255,0.5);white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.4);cursor:pointer;"><span style="width:4px;height:4px;border-radius:50%;background:#38bdf8;"></span>${localizedName}</div>`,
+            iconSize: [80, 20],
+            iconAnchor: [40, 10],
+          });
+          const marker = L.marker([city.lat, city.lon], { icon: cityIcon, title: localizedName }).on(
+            "click",
+            () => {
+              selectRef.current?.({ lat: city.lat, lon: city.lon });
+            }
+          );
+          cityLayerRef.current?.addLayer(marker);
         });
-        const marker = L.marker([city.lat, city.lon], { icon: cityIcon, title: localizedName }).on(
-          "click",
-          () => {
-            selectRef.current?.({ lat: city.lat, lon: city.lon });
-          }
-        );
-        cityLayerRef.current?.addLayer(marker);
-      });
+      }
     }
-  }, [center, lang, allBoundarySegments, nearestImbl, imblProximityStatus, advisory, t]);
+  }, [center, lang, allBoundarySegments, nearestImbl, imblProximityStatus, advisory, marineBundle, showPFZ, showPFZCorridor, showVectors, showBoundaries, showCities, t]);
 
   useEffect(() => {
     let disposed = false;
@@ -454,7 +596,9 @@ export default function CoastMap({
         fillOpacity: 0.08,
       }).addTo(map);
 
+      corridorLayerRef.current = L.layerGroup().addTo(map);
       pfzLayerRef.current = L.layerGroup().addTo(map);
+      vectorLayerRef.current = L.layerGroup().addTo(map);
       imblLayerRef.current = L.layerGroup().addTo(map);
       cityLayerRef.current = L.layerGroup().addTo(map);
 
@@ -484,6 +628,8 @@ export default function CoastMap({
   }, [updateMapLayers, ready, satellite]);
 
   useEffect(() => { mapRef.current?.setView([center.lat, center.lon], mapRef.current.getZoom()); }, [center.lat, center.lon, ready, satellite]);
+
+  const isWindAvailable = marineBundle?.current && marineBundle.current.windDirectionDeg != null && marineBundle.current.dataMode !== "unavailable";
 
   return (
     <div className="space-y-2">
@@ -523,12 +669,132 @@ export default function CoastMap({
         </div>
       )}
 
-      {interactive && <button type="button" disabled={!advisory.points.length} className="min-h-10 rounded-md border px-3 text-sm disabled:opacity-50" onClick={() => {
-        const L = leafletRef.current;
-        if (L && advisory.points.length) mapRef.current?.fitBounds(L.latLngBounds(advisory.points.map(p => [p.lat, p.lon] as [number, number])), { padding: [28, 28], maxZoom: 10 });
-      }}>{mapCopy[lang].fit}</button>}
+      {/* ── Top Bar Controls: Fit Bounds Button & Layer Selector ── */}
+      <div className="flex items-center justify-between gap-2">
+        {interactive && (
+          <button
+            type="button"
+            disabled={!advisory.points.length}
+            className="min-h-10 rounded-md border px-3 text-sm disabled:opacity-50 cursor-pointer bg-card hover:bg-accent/20 transition"
+            onClick={() => {
+              const L = leafletRef.current;
+              if (L && advisory.points.length) {
+                mapRef.current?.fitBounds(
+                  L.latLngBounds(advisory.points.map((p) => [p.lat, p.lon] as [number, number])),
+                  { padding: [28, 28], maxZoom: 10 }
+                );
+              }
+            }}
+          >
+            {mapCopy[lang].fit}
+          </button>
+        )}
+
+        {interactive && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowLayersMenu(!showLayersMenu)}
+              className="min-h-10 flex items-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-foreground hover:bg-accent/20 transition cursor-pointer shadow-xs"
+              aria-expanded={showLayersMenu}
+            >
+              <Layers className="h-4 w-4 text-primary" />
+              <span>{t("map.layers") || "Layers"}</span>
+            </button>
+
+            {showLayersMenu && (
+              <div className="absolute right-0 top-11 z-30 w-64 rounded-lg border border-border bg-card/95 p-3 shadow-xl backdrop-blur-md text-xs text-foreground space-y-2.5">
+                <div className="flex items-center justify-between border-b border-border pb-1.5">
+                  <span className="font-bold flex items-center gap-1.5 text-foreground">
+                    <Layers className="h-3.5 w-3.5 text-primary" />
+                    <span>Tactical GIS Layers</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowLayersMenu(false)}
+                    className="text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span className="flex items-center gap-2">
+                    <Fish className="h-3.5 w-3.5 text-emerald-500" />
+                    <span>PFZ Fishing Zones (Overlays)</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={showPFZCorridor}
+                    onChange={(e) => setShowPFZCorridor(e.target.checked)}
+                    className="rounded border-border accent-emerald-600"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span className="flex items-center gap-2">
+                    <span className="size-2 rounded-full bg-emerald-500" />
+                    <span>PFZ Station Points</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={showPFZ}
+                    onChange={(e) => setShowPFZ(e.target.checked)}
+                    className="rounded border-border accent-emerald-600"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span className="flex items-center gap-2">
+                    <Wind className="h-3.5 w-3.5 text-sky-500" />
+                    <span>Wind Direction Vectors</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={showVectors}
+                    onChange={(e) => setShowVectors(e.target.checked)}
+                    className="rounded border-border accent-sky-600"
+                  />
+                </label>
+                {!isWindAvailable && showVectors && (
+                  <p className="text-[10px] text-muted-foreground pl-5 italic">
+                    Vector telemetry unavailable for current location
+                  </p>
+                )}
+
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span className="flex items-center gap-2">
+                    <ShieldAlert className="h-3.5 w-3.5 text-red-500" />
+                    <span>IMBL & Boundaries</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={showBoundaries}
+                    onChange={(e) => setShowBoundaries(e.target.checked)}
+                    className="rounded border-border accent-red-600"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span className="flex items-center gap-2">
+                    <MapPin className="h-3.5 w-3.5 text-amber-500" />
+                    <span>Coastal Cities</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={showCities}
+                    onChange={(e) => setShowCities(e.target.checked)}
+                    className="rounded border-border accent-amber-600"
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {tileError && <p role="status" className="text-sm text-muted-foreground">{mapCopy[lang].tiles}</p>}
-      <div ref={el} style={{ height }} className="w-full overflow-hidden rounded-md border border-border shadow-xs" role="region" aria-label={t("map.title")} />
+      <div ref={el} style={{ height }} className="w-full overflow-hidden rounded-md border border-border shadow-xs relative" role="region" aria-label={t("map.title")} />
     </div>
   );
 }
