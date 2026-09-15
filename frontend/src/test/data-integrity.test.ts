@@ -11,7 +11,7 @@ describe("production marine data integrity", () => {
     expect(result.weatherCode).toBeNull();
   });
   it.each([["fresh", "fresh"], ["live", "fresh"], ["cached", "cached"], ["hit", "cached"], ["stale", "stale"], ["unavailable", "unavailable"], [undefined, "unavailable"]])("maps %s to %s", (status, expected) => {
-    expect(normalizeBackendCurrent({ cache_status: status }).dataMode).toBe(expected);
+    expect(normalizeBackendCurrent({ cache_status: status, forecast_valid_at: "2026-09-14T04:00:00Z" }).dataMode).toBe(expected);
   });
   it("does not turn missing evidence into a calm safety verdict", () => {
     expect(safetyFrom(null, null)).toBe("unknown");

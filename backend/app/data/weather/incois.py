@@ -396,7 +396,7 @@ class IncoisWeatherProvider(WeatherProvider):
             wind_speed_kmh = round(wind_speed_ms * 3.6, 1)
             forecast = derive_forecast_condition(hs, wind_speed_kmh)
 
-            issued_at = live_raw.get("issued_at") or live_raw["forecast_time"]
+            issued_at = live_raw.get("issued_at")
             forecast_valid_at = live_raw.get("forecast_valid_at") or live_raw["forecast_time"]
             now_iso = datetime.now(timezone.utc).isoformat()
 

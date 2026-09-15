@@ -229,7 +229,7 @@ def test_open_meteo_future_hourly_selection():
     assert res["forecast_valid_at"] == "2026-09-10T06:00:00Z"
     assert res["wave_height_m"] == 1.8
     assert res["wind_speed_kmh"] == 22.0
-    assert res["issued_at"] is not None
+    assert res["issued_at"] is None  # API valid time does not establish model issuance.
     assert res["retrieved_at"] is not None
 
 

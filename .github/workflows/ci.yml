@@ -35,6 +35,8 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements.txt
       - run: python -m pip install -r requirements.txt
+      - name: Test release record validation
+        run: python -m unittest discover -s ../tools -p 'test_*.py' -v
       - name: Run deterministic backend suite
         run: python -m pytest -q --junitxml=test-results/backend.xml
       - uses: actions/upload-artifact@v4
@@ -71,3 +73,17 @@ jobs:
           name: frontend-test-results
           path: frontend/test-results/frontend.xml
           if-no-files-found: warn
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Record candidate build hashes (not release approval)
+        run: python ../tools/release_check.py record --output "${{ runner.temp }}/release-record.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-candidate-${{ github.sha }}
+          path: |
+            frontend/dist
+            ${{ runner.temp }}/release-record.json
+          if-no-files-found: error
+          retention-days: 30

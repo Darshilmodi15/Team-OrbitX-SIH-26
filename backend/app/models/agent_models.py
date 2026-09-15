@@ -20,9 +20,22 @@ class WeatherEvidence(BaseModel):
     wind_gust_kmh: Optional[float] = Field(default=None, description="Peak wind gust speed in km/h")
     wind_direction_deg: Optional[float] = Field(default=None, description="Wind direction in degrees (0-360)")
     wind_direction_cardinal: Optional[str] = Field(default=None, description="Wind direction cardinal compass (e.g. 'WSW')")
-    temperature_c: Optional[float] = Field(default=None, description="Sea surface or ambient temperature in Celsius")
+    temperature_c: Optional[float] = Field(default=None, description="Air temperature in Celsius")
     sea_surface_temperature_c: Optional[float] = Field(default=None, description="Sea surface temperature in Celsius")
     visibility_km: Optional[float] = Field(default=None, description="Visibility in kilometers")
+
+    wind_wave_height_m: Optional[float] = None
+    wind_wave_direction_deg: Optional[float] = None
+    wind_wave_period_s: Optional[float] = None
+    swell_wave_height_m: Optional[float] = None
+    swell_wave_direction_deg: Optional[float] = None
+    swell_wave_period_s: Optional[float] = None
+    ocean_current_speed_kmh: Optional[float] = None
+    ocean_current_direction_deg: Optional[float] = None
+    supplemental_fields: Dict[str, Any] = Field(default_factory=dict)
+    marine_forecast_valid_at: Optional[str] = None
+    weather_forecast_valid_at: Optional[str] = None
+    measurement_kind: Optional[str] = None
 
     # Three distinct, truthful timestamps
     issued_at: Optional[str] = Field(default=None, description="Provider numerical model run issuance timestamp")

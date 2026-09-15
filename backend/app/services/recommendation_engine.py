@@ -59,40 +59,21 @@ class RecommendationReasoningEngine:
             best_pfz: PFZEvidence = bundle.pfz_zones[0]
             rec_id = f"REC-PFZ-{rec_index:02d}"
             rec_index += 1
-            bearing_str = f"{int(best_pfz.bearing_deg)}° ({cls._deg_to_cardinal(best_pfz.bearing_deg)})" if best_pfz.bearing_deg is not None else "N/A"
-            depth_str = f"~{int(best_pfz.depth_m)}m" if best_pfz.depth_m is not None else "25-45m"
-            suit_score = best_pfz.suitability_score or 88.0
-
             evidence = [
-                f"Top Target Fishing Zone: '{best_pfz.name}' located at ({best_pfz.latitude:.4f}°N, {best_pfz.longitude:.4f}°E)",
-                f"Geodesic Distance from Port/Vessel: {best_pfz.distance_km:.1f} km ({best_pfz.distance_km / 1.852:.1f} NM)",
-                f"True Compass Heading: {bearing_str}",
-                f"Bathymetric Seafloor Depth: {depth_str}",
-                f"Dominant Target Pelagic Species: {', '.join(best_pfz.species)}",
-                f"Operational Suitability Score: {suit_score:.0f}/100",
-                f"Data Provenance: {best_pfz.source}",
+                f"Advisory point: {best_pfz.name} ({best_pfz.latitude:.4f}, {best_pfz.longitude:.4f})",
+                f"Straight-line distance from selected location: {best_pfz.distance_km:.1f} km; not a navigable route",
+                f"Published depth: {str(best_pfz.depth_m) + ' m' if best_pfz.depth_m is not None else 'unavailable'}",
+                f"Published species: {', '.join(best_pfz.species) or 'unavailable'}",
+                f"Source: {best_pfz.source}",
             ]
-            reasoning = (
-                f"1. Oceanographic front detection: Satellite Earth Observation identifies active chlorophyll-a aggregation and thermal boundaries at {best_pfz.name}.\n"
-                f"2. Distance-fuel optimization: At {best_pfz.distance_km:.1f} km, this hotspot represents the highest Catch-Per-Unit-Effort (CPUE) to fuel-consumption ratio.\n"
-                f"3. Bathymetric ecology: Seafloor depth of {depth_str} matches optimal feeding contours for {', '.join(best_pfz.species[:2])}.\n"
-                f"4. Navigational feasibility: Compass heading {bearing_str} provides direct open-water transit clear of known shoals.\n"
-                f"5. Actionable directive: Steer designated heading, deploy drift gillnets or longlines at targeted depth."
-            )
-            recommendations.append(
-                OperationalRecommendation(
-                    id=rec_id,
-                    category="FISHING",
-                    title=f"Potential Fishing Zone Advisory: {best_pfz.name}",
-                    directive=f"Set navigational heading to {bearing_str} towards {best_pfz.name} ({best_pfz.distance_km:.1f} km). Target pelagic shoals of {', '.join(best_pfz.species)} at depth {depth_str} using appropriate hook sizes or gillnets.",
-                    priority="HIGH",
-                    confidence_score=round(suit_score / 100.0, 2) if suit_score else 0.75,
-                    reliability_tier="MODEL_DERIVED",
-                    supporting_evidence=evidence,
-                    reasoning=reasoning,
-                    source="orca_pfz_advisory_agent",
-                )
-            )
+            recommendations.append(OperationalRecommendation(
+                id=rec_id, category="FISHING", title=f"PFZ advisory reference: {best_pfz.name}",
+                directive="Review the current source advisory and official marine warnings before planning a fishing trip.",
+                priority="INFO", confidence_score=None, reliability_tier="REFERENCE_ESTIMATE",
+                supporting_evidence=evidence,
+                reasoning="This is a published advisory point. The available evidence does not establish catch probability, optimal depth, fuel efficiency or a safe route to it.",
+                source=best_pfz.source,
+            ))
 
         # -------------------------------------------------------------
         # 3. Safe Navigational Route Recommendation

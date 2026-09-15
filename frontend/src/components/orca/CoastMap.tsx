@@ -42,8 +42,10 @@ export default function CoastMap({
   height = 420,
   onSelect,
   satellite = false,
+  selectedSector,
 }: {
   satellite?: boolean;
+  selectedSector?: string;
   center: Coords;
   interactive?: boolean | undefined;
   height?: number | undefined;
@@ -65,7 +67,7 @@ export default function CoastMap({
   selectRef.current = onSelect;
   const { t, lang } = useI18n();
 
-  const { advisory } = usePFZ();
+  const { advisory } = usePFZ(selectedSector || undefined, selectedSector ? undefined : center, lang);
   const { data: geofenceDataset } = useQuery({
     queryKey: ["geofences", center.lat.toFixed(2), center.lon.toFixed(2)],
     queryFn: () => fetchGeofences(center.lat, center.lon),

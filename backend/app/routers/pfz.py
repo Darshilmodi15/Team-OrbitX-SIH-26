@@ -1,17 +1,17 @@
 """Public PFZ availability contract; historical fixtures are never current advisories."""
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Query
-from app.services.pfz.incois_pfz_service import incois_pfz_service
+from fastapi import APIRouter, Query, HTTPException
+from app.services.pfz.incois_pfz_service import incois_pfz_service, COASTAL_SECTORS, LANGUAGES
 
 router = APIRouter(prefix="/api", tags=["PFZ"])
 
 
 @router.get("/pfz", summary="Retrieve Potential Fishing Zones dataset")
 def get_pfz_dataset(
-    sector: Optional[str] = Query(None, description="Coastal sector code (e.g. maharashtra, gujarat)"),
-    lat: Optional[float] = Query(None, description="User latitude coordinate for sector auto-detection"),
-    lon: Optional[float] = Query(None, description="User longitude coordinate for sector auto-detection"),
-    language: str = Query("en", description="Target language code"),
+    sector: Optional[str] = Query(None, max_length=40, description="Coastal advisory sector code"),
+    lat: Optional[float] = Query(None, ge=-90, le=90, allow_inf_nan=False),
+    lon: Optional[float] = Query(None, ge=-180, le=180, allow_inf_nan=False),
+    language: str = Query("en", max_length=2, description="Target language code"),
 ) -> Dict[str, Any]:
     """Return verified INCOIS PFZ advisory or explicit availability.
 
@@ -19,6 +19,10 @@ def get_pfz_dataset(
     sector metadata, issuing authority, and numeric latitude/longitude in pfz_zones.
     No repository fixture, request time, or screenshot date is a live feed.
     """
+    if sector is not None and sector not in COASTAL_SECTORS:
+        raise HTTPException(422, "Unknown PFZ sector")
+    if language not in LANGUAGES or (lat is None) != (lon is None):
+        raise HTTPException(422, "Provide a supported language and a complete coordinate pair")
     return incois_pfz_service.get_advisory(
         sector=sector,
         lat=lat,
@@ -27,7 +31,7 @@ def get_pfz_dataset(
     )
 
 
-@router.get("/pfz/sectors", summary="List official coastal sectors and advisory status")
+@router.get("/pfz/sectors", summary="List advisory sector names and approximate selection hints")
 def get_pfz_sectors() -> List[Dict[str, Any]]:
-    """Returns official INCOIS coastal sectors with geographical bounds and landing centres."""
+    """Bounds are ORCA selection hints, not official polygons or marine boundaries."""
     return incois_pfz_service.get_sectors()

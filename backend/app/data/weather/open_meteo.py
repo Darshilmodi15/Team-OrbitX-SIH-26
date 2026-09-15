@@ -80,6 +80,27 @@ def _get_visibility_category(vis_km: Optional[float]) -> Optional[str]:
 from app.services.temporal import TemporalResolution, resolve_query_time, verify_forecast_timestamp
 
 
+# Open-Meteo Marine variables and ORCA field names; current velocity is km/h.
+MARINE_FIELDS = {
+    "wave_height": "wave_height_m", "wave_direction": "wave_direction_deg", "wave_period": "wave_period_s",
+    "wind_wave_height": "wind_wave_height_m", "wind_wave_direction": "wind_wave_direction_deg", "wind_wave_period": "wind_wave_period_s",
+    "swell_wave_height": "swell_wave_height_m", "swell_wave_direction": "swell_wave_direction_deg", "swell_wave_period": "swell_wave_period_s",
+    "sea_surface_temperature": "sea_surface_temperature_c",
+    "ocean_current_velocity": "ocean_current_speed_kmh", "ocean_current_direction": "ocean_current_direction_deg",
+}
+
+
+def utc_stamp(stamp):
+    if not isinstance(stamp, str):
+        return None
+    try:
+        dt = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+        # Requests explicitly use UTC; the API omits the suffix in ISO responses.
+        return dt.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z") if dt.tzinfo is None else dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    except ValueError:
+        return None
+
+
 class OpenMeteoWeatherProvider(WeatherProvider):
     """
     Production-grade Marine Weather Data Provider.
@@ -112,7 +133,7 @@ class OpenMeteoWeatherProvider(WeatherProvider):
         # Fetch independently: a failed atmosphere request must not discard waves.
         endpoints = {
             "marine": ("https://marine-api.open-meteo.com/v1/marine",
-                       "wave_height,wave_direction,wave_period", "wave_height,wave_period,wave_direction"),
+                       ",".join(MARINE_FIELDS), ",".join(MARINE_FIELDS)),
             "weather": ("https://api.open-meteo.com/v1/forecast",
                         "temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover,visibility,precipitation",
                         "wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code,visibility,cloud_cover,precipitation,temperature_2m"),
@@ -122,7 +143,8 @@ class OpenMeteoWeatherProvider(WeatherProvider):
             for name, (url, current, hourly) in endpoints.items():
                 try:
                     response = client.get(url, params={"latitude": lat, "longitude": lon,
-                        "current": current, "hourly": hourly, "timezone": "UTC"})
+                        "current": current, "hourly": hourly, "timezone": "UTC",
+                        **({"cell_selection": "sea"} if name == "marine" else {"wind_speed_unit": "kmh"})})
                     response.raise_for_status()
                     payload = response.json()
                     payloads[name] = payload if isinstance(payload, dict) else {}
@@ -130,22 +152,22 @@ class OpenMeteoWeatherProvider(WeatherProvider):
                     logger.warning("Open-Meteo %s unavailable (%s)", name, type(err).__name__)
                     payloads[name] = {}
 
-        def value(data, key, scale=1, nonnegative=True):
+        def value(data, key, scale=1, nonnegative=True, digits=2):
             raw = data.get(key)
             if raw is None or isinstance(raw, bool):
                 return None
             try:
                 number = float(raw) * scale
-                return round(number, 2) if math.isfinite(number) and (not nonnegative or number >= 0) else None
+                return round(number, digits) if math.isfinite(number) and (not nonnegative or number >= 0) else None
             except (TypeError, ValueError):
                 return None
 
         mh = payloads.get("marine", {}).get("hourly") or {}
         wh = payloads.get("weather", {}).get("hourly") or {}
         def rows(hourly):
-            return {stamp: {key: values[i] if i < len(values) else None
+            return {utc_stamp(stamp): {key: values[i] if i < len(values) else None
                     for key, values in hourly.items() if key != "time" and isinstance(values, list)}
-                    for i, stamp in enumerate(hourly.get("time", []))}
+                    for i, stamp in enumerate(hourly.get("time", [])) if utc_stamp(stamp)}
         mr, wr = rows(mh), rows(wh)
         all_stamps = sorted(set(mr) | set(wr))
 
@@ -153,7 +175,7 @@ class OpenMeteoWeatherProvider(WeatherProvider):
         weather_curr = payloads.get("weather", {}).get("current") or {}
 
         selected_stamp = None
-        issued_at = weather_curr.get("time") or marine_curr.get("time") or (all_stamps[0] if all_stamps else None)
+        issued_at = None  # Forecast valid time is not model-run issuance.
 
         if temporal_res.is_explicit_future and all_stamps:
             # Find hourly timesteps on the requested target date
@@ -205,7 +227,7 @@ class OpenMeteoWeatherProvider(WeatherProvider):
             temp = value(w_data, "temperature_2m", nonnegative=False)
         else:
             # Current conditions
-            current_time = marine_curr.get("time") or weather_curr.get("time")
+            current_time = utc_stamp(marine_curr.get("time")) or utc_stamp(weather_curr.get("time"))
             wave = value(marine_curr, "wave_height")
             wave_period = value(marine_curr, "wave_period")
             wave_direction = value(marine_curr, "wave_direction")
@@ -217,6 +239,22 @@ class OpenMeteoWeatherProvider(WeatherProvider):
             gust = value(weather_curr, "wind_gusts_10m")
             precip = value(weather_curr, "precipitation")
             temp = value(weather_curr, "temperature_2m", nonnegative=False)
+
+        selected_marine = mr.get(selected_stamp, {}) if selected_stamp else marine_curr
+        selected_weather = wr.get(selected_stamp, {}) if selected_stamp else weather_curr
+        marine_time = selected_stamp if selected_stamp and selected_marine else utc_stamp(marine_curr.get("time")) if not selected_stamp else None
+        weather_time = selected_stamp if selected_stamp and selected_weather else utc_stamp(weather_curr.get("time")) if not selected_stamp else None
+        marine_values = {}
+        for variable, field in MARINE_FIELDS.items():
+            reading = value(selected_marine, variable, nonnegative=variable != "sea_surface_temperature")
+            if variable.endswith("direction") and reading is not None and reading > 360:
+                reading = None
+            marine_values[field] = reading if marine_time else None
+        # A failed future selection must never return today's measurements with a future date.
+        if temporal_res.is_explicit_future and not selected_stamp:
+            marine_values = dict.fromkeys(MARINE_FIELDS.values())
+            wave = wave_period = wave_direction = wind = direction = visibility = cloud = code = gust = precip = temp = None
+            marine_time = weather_time = current_time = None
 
         if code not in WMO_FORECAST_MAP:
             code = None
@@ -234,8 +272,13 @@ class OpenMeteoWeatherProvider(WeatherProvider):
             "visibility_km": visibility, "visibility_category": _get_visibility_category(visibility),
             "precipitation_mm": precip,
             "temperature_c": temp,
-            # No SST variable is supplied by these requests. Air temperature is not SST.
-            "sea_surface_temperature_c": None,
+            **marine_values,
+            "marine_forecast_valid_at": marine_time,
+            "weather_forecast_valid_at": weather_time,
+            "measurement_kind": "model_forecast",
+            "grid_lat": value(payloads.get("marine", {}), "latitude", nonnegative=False, digits=6),
+            "grid_lon": value(payloads.get("marine", {}), "longitude", nonnegative=False, digits=6),
+            "resolution_method": "provider_selected_sea_cell",
             "issued_at": issued_at,
             "forecast_valid_at": current_time,
             "retrieved_at": now_iso,
@@ -259,7 +302,7 @@ class OpenMeteoWeatherProvider(WeatherProvider):
                     break
 
         if (
-            all(result.get(k) is None for k in ("wave_height_m", "wind_speed_kmh", "temperature_c", "visibility_km", "weather_code"))
+            all(result.get(k) is None for k in (*MARINE_FIELDS.values(), "wind_speed_kmh", "temperature_c", "visibility_km", "weather_code"))
             or (temporal_res.is_explicit_future and not selected_stamp)
         ):
             result.update(cache_status="unavailable", forecast="data_unavailable", forecast_valid_at=None, forecast_time=None)

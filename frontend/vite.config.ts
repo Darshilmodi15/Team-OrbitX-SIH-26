@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config'
+import { offlineTripReader } from './tooling/offline-plugin.js'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { fileURLToPath, URL } from 'node:url'
@@ -7,6 +8,7 @@ import { fileURLToPath, URL } from 'node:url'
 export default defineConfig({
   plugins: [
     react(),
+    offlineTripReader(),
     tailwindcss(),
   ],
   resolve: {

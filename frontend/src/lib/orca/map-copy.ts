@@ -15,6 +15,7 @@ type MapCopy = Record<
   | "points"
   | "tiles"
   | "sector"
+  | "autoSector"
   | "allSectors"
   | "coverageGap"
   | "authority",
@@ -37,8 +38,9 @@ export const mapCopy: Record<LangCode, MapCopy> = {
     "points": "Advisory points",
     "tiles": "Map imagery could not load. Use Text only.",
     "sector": "Coastal Sector",
+    "autoSector": "From selected location",
     "allSectors": "All sectors",
-    "coverageGap": "Coverage gap — no advisory issued",
+    "coverageGap": "Coverage unavailable — issuance not verified",
     "authority": "Authority",
   },
   "hi": {
@@ -56,8 +58,9 @@ export const mapCopy: Record<LangCode, MapCopy> = {
     "points": "परामर्श बिंदु",
     "tiles": "मानचित्र लोड नहीं हुआ। केवल पाठ चुनें।",
     "sector": "तटीय क्षेत्र",
+    "autoSector": "चुने हुए स्थान से",
     "allSectors": "सभी क्षेत्र",
-    "coverageGap": "कवरेज अंतराल — कोई परामर्श जारी नहीं",
+    "coverageGap": "कवरेज उपलब्ध नहीं — परामर्श जारी होने की पुष्टि नहीं",
     "authority": "प्राधिकरण",
   },
   "gu": {
@@ -75,8 +78,9 @@ export const mapCopy: Record<LangCode, MapCopy> = {
     "points": "સલાહના બિંદુઓ",
     "tiles": "નકશો લોડ થયો નથી. માત્ર લખાણ પસંદ કરો.",
     "sector": "દરિયાકાંઠાનો વિસ્તાર",
+    "autoSector": "પસંદ કરેલા સ્થાન પરથી",
     "allSectors": "બધા સેક્ટર",
-    "coverageGap": "કવરેજ ગેપ — કોઈ સલાહ જારી નથી",
+    "coverageGap": "કવરેજ ઉપલબ્ધ નથી — સલાહ જારી થયાની પુષ્ટિ નથી",
     "authority": "સત્તામંડળ",
   },
   "mr": {
@@ -94,8 +98,9 @@ export const mapCopy: Record<LangCode, MapCopy> = {
     "points": "सल्ल्याचे बिंदू",
     "tiles": "नकाशा लोड झाला नाही. फक्त मजकूर निवडा.",
     "sector": "किनारपट्टी क्षेत्र",
+    "autoSector": "निवडलेल्या स्थानावरून",
     "allSectors": "सर्व क्षेत्रे",
-    "coverageGap": "कव्हरेज गॅप — कोणताही सल्ला जारी नाही",
+    "coverageGap": "कव्हरेज उपलब्ध नाही — सल्ला जारी झाल्याची पुष्टी नाही",
     "authority": "प्राधिकरण",
   },
   "ta": {
@@ -113,8 +118,9 @@ export const mapCopy: Record<LangCode, MapCopy> = {
     "points": "அறிவுரை இடங்கள்",
     "tiles": "வரைபடம் ஏறவில்லை. உரை மட்டும் தேர்ந்தெடுக்கவும்.",
     "sector": "கடலோர மண்டலம்",
+    "autoSector": "தேர்ந்தெடுத்த இடத்திலிருந்து",
     "allSectors": "அனைத்து மண்டலங்களும்",
-    "coverageGap": "இடைவெளி — அறிவுரை வெளியிடப்படவில்லை",
+    "coverageGap": "தகவல் கிடைக்கவில்லை — அறிவுரை வெளியீடு உறுதிப்படுத்தப்படவில்லை",
     "authority": "அதிகாரம்",
   },
   "te": {
@@ -132,8 +138,9 @@ export const mapCopy: Record<LangCode, MapCopy> = {
     "points": "సలహా ప్రదేశాలు",
     "tiles": "పటం లోడ్ కాలేదు. వచనం మాత్రమే ఎంచుకోండి.",
     "sector": "తీర ప్రాంతం",
+    "autoSector": "ఎంచుకున్న స్థానం నుండి",
     "allSectors": "అన్ని రంగాలు",
-    "coverageGap": "పరిధి లేని ప్రాంతం — సలహా జారీ కాలేదు",
+    "coverageGap": "సమాచారం అందుబాటులో లేదు — సలహా జారీ నిర్ధారించబడలేదు",
     "authority": "అథారిటీ",
   },
   "ml": {
@@ -151,8 +158,9 @@ export const mapCopy: Record<LangCode, MapCopy> = {
     "points": "നിർദേശ സ്ഥലങ്ങൾ",
     "tiles": "ഭൂപടം ലഭ്യമല്ല. വാചകം മാത്രം തിരഞ്ഞെടുക്കുക.",
     "sector": "തീരദേശ മേഖല",
+    "autoSector": "തിരഞ്ഞെടുത്ത സ്ഥലത്തിൽ നിന്ന്",
     "allSectors": "എല്ലാ മേഖലകളും",
-    "coverageGap": "കവറേജ് ലഭ്യമല്ല — നിർദേശം നൽകിയിട്ടില്ല",
+    "coverageGap": "വിവരം ലഭ്യമല്ല — നിർദേശം നൽകിയതായി സ്ഥിരീകരിച്ചിട്ടില്ല",
     "authority": "അധികാര കേന്ദ്രം",
   },
   "bn": {
@@ -170,8 +178,9 @@ export const mapCopy: Record<LangCode, MapCopy> = {
     "points": "পরামর্শের স্থান",
     "tiles": "মানচিত্র লোড হয়নি। শুধু লেখা বেছে নিন।",
     "sector": "উপকূলীয় অঞ্চল",
+    "autoSector": "নির্বাচিত অবস্থান থেকে",
     "allSectors": "সকল অঞ্চল",
-    "coverageGap": "কভারেজ ফাঁক — কোনো পরামর্শ জারি হয়নি",
+    "coverageGap": "তথ্য অনুপলব্ধ — পরামর্শ জারির নিশ্চয়তা নেই",
     "authority": "কর্তৃপক্ষ",
   },
   "kn": {
@@ -189,8 +198,9 @@ export const mapCopy: Record<LangCode, MapCopy> = {
     "points": "ಸಲಹೆಯ ಸ್ಥಳಗಳು",
     "tiles": "ನಕ್ಷೆ ಲೋಡ್ ಆಗಿಲ್ಲ. ಪಠ್ಯ ಮಾತ್ರ ಆಯ್ಕೆಮಾಡಿ.",
     "sector": "ಕರಾವಳಿ ವಲಯ",
+    "autoSector": "ಆಯ್ಕೆಮಾಡಿದ ಸ್ಥಳದಿಂದ",
     "allSectors": "ಎಲ್ಲಾ ವಲಯಗಳು",
-    "coverageGap": "ವ್ಯಾಪ್ತಿ ಅಂತರ — ಯಾವುದೇ ಸಲಹೆ ಬಿಡುಗಡೆಯಾಗಿಲ್ಲ",
+    "coverageGap": "ಮಾಹಿತಿ ಲಭ್ಯವಿಲ್ಲ — ಸಲಹೆ ಬಿಡುಗಡೆಯ ದೃಢೀಕರಣ ಇಲ್ಲ",
     "authority": "ಪ್ರಾಧಿಕಾರ",
   },
   "or": {
@@ -208,8 +218,9 @@ export const mapCopy: Record<LangCode, MapCopy> = {
     "points": "ପରାମର୍ଶ ସ୍ଥାନ",
     "tiles": "ମାନଚିତ୍ର ଲୋଡ୍ ହୋଇନି। କେବଳ ପାଠ୍ୟ ବାଛନ୍ତୁ।",
     "sector": "ଉପକୂଳ କ୍ଷେତ୍ର",
+    "autoSector": "ବାଛିଥିବା ସ୍ଥାନରୁ",
     "allSectors": "ସମସ୍ତ କ୍ଷେତ୍ର",
-    "coverageGap": "କଭରେଜ୍ ଅନ୍ତରାଳ — କୌଣସି ପରାମର୍ଶ ଜାରି ହୋଇନାହିଁ",
+    "coverageGap": "ତଥ୍ୟ ଉପଲବ୍ଧ ନାହିଁ — ପରାମର୍ଶ ଜାରି ନିଶ୍ଚିତ ହୋଇନାହିଁ",
     "authority": "ପ୍ରାଧିକରଣ",
   },
   "pa": {
@@ -227,8 +238,9 @@ export const mapCopy: Record<LangCode, MapCopy> = {
     "points": "ਸਲਾਹ ਦੇ ਸਥਾਨ",
     "tiles": "ਨਕਸ਼ਾ ਲੋਡ ਨਹੀਂ ਹੋਇਆ। ਸਿਰਫ਼ ਲਿਖਤ ਚੁਣੋ।",
     "sector": "ਤੱਟਵਰਤੀ ਖੇਤਰ",
+    "autoSector": "ਚੁਣੇ ਹੋਏ ਸਥਾਨ ਤੋਂ",
     "allSectors": "ਸਾਰੇ ਖੇਤਰ",
-    "coverageGap": "ਕਵਰੇਜ ਅੰਤਰਾਲ — ਕੋਈ ਸਲਾਹ ਜਾਰੀ ਨਹੀਂ",
+    "coverageGap": "ਜਾਣਕਾਰੀ ਉਪਲਬਧ ਨਹੀਂ — ਸਲਾਹ ਜਾਰੀ ਹੋਣ ਦੀ ਪੁਸ਼ਟੀ ਨਹੀਂ",
     "authority": "ਅਥਾਰਟੀ",
   }
 };

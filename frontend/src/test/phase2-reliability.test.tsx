@@ -4,7 +4,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { I18nProvider } from "@/lib/orca/i18n";
 import { PFZAdvisory } from "@/components/orca/PFZAdvisory";
-import { fetchPFZDataset, fetchPFZSectors, fetchProviderHealth, fetchSatelliteStatus } from "@/services/api";
 
 const mocks = vi.hoisted(() => ({
   fetchPFZ: vi.fn(),
@@ -50,7 +49,7 @@ describe("Phase 2 — Live data and truthful availability contracts", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("status")).toHaveTextContent("No current PFZ advisory available");
-      expect(screen.getByRole("status")).toHaveTextContent("Coverage gap — no advisory issued");
+      expect(screen.getByRole("status")).toHaveTextContent("Coverage unavailable — issuance not verified");
     });
   });
 
@@ -74,7 +73,7 @@ describe("Phase 2 — Live data and truthful availability contracts", () => {
     expect(select).toBeInTheDocument();
 
     await userEvent.selectOptions(select, "maharashtra");
-    expect(mocks.fetchPFZ).toHaveBeenCalledWith("maharashtra", undefined, undefined, undefined);
+    expect(mocks.fetchPFZ).toHaveBeenCalledWith("maharashtra", undefined, undefined, "en");
   });
 
   it("renders verified live advisory points with issuing authority dates", async () => {

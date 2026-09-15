@@ -1,14 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useId } from "react";
 import { useI18n } from "@/lib/orca/i18n";
 import { usePFZ } from "@/lib/orca/use-pfz";
 import { mapCopy } from "@/lib/orca/map-copy";
 import { formatCoords } from "@/lib/orca/geo";
 
-export function PFZAdvisory({ showPoints = false }: { showPoints?: boolean }) {
+export function PFZAdvisory({ showPoints = false, selectedSector: controlledSector, onSectorChange, coords }: { showPoints?: boolean; selectedSector?: string; onSectorChange?: (sector: string) => void; coords?: { lat: number; lon: number } }) {
   const { lang, t } = useI18n();
   const copy = mapCopy[lang];
-  const [selectedSector, setSelectedSector] = useState<string>("");
-  const { advisory, isPending, isError, isFetching, refetch } = usePFZ(selectedSector || undefined);
+  const [localSector, setLocalSector] = useState("");
+  const selectedSector = controlledSector ?? localSector;
+  const setSelectedSector = onSectorChange ?? setLocalSector;
+  const selectId = useId();
+  const { advisory, isPending, isError, isFetching, refetch } = usePFZ(selectedSector || undefined, selectedSector ? undefined : coords, lang);
   const [online, setOnline] = useState(() => navigator.onLine);
 
   useEffect(() => {
@@ -19,18 +22,21 @@ export function PFZAdvisory({ showPoints = false }: { showPoints?: boolean }) {
   }, []);
 
   const sectors = [
-    { id: "", label: copy.allSectors },
+    { id: "", label: coords ? copy.autoSector : copy.allSectors },
     { id: "gujarat", label: "Gujarat" },
     { id: "maharashtra", label: "Maharashtra" },
     { id: "goa", label: "Goa" },
     { id: "karnataka", label: "Karnataka" },
     { id: "kerala", label: "Kerala" },
-    { id: "tamil_nadu", label: "Tamil Nadu & Puducherry" },
-    { id: "andhra_pradesh", label: "Andhra Pradesh" },
+    { id: "north_tamil_nadu", label: "North Tamil Nadu" },
+    { id: "south_tamil_nadu", label: "South Tamil Nadu" },
+    { id: "north_andhra_pradesh", label: "North Andhra Pradesh" },
+    { id: "south_andhra_pradesh", label: "South Andhra Pradesh" },
     { id: "odisha", label: "Odisha" },
     { id: "west_bengal", label: "West Bengal" },
     { id: "lakshadweep", label: "Lakshadweep" },
-    { id: "andaman_nicobar", label: "Andaman & Nicobar" },
+    { id: "andaman", label: "Andaman Islands" },
+    { id: "nicobar", label: "Nicobar Islands" },
   ];
 
   const date = (value: string | null) => value ? new Intl.DateTimeFormat(lang, { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }).format(new Date(value)) + " IST" : "—";
@@ -43,11 +49,11 @@ export function PFZAdvisory({ showPoints = false }: { showPoints?: boolean }) {
 
     {/* Sector Selector */}
     <div className="flex flex-wrap items-center gap-2 pt-1 pb-1">
-      <label htmlFor="pfz-sector-select" className="text-xs font-medium text-muted-foreground">
+      <label htmlFor={selectId} className="text-xs font-medium text-muted-foreground">
         {copy.sector}:
       </label>
       <select
-        id="pfz-sector-select"
+        id={selectId}
         value={selectedSector}
         onChange={(e) => setSelectedSector(e.target.value)}
         className="min-h-9 rounded-md border border-border bg-background px-2.5 py-1 text-xs"

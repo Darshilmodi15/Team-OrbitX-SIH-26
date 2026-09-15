@@ -20,12 +20,12 @@ function timestamp(value: unknown): string | null {
 
 export function normalizePFZ(value: unknown, now = Date.now()): PFZAdvisory {
   const raw = value && typeof value === "object" ? value as Record<string, unknown> : {};
-  const source = typeof raw.source === "string" && raw.source.trim() && !["unavailable", "mock", "demo"].includes(raw.source.trim().toLowerCase()) ? raw.source.trim() : null;
+  const source = typeof raw.source === "string" && raw.source.trim() && !["unavailable", "mock", "demo", "synthetic"].includes(raw.source.trim().toLowerCase()) ? raw.source.trim() : null;
   const issuedAt = timestamp(raw.issued_at);
   const validUntil = timestamp(raw.valid_until);
   const sector = typeof raw.sector === "string" ? raw.sector : null;
   const sectorName = typeof raw.sector_name === "string" ? raw.sector_name : null;
-  const issuingAuthority = typeof raw.issuing_authority === "string" ? raw.issuing_authority : "ESSO-INCOIS, Ministry of Earth Sciences, Govt. of India";
+  const issuingAuthority = typeof raw.issuing_authority === "string" ? raw.issuing_authority : null;
   const rawCoverage = typeof raw.coverage_status === "string" ? raw.coverage_status : undefined;
   const landingCentres = Array.isArray(raw.landing_centres) ? raw.landing_centres.map(String) : [];
 
@@ -40,11 +40,11 @@ export function normalizePFZ(value: unknown, now = Date.now()): PFZAdvisory {
     points: [] as PFZPoint[],
   };
 
-  if (!source || !issuedAt || !validUntil || !["live", "fresh", "cached"].includes(String(raw.data_mode)) || raw.is_demonstration === true || Date.parse(issuedAt) > now || Date.parse(validUntil) <= Date.parse(issuedAt)) {
+  if (!source || !issuedAt || !validUntil || !["live", "fresh", "cached", "stale"].includes(String(raw.data_mode)) || raw.is_demonstration === true || raw.is_mock === true || Date.parse(issuedAt) > now || Date.parse(validUntil) <= Date.parse(issuedAt)) {
     return {
       ...base,
       status: "unavailable",
-      coverageStatus: (rawCoverage as any) || (sector ? "coverage_gap" : "unconfigured"),
+      coverageStatus: rawCoverage === "unconfigured" ? "unconfigured" : "coverage_gap",
     };
   }
   if (Date.parse(validUntil) <= now) {
@@ -54,18 +54,19 @@ export function normalizePFZ(value: unknown, now = Date.now()): PFZAdvisory {
       coverageStatus: "expired",
     };
   }
+  if (raw.data_mode === "stale") return { ...base, status: "unavailable", coverageStatus: "coverage_gap" };
   const points = (Array.isArray(raw.pfz_zones) ? raw.pfz_zones : []).flatMap((zone: unknown, index) => {
     if (!zone || typeof zone !== "object") return [];
     const z = zone as Record<string, unknown>;
     const lat = z.latitude;
     const lon = z.longitude;
-    if (typeof lat !== "number" || typeof lon !== "number" || !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180 || z.is_demonstration === true) return [];
+    if (typeof lat !== "number" || typeof lon !== "number" || !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180 || z.is_demonstration === true || z.is_mock === true) return [];
     return [{ id: String(z.id ?? index), name: typeof z.landing_centre === "string" ? z.landing_centre : "PFZ", lat, lon }];
   });
   return {
     ...base,
-    status: "current",
-    coverageStatus: points.length > 0 ? "active" : "no_advisory_issued",
+    status: points.length || rawCoverage === "no_advisory_issued" && Array.isArray(raw.pfz_zones) && raw.pfz_zones.length === 0 ? "current" : "unavailable",
+    coverageStatus: points.length ? "active" : rawCoverage === "no_advisory_issued" && Array.isArray(raw.pfz_zones) && raw.pfz_zones.length === 0 ? "no_advisory_issued" : "coverage_gap",
     points,
   };
 }

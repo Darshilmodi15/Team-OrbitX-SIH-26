@@ -20,3 +20,22 @@ describe("PFZ validity boundary", () => {
     expect(normalizePFZ({ ...feed, pfz_zones: [...feed.pfz_zones, null, { latitude: null, longitude: "" }, { latitude: 91, longitude: 72 }, { latitude: 19, longitude: Infinity }, { latitude: 19, longitude: 72, is_demonstration: true }] }, now).points).toHaveLength(2);
   });
 });
+
+
+describe("PFZ reviewed provider failures", () => {
+  it("recognizes backend stale advisories as expired", () => {
+    expect(normalizePFZ({ ...feed, data_mode: "stale" }, Date.parse(feed.valid_until))).toMatchObject({ status: "expired", points: [] });
+  });
+  it("does not infer no issuance from empty or invalid points", () => {
+    for (const pfz_zones of [[], [{ latitude: true, longitude: 72 }]]) {
+      expect(normalizePFZ({ ...feed, pfz_zones }, now)).toMatchObject({ status: "unavailable", coverageStatus: "coverage_gap" });
+    }
+  });
+  it("does not assign INCOIS authority to an unknown provider", () => {
+    expect(normalizePFZ(feed, now).issuingAuthority).toBeNull();
+  });
+  it("rejects top-level and individual mock flags", () => {
+    expect(normalizePFZ({ ...feed, is_mock: true }, now).points).toEqual([]);
+    expect(normalizePFZ({ ...feed, pfz_zones: [{ ...feed.pfz_zones[0], is_mock: true }] }, now).points).toEqual([]);
+  });
+});

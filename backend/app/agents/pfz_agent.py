@@ -1,4 +1,5 @@
 """Potential Fishing Zone (PFZ) agent responsible for retrieving and structuring PFZ evidence."""
+import math
 from typing import Any, Dict, List
 from app.data.pfz.base import PFZProvider
 from app.models.agent_models import PFZEvidence
@@ -11,8 +12,8 @@ def _parse_species(raw_species: Any) -> List[str]:
     if isinstance(raw_species, str):
         cleaned = raw_species.replace("(INCOIS Advisory)", "").strip()
         parts = [p.strip() for p in cleaned.replace("&", ",").split(",") if p.strip()]
-        return parts if parts else [raw_species.strip()]
-    return ["Mixed Pelagic Species"]
+        return parts
+    return []
 
 
 def get_pfz_zones_evidence(
@@ -30,23 +31,13 @@ def get_pfz_zones_evidence(
 
     for z in raw_zones:
         name = str(z.get("name", "Potential Fishing Zone"))
-        is_mock = not ("INCOIS" in name or "incois" in str(z.get("zone_id", "")).lower())
-        source = "incois_derived_pfz_dataset" if not is_mock else "mock_pfz_generator"
-        dist = float(z.get("distance_km", 0.0))
-
-        # Calculate suitability score based on proximity and wave conditions
-        base_suitability = max(50.0, 98.0 - (dist * 0.8))
-        if wave_height_m is not None:
-            if wave_height_m > 2.5:
-                base_suitability = max(10.0, base_suitability - 60.0)
-                reason = "Low operational suitability due to severe high swell in transit corridor."
-            elif wave_height_m > 1.5:
-                base_suitability = max(35.0, base_suitability - 25.0)
-                reason = "Moderate suitability; artisanal vessels should exercise caution in open shelf."
-            else:
-                reason = "High suitability; calm sea state favorable for pelagic aggregation and fishing."
-        else:
-            reason = "High suitability based on historical thermal front and chlorophyll boundaries."
+        source = z.get("source")
+        is_mock = z.get("is_mock") is not False or not isinstance(source, str) or not source.strip()
+        if is_mock:
+            continue
+        dist = z.get("distance_km")
+        if not isinstance(dist, (int, float)) or isinstance(dist, bool) or not math.isfinite(dist) or dist < 0:
+            continue
 
         evidence_list.append(
             PFZEvidence(
@@ -58,8 +49,8 @@ def get_pfz_zones_evidence(
                 species=_parse_species(z.get("dominant_species", [])),
                 bearing_deg=float(z["bearing_deg"]) if z.get("bearing_deg") is not None else None,
                 landing_centre=str(z.get("landing_centre", "Offshore")),
-                suitability_score=round(base_suitability, 1),
-                suitability_reason=reason,
+                suitability_score=None,
+                suitability_reason="PFZ presence alone does not establish catch probability or transit safety.",
                 source=source,
                 is_mock=is_mock,
             )

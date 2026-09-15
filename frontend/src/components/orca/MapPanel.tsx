@@ -18,6 +18,7 @@ export function MapPanel({
   onSelect?: (c: Coords) => void;
 }) {
   const { t, lang } = useI18n();
+  const [selectedSector, setSelectedSector] = useState("");
   const [mode, setMode] = useState<"text" | "map" | "satellite">(() => {
     try { return localStorage.getItem("orca.map.mode") === "text" && !onSelect ? "text" : "map"; } catch { return "map"; }
   });
@@ -30,7 +31,7 @@ export function MapPanel({
           {mapCopy[lang][item]}
         </button>)}
       </div>
-      {!onSelect && <PFZAdvisory showPoints={mode === "text"} />}
+      {!onSelect && <PFZAdvisory showPoints={mode === "text"} selectedSector={selectedSector} onSectorChange={setSelectedSector} coords={center} />}
       {mode !== "text" && <Suspense
       fallback={
         <div
@@ -41,7 +42,7 @@ export function MapPanel({
         </div>
       }
     >
-      <CoastMap center={center} interactive={interactive} height={height} onSelect={onSelect} satellite={mode === "satellite"} />
+      <CoastMap center={center} interactive={interactive} height={height} onSelect={onSelect} satellite={mode === "satellite"} selectedSector={selectedSector} />
     </Suspense>}
     </div>
   );

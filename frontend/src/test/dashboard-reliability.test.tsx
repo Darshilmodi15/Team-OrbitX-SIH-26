@@ -1,3 +1,4 @@
+vi.mock("@/components/orca/TripPack", () => ({ TripPack: () => <div>Offline pack controls</div> }));
 import { render, screen } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { I18nProvider } from '@/lib/orca/i18n';

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<title>ORCA offline trip pack</title><style>
+body{font:18px/1.6 system-ui,sans-serif;max-width:760px;margin:24px auto;padding:0 18px;background:#f4f8fa;color:#142c3b}h1{line-height:1.2}button,input{font:inherit;padding:12px;border:1px solid #527384;border-radius:8px}button{cursor:pointer;background:#064c68;color:white}label{display:block}article,section{background:white;padding:18px;border-radius:12px;margin:16px 0;border:1px solid #bed1da}p,li{overflow-wrap:anywhere}.notice{border-left:5px solid #ba6510;padding:12px;background:#fff0da}li{margin-bottom:14px}[hidden]{display:none!important}input{max-width:100%;box-sizing:border-box}small{display:block}
+</style></head><body><h1>ORCA offline trip pack</h1>
+<p class="notice">Saved information only. This file cannot receive updates, contact emergency services or send SOS. Saved forecasts are not clearance to sail.</p>
+<section id="choose" hidden><label for="file">Open a downloaded ORCA trip HTML file</label><input id="file" type="file" accept=".html,text/html"><p>The file is read on this device and is never uploaded.</p></section>
+<section id="unlock"><form id="form"><label for="password">Trip pack password</label><input id="password" type="password" autocomplete="off" required><button type="submit">Unlock pack</button></form>
+<p>Your password stays on this device. There is no password recovery.</p></section>
+<p id="status" role="status" aria-live="polite">Open this downloaded file in a browser, even without internet.</p>
+<button id="lock" hidden>Lock pack</button><main id="content" hidden></main>
+<p>To delete this pack, remove this HTML file and its copies from Downloads / Files and empty the trash. Signing out of ORCA does not delete a downloaded file. Keep your device clock correct; expiry is checked against it.</p>
+<script id="payload" type="application/json">__ORCA_ENCRYPTED_PAYLOAD__</script>
+<script>
+'use strict';
+const statusNode=document.getElementById('status'), content=document.getElementById('content');
+let pack=null;
+let generation=0;
+let envelope=null;
+try{envelope=JSON.parse(document.getElementById('payload').textContent);}catch{}
+if(!envelope||envelope.version!==1){document.getElementById('choose').hidden=false;document.getElementById('unlock').hidden=true;}
+document.getElementById('file').onchange=async event=>{
+ lock();document.getElementById('unlock').hidden=true;envelope=null;
+ const attempt=generation;
+ const file=event.target.files[0];if(!file)return;
+ try{
+  if(file.size>2200000)throw Error('size');
+  const text=await file.text();
+  const match=text.match(/<script id="payload" type="application\/json">([^<]+)<\/script>/);
+  if(!match)throw Error('format');
+  const parsed=JSON.parse(match[1]);if(parsed.version!==1)throw Error('version');
+  if(attempt!==generation)return;
+  envelope=parsed;document.getElementById('unlock').hidden=false;statusNode.textContent='File selected. Enter its password to unlock.';
+ }catch{statusNode.textContent='Cannot read this pack. Select an intact ORCA trip HTML file under 2 MB.';}
+};
+const stamp=value=>new Date(value).toLocaleString(undefined,{timeZoneName:'short'});
+function add(parent,tag,text){const element=document.createElement(tag);element.textContent=text;parent.append(element);return element;}
+function render(){
+ if(!pack)return;
+ content.replaceChildren();const now=Date.now();
+ if(now<pack.savedAt-60000||now>=pack.expiresAt){statusNode.textContent='Expired pack or incorrect device clock. Time-sensitive data is hidden. Reconnect and prepare a new pack.';return;}
+ statusNode.textContent='Offline copy — no new updates. Pack limit: '+stamp(pack.expiresAt);
+ add(content,'h2',pack.location.label||'Selected trip location');add(content,'p',pack.location.lat+', '+pack.location.lon);
+ add(content,'p','Saved '+stamp(pack.savedAt)+'. Each reading and advisory may expire before the pack limit.');
+ const section=add(content,'section','');add(section,'h2','Saved marine readings');
+ add(section,'p','Model forecasts, not sensor observations. Readings older than three hours are hidden. Wave direction is FROM; current direction is TO.');
+ const list=add(section,'ul','');let count=0;
+ for(const reading of pack.readings){if(now>=reading.expiresAt)continue;count++;
+ add(list,'li',reading.label+': '+reading.value+' '+reading.unit+' — '+reading.source+'; forecast valid '+stamp(reading.validAt)+'; retrieved '+(reading.retrievedAt?stamp(reading.retrievedAt):'unknown')+'; issued '+(reading.issuedAt?stamp(reading.issuedAt):'unknown')+'; sample grid '+(reading.grid?reading.grid.lat+', '+reading.grid.lon:'unknown')+'; '+reading.mode);
+ }if(!count)add(section,'p','No unexpired marine readings saved.');
+ const forecasts=add(content,'section','');add(forecasts,'h2','Saved forecast times');add(forecasts,'p','Only returned forecast slots are stored. Missing hours have no forecast. No safe-route verdict is provided.');
+ const slots=pack.forecast.filter(row=>row.time>=now&&row.time<pack.expiresAt);const fl=add(forecasts,'ul','');
+ for(const row of slots)add(fl,'li',stamp(row.time)+' — waves '+(row.waveHeightM===null?'unavailable':row.waveHeightM+' m')+'; wind '+(row.windSpeedKmh===null?'unavailable':row.windSpeedKmh+' km/h'));
+ if(!slots.length)add(forecasts,'p','No upcoming forecast slots saved.');
+ add(forecasts,'p','Source: '+pack.forecastSources.join(', '));
+ const pfz=add(content,'section','');add(pfz,'h2','PFZ advisory');
+ if(pack.pfz.status==='current'&&pack.pfz.validUntil&&now<Date.parse(pack.pfz.validUntil)){
+ add(pfz,'p',(pack.pfz.sectorName||pack.pfz.sector||'Sector')+' · '+pack.pfz.source+' · issued '+stamp(pack.pfz.issuedAt)+' · expires '+stamp(pack.pfz.validUntil));
+ const points=add(pfz,'ul','');for(const point of pack.pfz.points)add(points,'li',point.name+': '+point.lat+', '+point.lon);
+ if(!pack.pfz.points.length)add(pfz,'p',pack.pfz.coverageStatus==='no_advisory_issued'?'Provider explicitly reported no advisory issued.':'No PFZ points saved.');
+ }else add(pfz,'p','No current PFZ advisory saved, or the saved advisory has expired. Points are hidden.');
+ add(content,'p','Map tiles, satellite imagery, navigation routes, tide predictions, chat history and account credentials are not included.');
+ add(content,'p','Weather attribution: Open-Meteo, DWD, Copernicus Marine; INCOIS where identified above. ORCA selects fields, rounds values and applies display expiry limits. Official data links: open-meteo.com/en/docs/marine-weather-api and incois.gov.in.');
+}
+function lock(){generation++;pack=null;content.replaceChildren();content.hidden=true;document.getElementById('unlock').hidden=false;document.getElementById('lock').hidden=true;statusNode.textContent='Pack locked.';}
+document.getElementById('lock').onclick=lock;
+document.getElementById('form').onsubmit=async event=>{
+ event.preventDefault();const attempt=++generation;const input=document.getElementById('password');const password=input.value;input.value='';statusNode.textContent='Unlocking…';
+ try{
+ if(!envelope)throw Error('missing');
+ if(envelope.version!==1||envelope.cipher.length>2000000)throw Error('invalid');
+ const bytes=value=>Uint8Array.from(atob(value),char=>char.charCodeAt(0));
+ const salt=bytes(envelope.salt),iv=bytes(envelope.iv);if(salt.length!==16||iv.length!==12)throw Error('invalid');
+ const material=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveKey']);
+ const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:600000,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,['decrypt']);
+ const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv,additionalData:new TextEncoder().encode('ORCA-TRIP-1')},key,bytes(envelope.cipher));
+ const data=JSON.parse(new TextDecoder().decode(plain));
+ if(data.version!==1||!Number.isFinite(data.savedAt)||!Number.isFinite(data.expiresAt)||data.expiresAt<=data.savedAt||data.expiresAt-data.savedAt>48*3600000||!Array.isArray(data.readings)||!Array.isArray(data.forecast)||!data.pfz)throw Error('invalid');
+ if(attempt!==generation)return;
+ pack=data;document.getElementById('unlock').hidden=true;document.getElementById('lock').hidden=false;content.hidden=false;render();
+ }catch{if(attempt!==generation)return;lock();statusNode.textContent='Cannot unlock: incorrect password, damaged file, or browser encryption unavailable. Try this file in a current browser.';}
+};
+setInterval(render,15000);window.addEventListener('pageshow',render);document.addEventListener('visibilitychange',()=>{if(!document.hidden)render();});
+</script></body></html>

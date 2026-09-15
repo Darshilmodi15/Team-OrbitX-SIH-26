@@ -34,19 +34,20 @@ def client():
 # 1. INCOIS PFZ Machine-Readable Feed & Sector Selection
 # =========================================================================
 
-def test_coastal_sectors_contain_all_11_maritime_states():
-    """Verify that all 11 Indian coastal sectors are defined with official metadata."""
+def test_coastal_sectors_contain_all_14_advisory_sectors():
+    """Verify that 14 sector names have explicitly approximate selection bounds."""
     sectors = incois_pfz_service.get_sectors()
-    assert len(sectors) == 11
+    assert len(sectors) == 14
     ids = {s["id"] for s in sectors}
     expected = {
         "gujarat", "maharashtra", "goa", "karnataka", "kerala",
-        "tamil_nadu", "andhra_pradesh", "odisha", "west_bengal",
-        "lakshadweep", "andaman_nicobar",
+        "north_tamil_nadu", "south_tamil_nadu", "north_andhra_pradesh", "south_andhra_pradesh", "odisha", "west_bengal",
+        "lakshadweep", "andaman", "nicobar",
     }
     assert ids == expected
     for s in sectors:
-        assert s["issuing_authority"] == "ESSO-INCOIS, Ministry of Earth Sciences, Govt. of India"
+        assert s["issuing_authority"] is None
+        assert s["bounds_kind"] == "approximate_selection_hint"
         assert len(s["landing_centres"]) > 0
         assert "lat_min" in s["bounds"]
 
@@ -60,7 +61,7 @@ def test_sector_detection_from_coordinates():
     # Kochi (9.93, 76.26) -> kerala
     assert detect_sector_from_coords(9.93, 76.26) == "kerala"
     # Chennai (13.08, 80.27) -> tamil_nadu
-    assert detect_sector_from_coords(13.08, 80.27) == "tamil_nadu"
+    assert detect_sector_from_coords(13.08, 80.27) == "north_tamil_nadu"
     # Deep mid-ocean or inland location
     assert detect_sector_from_coords(0.0, 0.0) is None
 
@@ -77,7 +78,7 @@ def test_unconfigured_pfz_feed_returns_unavailable_with_null_dates(client):
     assert data["valid_until"] is None
     assert data["pfz_zones"] == []
     assert data["sector"] == "maharashtra"
-    assert data["coverage_status"] == "coverage_gap"
+    assert data["coverage_status"] == "unconfigured"
     assert "No timestamped current PFZ advisory feed is configured" in data["reason"]
 
 
@@ -91,6 +92,8 @@ def test_pfz_feed_validates_and_accepts_current_advisory():
     mock_resp = Mock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = {
+        "sector": "maharashtra",
+        "data_mode": "live",
         "source": "INCOIS Operational PFZ Advisory",
         "issued_at": issued,
         "valid_until": valid,
@@ -140,6 +143,8 @@ def test_pfz_feed_rejects_future_issue_date():
     mock_resp = Mock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = {
+        "sector": "maharashtra",
+        "data_mode": "live",
         "source": "INCOIS",
         "issued_at": future_issued,
         "valid_until": future_valid,
@@ -166,6 +171,8 @@ def test_pfz_feed_detects_expired_advisory():
     mock_resp = Mock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = {
+        "sector": "maharashtra",
+        "data_mode": "live",
         "source": "INCOIS",
         "issued_at": past_issued,
         "valid_until": past_valid,
@@ -196,11 +203,11 @@ def test_mosdac_unconfigured_requires_credentials():
     assert obs["real_data_arriving"] is False
     assert obs["chlorophyll_mg_m3"] is None
     assert obs["sea_surface_temperature_c"] is None
-    assert obs["thermal_front_detected"] is False
-    assert "MOSDAC_USER" in obs["required_credentials"]
-    assert "MOSDAC_API_KEY" in obs["required_credentials"]
+    assert obs["thermal_front_detected"] is None
+    assert obs["required_credentials"] == []
+    assert obs["integration_status"] == "NOT_IMPLEMENTED"
     assert snapshot("isro_mosdac")["status"] == "DOWN"
-    assert snapshot("isro_mosdac")["last_error_summary"] == "MOSDAC_CREDENTIALS_REQUIRED"
+    assert snapshot("isro_mosdac")["last_error_summary"] == "MOSDAC_ADAPTER_NOT_IMPLEMENTED"
 
 
 def test_mosdac_endpoint_returns_status(client):

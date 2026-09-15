@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { AppShell } from "@/components/orca/AppShell";
 import { SafetyStatusCard } from "@/components/orca/SafetyStatus";
 import { MarineConditions, ForecastTimeline } from "@/components/orca/Conditions";
+import { TripPack } from "@/components/orca/TripPack";
 import { MapPanel } from "@/components/orca/MapPanel";
 import { LoadingState, EmptyState } from "@/components/orca/States";
 import { SEO } from "@/components/SEO";
@@ -93,6 +94,8 @@ export default function DashboardPage() {
 
         {/* Marine conditions */}
         {displayCurrent && <MarineConditions data={displayCurrent} tide={marine.data?.tide ?? null} />}
+
+        {marine.data && <TripPack key={`${location.coords.lat},${location.coords.lon}`} location={location} bundle={marine.data} />}
 
         {/* Forecast */}
         {marine.data?.forecast && (marine.data.forecast.length > 0 ? (

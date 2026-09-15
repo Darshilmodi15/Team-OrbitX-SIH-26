@@ -74,7 +74,10 @@ from app.services.planner import ExecutionPlan, Planner
 from app.services.recommendation_engine import RecommendationReasoningEngine
 
 # Initialize authoritative INCOIS data provider with low-bandwidth geospatial cache
-weather_provider: WeatherProvider = IncoisWeatherProvider()
+from app.data.weather.combined import CombinedWeatherProvider
+
+incois_provider = IncoisWeatherProvider()
+weather_provider: WeatherProvider = CombinedWeatherProvider(incois_provider)
 pfz_provider: PFZProvider = IncoisPFZProvider()
 geofence_provider: GeofenceProvider = SpatialGeofenceProvider()
 
@@ -115,7 +118,7 @@ async def lifespan(app: FastAPI):
 
     # Launch continuous background INCOIS ingestion task
     ingestion_task = asyncio.create_task(
-        continuous_incois_ingestion_loop(provider=weather_provider)
+        continuous_incois_ingestion_loop(provider=incois_provider)
     )
     
     yield

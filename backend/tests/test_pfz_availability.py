@@ -9,7 +9,7 @@ def test_unconfigured_feed_does_not_depend_on_historical_files(tmp_path, monkeyp
     app.include_router(router)
     response = TestClient(app).get("/api/pfz")
     assert response.status_code == 200
-    assert response.json() == {
+    expected = {
         "source": "unavailable",
         "data_mode": "unavailable",
         "issued_at": None,
@@ -17,3 +17,6 @@ def test_unconfigured_feed_does_not_depend_on_historical_files(tmp_path, monkeyp
         "pfz_zones": [],
         "reason": "No timestamped current PFZ advisory feed is configured",
     }
+
+    assert {key: response.json()[key] for key in expected} == expected
+    assert response.json()["coverage_status"] == "unconfigured"

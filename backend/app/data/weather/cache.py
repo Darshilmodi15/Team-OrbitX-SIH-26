@@ -77,7 +77,7 @@ class MarineWeatherCache:
                 self._redis_client.ping()
                 logger.info("Connected to Redis shared marine cache.")
             except Exception as e:
-                logger.warning(f"Could not connect to Redis at {target_redis_url}: {e}. Falling back to in-memory cache.")
+                logger.warning("Redis shared cache unavailable (%s); using in-memory cache.", type(e).__name__)
                 self._redis_client = None
 
     def get_grid_key(self, lat: float, lon: float, target_date: Optional[str] = None) -> str:
@@ -247,7 +247,7 @@ class MarineWeatherCache:
         """Fetches record from Redis or In-Memory."""
         if self._redis_client:
             try:
-                raw = self._redis_client.get(f"orca:marine:v2:{key}")
+                raw = self._redis_client.get(f"orca:marine:v3:{key}")
                 if raw:
                     payload = json.loads(raw)
                     return CachedMarineRecord(
@@ -262,7 +262,7 @@ class MarineWeatherCache:
                         access_count=payload.get("access_count", 0),
                     )
             except Exception as e:
-                logger.debug(f"Redis get error: {e}")
+                logger.debug("Redis get error: %s", type(e).__name__)
 
         return self._memory_cache.get(key)
 
@@ -284,29 +284,29 @@ class MarineWeatherCache:
                 }
                 # Store with max_stale TTL in Redis
                 self._redis_client.setex(
-                    f"orca:marine:v2:{key}",
+                    f"orca:marine:v3:{key}",
                     int(self.max_stale),
                     json.dumps(payload),
                 )
             except Exception as e:
-                logger.debug(f"Redis set error: {e}")
+                logger.debug("Redis set error: %s", type(e).__name__)
 
     def clear(self) -> None:
         """Clears all cached records."""
         self._memory_cache.clear()
         if self._redis_client:
             try:
-                keys = self._redis_client.keys("orca:marine:v2:*")
+                keys = self._redis_client.keys("orca:marine:v3:*")
                 if keys:
                     self._redis_client.delete(*keys)
             except Exception as e:
-                logger.debug(f"Redis clear error: {e}")
+                logger.debug("Redis clear error: %s", type(e).__name__)
 
     def size(self) -> int:
         """Returns the number of active cached grid locations."""
         if self._redis_client:
             try:
-                keys = self._redis_client.keys("orca:marine:v2:*")
+                keys = self._redis_client.keys("orca:marine:v3:*")
                 return len(keys)
             except Exception:
                 pass

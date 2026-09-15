@@ -69,12 +69,14 @@ def test_recommendation_generation_pfz_and_fishing():
 
     recs = RecommendationReasoningEngine.generate_recommendations(bundle)
     pfz_rec = next(r for r in recs if r.category == "FISHING")
-    assert pfz_rec.priority == "HIGH"
+    assert pfz_rec.priority == "INFO"
+    assert pfz_rec.confidence_score is None
     assert "Shelf Break Hotspot Alpha" in pfz_rec.title
-    assert "225° (SW)" in pfz_rec.directive
-    assert "Tuna, Kingfish, Mackerel" in pfz_rec.directive
+    assert "225°" not in pfz_rec.directive
+    assert any("Tuna, Kingfish, Mackerel" in e for e in pfz_rec.supporting_evidence)
     assert any("14.2 km" in e for e in pfz_rec.supporting_evidence)
-    assert "Catch-Per-Unit-Effort" in pfz_rec.reasoning
+    assert "Catch-Per-Unit-Effort" not in pfz_rec.reasoning
+    assert "does not establish" in pfz_rec.reasoning
 
 
 def test_recommendation_generation_navigation_route():
