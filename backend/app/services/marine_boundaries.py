@@ -282,6 +282,77 @@ class MarineBoundariesService:
             pass
         return fallback_data
 
+    def fetch_boundaries_geojson(self, force_refresh: bool = False) -> Dict[str, Any]:
+        """
+        Fetches official international maritime boundaries (treaties, court rulings, median lines)
+        for India and adjacent sovereign nations from Marine Regions WFS (BOUNDARY_LAYER) or local disk cache.
+        """
+        cache_key = "eez_boundaries_india"
+        cache_file = self.cache_dir / f"{cache_key}.geojson"
+
+        # 1. Check in-memory cache
+        if not force_refresh and cache_key in self._memory_cache:
+            return self._memory_cache[cache_key]
+
+        # 2. Check local disk cache
+        if not force_refresh and cache_file.is_file():
+            try:
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if data.get("features"):
+                    self._memory_cache[cache_key] = data
+                    return data
+            except Exception:
+                pass
+
+        # 3. Request from live Marine Regions WFS
+        params = {
+            "service": "WFS",
+            "version": "1.0.0",
+            "request": "GetFeature",
+            "typeName": BOUNDARY_LAYER,
+            "outputFormat": "application/json",
+            "cql_filter": "mrgid_eez1=8480 OR mrgid_eez2=8480 OR sovereign1='India' OR sovereign2='India'",
+        }
+        url = f"{WFS_ENDPOINT}?{urllib.parse.urlencode(params)}"
+
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": "ORCA-Marine-Intelligence/1.0 (Smart-India-Hackathon-OrbitX)"},
+            )
+            ctx = _get_ssl_context()
+            with urllib.request.urlopen(req, context=ctx, timeout=15) as response:
+                if response.status == 200:
+                    raw_text = response.read().decode("utf-8")
+                    data = json.loads(raw_text)
+                    if data.get("features"):
+                        data["metadata"] = self.get_metadata()
+                        data["metadata"]["retrieval_status"] = "live_wfs"
+                        with open(cache_file, "w", encoding="utf-8") as f:
+                            json.dump(data, f, indent=2)
+                        self._memory_cache[cache_key] = data
+                        return data
+        except Exception:
+            if cache_file.is_file():
+                try:
+                    with open(cache_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    data["metadata"]["retrieval_status"] = "cached_fallback"
+                    self._memory_cache[cache_key] = data
+                    return data
+                except Exception:
+                    pass
+
+        return {
+            "type": "FeatureCollection",
+            "features": [],
+            "metadata": {
+                **self.get_metadata(),
+                "retrieval_status": "empty_fallback",
+            },
+        }
+
     def check_marine_boundary(
         self, lat: float, lon: float, mrgid: int = DEFAULT_MRGID
     ) -> Dict[str, Any]:

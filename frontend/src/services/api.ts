@@ -383,6 +383,18 @@ export async function fetchMarineBoundariesEEZ(mrgid: number = 8480): Promise<an
   return null;
 }
 
+export async function fetchInternationalBoundaries(forceRefresh: boolean = false): Promise<any | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/marine-boundaries/international?force_refresh=${forceRefresh}`);
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch (err) {
+    console.warn('Could not fetch International Boundaries:', err);
+  }
+  return null;
+}
+
 export async function checkMarineBoundary(lat: number, lon: number, mrgid: number = 8480): Promise<any | null> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/marine-boundaries/check?lat=${lat}&lon=${lon}&mrgid=${mrgid}`);
@@ -725,6 +737,7 @@ export default {
   fetchMarineTide,
   fetchPFZDataset,
   fetchMarineBoundariesEEZ,
+  fetchInternationalBoundaries,
   checkMarineBoundary,
   fetchGeofences,
   transcribeVoiceAudio,

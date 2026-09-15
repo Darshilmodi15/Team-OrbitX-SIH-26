@@ -54,6 +54,28 @@ def get_eez_geojson(
         )
 
 
+@router.get("/international", summary="Retrieve international maritime boundaries GeoJSON")
+def get_international_boundaries_geojson(
+    force_refresh: bool = Query(
+        default=False,
+        description="Force live retrieval from Marine Regions WFS server, bypassing local cache.",
+    ),
+) -> Dict[str, Any]:
+    """
+    Fetches official International Maritime Boundaries GeoJSON (Treaties, Court rulings, Median lines)
+    for India and adjacent sovereign nations from Marine Regions WFS (or cached dataset).
+    """
+    try:
+        data = marine_boundaries_service.fetch_boundaries_geojson(force_refresh=force_refresh)
+        return data
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error retrieving international maritime boundaries: {str(exc)}",
+        )
+
+
+
 @router.get("/check", summary="Evaluate vessel location against EEZ boundary")
 def check_boundary_get(
     lat: float = Query(..., description="Latitude coordinate"),

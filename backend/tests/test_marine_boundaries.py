@@ -140,6 +140,21 @@ class TestMarineBoundaries(unittest.TestCase):
         self.assertEqual(data["boundary"]["country"], "India")
         assert data['answer'].startswith("TEST_PROVIDER_RESPONSE ")
 
+    def test_11_api_international_boundaries_endpoint(self):
+        """Tests GET /api/marine-boundaries/international returning authoritative multi-country boundaries."""
+        response = self.client.get("/api/marine-boundaries/international")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data.get("type"), "FeatureCollection")
+        features = data.get("features", [])
+        self.assertTrue(len(features) >= 1)
+
+        # Confirm target countries are represented in the dataset
+        line_names = [f.get("properties", {}).get("line_name", "") for f in features]
+        full_text = " ".join(line_names)
+        for country in ["Pakistan", "Sri Lanka", "Bangladesh", "Maldives", "Indonesia", "Myanmar", "Thailand"]:
+            self.assertIn(country, full_text)
+
 
 if __name__ == "__main__":
     unittest.main()

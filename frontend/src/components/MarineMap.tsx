@@ -394,10 +394,37 @@ export default function MarineMap({
         {/* ── 3. Maritime Geofences & Sovereign Boundaries (Localized) ── */}
         {showGeofences &&
           activeGeofences.map((g: any) => {
-            if (!g.coordinates || g.coordinates.length < 3) return null;
+            if (!g.coordinates || g.coordinates.length < 2) return null;
             const color = g.risk_level === 'CRITICAL_DANGER' ? '#DC2626' : '#D97706';
             const positions: [number, number][] = g.coordinates.map((c: any) => [c[0], c[1]]);
             const localizedGeo = getLocalizedGeofence(g, currentLang);
+            const isLine = g.category === 'IMBL' || g.geometry_type === 'LineString' || (positions.length >= 2 && positions.length < 3);
+
+            if (isLine) {
+              return (
+                <Polyline
+                  key={`geo-${g.id}`}
+                  positions={positions}
+                  pathOptions={{
+                    color: '#DC2626',
+                    weight: 2.5,
+                    dashArray: '6, 6',
+                    opacity: 0.85,
+                  }}
+                  eventHandlers={{
+                    click: () => {
+                      setSelectedHazard({ ...g, ...localizedGeo });
+                    },
+                  }}
+                >
+                  <Tooltip direction="center" opacity={0.95}>
+                    <div className="text-xs font-sans font-bold p-1 text-center text-red-600">
+                      🚨 {localizedGeo.name}
+                    </div>
+                  </Tooltip>
+                </Polyline>
+              );
+            }
 
             return (
               <Polygon
