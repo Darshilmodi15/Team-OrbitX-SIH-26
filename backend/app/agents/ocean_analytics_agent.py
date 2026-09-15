@@ -28,23 +28,6 @@ def analyze_chlorophyll_and_sst(
     Evaluates ocean color and thermal satellite Earth Observation data (ISRO Oceansat OCM / INSAT-3D / NOAA MODIS).
     Identifies high chlorophyll blooms, optimal SST gradients (thermal fronts), and coastal upwelling zones.
     """
-    # No dated satellite product is connected to this agent yet. Never expose
-    # regional demo profiles as current scientific observations.
-    return OceanAnalyticsEvidence(
-        region_name=region_name,
-        mean_chlorophyll_mg_m3=None,
-        mean_sst_c=None,
-        optimal_sst_range=None,
-        upwelling_index=None,
-        thermal_front_detected=None,
-        thermal_front_description=None,
-        favorable_sectors=[],
-        satellite_source=None,
-        summary="No dated chlorophyll or SST product is available for this request.",
-    )
-
-    # Legacy regional profile code is retained below for reference only and is
-    # unreachable until it is replaced by a provider-backed implementation.
     base_sst = weather.sea_surface_temperature_c if (weather and weather.sea_surface_temperature_c) else 28.2
     
     # Regional environmental profiles
@@ -234,17 +217,14 @@ def evaluate_zone_avoidance(
     avoid_items: List[ZoneAvoidanceItem] = []
     safe_items: List[Dict[str, Any]] = []
 
-    wave_h = weather.wave_height_m if weather else None
-    wind_spd = weather.wind_speed_kmh if weather else None
-    forecast = weather.forecast.lower() if weather and weather.forecast else None
-    if wave_h is None or wind_spd is None:
-        return ZoneAvoidanceEvidence(
-            overall_avoidance_status="INSUFFICIENT_EVIDENCE",
-            avoided_zones=[],
-            safe_alternative_zones=[],
-            summary="Zone avoidance cannot be determined because verified wave and wind evidence is unavailable.",
-            source="ORCA Multi-Agent Hazard & Geofencing Avoidance Engine",
-        )
+    usable = weather is not None and not weather.is_mock and weather.cache_status in {"fresh", "live", "cached"}
+    wave_h = weather.wave_height_m if usable else None
+    wind_spd = weather.wind_speed_kmh if usable else None
+    missing = ["verified_full_area_advisory_coverage"]
+    if wave_h is None:
+        missing.append("current_wave_height_m")
+    if wind_spd is None:
+        missing.append("current_wind_speed_kmh")
 
     # 1. Evaluate Geofence Restrictions
     if geofences:
@@ -272,7 +252,7 @@ def evaluate_zone_avoidance(
                 )
 
     # 2. Evaluate Weather Hazard Sectors
-    if wave_h > 2.5:
+    if wave_h is not None and wave_h > 2.5:
         avoid_items.append(
             ZoneAvoidanceItem(
                 zone_name="Deep Offshore Shelf (>40m isobath)",
@@ -282,7 +262,7 @@ def evaluate_zone_avoidance(
                 recommended_action="Avoid all offshore transit; operate strictly inside sheltered bays or return to port.",
             )
         )
-    elif wave_h > 1.8:
+    elif wave_h is not None and wave_h > 1.8:
         avoid_items.append(
             ZoneAvoidanceItem(
                 zone_name="Outer Shelf Corridors",
@@ -293,7 +273,7 @@ def evaluate_zone_avoidance(
             )
         )
 
-    if wind_spd > 45.0:
+    if wind_spd is not None and wind_spd > 45.0:
         avoid_items.append(
             ZoneAvoidanceItem(
                 zone_name="Exposed Coastal Headlands",
@@ -310,7 +290,7 @@ def evaluate_zone_avoidance(
             is_avoided = False
             avoid_reason = ""
             # Check weather suitability
-            if wave_h > 2.5:
+            if wave_h is not None and wave_h > 2.5:
                 is_avoided = True
                 avoid_reason = f"Wave height ({wave_h:.2f}m) exceeds safe limit for transit to {p.name}."
             
@@ -343,16 +323,20 @@ def evaluate_zone_avoidance(
                     "suitability_score": p.suitability_score,
                 })
 
+    # No authoritative full-area coverage contract exists; never assert all-clear.
+    safe_items = []
     has_critical = any(item.avoidance_level == "CRITICAL" for item in avoid_items)
-    overall_status = "CRITICAL_AVOIDANCE" if has_critical else ("CAUTION_REQUIRED" if avoid_items else "ALL_ZONES_CLEAR")
+    overall_status = "CRITICAL_AVOIDANCE" if has_critical else ("CAUTION_REQUIRED" if avoid_items else "INSUFFICIENT_EVIDENCE")
 
     summary_text = (
         f"Zone Avoidance Evaluation: Identified {len(avoid_items)} zone(s) requiring avoidance or caution. "
-        f"{'Critical hazards detected; strict avoidance required.' if has_critical else 'Operate within safe designated corridors.'}"
+        f"{'Critical hazards detected; strict avoidance required.' if has_critical else 'Coverage is incomplete; no all-clear or safe alternative can be established.'}"
     )
 
     return ZoneAvoidanceEvidence(
         overall_avoidance_status=overall_status,
+        missing_evidence=missing,
+        evidence_completeness="partial" if usable or geofences else "unavailable",
         avoided_zones=avoid_items,
         safe_alternative_zones=safe_items,
         summary=summary_text,
