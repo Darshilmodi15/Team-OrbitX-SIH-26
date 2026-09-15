@@ -73,18 +73,16 @@ it('clears marine cache namespaces without removing unrelated preferences', asyn
   expect(localStorage.getItem('orca.language')).toBe('gu');
 });
 
-it('does not restore an old saved location over an explicit new selection', async () => {
-  let resolveSaved!: (value: any) => void;
-  vi.mocked(fetchSavedLocation).mockReturnValueOnce(new Promise(resolve => { resolveSaved = resolve; }));
+it('starts with unlocated state on sign in until location is explicitly chosen', async () => {
   vi.mocked(loginUser).mockResolvedValue(authResult);
   const { result } = renderHook(() => useSession(), { wrapper });
   await waitFor(() => expect(result.current.ready).toBe(true));
   await act(() => result.current.signIn({contact:'m@example.com', password:'test', remember:false}));
+  expect(result.current.location).toBeNull();
+  expect(result.current.locationReady).toBe(true);
   const chosen = {coords:{lat:7,lon:93.6},area:'coastal' as const,source:'manual' as const,distanceToCoastKm:1};
   act(() => result.current.setLocation(chosen));
-  await act(async () => resolveSaved({is_coastal_supported:true,lat:19,lon:72,distance_to_coast_km:2}));
   expect(result.current.location).toEqual(chosen);
-  expect(result.current.locationReady).toBe(true);
 });
 it('does not resurrect a session when profile restoration finishes after sign-out', async () => {
   let resolveProfile!: (value: any) => void;

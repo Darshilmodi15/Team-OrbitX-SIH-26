@@ -16,7 +16,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<OrcaUser | null>(null); const [token, setToken] = useState<string | null>(null);
   const locationVersion = useRef(0);
   const authVersion = useRef(0);
-  const [locationReady, setLocationReady] = useState(false);
+  const [locationReady, setLocationReady] = useState(true);
   const [location, setLocationState] = useState<LocationInfo | null>(null); const [ready, setReady] = useState(false);
   const signOut = useCallback(() => { clearMarineCaches(); authVersion.current++; locationVersion.current++; setLocationReady(true); setUser(null); setToken(null); setLocationState(null); sessionStorage.removeItem(SESSION_TOKEN_KEY); localStorage.removeItem("orca.user"); localStorage.removeItem("orca.auth.token"); localStorage.removeItem("orca.location"); localStorage.removeItem("orca.chat.threads.v2"); localStorage.removeItem("orca_assistant_threads_v1"); }, []);
   useEffect(() => {
@@ -32,18 +32,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       .finally(() => { if (!cancelled) setReady(true); });
     return () => { cancelled = true; setAuthFailureHandler(null); };
   }, [signOut]);
-  const establish = useCallback((result: any, _remember: boolean) => { clearMarineCaches(); authVersion.current++; locationVersion.current++; setLocationReady(false); const next = mapUser(result.user); localStorage.removeItem("orca.auth.token"); localStorage.removeItem("orca.user"); localStorage.removeItem("orca.location"); sessionStorage.setItem(SESSION_TOKEN_KEY, result.access_token); localStorage.removeItem("orca_assistant_threads_v1"); setLocationState(null); setToken(result.access_token); setUser(next); return next; }, []);
+  const establish = useCallback((result: any, _remember: boolean) => { clearMarineCaches(); authVersion.current++; locationVersion.current++; setLocationReady(true); const next = mapUser(result.user); localStorage.removeItem("orca.auth.token"); localStorage.removeItem("orca.user"); localStorage.removeItem("orca.location"); sessionStorage.setItem(SESSION_TOKEN_KEY, result.access_token); localStorage.removeItem("orca_assistant_threads_v1"); setLocationState(null); setToken(result.access_token); setUser(next); return next; }, []);
   const signIn = useCallback(async ({ contact, password, remember }: Credentials) => establish(await loginUser(contact, password), remember), [establish]);
   const register = useCallback(async ({ contact, password, remember, name, preferredLanguage }: Registration) => { const isEmail = contact.includes("@"); return establish(await registerUser({ name, password, preferred_language: preferredLanguage || "en", ...(isEmail ? { email: contact } : { mobile_number: contact }) }), remember); }, [establish]);
-  useEffect(() => {
-    if (!user?.id) return;
-    let cancelled = false;
-    const version = locationVersion.current;
-    fetchSavedLocation().then(saved => {
-      if (!cancelled && version === locationVersion.current && saved?.is_coastal_supported) setLocationState({ coords: {lat: saved.lat, lon: saved.lon}, label: `${saved.lat.toFixed(4)}, ${saved.lon.toFixed(4)}`, admin: saved.coastal_region, distanceToCoastKm: saved.distance_to_coast_km, area: "coastal", source: "manual" });
-    }).catch(() => { /* Leave location unavailable; never invent a city. */ }).finally(() => { if (!cancelled) setLocationReady(true); });
-    return () => { cancelled = true; };
-  }, [user?.id]);
   const setLocation = useCallback((loc: LocationInfo | null) => { locationVersion.current++; setLocationState(loc); setLocationReady(true); }, []);
   const value = useMemo(() => ({ user, token, location, ready, locationReady, signIn, register, signOut, setLocation }), [user, token, location, ready, locationReady, signIn, register, signOut, setLocation]);
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
