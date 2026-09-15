@@ -48,6 +48,8 @@ export default function QueryInput({
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [transcriptPending, setTranscriptPending] = useState<string | null>(null);
   const [micError, setMicError] = useState<string | null>(null);
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
+  const [recordingSeconds, setRecordingSeconds] = useState<number>(0);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -55,6 +57,7 @@ export default function QueryInput({
   const recordedMimeRef = useRef<string>('audio/webm');
   const browserRecognitionRef = useRef<any>(null);
   const browserTranscriptRef = useRef<string>('');
+  const recordingTimerRef = useRef<any>(null);
 
   const t = getStrings(currentLang);
   const quickPrompts = getQuickPrompts(currentLang);
@@ -70,6 +73,10 @@ export default function QueryInput({
   // Clean up recording and recognition on unmount
   useEffect(() => {
     return () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
         try {
           mediaRecorderRef.current.stop();
@@ -210,6 +217,11 @@ export default function QueryInput({
       };
 
       recorder.onstop = async () => {
+        if (recordingTimerRef.current) {
+          clearInterval(recordingTimerRef.current);
+          recordingTimerRef.current = null;
+        }
+
         // Stop browser speech recognition
         if (browserRecognitionRef.current) {
           try {
@@ -223,7 +235,7 @@ export default function QueryInput({
         const audioBlob = new Blob(audioChunksRef.current, { type: actualMime });
 
         if (audioBlob.size < 100 && !browserTranscriptRef.current) {
-          setMicError('Recording too short. Please speak clearly for at least 1-2 seconds.');
+          setMicError("We couldn't understand the recording. Please try again or type your question.");
           setIsRecording(false);
           stream.getTracks().forEach((trk) => trk.stop());
           return;
@@ -236,20 +248,24 @@ export default function QueryInput({
 
           if (result && result.transcript && !result.is_mock) {
             setTranscriptPending(result.transcript);
+            setVoiceNotice(null);
           } else if (browserTranscriptRef.current) {
             // Browser speech recognized live input accurately
             setTranscriptPending(browserTranscriptRef.current);
+            setVoiceNotice('Cloud speech service unavailable — using device transcription');
           } else if (result && result.transcript) {
             setTranscriptPending(result.transcript);
+            setVoiceNotice(null);
           } else {
-            setMicError('Could not understand speech audio. Please speak clearly and try again.');
+            setMicError("We couldn't understand the recording. Please try again or type your question.");
           }
         } catch (err) {
           console.warn('Backend STT failed, using live browser transcript fallback:', err);
           if (browserTranscriptRef.current) {
             setTranscriptPending(browserTranscriptRef.current);
+            setVoiceNotice('Cloud speech service unavailable — using device transcription');
           } else {
-            setMicError('Voice transcription could not be completed. Please speak clearly or check microphone.');
+            setMicError("We couldn't understand the recording. Please try again or type your question.");
           }
         } finally {
           setIsTranscribing(false);
@@ -261,6 +277,21 @@ export default function QueryInput({
       recorder.start(250); // collect chunks every 250ms
       mediaRecorderRef.current = recorder;
       setIsRecording(true);
+      setRecordingSeconds(0);
+      setVoiceNotice(null);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds((prev) => {
+          const next = prev + 1;
+          if (next >= 30) {
+            setTimeout(() => {
+              if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+                mediaRecorderRef.current.stop();
+              }
+            }, 0);
+          }
+          return next;
+        });
+      }, 1000);
     } catch (err: any) {
       console.warn('Microphone permission or hardware error:', err);
       if (browserRecognitionRef.current) {
@@ -283,6 +314,10 @@ export default function QueryInput({
   };
 
   const stopRecording = () => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
     if (browserRecognitionRef.current) {
       try {
         browserRecognitionRef.current.stop();
@@ -317,11 +352,32 @@ export default function QueryInput({
         <div className="mb-2.5 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 animate-pulse">
           <div className="flex items-center gap-2 font-semibold">
             <span className="h-2 w-2 rounded-full bg-red-600 animate-ping" />
-            <span>Listening to Indic Speech (Sarvam Saaras v3)... Tap mic to finish.</span>
+            <span className={recordingSeconds >= 25 ? "text-amber-700 font-bold animate-pulse" : ""}>
+              {recordingSeconds >= 25
+                ? `${Math.max(0, 30 - recordingSeconds)} seconds remaining`
+                : `Listening (${recordingSeconds}s)... Tap mic to finish.`}
+            </span>
           </div>
           <span className="font-mono text-[10px] font-bold uppercase text-red-800">
             RECORDING
           </span>
+        </div>
+      )}
+
+      {/* Device transcription notice */}
+      {voiceNotice && (
+        <div className="mb-2.5 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <div className="flex items-center gap-2 font-medium">
+            <Sparkles className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+            <span>{voiceNotice}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setVoiceNotice(null)}
+            className="text-amber-600 hover:text-amber-800 cursor-pointer p-0.5"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
         </div>
       )}
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Cookie, Shield, Check, X, Sliders, ChevronRight } from "lucide-react";
+import { useI18n } from "@/lib/orca/i18n";
+import { reviewCopy } from "@/lib/orca/review-copy";
 import { trackEvent } from "@/lib/orca/analytics";
 
 export interface CookieConsentPreferences {
@@ -13,10 +14,12 @@ export interface CookieConsentPreferences {
 const STORAGE_KEY = "orca_cookie_consent";
 
 export function CookieBanner() {
+  const { lang, t } = useI18n();
+  const copy = reviewCopy(lang);
   const [isOpen, setIsOpen] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
-  const [telemetryAllowed, setTelemetryAllowed] = useState(true);
-  const [analyticsAllowed, setAnalyticsAllowed] = useState(true);
+  const [telemetryAllowed, setTelemetryAllowed] = useState(false);
+  const [analyticsAllowed, setAnalyticsAllowed] = useState(false);
 
   useEffect(() => {
     try {
@@ -27,8 +30,8 @@ export function CookieBanner() {
         return () => clearTimeout(timer);
       } else {
         const parsed = JSON.parse(stored) as CookieConsentPreferences;
-        setTelemetryAllowed(parsed.telemetry ?? true);
-        setAnalyticsAllowed(parsed.analytics ?? true);
+        setTelemetryAllowed(parsed.telemetry ?? false);
+        setAnalyticsAllowed(parsed.analytics ?? false);
       }
     } catch {
       setIsOpen(true);
@@ -59,6 +62,7 @@ export function CookieBanner() {
     }
     setIsOpen(false);
     setShowPreferences(false);
+    window.dispatchEvent(new Event("orca:consent-changed"));
     trackEvent("cookie_consent_updated", { telemetry, analytics });
   };
 
@@ -80,156 +84,19 @@ export function CookieBanner() {
 
   if (!isOpen) return null;
 
-  return (
-    <aside
-      role="region"
-      aria-label="Cookie & Privacy Consent"
-      className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-4xl animate-in fade-in slide-in-from-bottom-5 duration-300"
-    >
-      <div className="overflow-hidden rounded-xl border border-teal-500/30 bg-slate-900/95 p-4 text-slate-100 shadow-2xl backdrop-blur-xl ring-1 ring-white/10 sm:p-5">
-        {!showPreferences ? (
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-start gap-3">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-teal-500/20 text-teal-400 border border-teal-500/30">
-                <Cookie className="size-5" />
-              </div>
-              <div className="text-xs sm:text-sm text-slate-300">
-                <p className="font-semibold text-white">
-                  Maritime Data & Cookie Preferences
-                </p>
-                <p className="mt-1 leading-relaxed">
-                  We use cookies and local storage to cache oceanographic telemetry, maintain offshore session continuity, and analyze platform reliability for maritime safety.
-                  Read our{" "}
-                  <Link to="/privacy" className="text-teal-400 underline hover:text-teal-300">
-                    Privacy Policy
-                  </Link>{" "}
-                  and{" "}
-                  <Link to="/terms" className="text-teal-400 underline hover:text-teal-300">
-                    Terms of Service
-                  </Link>
-                  .
-                </p>
-              </div>
-            </div>
+  const button = "min-h-11 rounded-md border border-border px-4 py-2 text-sm hover:bg-muted";
+  return <aside role="region" aria-label={copy.consentTitle} className="fixed bottom-20 lg:bottom-4 inset-x-4 z-50 mx-auto max-w-2xl rounded-lg border border-border bg-card p-5 text-card-foreground shadow-lg">
+    <h2 className="font-semibold">{copy.consentTitle}</h2>
+    <p className="mt-2 text-sm text-muted-foreground">{copy.consentBody}</p>
+    <p className="mt-2 flex gap-4 text-sm"><Link className="underline" to="/privacy">{t("footer.privacy")}</Link><Link className="underline" to="/terms">{t("footer.terms")}</Link></p>
+    {showPreferences && <label className="mt-4 flex min-h-11 items-center gap-3"><input type="checkbox" checked={analyticsAllowed} onChange={e => { setAnalyticsAllowed(e.target.checked); setTelemetryAllowed(e.target.checked); }} />{copy.analytics}</label>}
+    <div className="mt-4 flex flex-wrap gap-2">
+      <button className={button} onClick={handleRejectNonEssential}>{copy.essential}</button>
+      <button className={button} onClick={() => setShowPreferences(v => !v)} aria-expanded={showPreferences}>{copy.customize}</button>
+      <button className={button} onClick={showPreferences ? handleSaveCustom : handleAcceptAll}>{showPreferences ? copy.save : copy.accept}</button>
+    </div>
+  </aside>;
 
-            <div className="flex flex-wrap items-center gap-2 pt-2 md:pt-0 shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowPreferences(true)}
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-700 hover:text-white"
-              >
-                <Sliders className="size-3.5 text-teal-400" />
-                <span>Customize</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleRejectNonEssential}
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-700 hover:text-white"
-              >
-                <X className="size-3.5 text-rose-400" />
-                <span>Essential Only</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleAcceptAll}
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-teal-500 px-4 py-1.5 text-xs font-bold text-slate-950 shadow-md shadow-teal-950/50 transition hover:bg-teal-400 hover:scale-[1.02]"
-              >
-                <Check className="size-4" />
-                <span>Accept All</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Shield className="size-5 text-teal-400" />
-                <h3 className="text-sm font-semibold text-white">Customize Privacy Preferences</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowPreferences(false)}
-                className="text-slate-400 hover:text-white text-xs flex items-center gap-1"
-              >
-                <span>Back</span>
-                <ChevronRight className="size-3.5" />
-              </button>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3 text-xs">
-              {/* Essential */}
-              <div className="rounded-lg border border-teal-500/20 bg-teal-950/20 p-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-teal-300">Essential (Required)</span>
-                  <span className="text-[10px] font-mono text-teal-400/80 bg-teal-950/60 px-1.5 py-0.5 rounded border border-teal-800">Always Active</span>
-                </div>
-                <p className="mt-1.5 text-slate-400 text-[11px] leading-relaxed">
-                  Session authentication, language selection, security tokens, and emergency SOS routing.
-                </p>
-              </div>
-
-              {/* Telemetry Cache */}
-              <div className="rounded-lg border border-slate-800 bg-slate-800/40 p-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-slate-200">Ocean Telemetry</span>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={telemetryAllowed}
-                      onChange={(e) => setTelemetryAllowed(e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-teal-500"></div>
-                  </label>
-                </div>
-                <p className="mt-1.5 text-slate-400 text-[11px] leading-relaxed">
-                  Local offline caching of GIS bathymetry, PFZ spots, and INCOIS weather bulletins.
-                </p>
-              </div>
-
-              {/* Analytics */}
-              <div className="rounded-lg border border-slate-800 bg-slate-800/40 p-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-slate-200">Usage Analytics</span>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={analyticsAllowed}
-                      onChange={(e) => setAnalyticsAllowed(e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-teal-500"></div>
-                  </label>
-                </div>
-                <p className="mt-1.5 text-slate-400 text-[11px] leading-relaxed">
-                  Anonymized diagnostic telemetry to improve advisory response accuracy and network latency.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={handleRejectNonEssential}
-                className="rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white"
-              >
-                Reject Non-Essential
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveCustom}
-                className="rounded-lg bg-teal-500 px-4 py-1.5 text-xs font-bold text-slate-950 hover:bg-teal-400"
-              >
-                Save Preferences
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </aside>
-  );
 }
 
 export function openCookieSettings() {

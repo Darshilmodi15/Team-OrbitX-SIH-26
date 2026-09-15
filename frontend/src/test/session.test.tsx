@@ -2,8 +2,8 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 
-vi.mock('@/services/api', () => ({ loginUser: vi.fn(), registerUser: vi.fn(), getUserProfile: vi.fn(), fetchSavedLocation: vi.fn().mockResolvedValue(null), setAuthFailureHandler: vi.fn() }));
-import { getUserProfile, loginUser, fetchSavedLocation } from '@/services/api';
+vi.mock('@/services/api', () => ({ logoutSession: vi.fn().mockResolvedValue(undefined), loginUser: vi.fn(), registerUser: vi.fn(), getUserProfile: vi.fn(), fetchSavedLocation: vi.fn().mockResolvedValue(null), setAuthFailureHandler: vi.fn() }));
+import { getUserProfile, logoutSession, loginUser, fetchSavedLocation } from '@/services/api';
 import { SessionProvider, useSession } from '@/lib/orca/session';
 
 const wrapper = ({ children }: { children: ReactNode }) => <SessionProvider>{children}</SessionProvider>;
@@ -40,10 +40,11 @@ describe('session lifecycle', () => {
     await act(() => result.current.signIn({ contact: 'm@example.com', password: 'secret', remember: false }));
     localStorage.setItem("orca.marine.cache.v4", "old location");
     sessionStorage.setItem("orca.marine.cache.v5.u1", "selected location");
-    act(() => result.current.signOut());
+    await act(() => result.current.signOut());
     expect(localStorage.getItem("orca.marine.cache.v4")).toBeNull();
     expect(sessionStorage.getItem("orca.marine.cache.v5.u1")).toBeNull();
     expect(result.current.user).toBeNull();
+    expect(logoutSession).toHaveBeenCalledWith(authResult.access_token);
     expect(sessionStorage.getItem('orca.auth.session')).toBeNull();
     expect(localStorage.getItem('orca.user')).toBeNull();
     expect(localStorage.getItem('orca.location')).toBeNull();
@@ -89,7 +90,7 @@ it('does not resurrect a session when profile restoration finishes after sign-ou
   sessionStorage.setItem('orca.auth.session', authResult.access_token);
   vi.mocked(getUserProfile).mockReturnValueOnce(new Promise(resolve => { resolveProfile = resolve; }));
   const { result } = renderHook(() => useSession(), { wrapper });
-  act(() => result.current.signOut());
+  await act(() => result.current.signOut());
   await act(async () => resolveProfile(authResult.user));
   expect(result.current.user).toBeNull();
   expect(result.current.token).toBeNull();

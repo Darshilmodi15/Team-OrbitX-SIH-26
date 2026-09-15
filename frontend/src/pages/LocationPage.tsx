@@ -107,7 +107,7 @@ export default function LocationPage() {
       source,
     });
     const from = route.state?.from;
-    navigate(["/dashboard", "/map", "/assistant", "/alerts"].includes(from) ? from : "/dashboard", { replace: true });
+    navigate((["/dashboard", "/map", "/assistant", "/alerts", "/services"].includes(from) || /^\/assistant\/c\/[0-9a-f-]{36}$/i.test(from)) ? from : "/dashboard", { replace: true });
     } catch { setNotice(t("state.error")); } finally { setBusy(false); }
   }
 

@@ -32,7 +32,8 @@ export function useMarine(coords: Coords | null) {
   return useQuery({
     queryKey: ["marine-v5", owner, coords ? cacheKey(coords) : "none"],
     enabled: !!coords,
-    staleTime: 10 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
     retry: 1,
     ...(cached ? { placeholderData: cached } : {}),

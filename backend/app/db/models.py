@@ -391,3 +391,17 @@ class SystemSetting(Base):
     description = Column(String(255), nullable=True)
     is_encrypted = Column(Boolean, default=False, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now(), nullable=False)
+
+
+class DeviceSession(Base):
+    """Revocable login reference; never stores a bearer token."""
+    __tablename__ = "device_sessions"
+    id = Column(String(36), primary_key=True)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_agent = Column(String(512), nullable=True)
+    device_name = Column(String(255), nullable=True)
+    ip_address = Column(String(45), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False)
+    last_seen_at = Column(DateTime(timezone=True), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)

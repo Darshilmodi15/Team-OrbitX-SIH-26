@@ -31,6 +31,7 @@ export const Footer: React.FC<FooterProps> = () => {
         </button>
 
       </div>
+      <div className="flex items-center gap-3 sm:ml-auto"><Link to="/emergency" className="underline">SOS</Link><a className="font-semibold text-foreground underline" href="tel:112">{t("svc.call")} 112</a><a className="font-semibold text-foreground underline" href="tel:1554">1554</a></div>
     </footer>
   );
 };

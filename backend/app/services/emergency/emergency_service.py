@@ -198,7 +198,7 @@ class EmergencyService:
             f"MAYDAY {vessel_name.upper()}.\n"
             f"POSITION: {pos_str}.\n"
             f"NATURE OF DISTRESS: {emergency_nature.value.upper()}.\n"
-            f"PERSONS ON BOARD: {crew_count}.\n"
+            f"PEOPLE AFFECTED: {crew_count if crew_count else 'NOT YET PROVIDED'}.\n"
             f"{extra_notes}\n"
             f"REQUIRE IMMEDIATE RESCUE ASSISTANCE. OVER."
         )
@@ -210,7 +210,7 @@ class EmergencyService:
         sos_id = f"SOS-{uuid.uuid4().hex[:8].upper()}"
         assigned_mrcc = self.route_to_mrcc(req.lat, req.lon)
         mayday = self.generate_mayday_transcript(
-            vessel_name=req.vessel_name or "Fishing Vessel",
+            vessel_name=req.vessel_name or "Person requesting assistance",
             reg_no=req.registration_no or "NOT PROVIDED",
             lat=req.lat,
             lon=req.lon,
@@ -241,6 +241,7 @@ class EmergencyService:
                 "contact_phone": req.contact_phone,
                 "vessel_name": req.vessel_name,
                 "registration_no": req.registration_no,
+                "notes": req.notes or "",
             },
         )
 
@@ -255,8 +256,8 @@ class EmergencyService:
                 db_sos = DBSOSRequest(
                     id=sos_id,
                     user_id=user_id,
-                    vessel_name=req.vessel_name or "Fishing Craft / Motor Vessel",
-                    registration_no=req.registration_no,
+                    vessel_name=req.vessel_name or "Person requesting assistance",
+                    registration_no=req.registration_no or "NOT PROVIDED",
                     latitude=req.lat,
                     longitude=req.lon,
                     crew_count=req.crew_count,
@@ -278,6 +279,24 @@ class EmergencyService:
 
         logger.info("SOS request stored: %s", sos_id)
         return response
+
+    def update_details(self, sos_id, user_id, request):
+        from app.db.session import get_db_context
+        from app.db.models import SOSRequest
+        import json
+        with get_db_context() as db:
+            row = db.query(SOSRequest).filter(SOSRequest.id == sos_id, SOSRequest.user_id == user_id).with_for_update().first()
+            if row is None:
+                return None
+            row.notes = request.notes
+            if "contact_phone" in request.model_fields_set:
+                row.contact_phone = request.contact_phone
+            telemetry = json.loads(row.recorded_telemetry_json or "{}")
+            telemetry.update(notes=row.notes, contact_phone=row.contact_phone)
+            row.recorded_telemetry_json = json.dumps(telemetry)
+            # Keep operator transcript consistent with the updated details.
+            row.mayday_message = self.generate_mayday_transcript(row.vessel_name, row.registration_no, row.latitude, row.longitude, EmergencyNature(row.emergency_nature), row.crew_count, row.notes)
+            return self._from_db(row)
 
     def get_active_sos(self) -> List[SOSBroadcastResponse]:
         """Returns active distress broadcasts."""

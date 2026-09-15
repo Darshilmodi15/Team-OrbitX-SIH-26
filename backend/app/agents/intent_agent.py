@@ -387,7 +387,7 @@ def parse_intent(question: str, history: Optional[List[Dict[str, str]]] = None) 
     if gemini_key:
         try:
             from google import genai
-            client = genai.Client(api_key=gemini_key.strip())
+            client = genai.Client(api_key=gemini_key.strip(), http_options={"timeout": 8000})
             prompt_content = question
             if history:
                 history_summary = "\n".join([f"{h.get('role')}: {h.get('text')}" for h in history[-3:]])
@@ -398,7 +398,7 @@ def parse_intent(question: str, history: Optional[List[Dict[str, str]]] = None) 
                     response = client.models.generate_content(
                         model=model_name,
                         contents=prompt_content,
-                        config={"system_instruction": SYSTEM_PROMPT},
+                        config={"system_instruction": SYSTEM_PROMPT, "automatic_function_calling": {"disable": True}},
                     )
                     raw_text = _clean_json_text(response.text)
                     data = json.loads(raw_text)
@@ -413,7 +413,9 @@ def parse_intent(question: str, history: Optional[List[Dict[str, str]]] = None) 
                         "simulation_delta_wave": data.get("simulation_delta_wave") or entities["simulation_delta_wave"],
                         "simulation_delta_wind": data.get("simulation_delta_wind") or entities["simulation_delta_wind"],
                     }
-                except Exception:
+                except Exception as exc:
+                    if getattr(exc, "code", None) in (401, 403, 429):
+                        break
                     continue
         except Exception:
             pass

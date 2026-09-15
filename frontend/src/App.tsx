@@ -1,5 +1,5 @@
-import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Analytics } from "@vercel/analytics/react";
 import { I18nProvider } from "@/lib/orca/i18n";
 import { SessionProvider, useSession } from "@/lib/orca/session";
@@ -48,9 +48,10 @@ function RouteFallback() {
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { pathname } = useLocation();
   const { user, ready } = useSession();
   if (!ready) return <RouteFallback />;
-  return user ? children : <Navigate to="/login" replace />;
+  return user ? children : <Navigate to="/login" state={{ from: pathname }} replace />;
 }
 
 function RoleRoute({ roles, children }: { roles: Array<"user" | "government" | "admin">; children: React.ReactNode }) {
@@ -69,6 +70,12 @@ function DashboardRoute() {
   return <LocationGate><DashboardPage /></LocationGate>;
 }
 
+function ConsentedAnalytics() {
+  const read = () => { try { return JSON.parse(localStorage.getItem("orca_cookie_consent") || "null")?.analytics === true; } catch { return false; } };
+  const [allowed, setAllowed] = useState(read);
+  useEffect(() => { const update = () => setAllowed(read()); window.addEventListener("orca:consent-changed", update); window.addEventListener("storage", update); return () => { window.removeEventListener("orca:consent-changed", update); window.removeEventListener("storage", update); }; }, []);
+  return allowed ? <Analytics /> : null;
+}
 export default function App() {
   return (
     <ThemeProvider>
@@ -90,8 +97,11 @@ export default function App() {
                   <Route path="/home" element={<Navigate to="/dashboard" replace />} />
                   <Route path="/map" element={<ProtectedRoute><LocationGate><MapPage /></LocationGate></ProtectedRoute>} />
                   <Route path="/assistant" element={<ProtectedRoute><LocationGate><AssistantPage /></LocationGate></ProtectedRoute>} />
+                  <Route path="/assistant/c/:conversationId" element={<ProtectedRoute><LocationGate><AssistantPage /></LocationGate></ProtectedRoute>} />
+                  <Route path="/c/:conversationId" element={<ProtectedRoute><LocationGate><AssistantPage /></LocationGate></ProtectedRoute>} />
                   <Route path="/alerts" element={<ProtectedRoute><LocationGate><AlertsPage /></LocationGate></ProtectedRoute>} />
-                  <Route path="/services" element={<ProtectedRoute><ServicesPage /></ProtectedRoute>} />
+                  <Route path="/services" element={<ProtectedRoute><LocationGate><ServicesPage /></LocationGate></ProtectedRoute>} />
+                  <Route path="/emergency" element={<ProtectedRoute><ServicesPage /></ProtectedRoute>} />
                   <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
                   <Route path="/privacy" element={<PrivacyPage />} />
                   <Route path="/terms" element={<TermsPage />} />
@@ -101,7 +111,7 @@ export default function App() {
               </Suspense>
               <CookieBanner />
             </BrowserRouter>
-            <Analytics />
+            <ConsentedAnalytics />
           </SessionProvider>
         </I18nProvider>
       </AppProvider>

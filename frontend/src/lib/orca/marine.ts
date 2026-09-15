@@ -268,7 +268,7 @@ export async function fetchOpenMeteoMarineBundle(c: Coords, signal?: AbortSignal
   type Forecast = { latitude?: number; longitude?: number; hourly?: Hourly<(number | null)[]> & { time: string[] } };
   const request = async (url: string): Promise<Forecast | null> => {
     try {
-      const response = await fetch(url, { signal: signal ?? AbortSignal.timeout(15000) });
+      const response = await fetch(url, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) });
       if (!response.ok) return null;
       const data = await response.json();
       if (!Array.isArray(data?.hourly?.time)) return null;
@@ -325,7 +325,10 @@ export async function fetchOpenMeteoMarineBundle(c: Coords, signal?: AbortSignal
 
 export async function fetchMarineBundle(c: Coords, signal?: AbortSignal): Promise<MarineBundle> {
   try {
-    return await fetchBackendMarineBundle(c, signal);
+    const bundle = await fetchBackendMarineBundle(c, signal);
+    if (bundle.current.dataMode !== "unavailable") return bundle;
+    const fallback = await fetchOpenMeteoMarineBundle(c, signal);
+    return { ...fallback, tide: bundle.tide, alerts: bundle.alerts };
   } catch (error) {
     if ((error as Error)?.name === "AbortError") throw error;
     return fetchOpenMeteoMarineBundle(c, signal);

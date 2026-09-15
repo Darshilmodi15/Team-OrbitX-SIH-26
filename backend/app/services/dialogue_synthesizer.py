@@ -163,7 +163,7 @@ Generate the complete, natural response in language '{target_lang}':"""
             last_err = None
             for model_name in models_to_try:
                 try:
-                    config = {"system_instruction": system_instruction}
+                    config = {"system_instruction": system_instruction, "automatic_function_calling": {"disable": True}}
                     if "3.7" in model_name and is_emergency_contact_lookup(english_query):
                         config["thinking_config"] = {"thinking_level": "low"}
                     response = client.models.generate_content(
@@ -183,7 +183,7 @@ Generate the complete, natural response in language '{target_lang}':"""
                         break
                     continue
 
-            record("gemini", success=False, http_status=getattr(last_err, "code", 200) if last_err else 200, reason="EMPTY_OR_FAILED")
+            record("gemini", success=False, http_status=getattr(last_err, "code", 200) if last_err else 200, reason="QUOTA_EXHAUSTED" if getattr(last_err, "code", None) == 429 else "EMPTY_OR_FAILED")
         except Exception as err:
             status = getattr(err, "code", None)
             record("gemini", success=False, http_status=status if isinstance(status, int) else None, reason=type(err).__name__)

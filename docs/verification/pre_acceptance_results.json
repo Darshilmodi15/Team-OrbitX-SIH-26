@@ -1,0 +1,140 @@
+{
+  "timestamp": "2026-09-15T05:49:39Z",
+  "total": 22,
+  "passed": 22,
+  "failed": 0,
+  "checks": [
+    {
+      "id": "M01-a",
+      "description": "Git SHA recorded",
+      "status": "PASS",
+      "detail": "SHA: 13bb7da311d1cde03a6d01824710a09aa2950cfd"
+    },
+    {
+      "id": "M01-b",
+      "description": "Working tree is clean (or only new acceptance files)",
+      "status": "PASS",
+      "detail": "3 changed file(s) \u2014 acceptance tooling only"
+    },
+    {
+      "id": "M11-a",
+      "description": "No API keys/secrets in JS/HTML bundle",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "M11-b",
+      "description": "index.html exists in build",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "M18-a",
+      "description": "No preset/demo buttons in LocationPage",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "M18-b",
+      "description": "DEFAULT_CENTER not used as a saved selection",
+      "status": "PASS",
+      "detail": "DEFAULT_CENTER used only as viewport (2 references)"
+    },
+    {
+      "id": "M36-a",
+      "description": "PFZ service returns NOT_CONFIGURED when no URL",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "M36-b",
+      "description": "PFZ service has unavailable status path",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "M36-c",
+      "description": "PFZ API URL defaults to empty (unconfigured)",
+      "status": "PASS",
+      "detail": "Defaults to empty string"
+    },
+    {
+      "id": "M42-a",
+      "description": "MOSDAC is_configured returns False",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "M42-b",
+      "description": "MOSDAC reports NOT_IMPLEMENTED",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "M42-c",
+      "description": "MOSDAC chlorophyll returns None",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "M44-a",
+      "description": "No fabricated catch probability/CPUE/route safety",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "M44-b",
+      "description": "Recommendations use REFERENCE_ESTIMATE, not VERIFIED",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "BUILD-index.html",
+      "description": "Build contains index.html",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "BUILD-offline-trip-reader.html",
+      "description": "Build contains offline-trip-reader.html",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "BUILD-trip-worker.js",
+      "description": "Build contains trip-worker.js",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "GI-.env",
+      "description": ".gitignore includes .env",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "GI-node_modules",
+      "description": ".gitignore includes node_modules",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "GI-__pycache__",
+      "description": ".gitignore includes __pycache__",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "GI-.venv",
+      "description": ".gitignore includes .venv",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "GI-venv",
+      "description": ".gitignore includes venv",
+      "status": "PASS",
+      "detail": ""
+    }
+  ]
+}

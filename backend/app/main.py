@@ -1,9 +1,18 @@
 """FastAPI Application for ORCA Marine AI with Bhashini Multilingual Service."""
 from datetime import date as dt_date, datetime, timezone
 import os
+from pathlib import Path
 import re
 import threading
 from typing import Any, Dict, List, Optional
+from dotenv import load_dotenv
+
+# Load backend/.env explicitly
+_env_file = Path(__file__).resolve().parent.parent / ".env"
+if _env_file.exists():
+    load_dotenv(dotenv_path=_env_file)
+else:
+    load_dotenv()
 from fastapi import FastAPI, Query, Depends, HTTPException
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
@@ -382,6 +391,13 @@ class ChatResponse(BaseModel):
     agents_used: List[str] = Field(default_factory=list)
     data_timestamp: str
     fallback_used: bool = False
+    original_transcript: Optional[str] = None
+    detected_languages: Optional[List[str]] = None
+    dominant_language: Optional[str] = None
+    response_language: Optional[str] = None
+    english_normalized_query: Optional[str] = None
+    language_confidence: Optional[float] = None
+    transcription_provider: Optional[str] = None
 
 
 _chat_idempotency_cache: Dict[str, ChatResponse] = {}
@@ -653,75 +669,31 @@ def _process_orca_query(
     sources_used: List[str] = []
     agent_results: List[AgentResult] = []
 
-    # Step 1: Detect or resolve language using Language Priority Rule
-    # Priority 1: Direct analysis of user input text (native Indic script or Romanized Indic)
-    lid_res = bhashini_service.identify_language(question_raw, session_id=None)
-    
-    # Check if the query is explicitly written in English
-    is_explicit_english = False
-    if lid_res.short_code == "en":
-        eng_words = set(re.findall(r"\b[a-zA-Z']+\b", question_raw.lower()))
-        common_eng = {
-            "what", "is", "the", "how", "far", "can", "i", "weather", "wind", "wave",
-            "safe", "where", "tell", "me", "are", "there", "any", "which", "should",
-            "help", "forecast", "sea", "ocean", "tide", "alert", "warning", "temperature",
-            "sst", "pfz", "route", "direction", "speed", "height", "today", "tomorrow"
-        }
-        if lid_res.provider == "sarvam" or len(eng_words.intersection(common_eng)) >= 1 or len(eng_words) >= 2:
-            is_explicit_english = True
-
-    if lid_res.short_code != "en":
-        detected_lang = lid_res.short_code
-        lang_name = lid_res.language_name
-        if session_id:
-            bhashini_service.set_session_language(session_id, detected_lang)
-        if lid_res.provider == "sarvam":
-            sources_used.append("sarvam_language_identification")
-            reasoning.append(
-                f"Sarvam Language Identification: Identified query language as '{lang_name}' ({lid_res.language_code}, script: {lid_res.script_code}) [status: {lid_res.detection_status}]."
-            )
-        else:
-            reasoning.append(
-                f"Language Layer (Script/Romanized Analysis): Identified query language as '{lang_name}' ({lid_res.language_code}, script: {lid_res.script_code}) [status: {lid_res.detection_status}]."
-            )
-    elif is_explicit_english:
-        detected_lang = "en"
-        lang_name = "English"
-        if session_id:
-            bhashini_service.set_session_language(session_id, "en")
-        reasoning.append("Language Layer: User query explicitly in English -> Responding in English.")
-    else:
-        # Priority 2: If user asked in dashboard-selected language (and not 'auto' or 'en')
-        if requested_lang and requested_lang.lower() not in ("auto", "en"):
-            detected_lang = requested_lang.lower().split("-")[0]
-            lang_name = SUPPORTED_LANGUAGES.get(detected_lang, detected_lang.upper())
-            if session_id:
-                bhashini_service.set_session_language(session_id, detected_lang)
-            reasoning.append(
-                f"Dashboard Preference: Using selected language '{lang_name}' for response."
-            )
-        else:
-            detected_lang = "en"
-            lang_name = "English"
-            reasoning.append("Language Layer: Processing query in English.")
+    # Step 1: Detect or resolve language using Segment-Aware Multilingual Policy
+    decision = bhashini_service.determine_query_language(
+        text=question_raw,
+        requested_lang=requested_lang,
+        session_id=session_id,
+        user_profile_lang=requested_lang if requested_lang not in ("auto", "en") else None,
+        transcription_provider="typed",
+    )
+    detected_lang = decision.response_language
+    lang_name = SUPPORTED_LANGUAGES.get(detected_lang, detected_lang.upper())
+    english_question = decision.english_normalized_query
 
     sources_used.append("bhashini_multilingual_service")
     sources_used.append("sarvam_ai_language_service")
 
-    # Step 2: Translate Indic text to English if needed
+    reasoning.append(
+        f"Language Layer (Multilingual Policy): Determined response language '{lang_name}' ({detected_lang}) [confidence: {decision.language_confidence:.2f}, detected: {', '.join(decision.detected_languages)}]."
+    )
     if detected_lang != "en":
-        english_question = bhashini_service.translate(
-            text=question_raw,
-            source_lang=detected_lang,
-            target_lang="en",
-        )
         reasoning.append(
-            f"Bhashini Multilingual Layer: Translated user query to English: '{english_question}'."
+            f"Bhashini Multilingual Layer: Normalized user query to English: '{english_question}'."
         )
     else:
-        english_question = question_raw
         reasoning.append(
-            f"Bhashini Multilingual Layer: Processed native English query: '{english_question}'."
+            f"Bhashini Multilingual Layer: Processed query: '{english_question}'."
         )
 
     # Step 3: Intent Classification & Entity Extraction (with multi-turn context resolution)
@@ -1137,6 +1109,13 @@ def _process_orca_query(
         "agents_used": list(dict.fromkeys(task.split(":", 1)[0] for task in executed_tasks)),
         "data_timestamp": (weather_evidence.retrieval_time if weather_evidence and weather_evidence.retrieval_time else datetime.now(timezone.utc).isoformat()),
         "fallback_used": connectivity_mode != "LIVE",
+        "original_transcript": decision.original_transcript,
+        "detected_languages": decision.detected_languages,
+        "dominant_language": decision.dominant_language,
+        "response_language": decision.response_language,
+        "english_normalized_query": decision.english_normalized_query,
+        "language_confidence": decision.language_confidence,
+        "transcription_provider": decision.transcription_provider,
     }
 
 
@@ -1339,20 +1318,41 @@ def handle_chat(request: ChatRequest, user: UserProfile = Depends(get_current_us
     db.commit()  # Persist the user turn even when the provider is unavailable.
     try:
         if request.location is None:
-            lid = bhashini_service.identify_language(request.message, session_id=None)
-            response_lang = lid.short_code
-            if not any(character.isalpha() for character in request.message):
-                preferred = (request.language or "en").lower().split("-")[0]
-                response_lang = preferred if preferred in SUPPORTED_LANGUAGES else "en"
+            decision = bhashini_service.determine_query_language(
+                text=request.message,
+                requested_lang=request.language or "auto",
+                session_id=request.session_id,
+            )
+            response_lang = decision.response_language
             evidence = EvidenceBundle(date=q_date, connectivity_mode="UNAVAILABLE")
             answer = DialogueSynthesizer.synthesize_response(
-                user_query=request.message, english_query=request.message, detected_intent="general",
-                evidence=evidence, location_title="Not selected. Ask the user to choose a location for local conditions; provide general explanations only.",
-                target_lang=response_lang, history=history_dicts,
+                user_query=request.message,
+                english_query=decision.english_normalized_query or request.message,
+                detected_intent="general",
+                evidence=evidence,
+                location_title="Not selected. Ask the user to choose a location for local conditions; provide general explanations only.",
+                target_lang=response_lang,
+                history=history_dicts,
             )
-            result = {"language": response_lang, "language_name": SUPPORTED_LANGUAGES.get(response_lang, response_lang), "original_message": request.message,
-                      "english_query": request.message, "answer": answer, "reasoning": [], "sources_used": [],
-                      "plan": ExecutionPlan(intent="general", tasks=[]), "connectivity_mode": "UNAVAILABLE", "location": None}
+            result = {
+                "language": response_lang,
+                "language_name": SUPPORTED_LANGUAGES.get(response_lang, response_lang),
+                "original_message": request.message,
+                "english_query": decision.english_normalized_query or request.message,
+                "answer": answer,
+                "reasoning": [f"Language Layer (Multilingual Policy): Resolved response language as '{response_lang}'."],
+                "sources_used": [],
+                "plan": ExecutionPlan(intent="general", tasks=[]),
+                "connectivity_mode": "UNAVAILABLE",
+                "location": None,
+                "original_transcript": decision.original_transcript,
+                "detected_languages": decision.detected_languages,
+                "dominant_language": decision.dominant_language,
+                "response_language": decision.response_language,
+                "english_normalized_query": decision.english_normalized_query,
+                "language_confidence": decision.language_confidence,
+                "transcription_provider": decision.transcription_provider,
+            }
         else:
             result = _process_orca_query(
                 question_raw=request.message,
@@ -1398,6 +1398,13 @@ def handle_chat(request: ChatRequest, user: UserProfile = Depends(get_current_us
         agents_used=result.get("agents_used", []),
         data_timestamp=result.get("data_timestamp", datetime.now(timezone.utc).isoformat()),
         fallback_used=result.get("fallback_used", False),
+        original_transcript=result.get("original_transcript"),
+        detected_languages=result.get("detected_languages"),
+        dominant_language=result.get("dominant_language"),
+        response_language=result.get("response_language"),
+        english_normalized_query=result.get("english_normalized_query"),
+        language_confidence=result.get("language_confidence"),
+        transcription_provider=result.get("transcription_provider"),
     )
     if cache_key:
         with _chat_idempotency_lock:

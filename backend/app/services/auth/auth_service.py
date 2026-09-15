@@ -82,7 +82,7 @@ def _b64url_decode(value: str) -> bytes:
     return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
 
 
-def create_token(user_id: str, role: str, email_or_phone: str = "") -> str:
+def create_token(user_id: str, role: str, email_or_phone: str = "", user_agent: str = "", ip_address: str = "") -> str:
     """Generate a standards-compliant, minimal HS256 JWT."""
     header = {"alg": "HS256", "typ": "JWT"}
     payload = {
@@ -96,6 +96,33 @@ def create_token(user_id: str, role: str, email_or_phone: str = "") -> str:
     payload_b64 = _b64url(json.dumps(payload, separators=(",", ":")).encode())
     signing_input = f"{header_b64}.{payload_b64}".encode()
     signature = _b64url(hmac.new(JWT_SECRET.encode(), signing_input, hashlib.sha256).digest())
+    from app.db.models import DeviceSession
+    from app.db.session import get_db_context
+    # Derive a friendly device name from User-Agent
+    device_name = ""
+    if user_agent:
+        ua_lower = user_agent.lower()
+        if "iphone" in ua_lower or "ipad" in ua_lower:
+            device_name = "iOS Device"
+        elif "android" in ua_lower:
+            device_name = "Android Device"
+        elif "windows" in ua_lower:
+            device_name = "Windows Browser"
+        elif "macintosh" in ua_lower or "mac os" in ua_lower:
+            device_name = "macOS Browser"
+        elif "linux" in ua_lower:
+            device_name = "Linux Browser"
+        else:
+            device_name = "Web Browser"
+    now_utc = datetime.fromtimestamp(payload["iat"], timezone.utc)
+    with get_db_context() as db:
+        db.add(DeviceSession(id=payload["jti"], user_id=user_id,
+            user_agent=user_agent[:512] if user_agent else None,
+            device_name=device_name or None,
+            ip_address=ip_address[:45] if ip_address else None,
+            created_at=now_utc,
+            last_seen_at=now_utc,
+            expires_at=datetime.fromtimestamp(payload["exp"], timezone.utc)))
     return f"{header_b64}.{payload_b64}.{signature}"
 
 
@@ -119,6 +146,16 @@ def decode_token(token: str) -> Optional[Dict[str, Any]]:
     except Exception as err:
         logger.debug(f"Token decode failure: {err}")
         return None
+
+
+def session_is_active(payload: Dict[str, Any]) -> bool:
+    from app.db.models import DeviceSession
+    from app.db.session import get_db_context
+    with get_db_context() as db:
+        session = db.get(DeviceSession, payload.get("jti", ""))
+        return bool(session and session.user_id == payload.get("sub")
+                    and session.revoked_at is None
+                    and session.expires_at.replace(tzinfo=timezone.utc) > datetime.now(timezone.utc))
 
 
 class AuthService:

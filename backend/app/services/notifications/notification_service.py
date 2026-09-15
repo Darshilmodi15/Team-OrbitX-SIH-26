@@ -28,9 +28,11 @@ class NotificationService:
     def get_notifications_for_user(self, user_id: Optional[str] = None) -> NotificationsResponse:
         """Retrieves all notifications for user or global broadcast."""
         items = list(self._notifications.values())
-        # Filter for user or global
+        # Filter for user or global: unauthenticated callers ONLY get global/broadcast alerts
         if user_id:
             items = [n for n in items if n.user_id in (user_id, "global", None)]
+        else:
+            items = [n for n in items if n.user_id in ("global", None)]
 
         # Sort newest first
         items.sort(key=lambda x: x.timestamp, reverse=True)
@@ -56,10 +58,12 @@ class NotificationService:
         return None
 
     def mark_all_as_read(self, user_id: Optional[str] = None) -> int:
-        """Marks all notifications as read."""
+        """Marks all notifications as read for the authenticated user."""
+        if not user_id:
+            return 0
         count = 0
         for n in self._notifications.values():
-            if not user_id or n.user_id in (user_id, "global", None):
+            if n.user_id in (user_id, "global", None):
                 if not n.is_read:
                     n.is_read = True
                     count += 1

@@ -1,6 +1,6 @@
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useState } from "react";
-import { AlertCircle, ArrowRight, Eye, EyeOff, Loader2, Lock, User, Phone, ShieldCheck } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Lock, User, Phone, ShieldCheck } from "lucide-react";
 import { OrcaLogo } from "@/components/orca/Logo";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
@@ -18,6 +18,7 @@ export default function AuthPage() {
   const { lang, t } = useI18n();
   const { signIn, register } = useSession();
   const navigate = useNavigate();
+  const { state } = useLocation();
   const [mode, setMode] = useState<"signin" | "register">("signin");
   const [form, setForm] = useState({ name: "", contact: "", password: "", confirm: "" });
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -93,7 +94,8 @@ export default function AuthPage() {
         });
       }
       trackEvent("user_auth_success", { mode, contactType: contact.includes("@") ? "email" : "mobile_nmfd" });
-      navigate(signedIn.role === "user" ? "/location" : "/dashboard");
+      const from = typeof state?.from === "string" && /^\/assistant\/c\/[0-9a-f-]{36}$/i.test(state.from) ? state.from : null;
+      navigate(from || (signedIn.role === "user" ? "/location" : "/dashboard"), { replace: true });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Authentication failed. Please verify credentials and retry.";
       setGeneralError(msg);
@@ -109,14 +111,29 @@ export default function AuthPage() {
         description="Authenticate your maritime profile via National Marine Fisher ID (NMFD), mobile number, or satellite credentials."
       />
 
+      {/* Back to Home Navigation */}
+      <div className="mb-6">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-teal-400 group"
+        >
+          <ArrowLeft className="size-3.5 transition-transform group-hover:-translate-x-0.5" />
+          <span>Back to home</span>
+        </Link>
+      </div>
+
       <div className="flex items-center gap-3">
-        <OrcaLogo className="size-10" />
-        <div>
+        <Link to="/" aria-label="ORCA Home" className="transition-transform hover:scale-105">
+          <OrcaLogo className="size-10" />
+        </Link>
+        <Link to="/" className="group block">
           <span className="text-xs font-mono uppercase tracking-widest text-teal-400 font-semibold block">
             Secure Marine Intelligence Access
           </span>
-          <span className="text-base font-bold text-foreground">ORCA Marine AI</span>
-        </div>
+          <span className="text-base font-bold text-foreground group-hover:text-teal-400 transition-colors">
+            ORCA Marine AI
+          </span>
+        </Link>
       </div>
 
       <h1 className="mt-6 text-2xl font-bold tracking-tight text-foreground">

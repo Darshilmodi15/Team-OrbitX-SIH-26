@@ -13,6 +13,15 @@ export default function ServicesPage() {
   const { location } = useSession();
   const [copied, setCopied] = useState(false);
   const [sosOpen, setSosOpen] = useState(false);
+  const [emergencyCoords, setEmergencyCoords] = useState<{lat:number;lon:number}|null>(null);
+  const [gpsBusy, setGpsBusy] = useState(false);
+  const [gpsError, setGpsError] = useState(false);
+  function openEmergency() {
+    if (gpsBusy) return;
+    setGpsBusy(true); setGpsError(false);
+    if (!navigator.geolocation) {setGpsError(true);setGpsBusy(false);return;}
+    navigator.geolocation.getCurrentPosition(position=>{setEmergencyCoords({lat:position.coords.latitude,lon:position.coords.longitude});setSosOpen(true);setGpsBusy(false);},()=>{setGpsError(true);setGpsBusy(false);},{enableHighAccuracy:true,timeout:10000,maximumAge:0});
+  }
   const services = getEmergencyServices(lang);
 
   async function shareLocation() {
@@ -31,7 +40,7 @@ export default function ServicesPage() {
     <AppShell>
       <SEO
         title="Maritime Emergency SOS & Coastal Services | ORCA Marine AI"
-        description="24x7 Marine distress SOS dispatch, Coast Guard MRCC helpline, and state fisheries welfare services."
+        description="24x7 Marine distress SOS beacon logging, Coast Guard MRCC helpline directory, and state fisheries welfare services."
       />
       <h1 className="text-xl font-semibold text-foreground">{t("svc.title")}</h1>
 
@@ -48,11 +57,11 @@ export default function ServicesPage() {
           </a>
           <button
             className="flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md bg-danger px-4 text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-50 shadow-sm"
-            onClick={() => setSosOpen(true)}
-            disabled={!location}
+            onClick={openEmergency}
+            disabled={gpsBusy}
           >
             <Radio className="size-4" aria-hidden />
-            <span>{t("svc.transmitSos")}</span>
+            <span>{gpsBusy ? t("loc.searching") : t("svc.transmitSos")}</span>
           </button>
           <button
             className="flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-semibold text-card-foreground transition hover:bg-muted disabled:opacity-50 shadow-sm"
@@ -70,11 +79,12 @@ export default function ServicesPage() {
         )}
       </div>
 
-      {location && (
+      {gpsError && <p role="alert">{t("loc.unavailable")} · <a className="underline" href="tel:112">{t("svc.call")} 112</a></p>}
+      {emergencyCoords && sosOpen && (
         <EmergencySOSModal
           isOpen={sosOpen}
           onClose={() => setSosOpen(false)}
-          userLocation={location.coords}
+          userLocation={emergencyCoords}
           currentLang={lang}
         />
       )}

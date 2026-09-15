@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppContext, type SafetyLevel } from '../context/AppContext';
+import { useSession } from '@/lib/orca/session';
 import { getStrings, SUPPORTED_LANGUAGES, getLanguageDisplay } from '../i18n';
 
 interface NavbarProps {
@@ -72,9 +73,12 @@ export default function Navbar({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const { signOut } = useSession();
+
   const handleSignOut = () => {
     logoutUser();
     setShowUserMenu(false);
+    void signOut('/');
   };
 
   // Status configuration

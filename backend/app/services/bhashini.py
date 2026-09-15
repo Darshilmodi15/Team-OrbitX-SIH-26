@@ -3,9 +3,10 @@ import json
 import logging
 import os
 import re
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from dotenv import load_dotenv
 import httpx
+from pydantic import BaseModel, Field
 
 from app.models.agent_models import LanguageIdentificationResult
 from app.services.sarvam import (
@@ -512,6 +513,86 @@ def detect_romanized_indic(text: str) -> Optional[Tuple[str, str, str]]:
     return None
 
 
+class QueryLanguageDecision(BaseModel):
+    original_transcript: str
+    detected_languages: List[str] = Field(default_factory=list)
+    dominant_language: str = "en"
+    response_language: str = "en"
+    english_normalized_query: str = ""
+    language_confidence: float = 1.0
+    transcription_provider: str = "typed"
+    fallback_used: bool = False
+
+
+LANGUAGE_NAME_TO_CODE: Dict[str, str] = {
+    "gujarati": "gu", "gujrati": "gu", "ગુજરાતી": "gu",
+    "hindi": "hi", "हिंदी": "hi", "हिन्दी": "hi",
+    "marathi": "mr", "मराठी": "mr",
+    "tamil": "ta", "தமிழ்": "ta",
+    "telugu": "te", "తెలుగు": "te",
+    "bengali": "bn", "বাংলা": "bn",
+    "malayalam": "ml", "മലയാളം": "ml",
+    "kannada": "kn", "ಕನ್ನಡ": "kn",
+    "odia": "or", "oriya": "or", "ଓଡ଼ିଆ": "or",
+    "punjabi": "pa", "ਪੰਜਾਬੀ": "pa",
+    "english": "en", "अंग्रेजी": "en", "અંગ્રેજી": "en",
+}
+
+EXPLICIT_INSTRUCTION_REGEX = re.compile(
+    r'(?:(?:answer|reply|respond|speak|tell\s+me|write|explain)\s+(?:to\s+me\s+)?in\s+([a-zA-Z]+)|in\s+([a-zA-Z]+)\s+please|\b([a-zA-Z]+)\s+(?:language|only)\b)',
+    re.IGNORECASE,
+)
+
+INDIC_EXPLICIT_PATTERNS = [
+    (re.compile(r'ગુજરાતીમાં'), 'gu'),
+    (re.compile(r'हिंदी\s*में|हिन्दी\s*में'), 'hi'),
+    (re.compile(r'मराठीत|मराठी\s*मध्ये'), 'mr'),
+    (re.compile(r'தமிழில்'), 'ta'),
+    (re.compile(r'తెలుగులో'), 'te'),
+    (re.compile(r'বাংলায়'), 'bn'),
+    (re.compile(r'മലയാളത്തിൽ'), 'ml'),
+    (re.compile(r'ಕನ್ನಡದಲ್ಲಿ'), 'kn'),
+    (re.compile(r'ଓଡ଼ିଆରେ'), 'or'),
+]
+
+GREETINGS_PATTERN = re.compile(
+    r'^(hi+|hello+|hey+|good\s+(morning|afternoon|evening)|how\s+are\s+you|kem\s+cho|namaste+|namaskar+|pranam+|suprabhat+|sat\s+sri\s+akal+|aadab+|vanakkam+|namaskaram+|namaskara)\b',
+    re.IGNORECASE,
+)
+
+INDIC_GREETINGS = {
+    'કેમ છો', 'નમસ્તે', 'નમસ્કાર', 'હેલો', 'હાય', 'સુપ્રભાત',
+    'नमस्ते', 'नमस्कार', 'हेलो', 'हाय', 'प्रणाम', 'सुप्रभात', 'कैसे हो', 'कैसे हैं',
+    'வணக்கம்', 'నమస్కారం', 'നമസ്കാരം', 'ನಮಸ್ಕಾರ', 'নমস্কার', 'ନମସ୍କାର',
+}
+
+
+def is_greeting_segment(text: str) -> bool:
+    t = text.strip()
+    t_clean = re.sub(r'[^\w\s]', '', t.lower()).strip()
+    if not t_clean:
+        return True
+    if t in INDIC_GREETINGS or t_clean in INDIC_GREETINGS:
+        return True
+    if GREETINGS_PATTERN.match(t_clean):
+        tokens = t_clean.split()
+        if len(tokens) <= 5:
+            return True
+    return False
+
+
+def find_explicit_instruction(text: str) -> Optional[str]:
+    for pattern, lang in INDIC_EXPLICIT_PATTERNS:
+        if pattern.search(text):
+            return lang
+    m = EXPLICIT_INSTRUCTION_REGEX.search(text)
+    if m:
+        for group in m.groups():
+            if group and group.lower() in LANGUAGE_NAME_TO_CODE:
+                return LANGUAGE_NAME_TO_CODE[group.lower()]
+    return None
+
+
 class BhashiniService:
     """
     Bhashini Multilingual Service Layer.
@@ -712,6 +793,148 @@ class BhashiniService:
         """
         return self.identify_language(text, session_id=session_id).short_code
 
+    def determine_query_language(
+        self,
+        text: str,
+        requested_lang: Optional[str] = None,
+        session_id: Optional[str] = None,
+        user_profile_lang: Optional[str] = None,
+        transcription_provider: str = "typed",
+    ) -> QueryLanguageDecision:
+        """
+        Multilingual Policy & Code-Switching Determination:
+        1. Explicit instruction ("Answer in Gujarati", "हिंदी में बताओ")
+        2. Saved profile preference
+        3. Substantive question language (strip greetings like "Hi, how are you?", "Kem cho")
+        4. Mixed sentences: prefer language of LATEST substantive sentence
+        5. Code-switching support (e.g. Indic script with English technical loanwords)
+        6. Multi-turn session language
+        7. English fallback
+        """
+        if not text or not isinstance(text, str) or not text.strip():
+            return QueryLanguageDecision(
+                original_transcript=text or "",
+                detected_languages=["en"],
+                dominant_language="en",
+                response_language="en",
+                english_normalized_query="",
+                language_confidence=1.0,
+                transcription_provider=transcription_provider,
+                fallback_used=False,
+            )
+
+        cleaned_text = text.strip()
+
+        # 1. Priority 1: Explicit user instruction in query
+        explicit_lang = find_explicit_instruction(cleaned_text)
+        if explicit_lang and explicit_lang in SUPPORTED_LANGUAGES:
+            if session_id:
+                self.set_session_language(session_id, explicit_lang)
+            eng_norm = (
+                self.translate(cleaned_text, source_lang=explicit_lang, target_lang="en")
+                if explicit_lang != "en"
+                else cleaned_text
+            )
+            return QueryLanguageDecision(
+                original_transcript=cleaned_text,
+                detected_languages=[explicit_lang],
+                dominant_language=explicit_lang,
+                response_language=explicit_lang,
+                english_normalized_query=eng_norm,
+                language_confidence=1.0,
+                transcription_provider=transcription_provider,
+                fallback_used=False,
+            )
+
+        # 2. Sentence/Segment-Aware Determination
+        raw_segments = [s.strip() for s in re.split(r'[\n\r.!?।]+', cleaned_text) if s.strip()]
+        if not raw_segments:
+            raw_segments = [cleaned_text]
+
+        substantive_segments: List[Tuple[str, str]] = []
+        greeting_segments: List[Tuple[str, str]] = []
+        detected_languages: List[str] = []
+
+        for seg in raw_segments:
+            lid_result = self.identify_language(seg, session_id=None)
+            seg_lang = lid_result.short_code
+            if is_greeting_segment(seg):
+                greeting_segments.append((seg, seg_lang))
+            else:
+                substantive_segments.append((seg, seg_lang))
+                if seg_lang not in detected_languages:
+                    detected_languages.append(seg_lang)
+
+        chosen_lang = "en"
+        dominant_lang = "en"
+        confidence = 0.9
+
+        if substantive_segments:
+            # Rule: For mixed sentences, prefer language of LATEST substantive sentence
+            latest_seg, latest_lang = substantive_segments[-1]
+            chosen_lang = latest_lang
+            dominant_lang = latest_lang
+            confidence = 0.95
+        elif greeting_segments:
+            # Only greetings present in query (e.g. "Kem cho?", "Namaste")
+            for _, g_lang in greeting_segments:
+                if g_lang != "en":
+                    chosen_lang = g_lang
+                    dominant_lang = g_lang
+                    if g_lang not in detected_languages:
+                        detected_languages.append(g_lang)
+                    break
+            if chosen_lang == "en" and greeting_segments:
+                chosen_lang = greeting_segments[-1][1]
+                dominant_lang = chosen_lang
+
+        # Fallback hierarchy if substantive query is in English / Latin script without non-English markers:
+        # Check: Saved profile preference -> requested_lang -> session language -> English
+        fallback_used = False
+        if chosen_lang == "en" and not any(l != "en" for l in detected_languages):
+            norm_profile = (user_profile_lang or "").lower().split("-")[0]
+            norm_requested = (requested_lang or "").lower().split("-")[0]
+            session_lang = self.get_session_language(session_id) if session_id else None
+
+            if norm_profile and norm_profile in SUPPORTED_LANGUAGES and norm_profile not in ("en", "auto"):
+                chosen_lang = norm_profile
+                dominant_lang = norm_profile
+                fallback_used = True
+                confidence = 0.8
+            elif norm_requested and norm_requested in SUPPORTED_LANGUAGES and norm_requested not in ("en", "auto"):
+                chosen_lang = norm_requested
+                dominant_lang = norm_requested
+                fallback_used = True
+                confidence = 0.8
+            elif session_lang and session_lang in SUPPORTED_LANGUAGES and session_lang != "en":
+                chosen_lang = session_lang
+                dominant_lang = session_lang
+                fallback_used = True
+                confidence = 0.75
+
+        if session_id and chosen_lang in SUPPORTED_LANGUAGES:
+            self.set_session_language(session_id, chosen_lang)
+
+        # Normalize query to English for downstream agent tools
+        if chosen_lang != "en":
+            english_normalized = self.translate(cleaned_text, source_lang=dominant_lang, target_lang="en")
+        else:
+            english_normalized = cleaned_text
+
+        if not detected_languages:
+            detected_languages = [chosen_lang]
+
+        return QueryLanguageDecision(
+            original_transcript=cleaned_text,
+            detected_languages=detected_languages,
+            dominant_language=dominant_lang,
+            response_language=chosen_lang,
+            english_normalized_query=english_normalized,
+            language_confidence=confidence,
+            transcription_provider=transcription_provider,
+            fallback_used=fallback_used,
+        )
+
     def _get_pipeline_config(self, source_lang: str, target_lang: str) -> Optional[Dict[str, Any]]:
         """
         Retrieves and caches pipeline configuration from MeitY Bhashini API.
@@ -868,6 +1091,7 @@ class BhashiniService:
                         response = client.models.generate_content(
                             model=model_name,
                             contents=prompt,
+                            config={"automatic_function_calling": {"disable": True}},
                         )
                         translated = response.text.strip()
                         if translated:

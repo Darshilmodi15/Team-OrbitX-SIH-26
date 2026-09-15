@@ -8,10 +8,12 @@ Powered by Sarvam AI:
 import base64
 import logging
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from app.routers.auth import get_optional_current_user
+from app.services.rate_limit import rate_limiter
 from app.services.language import (
     BULBUL_V3_SPEAKERS,
     SUPPORTED_LANGUAGES,
@@ -22,6 +24,22 @@ from app.services.language import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/voice", tags=["Voice & Speech"])
+
+MAX_AUDIO_BYTES = 5 * 1024 * 1024  # 5 MB
+MAX_BASE64_BYTES = 7 * 1024 * 1024  # ~5 MB decoded
+MAX_TTS_CHARS = 1000
+MAX_RECORDING_SECONDS = 45.0  # Hard server limit 45s
+
+
+def _resolve_caller_rate_key(request: Request, authorization: Optional[str] = None) -> str:
+    user = get_optional_current_user(authorization)
+    if user:
+        return f"user:{user.id}"
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        client_ip = forwarded.split(",")[0].strip()
+    return f"ip:{client_ip}"
 
 
 class TranscribeBase64Request(BaseModel):
@@ -42,6 +60,13 @@ class TranscribeResponse(BaseModel):
     is_mock: bool = Field(default=False, description="Whether mock provider was used")
     provider: str = Field(default="sarvam", description="Normalized STT provider")
     fallback_used: bool = False
+    original_transcript: Optional[str] = None
+    detected_languages: Optional[List[str]] = None
+    dominant_language: Optional[str] = None
+    response_language: Optional[str] = None
+    english_normalized_query: Optional[str] = None
+    language_confidence: Optional[float] = None
+    transcription_provider: Optional[str] = "sarvam"
 
 
 class SpeakRequest(BaseModel):
@@ -60,22 +85,48 @@ class SpeakResponse(BaseModel):
     is_mock: bool = Field(default=False, description="Whether mock provider was used")
 
 
+def _check_audio_limits(audio_bytes: bytes, declared_duration: Optional[float] = None) -> None:
+    if declared_duration is not None and declared_duration > MAX_RECORDING_SECONDS:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Audio recording duration ({declared_duration:.1f}s) exceeds maximum allowed limit ({int(MAX_RECORDING_SECONDS)}s)."
+        )
+    if len(audio_bytes) >= 44 and audio_bytes[:4] == b"RIFF" and audio_bytes[8:12] == b"WAVE":
+        byte_rate = int.from_bytes(audio_bytes[28:32], "little")
+        if byte_rate > 0:
+            duration_s = (len(audio_bytes) - 44) / byte_rate
+            if duration_s > MAX_RECORDING_SECONDS:
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"Audio recording duration ({duration_s:.1f}s) exceeds maximum allowed limit ({int(MAX_RECORDING_SECONDS)}s)."
+                )
+
+
 @router.post("/transcribe", response_model=TranscribeResponse)
 async def transcribe_audio_file(
+    request: Request,
     file: Optional[UploadFile] = File(None),
     language: Optional[str] = Form("auto"),
+    duration: Optional[float] = Form(None),
+    authorization: Optional[str] = Header(None),
 ):
     """
     Transcribes uploaded audio file using Sarvam Saaras Speech-to-Text.
     
-    Accepts multipart/form-data with 'file' and optional 'language' ('auto', 'gu', 'hi', etc.).
+    Accepts multipart/form-data with 'file', optional 'language' ('auto', 'gu', 'hi', etc.),
+    and optional 'duration' in seconds.
     """
+    rate_limiter.check("voice_stt", _resolve_caller_rate_key(request, authorization), limit=20, window_seconds=60)
     if not file:
         raise HTTPException(status_code=400, detail="Missing required audio file in multipart form data.")
 
     audio_bytes = await file.read()
     if not audio_bytes or len(audio_bytes) < 10:
         raise HTTPException(status_code=400, detail="Uploaded audio file is empty or corrupted.")
+    if len(audio_bytes) > MAX_AUDIO_BYTES:
+        raise HTTPException(status_code=413, detail="Audio file exceeds maximum size limit (5 MB).")
+
+    _check_audio_limits(audio_bytes, declared_duration=duration)
 
     content_type = file.content_type or "application/octet-stream"
     filename = file.filename or "recording.wav"
@@ -90,50 +141,75 @@ async def transcribe_audio_file(
         language_code=language,
         content_type=content_type,
     )
-    if result.get("is_mock") or not result.get("transcript", "").strip():
-        logger.warning("STT provider unavailable or returned an empty transcript (source=%s)", result.get("source"))
+    if result.get("is_mock"):
+        status_code = result.get("upstream_status", 503)
+        if status_code == 429:
+            return JSONResponse(status_code=429, content={
+                "success": False,
+                "error_code": "STT_QUOTA_EXHAUSTED",
+                "message": "Speech transcription quota exceeded. Please try again later.",
+            })
+        logger.warning("STT provider unavailable (source=%s, status=%s)", result.get("source"), status_code)
         return JSONResponse(status_code=503, content={
             "success": False,
             "error_code": "STT_UPSTREAM_UNAVAILABLE",
-            "message": "Voice transcription is temporarily unavailable.",
+            "message": "Speech transcription temporarily unavailable.",
         })
 
-    transcript = result.get("transcript", "")
-    detected_iso = result.get("detected_iso", "en")
-    sarvam_code = result.get("language_code", to_sarvam_code(detected_iso))
-    lang_name = SUPPORTED_LANGUAGES.get(detected_iso, detected_iso.upper())
+    raw_transcript = result.get("transcript", "")
+    if not raw_transcript or not raw_transcript.strip():
+        logger.info("STT returned empty transcript (no speech detected)")
+        return JSONResponse(status_code=400, content={
+            "success": False,
+            "error_code": "NO_SPEECH_DETECTED",
+            "message": "We couldn't understand the recording. Please try again or type your question.",
+        })
 
-    # Generate English translation for downstream ORCA agents
-    if detected_iso != "en" and transcript:
-        english_transcript = language_service.translate(
-            text=transcript,
-            source_lang=detected_iso,
-            target_lang="en",
-        )
-    else:
-        english_transcript = transcript
+    transcript = raw_transcript.strip()
+    from app.services.bhashini import bhashini_service
+    decision = bhashini_service.determine_query_language(
+        text=transcript,
+        requested_lang=language,
+        transcription_provider="sarvam",
+    )
+    sarvam_code = to_sarvam_code(decision.response_language)
+    lang_name = SUPPORTED_LANGUAGES.get(decision.response_language, decision.response_language.upper())
 
     return TranscribeResponse(
         transcript=transcript,
-        language=detected_iso,
+        language=decision.response_language,
         language_code=sarvam_code,
         language_name=lang_name,
-        english_transcript=english_transcript,
+        english_transcript=decision.english_normalized_query,
         source=result.get("source", "sarvam_saaras_v3"),
-        is_mock=result.get("is_mock", False),
+        is_mock=False,
         provider="sarvam",
-        fallback_used=False,
+        fallback_used=decision.fallback_used,
+        original_transcript=decision.original_transcript,
+        detected_languages=decision.detected_languages,
+        dominant_language=decision.dominant_language,
+        response_language=decision.response_language,
+        english_normalized_query=decision.english_normalized_query,
+        language_confidence=decision.language_confidence,
+        transcription_provider=decision.transcription_provider,
     )
 
 
 @router.post("/transcribe-base64", response_model=TranscribeResponse)
-def transcribe_base64_audio(request: TranscribeBase64Request):
+def transcribe_base64_audio(
+    payload: TranscribeBase64Request,
+    request: Request,
+    authorization: Optional[str] = Header(None),
+):
     """
     Transcribes base64-encoded audio payload via Sarvam Saaras Speech-to-Text.
     """
+    rate_limiter.check("voice_stt", _resolve_caller_rate_key(request, authorization), limit=20, window_seconds=60)
+    if len(payload.audio_base64) > MAX_BASE64_BYTES:
+        raise HTTPException(status_code=413, detail="Audio base64 payload exceeds maximum size limit.")
     try:
         # Strip potential data URL prefix
-        raw_b64 = request.audio_base64
+        raw_b64 = payload.audio_base64
         if "base64," in raw_b64:
             raw_b64 = raw_b64.split("base64,")[1]
         audio_bytes = base64.b64decode(raw_b64, validate=True)
@@ -142,50 +218,74 @@ def transcribe_base64_audio(request: TranscribeBase64Request):
 
     if len(audio_bytes) < 10:
         raise HTTPException(status_code=400, detail="Empty or malformed audio")
+    if len(audio_bytes) > MAX_AUDIO_BYTES:
+        raise HTTPException(status_code=413, detail="Decoded audio exceeds maximum size limit (5 MB).")
+
+    _check_audio_limits(audio_bytes)
+
     result = language_service.speech_to_text(
         audio_bytes=audio_bytes,
-        filename=request.filename or "recording.wav",
-        language_code=request.language,
-        content_type=request.content_type or "audio/wav",
+        filename=payload.filename or "recording.wav",
+        language_code=payload.language,
+        content_type=payload.content_type or "audio/wav",
     )
 
-    if result.get("is_mock") or not result.get("transcript", "").strip():
+    if result.get("is_mock"):
+        status_code = result.get("upstream_status", 503)
+        if status_code == 429:
+            raise HTTPException(status_code=429, detail="STT_QUOTA_EXHAUSTED")
         raise HTTPException(status_code=503, detail="STT_UPSTREAM_UNAVAILABLE")
 
-    transcript = result.get("transcript", "")
-    detected_iso = result.get("detected_iso", "en")
-    sarvam_code = result.get("language_code", to_sarvam_code(detected_iso))
-    lang_name = SUPPORTED_LANGUAGES.get(detected_iso, detected_iso.upper())
+    raw_transcript = result.get("transcript", "")
+    if not raw_transcript or not raw_transcript.strip():
+        raise HTTPException(status_code=400, detail="NO_SPEECH_DETECTED")
 
-    if detected_iso != "en" and transcript:
-        english_transcript = language_service.translate(
-            text=transcript,
-            source_lang=detected_iso,
-            target_lang="en",
-        )
-    else:
-        english_transcript = transcript
+    transcript = raw_transcript.strip()
+    from app.services.bhashini import bhashini_service
+    decision = bhashini_service.determine_query_language(
+        text=transcript,
+        requested_lang=payload.language,
+        transcription_provider="sarvam",
+    )
+    sarvam_code = to_sarvam_code(decision.response_language)
+    lang_name = SUPPORTED_LANGUAGES.get(decision.response_language, decision.response_language.upper())
 
     return TranscribeResponse(
         transcript=transcript,
-        language=detected_iso,
+        language=decision.response_language,
         language_code=sarvam_code,
         language_name=lang_name,
-        english_transcript=english_transcript,
+        english_transcript=decision.english_normalized_query,
         source=result.get("source", "sarvam_saaras_v3"),
-        is_mock=result.get("is_mock", False),
+        is_mock=False,
+        provider="sarvam",
+        fallback_used=decision.fallback_used,
+        original_transcript=decision.original_transcript,
+        detected_languages=decision.detected_languages,
+        dominant_language=decision.dominant_language,
+        response_language=decision.response_language,
+        english_normalized_query=decision.english_normalized_query,
+        language_confidence=decision.language_confidence,
+        transcription_provider=decision.transcription_provider,
     )
 
 
 @router.post("/speak", response_model=SpeakResponse)
-def synthesize_speech(request: SpeakRequest):
+def synthesize_speech(
+    payload: SpeakRequest,
+    request: Request,
+    authorization: Optional[str] = Header(None),
+):
     """
     Synthesizes regional Indic speech audio using Sarvam Bulbul v3 neural voices.
     """
+    rate_limiter.check("voice_tts", _resolve_caller_rate_key(request, authorization), limit=30, window_seconds=60)
+    if len(payload.text) > MAX_TTS_CHARS:
+        raise HTTPException(status_code=400, detail="Text length exceeds maximum allowed limit of 1000 characters.")
     result = language_service.text_to_speech(
-        text=request.text,
-        language_code=request.language or "en",
-        speaker=request.speaker,
+        text=payload.text,
+        language_code=payload.language or "en",
+        speaker=payload.speaker,
     )
 
     if result.get("is_mock") or not result.get("audio_base64"):
@@ -195,7 +295,7 @@ def synthesize_speech(request: SpeakRequest):
         audio_format=result.get("audio_format", "wav"),
         sample_rate=result.get("sample_rate", 22050),
         speaker=result.get("speaker", "shubh"),
-        language_code=result.get("language_code", to_sarvam_code(request.language or "en")),
+        language_code=result.get("language_code", to_sarvam_code(payload.language or "en")),
         source=result.get("source", "sarvam_bulbul_v3"),
         is_mock=result.get("is_mock", False),
     )

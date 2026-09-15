@@ -123,3 +123,56 @@ Copy one line per test into the table; append rows as you work.
 | M01 | NOT RUN | — | — | — | — |
 
 Automated evidence and implementation scope are tracked separately in [PHASES.md](PHASES.md), [PHASE2_MARINE.md](PHASE2_MARINE.md), [PHASE3_OFFLINE.md](PHASE3_OFFLINE.md) and [PHASE5_RELEASE.md](PHASE5_RELEASE.md).
+
+## Companion tooling
+
+| Tool | Purpose | Path |
+|---|---|---|
+| **Acceptance tracker** | Structured per-item result recording | [acceptance_results.md](acceptance_results.md) |
+| **Pre-acceptance script** | Automated code-level checks (22 items) | [../../tools/pre_acceptance.py](../../tools/pre_acceptance.py) |
+| **Data source guide** | Manual investigation templates for each provider | [data_source_investigation.md](data_source_investigation.md) |
+| **Release check** | Build hash recording and release validation | [../../tools/release_check.py](../../tools/release_check.py) |
+
+Run the pre-acceptance script before starting manual checks:
+```bash
+python3 tools/pre_acceptance.py
+```
+
+## Recommended device/browser matrix
+
+| Device | Browser | Assigned To | Priority |
+|---|---|---|---|
+| Android phone (narrow) | Chrome | Heth | HIGH — M16-M28 GPS/location |
+| Android phone (narrow) | Chrome | Prachi | HIGH — M51-M62 offline/airplane |
+| iOS phone | Safari | Rajvi | HIGH — M45-M50 voice, M63-M71 UX |
+| Desktop | Chrome | Darshil | MEDIUM — M01, M11, M36, M72-M73 |
+| Desktop | Firefox | Harpal | MEDIUM — M40-M41 map modes |
+
+## Quick-start testing order
+
+**Before any manual testing:**
+1. Run `python3 tools/pre_acceptance.py` — all 22 checks should pass
+2. Record candidate identity (M01) — git SHA, deployment URLs
+3. Verify CI passed on GitHub for the exact commit (M72)
+
+**Critical path (do these first):**
+1. M13 → M14 → M19 → M20 — sign-in and location basics
+2. M22 → M36 — mainland data + PFZ unavailable state
+3. M45 → M47 — real chat + failure handling
+4. M51 → M53 → M55 — offline pack basics
+
+**Independent sections (can run in parallel):**
+- Heth: M16-M28 (location/GPS testing)
+- Pavan: M31-M35, M43 (marine data verification)
+- Harpal: M40-M41 (map modes and boundaries)
+- Prachi: M06-M07 (Redis), M51-M62 (offline)
+- Rajvi: M29-M30 (auth), M63-M71 (UX/accessibility)
+
+## Screenshot naming convention
+
+Use this format: `M{ID}_{status}_{device}_{timestamp}.png`
+
+Examples:
+- `M22_PASS_android-chrome_2026-09-15T1430.png`
+- `M36_PASS_desktop-chrome_2026-09-15T1445.png`
+- `M24_FAIL_android-chrome_2026-09-15T1500.png`

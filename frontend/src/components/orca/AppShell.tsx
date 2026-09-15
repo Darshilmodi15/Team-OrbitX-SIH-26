@@ -7,8 +7,8 @@ import {
   MessageSquare,
   Settings,
 } from "lucide-react";
-import type { ReactNode } from "react";
-import { TaskGuide } from "./TaskGuide";
+import { useState, type ReactNode } from "react";
+
 import { OrcaWordmark } from "./Logo";
 import { LanguageMenu } from "./LanguageMenu";
 import { Footer } from "@/components/Footer";
@@ -28,6 +28,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { t } = useI18n();
   const { user, location } = useSession();
   const { pathname } = useLocation();
+  const [locationNotice, setLocationNotice] = useState(false);
+  const checkLocation = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (pathname === "/location" && location?.area !== "coastal") { event.preventDefault(); setLocationNotice(true); }
+  };
   const nav = user?.role === "admin"
     ? [{ to: "/admin", key: t("ops.system"), Icon: LayoutDashboard }, { to: "/settings", key: t("nav.settings"), Icon: Settings }]
     : user?.role === "government"
@@ -45,11 +49,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary">
             {nav.map(({ to, key, Icon }) => {
-              const isActive = pathname === to;
+              const isActive = pathname === to || (to === "/assistant" && pathname.startsWith("/assistant/c/"));
               return (
                 <Link
                   key={to}
                   to={to}
+                  onClick={checkLocation}
                   aria-current={isActive ? "page" : undefined}
                   className={cn(
                     "inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all",
@@ -91,7 +96,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
       </header>
 
-      <main id="main-content" tabIndex={-1} className="orca-container w-full flex-1 py-4 pb-24 lg:pb-8">{user?.role === "user" && <TaskGuide />}{children}</main>
+      <main id="main-content" tabIndex={-1} className="orca-container w-full flex-1 py-4 pb-24 lg:pb-8">{locationNotice && <p role="alert" className="mb-4 rounded-md border border-border bg-muted p-3">{t("loc.title")}. {t("loc.why")}</p>}{children}</main>
 
       {/* Official Footnote / Contact info on desktop & mobile */}
       <Footer />
@@ -103,11 +108,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         <ul className="grid" style={{ gridTemplateColumns: `repeat(${nav.length}, minmax(0, 1fr))` }}>
           {nav.slice(0, 5).map(({ to, key, Icon }) => {
-            const isActive = pathname === to;
+            const isActive = pathname === to || (to === "/assistant" && pathname.startsWith("/assistant/c/"));
             return (
               <li key={to}>
                 <Link
                   to={to}
+                  onClick={checkLocation}
                   aria-current={isActive ? "page" : undefined}
                   className={cn(
                     "flex min-h-14 flex-col items-center justify-center gap-1 px-1 py-2 text-[11px] font-medium transition-colors",

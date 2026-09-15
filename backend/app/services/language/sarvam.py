@@ -307,9 +307,25 @@ class SarvamLanguageProvider(LanguageProvider):
                 else:
                     record("sarvam_stt", success=False, http_status=resp.status_code, reason="UPSTREAM_HTTP_ERROR")
                     logger.warning("Sarvam STT HTTP %s", resp.status_code)
+                    return {
+                        "transcript": "",
+                        "language_code": to_sarvam_code(language_code or "en"),
+                        "detected_iso": language_code or "en",
+                        "source": "sarvam_fallback_stt",
+                        "is_mock": True,
+                        "upstream_status": resp.status_code,
+                    }
         except Exception as err:
             record("sarvam_stt", success=False, reason=type(err).__name__)
             logger.warning("Sarvam STT failed: %s", type(err).__name__)
+            return {
+                "transcript": "",
+                "language_code": to_sarvam_code(language_code or "en"),
+                "detected_iso": language_code or "en",
+                "source": "sarvam_fallback_stt",
+                "is_mock": True,
+                "upstream_status": 503,
+            }
 
         return {
             "transcript": "",
@@ -317,6 +333,7 @@ class SarvamLanguageProvider(LanguageProvider):
             "detected_iso": language_code or "en",
             "source": "sarvam_fallback_stt",
             "is_mock": True,
+            "upstream_status": 503,
         }
 
     def text_to_speech(

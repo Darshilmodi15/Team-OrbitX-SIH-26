@@ -149,3 +149,23 @@ def test_oversized_chat_and_sos_payloads_are_rejected():
     _, normal = register_account(client, "payload")
     assert client.post("/api/chat", headers=normal, json={"message": "x" * 8001}).status_code == 422
     assert client.post("/api/emergency/sos", headers=normal, json={"lat": 20, "lon": 70, "notes": "x" * 2001}).status_code == 422
+
+
+def test_sos_initial_request_and_owner_only_details():
+    client = TestClient(app)
+    owner = register(client, "land-sos")
+    other = register(client, "other-sos")
+    response = client.post("/api/emergency/sos", headers=owner, json={"lat":18.7,"lon":73.6})
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["recorded_telemetry"]["vessel_name"] is None
+    assert body["recorded_telemetry"]["crew_count"] == 0
+    path = f"/api/emergency/sos/{body['sos_id']}/details"
+    assert client.patch(path, headers=other, json={"notes":"stolen"}).status_code == 404
+    assert client.patch(path, json={"notes":"anonymous"}).status_code == 401
+    assert client.patch(path, headers=owner, json={"notes":"Flood", "user_id":"another"}).status_code == 422
+    updated = client.patch(path, headers=owner, json={"notes":"Floodwater entering home"})
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["sos_id"] == body["sos_id"]
+    assert updated.json()["recorded_telemetry"]["notes"] == "Floodwater entering home"
+    assert "Floodwater entering home" in updated.json()["mayday_message"]

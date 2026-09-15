@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class EmergencyNature(str, Enum):
+    GENERAL = "General Emergency"
     CAPSIZING_WATER = "Vessel Capsizing / Taking Water"
     ENGINE_FAILURE = "Engine Failure / Adrift at Sea"
     MEDICAL = "Critical Medical Emergency on Board"
@@ -32,8 +33,8 @@ class SOSBroadcastRequest(BaseModel):
     registration_no: Optional[str] = Field(default=None, max_length=100, description="Fisheries/MFD registration code")
     lat: float = Field(..., ge=-90, le=90, description="Current vessel latitude")
     lon: float = Field(..., ge=-180, le=180, description="Current vessel longitude")
-    crew_count: int = Field(..., ge=1, description="Persons on board (POB)")
-    emergency_nature: EmergencyNature = Field(default=EmergencyNature.OTHER, description="Type of crisis")
+    crew_count: int = Field(default=0, ge=0, le=10000, description="People affected; 0 means not yet provided")
+    emergency_nature: EmergencyNature = Field(default=EmergencyNature.GENERAL, description="Type of crisis")
     notes: Optional[str] = Field(default="", max_length=2000, description="Additional immediate situation notes")
     contact_phone: Optional[str] = Field(default=None, max_length=50, description="Skipper or contact mobile number")
 
@@ -74,3 +75,9 @@ class SOSBroadcastResponse(BaseModel):
 class SOSStatusUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     status: str = Field(..., pattern="^(RECEIVED|RESPONDING|RESOLVED)$")
+
+
+class SOSDetailsUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    notes: str = Field(..., min_length=1, max_length=2000)
+    contact_phone: Optional[str] = Field(default=None, max_length=50)

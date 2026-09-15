@@ -21,11 +21,11 @@ function isAnalyticsAllowed(): boolean {
   if (typeof window === "undefined") return false;
   try {
     const consent = localStorage.getItem("orca_cookie_consent");
-    if (!consent) return true; // Default to basic telemetry
+    if (!consent) return false;
     const parsed = JSON.parse(consent);
-    return parsed.analytics !== false;
+    return parsed.analytics === true;
   } catch {
-    return true;
+    return false;
   }
 }
 

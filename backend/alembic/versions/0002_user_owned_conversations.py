@@ -24,15 +24,20 @@ def upgrade():
     )
     op.create_index("ix_conversations_user_id", "conversations", ["user_id"])
     op.create_index("ix_conversations_updated_at", "conversations", ["updated_at"])
-    op.add_column("chat_history", sa.Column("conversation_id", sa.String(36), nullable=True))
-    op.create_foreign_key("fk_chat_history_conversation_id", "chat_history", "conversations", ["conversation_id"], ["id"], ondelete="CASCADE")
+    if op.get_bind().dialect.name == "sqlite":
+        op.execute(sa.text("ALTER TABLE chat_history ADD COLUMN conversation_id VARCHAR(36) "
+                           "CONSTRAINT fk_chat_history_conversation_id REFERENCES conversations(id) ON DELETE CASCADE"))
+    else:
+        op.add_column("chat_history", sa.Column("conversation_id", sa.String(36), nullable=True))
+        op.create_foreign_key("fk_chat_history_conversation_id", "chat_history", "conversations", ["conversation_id"], ["id"], ondelete="CASCADE")
     op.create_index("ix_chat_history_conversation_id", "chat_history", ["conversation_id"])
 
 
 def downgrade():
     op.drop_index("ix_chat_history_conversation_id", table_name="chat_history")
-    op.drop_constraint("fk_chat_history_conversation_id", "chat_history", type_="foreignkey")
-    op.drop_column("chat_history", "conversation_id")
+    with op.batch_alter_table("chat_history") as batch:
+        batch.drop_constraint("fk_chat_history_conversation_id", type_="foreignkey")
+        batch.drop_column("conversation_id")
     op.drop_index("ix_conversations_updated_at", table_name="conversations")
     op.drop_index("ix_conversations_user_id", table_name="conversations")
     op.drop_table("conversations")

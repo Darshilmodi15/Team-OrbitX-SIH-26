@@ -34,7 +34,6 @@ class RegisterRequest(BaseModel):
     mobile_number: Optional[str] = Field(default=None, description="Mobile number (10 digits)")
     password: str = Field(..., min_length=6, description="Account password")
     preferred_language: str = Field(default="en", description="Default language code")
-    role: Optional[UserRole] = Field(default=UserRole.USER, description="Account role")
 
 
 class LoginRequest(BaseModel):

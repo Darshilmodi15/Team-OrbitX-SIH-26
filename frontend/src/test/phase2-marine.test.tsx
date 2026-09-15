@@ -85,3 +85,12 @@ it("does not invent forecast times for undated or timezone-ambiguous slots", asy
   expect(result.forecast[0].time).toBe("2026-09-14T10:00:00.000Z");
   expect(result.forecast[0].windSpeedKmh).toBeNull();
 });
+
+
+it("uses real fallback after a 200 response with unavailable readings", async()=>{
+ vi.stubGlobal("fetch",vi.fn(async(url:string)=>({ok:true,json:async()=>url.includes("marine-api")?structuredClone(marine):url.includes("api.open-meteo")?structuredClone(weather):url.includes("/conditions")?{cache_status:"unavailable",forecast_valid_at:null}:{} })));
+ const bundle=await fetchMarineBundle({lat:18.9,lon:72.6});
+ expect(bundle.connectivityMode).toBe("direct");
+ expect(bundle.current.waveHeightM).toBe(1.2);
+ expect(bundle.current.sources).toContain("Open-Meteo Marine");
+});

@@ -1,3 +1,6 @@
+import { nationalOverview } from "@/lib/orca/review-copy";
+import { useQuery } from "@tanstack/react-query";
+import { API_BASE_URL } from "@/services/api";
 import { useEffect, useState, useId } from "react";
 import { useI18n } from "@/lib/orca/i18n";
 import { usePFZ } from "@/lib/orca/use-pfz";
@@ -7,6 +10,12 @@ import { formatCoords } from "@/lib/orca/geo";
 export function PFZAdvisory({ showPoints = false, selectedSector: controlledSector, onSectorChange, coords }: { showPoints?: boolean; selectedSector?: string; onSectorChange?: (sector: string) => void; coords?: { lat: number; lon: number } }) {
   const { lang, t } = useI18n();
   const copy = mapCopy[lang];
+  const publication = useQuery({queryKey:["pfz-publication"], staleTime:900000, refetchInterval:900000, retry:false, queryFn:async ({signal})=>{
+    const response=await fetch(`${API_BASE_URL}/api/pfz/publication`,{signal:AbortSignal.any([signal,AbortSignal.timeout(10000)])});
+    if(!response.ok)throw new Error("PUBLICATION_UNAVAILABLE");
+    return response.json() as Promise<{forecast_date:string|null;valid_upto_date:string|null;status:string}>;
+  }});
+
   const [localSector, setLocalSector] = useState("");
   const selectedSector = controlledSector ?? localSector;
   const setSelectedSector = onSectorChange ?? setLocalSector;
@@ -47,6 +56,10 @@ export function PFZAdvisory({ showPoints = false, selectedSector: controlledSect
       <button type="button" className="min-h-10 rounded-md border px-3 disabled:opacity-50" onClick={() => void refetch()} disabled={!online || isFetching}>{t("cta.retry")}</button>
     </div>
 
+    <div className="rounded-md border border-border p-3">
+      <a className="underline" href="https://incois.gov.in/MarineFisheries/TextDataHome?mfid=1&request_locale=en" target="_blank" rel="noopener noreferrer">INCOIS · {nationalOverview[lang]} ↗</a>
+      {publication.data?.status === "published" && <p className="mt-2 text-xs">{copy.issued}: {publication.data.forecast_date} · {copy.valid}: {publication.data.valid_upto_date}</p>}
+    </div>
     {/* Sector Selector */}
     <div className="flex flex-wrap items-center gap-2 pt-1 pb-1">
       <label htmlFor={selectId} className="text-xs font-medium text-muted-foreground">

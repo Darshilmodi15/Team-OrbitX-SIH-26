@@ -129,6 +129,14 @@ export default function LandingPage() {
           <div className="flex items-center gap-2 sm:gap-2.5 ml-auto">
             <ThemeToggle />
 
+            {/* Direct Sign In Link */}
+            <Link
+              to="/login"
+              className="hidden xs:inline-flex sm:inline-flex min-h-9 sm:min-h-10 items-center justify-center rounded-md border border-teal-500/30 bg-teal-950/40 px-3 sm:px-4 text-xs sm:text-sm font-semibold text-teal-300 backdrop-blur-md transition-all hover:bg-teal-500/20 hover:border-teal-400 hover:text-white cursor-pointer shadow-sm font-sans"
+            >
+              Sign In
+            </Link>
+
             {/* Compact Language Selector */}
             <div ref={dropdownRef} className="relative inline-block text-left">
               <button
@@ -222,12 +230,12 @@ export default function LandingPage() {
               <ArrowRight className="size-4" />
             </button>
 
-            {/* Explore Platform Button */}
+            {/* Direct Sign In / Login Option */}
             <Link
-              to="/dashboard"
-              className="w-full sm:flex-1 inline-flex min-h-12 items-center justify-center rounded-lg border border-slate-700 bg-slate-900/70 backdrop-blur-md px-6 text-sm font-semibold text-slate-100 transition-all hover:bg-slate-800 hover:border-slate-600 hover:text-white active:scale-[0.98]"
+              to="/login"
+              className="w-full sm:flex-1 inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-700/80 bg-slate-900/80 hover:bg-slate-800 hover:border-teal-500/50 px-6 text-sm font-bold text-slate-100 shadow-xl backdrop-blur-md transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
-              {t("cta.explore")}
+              <span>Sign In</span>
             </Link>
           </div>
 
@@ -330,6 +338,7 @@ export default function LandingPage() {
                 {t("footer.cookies")}
               </button>
             </div>
+            <div className="ml-auto flex gap-3"><a href="tel:112" className="underline">{t("svc.call")} 112</a><a href="tel:1554" className="underline">1554</a></div>
           </div>
         </div>
       </footer>

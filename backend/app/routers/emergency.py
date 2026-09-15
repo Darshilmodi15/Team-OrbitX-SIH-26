@@ -9,6 +9,7 @@ from app.models.emergency_models import (
     SOSBroadcastRequest,
     SOSBroadcastResponse,
     SOSStatusUpdate,
+    SOSDetailsUpdate,
 )
 from app.services.emergency import emergency_service
 from app.models.user_models import UserProfile, UserRole
@@ -49,5 +50,13 @@ def get_active_sos_distress_beacons(_user: UserProfile = Depends(require_roles(U
 def update_sos_status(sos_id: str, request: SOSStatusUpdate, _user: UserProfile = Depends(require_roles(UserRole.GOVERNMENT, UserRole.SUPER_ADMIN))):
     result = emergency_service.update_status(sos_id, request.status)
     if not result:
+        raise HTTPException(status_code=404, detail="SOS request not found")
+    return result
+
+
+@router.patch("/sos/{sos_id}/details", response_model=SOSBroadcastResponse)
+def update_own_sos_details(sos_id: str, request: SOSDetailsUpdate, user: UserProfile = Depends(get_current_user_from_header)):
+    result = emergency_service.update_details(sos_id, user.id, request)
+    if result is None:
         raise HTTPException(status_code=404, detail="SOS request not found")
     return result

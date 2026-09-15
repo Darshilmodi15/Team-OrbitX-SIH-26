@@ -35,3 +35,9 @@ def get_pfz_dataset(
 def get_pfz_sectors() -> List[Dict[str, Any]]:
     """Bounds are ORCA selection hints, not official polygons or marine boundaries."""
     return incois_pfz_service.get_sectors()
+
+
+@router.get("/pfz/publication", summary="Public INCOIS overview publication dates; not sector points")
+def get_pfz_publication():
+    from app.services.pfz.publication import get_publication
+    return get_publication()

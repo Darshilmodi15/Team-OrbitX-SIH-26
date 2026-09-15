@@ -14,6 +14,7 @@ from app.models.user_models import (
     UserRole,
 )
 from app.services.auth import auth_service, decode_token
+from app.services.auth.auth_service import session_is_active
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication & User Management"])
 
@@ -32,7 +33,7 @@ def get_current_user_from_header(authorization: Optional[str] = Header(None)) ->
         )
     token = authorization.split("Bearer ")[1].strip()
     payload = decode_token(token)
-    if not payload or "sub" not in payload:
+    if not payload or "sub" not in payload or not session_is_active(payload):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired access token.",
@@ -128,3 +129,47 @@ def update_user_profile(
     if not updated:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Profile update failed")
     return updated
+
+
+@router.get("/sessions")
+def list_sessions(user: UserProfile = Depends(get_current_user_from_header), authorization: str = Header(...)):
+    from datetime import datetime, timezone
+    from app.db.models import DeviceSession
+    from app.db.session import get_db_context
+    current = decode_token(authorization.removeprefix("Bearer ").strip())["jti"]
+    with get_db_context() as db:
+        rows = db.query(DeviceSession).filter(DeviceSession.user_id == user.id,
+            DeviceSession.revoked_at.is_(None), DeviceSession.expires_at > datetime.now(timezone.utc)).all()
+        return [{"id": row.id, "device_name": row.device_name or "Unknown Device",
+                 "user_agent": row.user_agent, "ip_address": row.ip_address,
+                 "created_at": row.created_at, "last_seen_at": row.last_seen_at,
+                 "expires_at": row.expires_at, "current": row.id == current} for row in rows]
+
+
+def revoke_sessions(user_id: str, session_id: Optional[str] = None):
+    from datetime import datetime, timezone
+    from app.db.models import DeviceSession
+    from app.db.session import get_db_context
+    with get_db_context() as db:
+        query = db.query(DeviceSession).filter(DeviceSession.user_id == user_id)
+        if session_id is not None:
+            query = query.filter(DeviceSession.id == session_id)
+        if not query.update({DeviceSession.revoked_at: datetime.now(timezone.utc)}, synchronize_session=False):
+            raise HTTPException(status_code=404, detail="Session not found.")
+    return {"revoked": True}
+
+
+@router.post("/logout")
+def logout(user: UserProfile = Depends(get_current_user_from_header), authorization: str = Header(...)):
+    payload = decode_token(authorization.removeprefix("Bearer ").strip())
+    return revoke_sessions(user.id, payload["jti"])
+
+
+@router.delete("/sessions")
+def revoke_all_sessions(user: UserProfile = Depends(get_current_user_from_header)):
+    return revoke_sessions(user.id)
+
+
+@router.delete("/sessions/{session_id}")
+def revoke_session(session_id: str, user: UserProfile = Depends(get_current_user_from_header)):
+    return revoke_sessions(user.id, session_id)

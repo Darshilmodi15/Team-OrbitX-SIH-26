@@ -1,3 +1,4 @@
+import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import {
   Activity,
@@ -38,7 +39,7 @@ import { OrcaLogo } from "@/components/orca/Logo";
 import { SEO } from "@/components/SEO";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
-import { transcribeVoiceAudio, sendChatMessage, synthesizeVoiceAudio, fetchConversations, createConversation, deleteConversation } from "@/services/api";
+import { transcribeVoiceAudio, sendChatMessage, synthesizeVoiceAudio, fetchConversations, fetchConversation, createConversation, deleteConversation } from "@/services/api";
 import { MarkdownRenderer } from "@/components/orca/MarkdownRenderer";
 import type { ChatMessage, ChatEvidence } from "@/lib/orca/types";
 import { cn } from "@/lib/utils";
@@ -237,6 +238,8 @@ function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
 
 export default function AssistantPage() {
   const { t, lang } = useI18n();
+  const navigate = useNavigate();
+  const { conversationId } = useParams();
   const { user, location } = useSession();
 
   const [threads, setThreads] = useState<ChatThread[]>([]);
@@ -249,9 +252,11 @@ export default function AssistantPage() {
   const [isThinking, setIsThinking] = useState(false);
   const [chatError, setChatError] = useState<"chat.startFailed" | "chat.requestFailed" | "chat.providerUnavailable" | null>(null);
   const requestInFlightRef = useRef(false);
+  const historyVersion = useRef(0);
 
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [voiceErrorMessage, setVoiceErrorMessage] = useState<string | null>(null);
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const [interimTranscript, setInterimTranscript] = useState<string>("");
   const [recordingSeconds, setRecordingSeconds] = useState<number>(0);
   const recordingTimerRef = useRef<any>(null);
@@ -264,6 +269,7 @@ export default function AssistantPage() {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const speechRecognitionRef = useRef<any>(null);
+  const browserTranscriptRef = useRef<string>("");
 
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -277,14 +283,25 @@ export default function AssistantPage() {
 
   useEffect(() => {
     let cancelled = false;
-    setThreads([]); setActiveThreadId("");
-    fetchConversations().then((rows: any[]) => {
-      if (cancelled || requestInFlightRef.current) return;
-      const mapped = rows.map((row) => ({ id: row.id, title: row.title, updatedAt: new Date(row.updated_at).getTime(), messages: (row.messages || []).map((m: any) => ({ id: m.id, role: m.role, text: m.content, at: new Date(m.created_at).getTime(), evidence: m.metadata })) }));
-      setThreads(mapped); setActiveThreadId(mapped[0]?.id || "");
-    }).catch((err) => { if (!cancelled) console.warn("Conversation history unavailable", err); });
-    return () => { cancelled = true; };
-  }, [user?.id]);
+    const sync = () => {
+      if (requestInFlightRef.current) return;
+      const version = historyVersion.current;
+      Promise.all([fetchConversations(), conversationId ? fetchConversation(conversationId) : Promise.resolve(null)]).then(([rows, selected]: [any[], any]) => {
+        if (selected) rows = [selected, ...rows.filter(row => row.id !== selected.id)];
+        if (cancelled || requestInFlightRef.current || version !== historyVersion.current) return;
+        const mapped = rows.map((row) => ({ id: row.id, title: row.title, updatedAt: new Date(row.updated_at).getTime(), messages: (row.messages || []).map((m: any) => ({ id: m.id, role: m.role, text: m.content, at: new Date(m.created_at).getTime(), evidence: m.metadata })) }));
+        setThreads(mapped);
+        if (conversationId && !mapped.some(row => row.id === conversationId)) {
+          setChatError("chat.requestFailed");
+        }
+      }).catch(() => { if (!cancelled) setChatError("chat.requestFailed"); });
+    };
+    setActiveThreadId(conversationId || "");
+    setChatError(null);
+    sync();
+    window.addEventListener("focus", sync);
+    return () => { cancelled = true; window.removeEventListener("focus", sync); };
+  }, [user?.id, conversationId]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -307,6 +324,7 @@ export default function AssistantPage() {
     stopAudio();
     if (requestInFlightRef.current) return;
     setActiveThreadId("");
+    navigate("/assistant");
     setChatError(null);
     setMobileDrawerOpen(false);
     setInput("");
@@ -323,9 +341,11 @@ export default function AssistantPage() {
     if (activeThreadId === id) {
       if (filtered.length > 0) {
         setActiveThreadId(filtered[0].id);
+        navigate(`/assistant/c/${filtered[0].id}`, { replace: true });
       } else {
         setThreads([]);
         setActiveThreadId("");
+        navigate("/assistant", { replace: true });
       }
     }
   }
@@ -376,6 +396,7 @@ export default function AssistantPage() {
   async function ask(text: string) {
     const question = text.trim();
     if (!question || requestInFlightRef.current) return;
+    historyVersion.current++;
     requestInFlightRef.current = true;
 
     setIsThinking(true);
@@ -388,6 +409,7 @@ export default function AssistantPage() {
         const created = await createConversation(question.length > 80 ? question.slice(0, 80) : question);
         targetThreadId = created.id;
         setActiveThreadId(targetThreadId);
+        navigate(`/assistant/c/${targetThreadId}`, { replace: true });
       }
       startingConversation = false;
       const now = Date.now();
@@ -499,17 +521,19 @@ export default function AssistantPage() {
     voiceDiagnostic("MIC_CLICK");
     stopAudio();
     setVoiceErrorMessage(null);
+    setVoiceNotice(null);
     setInterimTranscript("");
+    browserTranscriptRef.current = "";
     setVoiceState("preparing");
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-      setVoiceErrorMessage(t("voice.denied"));
-      setVoiceState("error"); return;
+      setVoiceErrorMessage("Microphone access is not supported in this browser or context.");
+      setVoiceState("error");
+      return;
     }
 
-    // Start concurrent SpeechRecognition for visual interim preview only
+    // Start concurrent SpeechRecognition for visual interim preview and device transcription fallback
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    let liveBrowserTranscript = "";
 
     if (SpeechRecognition) {
       try {
@@ -524,8 +548,8 @@ export default function AssistantPage() {
             full += event.results[i][0].transcript;
           }
           if (full.trim()) {
-            liveBrowserTranscript = full.trim();
-            setInterimTranscript(liveBrowserTranscript);
+            browserTranscriptRef.current = full.trim();
+            setInterimTranscript(full.trim());
           }
         };
         recognition.onerror = (event: any) => console.info("Browser speech preview unavailable:", event?.error || "unknown");
@@ -572,50 +596,62 @@ export default function AssistantPage() {
         }
 
         setVoiceState("transcribing");
+        const deviceTranscript = browserTranscriptRef.current.trim();
         const actualMime = recorder.mimeType || "audio/webm";
         const audioBlob = new Blob(audioChunksRef.current, { type: actualMime });
         voiceDiagnostic("AUDIO_BLOB_CREATED", { bytes: audioBlob.size, mimeType: actualMime });
-        if (audioBlob.size === 0) {
-          setVoiceErrorMessage(t("voice.denied"));
-          setVoiceState("error"); stream.getTracks().forEach(trk => trk.stop()); return;
+
+        if (audioBlob.size === 0 && !deviceTranscript) {
+          setVoiceErrorMessage("We couldn't understand the recording. Please try again or type your question.");
+          setVoiceState("error");
+          stream.getTracks().forEach((trk) => trk.stop());
+          return;
         }
 
-        try {
-          // Call authoritative Sarvam Saaras v3 STT
-          voiceDiagnostic("AUDIO_UPLOAD_STARTED");
-          const result = await transcribeVoiceAudio(audioBlob, "auto");
-          voiceDiagnostic("AUDIO_UPLOAD_COMPLETED");
-          let finalSpokenText = "";
+        let authoritativeSuccess = false;
+        if (audioBlob.size > 0) {
+          try {
+            // Call authoritative Sarvam Saaras v3 STT
+            voiceDiagnostic("AUDIO_UPLOAD_STARTED");
+            const result = await transcribeVoiceAudio(audioBlob, "auto");
+            voiceDiagnostic("AUDIO_UPLOAD_COMPLETED");
 
-          if (result && result.transcript && result.transcript.trim() && !result.is_mock) {
-            finalSpokenText = result.transcript.trim();
-            voiceDiagnostic("STT_TRANSCRIPT_RECEIVED", { language: result.language_code || result.language });
-          } else if (result?.is_mock) {
-            throw new Error("Authoritative transcription provider unavailable");
+            if (result && result.transcript && result.transcript.trim() && !result.is_mock) {
+              const text = result.transcript.trim();
+              authoritativeSuccess = true;
+              voiceDiagnostic("STT_TRANSCRIPT_RECEIVED", { language: result.language_code || result.language });
+              setVoiceState("idle");
+              setVoiceErrorMessage(null);
+              setVoiceNotice(null);
+              setInput(text);
+              inputRef.current?.focus();
+            }
+          } catch (err) {
+            console.warn("Authoritative STT unavailable, falling back to device transcript:", err);
+            voiceDiagnostic("STT_FAILED", { error: err instanceof Error ? err.message : "unknown" });
           }
+        }
 
-          if (finalSpokenText) {
-            // Ask directly through the intelligent assistant pipeline
+        if (!authoritativeSuccess) {
+          if (deviceTranscript) {
+            // Level 2 Fallback: browser SpeechRecognition preview
             setVoiceState("idle");
-            setInput(finalSpokenText);
+            setVoiceErrorMessage(null);
+            setVoiceNotice("Cloud speech service unavailable — using device transcription");
+            setInput(deviceTranscript);
             inputRef.current?.focus();
           } else {
-            setVoiceErrorMessage(t("voice.denied"));
+            // Neither Sarvam nor device SpeechRecognition returned text
+            setVoiceErrorMessage("We couldn't understand the recording. Please try again or type your question.");
             setVoiceState("error");
           }
-        } catch (err) {
-          console.warn("Authoritative STT unavailable:", err);
-          voiceDiagnostic("STT_FAILED", { error: err instanceof Error ? err.message : "unknown" });
-          setInput(liveBrowserTranscript);
-          setVoiceErrorMessage(t("state.liveUnavailable"));
-          setVoiceState("error");
-        } finally {
-          stream.getTracks().forEach((trk) => trk.stop());
-          mediaStreamRef.current = null;
-          mediaRecorderRef.current = null;
-          audioChunksRef.current = [];
-          speechRecognitionRef.current = null;
         }
+
+        stream.getTracks().forEach((trk) => trk.stop());
+        mediaStreamRef.current = null;
+        mediaRecorderRef.current = null;
+        audioChunksRef.current = [];
+        speechRecognitionRef.current = null;
       };
 
       recorder.start(250);
@@ -624,15 +660,32 @@ export default function AssistantPage() {
       setVoiceState("listening");
       setRecordingSeconds(0);
       recordingTimerRef.current = setInterval(() => {
-        setRecordingSeconds((prev) => prev + 1);
+        setRecordingSeconds((prev) => {
+          const next = prev + 1;
+          if (next >= 30) {
+            // Auto-stop at 30 seconds maximum
+            setTimeout(() => {
+              if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+                mediaRecorderRef.current.stop();
+              }
+            }, 0);
+          }
+          return next;
+        });
       }, 1000);
-    } catch (err) {
+    } catch (err: any) {
       speechRecognitionRef.current?.stop();
       mediaStreamRef.current?.getTracks().forEach(track => track.stop());
       console.warn("Microphone access or hardware error:", err);
-      const name = err instanceof DOMException ? err.name : "";
+      const name = err instanceof DOMException ? err.name : (err?.name || "");
       voiceDiagnostic("MIC_START_FAILED", { name });
-      setVoiceErrorMessage(t("voice.denied"));
+      if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+        setVoiceErrorMessage("Microphone unavailable: permission denied. Please allow mic access in your browser settings.");
+      } else if (name === "NotFoundError") {
+        setVoiceErrorMessage("Microphone unavailable: no microphone found. Please connect a microphone and try again.");
+      } else {
+        setVoiceErrorMessage("Microphone unavailable: could not access microphone. Please check browser permissions.");
+      }
       setVoiceState("error");
     }
   }
@@ -765,7 +818,7 @@ export default function AssistantPage() {
                     key={th.id}
                     onClick={() => {
                       stopAudio();
-                      setActiveThreadId(th.id);
+                      setActiveThreadId(th.id); navigate(`/assistant/c/${th.id}`);
                       setMobileDrawerOpen(false);
                     }}
                     className={cn(
@@ -1032,8 +1085,10 @@ export default function AssistantPage() {
                 {voiceState === "listening" ? (
                   <>
                     <span className="size-3 shrink-0 rounded-full bg-red-500 animate-ping" />
-                    <span className="font-semibold text-teal-300">
-                      {t("voice.record")} ({recordingSeconds}s)
+                    <span className={cn("font-semibold", recordingSeconds >= 25 ? "text-amber-400 animate-pulse font-bold" : "text-teal-300")}>
+                      {recordingSeconds >= 25
+                        ? `${Math.max(0, 30 - recordingSeconds)} seconds remaining`
+                        : `Listening (${recordingSeconds}s)`}
                     </span>
                     {interimTranscript && (
                       <span className="text-teal-400/80 italic truncate max-w-xs">
@@ -1049,12 +1104,14 @@ export default function AssistantPage() {
                 ) : voiceState === "processing" || voiceState === "transcribing" ? (
                   <>
                     <Loader2 className="size-3.5 animate-spin text-teal-400" />
-                    <span>{t("chat.thinking")}</span>
+                    <span>Transcribing voice audio...</span>
                   </>
                 ) : (
                   <>
                     <AlertTriangle className="size-4 shrink-0 text-red-400" />
-                    <span className="text-red-300">{voiceErrorMessage || t("voice.denied")}</span>
+                    <span className="text-red-300">
+                      {voiceErrorMessage || "We couldn't understand the recording. Please try again or type your question."}
+                    </span>
                   </>
                 )}
               </div>
@@ -1094,6 +1151,24 @@ export default function AssistantPage() {
           {/* Bottom Docked Input */}
           <div className="border-t border-border bg-card/95 p-2.5 sm:p-4 backdrop-blur">
             <div className="mx-auto max-w-3xl space-y-2.5">
+              {/* Non-blocking device transcription notice */}
+              {voiceNotice && (
+                <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs animate-in fade-in duration-200">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Sparkles className="size-3.5 shrink-0 text-amber-400" />
+                    <span className="truncate">{voiceNotice}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setVoiceNotice(null)}
+                    className="p-1 rounded text-amber-400 hover:text-amber-200 cursor-pointer"
+                    title="Dismiss"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+              )}
+
               {/* Quick suggestion chips (natural prompts) */}
               {currentThread.messages.length > 0 && (
                 <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar touch-pan-x">

@@ -44,7 +44,7 @@ async function apiFetch(path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers); const token = authToken();
   if (token) headers.set("Authorization", "Bearer " + token);
   const response = await fetch(`${API_BASE_URL}${path}`, { ...init, signal: init.signal ?? AbortSignal.timeout(60000), headers });
-  if (response.status === 401) authFailureHandler?.();
+  if (response.status === 401 && token && token === authToken()) authFailureHandler?.();
   return response;
 }
 
@@ -769,4 +769,52 @@ export async function saveSelectedLocation(lat: number, lon: number, accuracy_m?
   const response = await apiFetch('/api/location/update', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({lat, lon, accuracy_m}) });
   if (!response.ok) throw new Error('LOCATION_SAVE_FAILED');
   return response.json();
+}
+
+export async function updateSOSDetails(id: string, notes: string) {
+  const response = await apiFetch(`/api/emergency/sos/${encodeURIComponent(id)}/details`, {method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify({notes})});
+  if (!response.ok) throw new Error("SOS_DETAILS_UNAVAILABLE");
+  return response.json();
+}
+
+
+export async function logoutSession(token: string) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
+    method: 'POST', headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10000),
+  });
+  if (!response.ok && response.status !== 401) throw new Error('Session revocation failed');
+}
+
+
+export async function fetchConversation(id: string) {
+  const response = await apiFetch(`/api/conversations/${encodeURIComponent(id)}`);
+  if (!response.ok) throw new Error(`Conversation unavailable (${response.status})`);
+  return response.json();
+}
+
+export interface DeviceSessionInfo {
+  id: string;
+  device_name: string;
+  user_agent: string | null;
+  ip_address: string | null;
+  created_at: string;
+  last_seen_at: string | null;
+  expires_at: string;
+  current: boolean;
+}
+
+export async function fetchActiveSessions(): Promise<DeviceSessionInfo[]> {
+  const response = await apiFetch('/api/auth/sessions');
+  if (!response.ok) throw new Error(`Failed to load sessions (${response.status})`);
+  return response.json();
+}
+
+export async function revokeSessionById(sessionId: string): Promise<void> {
+  const response = await apiFetch(`/api/auth/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
+  if (!response.ok) throw new Error(`Session revocation failed (${response.status})`);
+}
+
+export async function revokeAllSessions(): Promise<void> {
+  const response = await apiFetch('/api/auth/sessions', { method: 'DELETE' });
+  if (!response.ok) throw new Error(`Failed to revoke all sessions (${response.status})`);
 }
