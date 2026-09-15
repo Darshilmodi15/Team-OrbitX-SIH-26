@@ -891,7 +891,17 @@ class BhashiniService:
         # Fallback hierarchy if substantive query is in English / Latin script without non-English markers:
         # Check: Saved profile preference -> requested_lang -> session language -> English
         fallback_used = False
-        if chosen_lang == "en" and not any(l != "en" for l in detected_languages):
+        emergency_number_markers = (
+            "emergency number",
+            "emergency numbers",
+            "emergency contact",
+            "emergency contacts",
+            "emergency helpline",
+            "coast guard number",
+        )
+        preserve_english_for_emergency_lookup = any(marker in cleaned_text.lower() for marker in emergency_number_markers)
+
+        if chosen_lang == "en" and not any(l != "en" for l in detected_languages) and not preserve_english_for_emergency_lookup:
             norm_profile = (user_profile_lang or "").lower().split("-")[0]
             norm_requested = (requested_lang or "").lower().split("-")[0]
             session_lang = self.get_session_language(session_id) if session_id else None
