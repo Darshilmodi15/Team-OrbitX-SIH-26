@@ -1,6 +1,6 @@
 import { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
-import { INDIAN_PORTS, MOCK_PFZ_ZONES, type Port, type WeatherMetrics } from '../data/maritimeData';
+import { INDIAN_PORTS, type Port, type WeatherMetrics } from '../data/maritimeData';
 import { queryORCA } from '../services/api';
 
 import type { LocationCoords, PFZEvidenceItem, MessageItem, GisLayerState } from '../types';
@@ -55,23 +55,14 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
   const [currentDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [currentLang, setCurrentLang] = useState<string>('en');
 
-  const [weather, setWeather] = useState<WeatherMetrics>(
-    INDIAN_PORTS[0].defaultWeather || {
-      wave_height_m: 1.2,
-      wind_speed_kmh: 18,
-      wind_direction_deg: 240,
-      wind_direction_cardinal: 'WSW',
-      forecast: 'Clear',
-      temperature_c: 29.5,
-      sst_c: 28.2,
-      swell_period_s: 7,
-      tide_state: 'Ebb',
-      visibility_km: 15,
-      source: 'INCOIS_OSF_LIVE',
-    }
-  );
+  const [weather, setWeather] = useState<WeatherMetrics>({
+    forecast: 'Unavailable',
+    cache_status: 'unavailable',
+    source: 'unavailable',
+    is_mock: false,
+  });
 
-  const [riskLevel, setRiskLevel] = useState<'safe' | 'caution' | 'unsafe'>('safe');
+  const [riskLevel, setRiskLevel] = useState<'safe' | 'caution' | 'unsafe'>('caution');
 
   const [gisLayers, setGisLayers] = useState<GisLayerState>({
     pfz: true,
@@ -86,17 +77,7 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
     vessels: true,
   });
 
-  const [pfzZones, setPfzZones] = useState<PFZEvidenceItem[]>(
-    MOCK_PFZ_ZONES.map((z) => ({
-      name: z.name,
-      latitude: z.lat,
-      longitude: z.lon,
-      distance_km: z.distance_km || 28.5,
-      depth_m: z.depth_m,
-      species: [z.dominant_species],
-      source: 'INCOIS_PFZ_ADVISORY',
-    }))
-  );
+  const [pfzZones, setPfzZones] = useState<PFZEvidenceItem[]>([]);
 
   const [messages, setMessages] = useState<MessageItem[]>([
     {
@@ -145,14 +126,8 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
     setSelectedPort(port);
     setUserLocation({ lat: port.lat, lon: port.lon });
 
-    if (port.defaultWeather) {
-      setWeather(port.defaultWeather);
-      const waveHeight = port.defaultWeather.wave_height_m;
-      const windSpeed = port.defaultWeather.wind_speed_kmh;
-      const isUnsafe = (waveHeight != null && waveHeight > 2.5) || (windSpeed != null && windSpeed > 50);
-      const isCaution = !isUnsafe && ((waveHeight != null && waveHeight > 1.5) || (windSpeed != null && windSpeed > 35));
-      setRiskLevel(isUnsafe ? 'unsafe' : isCaution ? 'caution' : 'safe');
-    }
+    setWeather({ forecast: 'Unavailable', cache_status: 'unavailable', source: 'unavailable', is_mock: false });
+    setRiskLevel('caution');
 
     const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setMessages((prev) => [
@@ -236,12 +211,14 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
       if (response.weather) {
         setWeather((prev) => ({
           ...prev,
-          wave_height_m: response.weather.wave_height_m ?? prev.wave_height_m,
-          wind_speed_kmh: response.weather.wind_speed_kmh ?? prev.wind_speed_kmh,
-          forecast: response.weather.forecast ?? prev.forecast,
-          temperature_c: response.weather.temperature_c ?? prev.temperature_c,
-          visibility_km: response.weather.visibility_km ?? prev.visibility_km,
-          source: response.weather.source || 'INCOIS_OSF_LIVE',
+          wave_height_m: response.weather.wave_height_m,
+          wind_speed_kmh: response.weather.wind_speed_kmh,
+          forecast: response.weather.forecast ?? 'Unavailable',
+          temperature_c: response.weather.temperature_c,
+          visibility_km: response.weather.visibility_km,
+          source: response.weather.source || 'unavailable',
+          cache_status: response.weather.cache_status || 'unavailable',
+          is_mock: response.weather.is_mock ?? false,
         }));
       }
 

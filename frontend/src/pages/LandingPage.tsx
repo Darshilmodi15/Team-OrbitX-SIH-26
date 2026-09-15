@@ -307,7 +307,6 @@ export default function LandingPage() {
                 <PhoneCall className="size-3" />
                 <span>112 / 1554</span>
               </p>
-              
             </div>
           </div>
 

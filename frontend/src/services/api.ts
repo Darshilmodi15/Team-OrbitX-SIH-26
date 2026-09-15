@@ -18,7 +18,12 @@ function getApiBaseUrl(): string {
   let url = configuredUrl;
 
   if (!url || isPlaceholder) {
-    url = import.meta.env.PROD ? PRODUCTION_API_BASE_URL : 'http://localhost:8000';
+    if (import.meta.env.PROD) {
+      url = PRODUCTION_API_BASE_URL;
+    } else {
+      const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+      url = `http://${host}:8000`;
+    }
   }
   if (url && !url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('/')) {
     url = `https://${url}`;
@@ -67,67 +72,41 @@ export interface ChatMessagePayload {
 }
 
 export async function sendChatMessage(payload: ChatMessagePayload) {
-  const endpoint = `${API_BASE_URL}/api/chat`;
-  const startTime = performance.now();
-  
   try {
-    const requestBody = {
-      message: payload.message,
-      location: payload.location || { lat: 18.9220, lon: 72.8347 },
-      date: payload.date || new Date().toISOString().split('T')[0],
-      language: payload.language || 'auto',
-      session_id: payload.session_id,
-      history: payload.history,
-      request_id: payload.request_id,
-    };
-
     const response = await apiFetch(`/api/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify({
+        message: payload.message,
+        ...(payload.location ? { location: payload.location } : {}),
+        date: payload.date || new Date().toISOString().split('T')[0],
+        language: payload.language || 'auto',
+        session_id: payload.session_id,
+        history: payload.history,
+        request_id: payload.request_id,
+      }),
     });
 
-    const elapsedMs = Math.round(performance.now() - startTime);
-
     if (!response.ok) {
-      let errorDetail = `HTTP ${response.status} ${response.statusText}`;
+      let errorMsg = `Server error (${response.status})`;
       try {
         const errorData = await response.json();
         if (errorData.detail) {
-          errorDetail = typeof errorData.detail === 'string' ? errorData.detail : JSON.stringify(errorData.detail);
+          errorMsg = typeof errorData.detail === 'string' ? errorData.detail : JSON.stringify(errorData.detail);
         }
       } catch {
-        // Non-JSON response (e.g. 502/504 gateway or proxy HTML)
-        try {
-          const rawText = await response.text();
-          if (rawText) errorDetail += ` - ${rawText.slice(0, 150)}`;
-        } catch {
-          // ignore
-        }
+        // Fallback to generic message
       }
-
-      console.error(`[ORCA API Error] POST ${endpoint} failed (${response.status}) in ${elapsedMs}ms:`, errorDetail);
-      if (response.status === 503 && errorDetail === 'AI_PROVIDER_UNAVAILABLE') {
-        throw Object.assign(new Error('ORCA’s AI provider is temporarily unavailable. Please try again later.'), { code: 'AI_PROVIDER_UNAVAILABLE' });
-      }
-      throw new Error(`API route failed: ${errorDetail} (Endpoint: ${endpoint})`);
+      throw new Error(errorMsg);
     }
 
-    const data = await response.json();
-    console.debug(`[ORCA API Success] POST ${endpoint} completed in ${elapsedMs}ms.`);
-    return data;
+    return await response.json();
   } catch (error: any) {
-    const elapsedMs = Math.round(performance.now() - startTime);
     if (error.name === 'TypeError' && error.message?.includes('fetch')) {
-      console.error(`[ORCA Network Failure] Unable to reach backend at ${endpoint} (${elapsedMs}ms). Possible causes: backend offline, CORS blocked, or mixed-content (HTTPS/HTTP).`);
-      throw new Error(`Unable to reach ORCA backend at ${API_BASE_URL}. Ensure the backend is active and CORS is allowed.`);
-    } else if (error.name === 'AbortError' || error.message?.includes('timeout')) {
-      console.error(`[ORCA Timeout] Request to ${endpoint} timed out after ${elapsedMs}ms.`);
-      throw new Error(`Request to ORCA conversation API timed out after ${elapsedMs}ms.`);
+      throw new Error('Unable to reach ORCA backend. Please ensure the backend server is running at ' + API_BASE_URL);
     }
-    console.error(`[ORCA API Exception] Request to ${endpoint} failed:`, error);
     throw error;
   }
 }
@@ -215,7 +194,6 @@ export async function loginUser(email_or_phone: string, password: string) {
   const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    signal: AbortSignal.timeout(60000),
     body: JSON.stringify({ email_or_phone, password }),
   });
   if (!response.ok) {
@@ -328,44 +306,13 @@ export async function fetchMarineTide(lat: number, lon: number) {
   return await response.json();
 }
 
-export async function fetchPFZDataset(sector?: string, lat?: number, lon?: number, language?: string) {
-  const params = new URLSearchParams();
-  if (sector) params.set('sector', sector);
-  if (lat != null && Number.isFinite(lat)) params.set('lat', String(lat));
-  if (lon != null && Number.isFinite(lon)) params.set('lon', String(lon));
-  if (language) params.set('language', language);
-  const qs = params.toString() ? `?${params.toString()}` : '';
-  const response = await fetch(`${API_BASE_URL}/api/pfz${qs}`, { signal: AbortSignal.timeout(15000) });
+export async function fetchPFZDataset() {
+  const response = await fetch(`${API_BASE_URL}/api/pfz`);
   if (!response.ok) {
     throw new Error('Failed to fetch Potential Fishing Zone dataset');
   }
   return await response.json();
 }
-
-export async function fetchPFZSectors() {
-  const response = await fetch(`${API_BASE_URL}/api/pfz/sectors`, { signal: AbortSignal.timeout(10000) });
-  if (!response.ok) {
-    throw new Error('Failed to fetch coastal sectors');
-  }
-  return await response.json();
-}
-
-export async function fetchProviderHealth() {
-  const response = await fetch(`${API_BASE_URL}/api/health/providers`, { signal: AbortSignal.timeout(10000) });
-  if (!response.ok) {
-    throw new Error('Failed to fetch provider health');
-  }
-  return await response.json();
-}
-
-export async function fetchSatelliteStatus() {
-  const response = await fetch(`${API_BASE_URL}/api/satellite/status`, { signal: AbortSignal.timeout(10000) });
-  if (!response.ok) {
-    throw new Error('Failed to fetch satellite status');
-  }
-  return await response.json();
-}
-
 
 /* ==========================================================================
    Marine Boundaries & GIS APIs

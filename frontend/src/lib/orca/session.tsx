@@ -12,8 +12,6 @@ type SessionValue = { user: OrcaUser | null; location: LocationInfo | null; read
 const SessionContext = createContext<SessionValue | null>(null);
 function readToken() { try { return sessionStorage.getItem(SESSION_TOKEN_KEY); } catch { return null; } }
 function mapUser(raw: any): OrcaUser { const role = raw.role === "GOVERNMENT" ? "government" : raw.role === "SUPER_ADMIN" ? "admin" : "user"; return { id: raw.id, name: raw.name, operationalRegion: raw.operational_region, contact: raw.email || raw.mobile_number || "", role }; }
-
-
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<OrcaUser | null>(null); const [token, setToken] = useState<string | null>(null);
   const locationVersion = useRef(0);

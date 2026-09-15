@@ -1,6 +1,5 @@
 """Marine weather agent responsible for retrieving and structuring meteorological evidence."""
-from typing import Any, Dict, Optional
-import math
+from typing import Any, Dict
 from app.data.weather.base import WeatherProvider
 from app.models.agent_models import WeatherEvidence
 
@@ -10,83 +9,43 @@ def get_marine_weather(
     lat: float,
     lon: float,
     date: str,
-    time_hint: Optional[str] = None,
-    temporal_res: Optional[Any] = None,
 ) -> WeatherEvidence:
     """
     Fetches marine weather from the underlying provider and formats it into a WeatherEvidence contract.
-    Preserves data provenance, three distinct timestamps (issued_at, forecast_valid_at, retrieved_at),
-    wave periods, gusts, cloud cover, visibility, and forecast horizons.
+    Preserves data provenance, source timestamps, wave periods, gusts, cloud cover, visibility, and forecast horizons.
     """
-    raw: Dict[str, Any] = provider.get_weather(
-        lat=lat,
-        lon=lon,
-        date=date,
-        time_hint=time_hint,
-        temporal_res=temporal_res,
-    )
+    raw: Dict[str, Any] = provider.get_weather(lat=lat, lon=lon, date=date)
     is_mock = bool(raw.get("is_mock", True))
     source = str(raw.get("source", "mock_marine_weather" if is_mock else "open_meteo_marine_api"))
     
-    def number(key):
-        value = raw.get(key)
-        if value is None or isinstance(value, bool):
-            return None
-        try:
-            value = float(value)
-            return value if math.isfinite(value) and (value >= 0 or key in {"temperature_c", "sea_surface_temperature_c", "grid_lat", "grid_lon"}) else None
-        except (ValueError, TypeError):
-            return None
-
-    f_valid = raw.get("forecast_valid_at") or raw.get("forecast_time")
-    r_time = raw.get("retrieved_at") or raw.get("retrieval_time")
-
     return WeatherEvidence(
-        forecast=str(raw.get("forecast") or "unavailable"),
-        weather_code=raw.get("weather_code"),
-        wave_height_m=number("wave_height_m"),
-        wave_period_s=number("wave_period_s"),
-        wave_direction_deg=number("wave_direction_deg"),
+        forecast=str(raw["forecast"]) if raw.get("forecast") is not None else None,
+        wave_height_m=float(raw["wave_height_m"]) if raw.get("wave_height_m") is not None else None,
+        wave_period_s=float(raw["wave_period_s"]) if raw.get("wave_period_s") is not None else None,
+        wave_direction_deg=float(raw["wave_direction_deg"]) if raw.get("wave_direction_deg") is not None else None,
         wave_direction_cardinal=str(raw["wave_direction_cardinal"]) if raw.get("wave_direction_cardinal") is not None else None,
         
-        wind_speed_kmh=number("wind_speed_kmh"),
-        wind_speed_ms=number("wind_speed_ms"),
-        wind_gust_kmh=number("wind_gust_kmh"),
-        wind_direction_deg=number("wind_direction_deg"),
+        wind_speed_kmh=float(raw["wind_speed_kmh"]) if raw.get("wind_speed_kmh") is not None else None,
+        wind_speed_ms=float(raw["wind_speed_ms"]) if raw.get("wind_speed_ms") is not None else None,
+        wind_gust_kmh=float(raw["wind_gust_kmh"]) if raw.get("wind_gust_kmh") is not None else None,
+        wind_direction_deg=float(raw["wind_direction_deg"]) if raw.get("wind_direction_deg") is not None else None,
         wind_direction_cardinal=str(raw["wind_direction_cardinal"]) if raw.get("wind_direction_cardinal") is not None else None,
         
-        cloud_cover_pct=number("cloud_cover_pct"),
+        cloud_cover_pct=float(raw["cloud_cover_pct"]) if raw.get("cloud_cover_pct") is not None else None,
         cloud_category=str(raw["cloud_category"]) if raw.get("cloud_category") is not None else None,
         
-        visibility_km=number("visibility_km"),
+        visibility_km=float(raw["visibility_km"]) if raw.get("visibility_km") is not None else None,
         visibility_category=str(raw["visibility_category"]) if raw.get("visibility_category") is not None else None,
-        precipitation_mm=number("precipitation_mm"),
-
-        temperature_c=number("temperature_c"),
-        sea_surface_temperature_c=number("sea_surface_temperature_c"),
+        precipitation_mm=float(raw["precipitation_mm"]) if raw.get("precipitation_mm") is not None else None,
         
-        wind_wave_height_m=number("wind_wave_height_m"),
-        wind_wave_direction_deg=number("wind_wave_direction_deg"),
-        wind_wave_period_s=number("wind_wave_period_s"),
-        swell_wave_height_m=number("swell_wave_height_m"),
-        swell_wave_direction_deg=number("swell_wave_direction_deg"),
-        swell_wave_period_s=number("swell_wave_period_s"),
-        ocean_current_speed_kmh=number("ocean_current_speed_kmh"),
-        ocean_current_direction_deg=number("ocean_current_direction_deg"),
-        supplemental_fields=raw.get("supplemental_fields") or {},
-        marine_forecast_valid_at=raw.get("marine_forecast_valid_at"),
-        weather_forecast_valid_at=raw.get("weather_forecast_valid_at"),
-        measurement_kind=raw.get("measurement_kind"),
-        issued_at=str(raw["issued_at"]) if raw.get("issued_at") is not None else None,
-        forecast_valid_at=str(f_valid) if f_valid is not None else None,
-        retrieved_at=str(r_time) if r_time is not None else None,
-        target_period=str(raw["target_period"]) if raw.get("target_period") is not None else None,
+        temperature_c=float(raw["temperature_c"]) if raw.get("temperature_c") is not None else None,
+        sea_surface_temperature_c=float(raw["sea_surface_temperature_c"]) if raw.get("sea_surface_temperature_c") is not None else None,
         
-        forecast_time=str(f_valid) if f_valid is not None else None,
-        retrieval_time=str(r_time) if r_time is not None else None,
+        forecast_time=str(raw["forecast_time"]) if raw.get("forecast_time") is not None else None,
+        retrieval_time=str(raw["retrieval_time"]) if raw.get("retrieval_time") is not None else None,
         cache_status=str(raw["cache_status"]) if raw.get("cache_status") is not None else None,
-        grid_lat=number("grid_lat"),
-        grid_lon=number("grid_lon"),
+        grid_lat=float(raw["grid_lat"]) if raw.get("grid_lat") is not None else None,
+        grid_lon=float(raw["grid_lon"]) if raw.get("grid_lon") is not None else None,
         resolution_method=str(raw["resolution_method"]) if raw.get("resolution_method") is not None else None,
         data_age_sec=int(raw["data_age_sec"]) if raw.get("data_age_sec") is not None else None,
         

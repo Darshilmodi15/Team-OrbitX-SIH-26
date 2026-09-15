@@ -422,7 +422,7 @@ export default function AssistantPage() {
 
       const res = await sendChatMessage({
         message: question,
-        location: location ? { lat: location.coords.lat, lon: location.coords.lon } : undefined,
+        ...(location ? { location: { lat: location.coords.lat, lon: location.coords.lon } } : {}),
         date: new Date().toISOString().split("T")[0],
         language: lang || "auto",
         session_id: targetThreadId,

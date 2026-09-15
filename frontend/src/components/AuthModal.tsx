@@ -66,36 +66,9 @@ export default function AuthModal({
       }
     } catch (err: any) {
       console.warn('Auth error:', err);
-      // Fallback user state for prototype verification
-      const isEmail = emailOrMobile.includes('@');
-      const fallbackUser: UserProfile = {
-        id: `usr_${Date.now()}`,
-        name: fullName || (isEmail ? emailOrMobile.split('@')[0] : 'Coastal User'),
-        email: isEmail ? emailOrMobile : 'user@orca.marine',
-        mobile_number: !isEmail ? emailOrMobile : '+91-9876543210',
-        role: role,
-        preferred_language: currentLang,
-      };
-      onAuthSuccess(fallbackUser);
-      onClose();
+      setErrorMsg(err instanceof Error ? err.message : 'Authentication failed. Please try again.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleQuickFill = (demoRole: 'FISHERMAN' | 'GOVERNMENT' | 'SUPER_ADMIN') => {
-    if (demoRole === 'FISHERMAN') {
-      setEmailOrMobile('ramesh.patel@orca.marine');
-      setPassword('securepass123');
-      setRole('FISHERMAN');
-    } else if (demoRole === 'GOVERNMENT') {
-      setEmailOrMobile('gov.officer@fisheries.gov.in');
-      setPassword('securepass123');
-      setRole('GOVERNMENT');
-    } else {
-      setEmailOrMobile('superadmin@orca.marine');
-      setPassword('adminpass123');
-      setRole('SUPER_ADMIN');
     }
   };
 
@@ -234,35 +207,6 @@ export default function AuthModal({
           </button>
         </form>
 
-        {/* Development Demo Accounts Drawer */}
-        <div className="mt-4 pt-3 border-t border-slate-100">
-          <p className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider mb-2">
-            Demo Credentials Selector (Testing)
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            <button
-              type="button"
-              onClick={() => handleQuickFill('FISHERMAN')}
-              className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-teal-50 hover:border-teal-300 transition cursor-pointer"
-            >
-              👤 Fisherman
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickFill('GOVERNMENT')}
-              className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-teal-50 hover:border-teal-300 transition cursor-pointer"
-            >
-              🏛️ Fisheries Officer
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickFill('SUPER_ADMIN')}
-              className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-teal-50 hover:border-teal-300 transition cursor-pointer"
-            >
-              🛡️ Super Admin
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

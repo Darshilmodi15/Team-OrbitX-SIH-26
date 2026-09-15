@@ -31,7 +31,7 @@ export default function PrivacyPage() {
               <span className="text-base font-bold tracking-tight text-white font-sans">
                 ORCA <span className="text-teal-400">MARINE AI</span>
               </span>
-              <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-slate-200">
                 Ocean Intelligence
               </span>
             </div>
@@ -58,7 +58,7 @@ export default function PrivacyPage() {
           <h1 className="mt-4 text-3xl sm:text-4xl font-bold tracking-tight text-white">
             Privacy Policy & Data Governance
           </h1>
-          <p className="mt-2 text-sm text-slate-400 font-mono">
+          <p className="mt-2 text-sm text-slate-200 font-mono">
             Effective Date: August 31, 2026 | Version: 2.4 | Applicable across all 9 Coastal States & Union Territories
           </p>
         </div>
@@ -93,7 +93,7 @@ export default function PrivacyPage() {
               1. Institutional Authority & Jurisdiction
             </h2>
             <p>
-              ORCA Marine AI is developed and maintained in collaboration with the Indian National Centre for Ocean Information Services (INCOIS), Ministry of Earth Sciences (MoES), and State Fisheries Departments. This policy complies with the Digital Personal Data Protection Act (DPDPA 2023) and the Information Technology (Reasonable Security Practices) Rules.
+              ORCA Marine AI is a Smart India Hackathon prototype. It is not an official INCOIS, Ministry of Earth Sciences, or State Fisheries Department service. This policy describes the prototype's intended data handling and should be reviewed before any production deployment.
             </p>
           </section>
 
@@ -136,7 +136,7 @@ export default function PrivacyPage() {
             <ul className="list-disc pl-5 space-y-1 text-slate-300">
               <li><strong>Indian Coast Guard (ICG) & Maritime Rescue Coordination Centres (MRCC):</strong> Real-time vessel coordinates during active SOS alerts.</li>
               <li><strong>State Fisheries Departments & Marine Police:</strong> Regulatory compliance, biometric fisher welfare subsidy verification, and harbour clearance.</li>
-              <li><strong>INCOIS & Indian Meteorological Department (IMD):</strong> Anonymized ground-truth oceanographic telemetry to calibrate ocean-state forecasting models.</li>
+              <li><strong>Configured marine and weather providers:</strong> Where enabled, the prototype may retrieve public oceanographic and meteorological data. Provider availability and provenance are shown in the application rather than assumed.</li>
             </ul>
           </section>
 
@@ -170,7 +170,7 @@ export default function PrivacyPage() {
 
         </div>
 
-        <div className="mt-10 border-t border-slate-800 pt-6 flex justify-between items-center text-xs text-slate-400">
+        <div className="mt-10 border-t border-slate-800 pt-6 flex justify-between items-center text-xs text-slate-200">
           <Link to="/terms" className="text-teal-400 hover:underline">
             Read Terms of Service →
           </Link>

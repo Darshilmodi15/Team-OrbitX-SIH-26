@@ -585,8 +585,13 @@ def get_hazard_alerts_endpoint(lat: float = 18.9220, lon: float = 72.8347, date:
 @app.post("/api/simulate")
 def simulate_endpoint(request: SimulateRequest):
     """Performs a direct what-if counterfactual scenario simulation."""
-    lat = request.location.lat if request.location else None
-    lon = request.location.lon if request.location else None
+    if request.location is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Location is required for marine intelligence queries. Enable location access or choose a port.",
+        )
+    lat = request.location.lat
+    lon = request.location.lon
     q_date = request.date or dt_date.today().isoformat()
 
     weather = get_marine_weather(provider=weather_provider, lat=lat, lon=lon, date=q_date)

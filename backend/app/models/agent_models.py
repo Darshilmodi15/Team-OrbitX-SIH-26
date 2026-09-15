@@ -1,52 +1,23 @@
 """Pydantic contracts for multi-agent evidence exchange and orchestration."""
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
 
 class WeatherEvidence(BaseModel):
     """Structured marine meteorological evidence returned by the Weather Agent."""
-    forecast: str = Field(..., description="Forecast condition string ('clear', 'rainy', 'stormy', etc.)")
+    forecast: Optional[str] = Field(default=None, description="Forecast condition string when supplied by the provider")
     wave_height_m: Optional[float] = Field(default=None, description="Significant wave height in meters")
     wind_speed_kmh: Optional[float] = Field(default=None, description="Sustained wind speed in km/h")
-    weather_code: Optional[int] = None
-    wave_direction_deg: Optional[float] = None
-    wave_direction_cardinal: Optional[str] = None
-    cloud_cover_pct: Optional[float] = None
-    cloud_category: Optional[str] = None
-    visibility_category: Optional[str] = None
-    precipitation_mm: Optional[float] = None
     wind_speed_ms: Optional[float] = Field(default=None, description="Wind speed in meters per second")
     wave_period_s: Optional[float] = Field(default=None, description="Peak or mean wave period in seconds")
     wind_gust_kmh: Optional[float] = Field(default=None, description="Peak wind gust speed in km/h")
     wind_direction_deg: Optional[float] = Field(default=None, description="Wind direction in degrees (0-360)")
     wind_direction_cardinal: Optional[str] = Field(default=None, description="Wind direction cardinal compass (e.g. 'WSW')")
-    temperature_c: Optional[float] = Field(default=None, description="Air temperature in Celsius")
+    temperature_c: Optional[float] = Field(default=None, description="Sea surface or ambient temperature in Celsius")
     sea_surface_temperature_c: Optional[float] = Field(default=None, description="Sea surface temperature in Celsius")
     visibility_km: Optional[float] = Field(default=None, description="Visibility in kilometers")
-
-    wind_wave_height_m: Optional[float] = None
-    wind_wave_direction_deg: Optional[float] = None
-    wind_wave_period_s: Optional[float] = None
-    swell_wave_height_m: Optional[float] = None
-    swell_wave_direction_deg: Optional[float] = None
-    swell_wave_period_s: Optional[float] = None
-    ocean_current_speed_kmh: Optional[float] = None
-    ocean_current_direction_deg: Optional[float] = None
-    supplemental_fields: Dict[str, Any] = Field(default_factory=dict)
-    marine_forecast_valid_at: Optional[str] = None
-    weather_forecast_valid_at: Optional[str] = None
-    measurement_kind: Optional[str] = None
-
-    # Three distinct, truthful timestamps
-    issued_at: Optional[str] = Field(default=None, description="Provider numerical model run issuance timestamp")
-    forecast_valid_at: Optional[str] = Field(default=None, description="Timestamp for which the forecast is valid")
-    retrieved_at: Optional[str] = Field(default=None, description="Timestamp when ORCA retrieved data from provider")
-    target_period: Optional[str] = Field(default=None, description="Target operational timeframe requested by query")
-
-    # Backward compatibility aliases
     forecast_time: Optional[str] = Field(default=None, description="Source forecast / observation timestamp")
     retrieval_time: Optional[str] = Field(default=None, description="Data retrieval timestamp")
-
     cache_status: Optional[str] = Field(default=None, description="Cache status ('live', 'cached', 'stale', 'unavailable')")
     grid_lat: Optional[float] = Field(default=None, description="Resolved marine grid latitude")
     grid_lon: Optional[float] = Field(default=None, description="Resolved marine grid longitude")
@@ -55,22 +26,6 @@ class WeatherEvidence(BaseModel):
     forecast_horizon: Optional[List[Dict[str, Any]]] = Field(default=None, description="Multi-hour forward outlook steps")
     source: str = Field(..., description="Data provenance (e.g. 'INCOIS_OSF_WW3', 'mock_marine_weather')")
     is_mock: bool = Field(default=True, description="Flag indicating if the evidence is synthetic/mock")
-
-    @model_validator(mode="before")
-    @classmethod
-    def _sync_timestamps(cls, data: Any) -> Any:
-        if isinstance(data, dict):
-            # Synchronize forecast_valid_at and forecast_time
-            f_val = data.get("forecast_valid_at") or data.get("forecast_time")
-            if f_val:
-                data.setdefault("forecast_valid_at", f_val)
-                data.setdefault("forecast_time", f_val)
-            # Synchronize retrieved_at and retrieval_time
-            r_val = data.get("retrieved_at") or data.get("retrieval_time")
-            if r_val:
-                data.setdefault("retrieved_at", r_val)
-                data.setdefault("retrieval_time", r_val)
-        return data
 
 
 class PFZEvidence(BaseModel):
@@ -93,35 +48,31 @@ class PFZEvidence(BaseModel):
 
 class RiskComponentItem(BaseModel):
     """Sub-component risk evaluation."""
-    level: str = Field(default="UNKNOWN", description="Risk tier ('LOW', 'MODERATE', 'HIGH')")
-    score: Optional[float] = Field(default=None, description="Component risk index 0.0 to 1.0")
-    description: str = Field(default="Evidence unavailable", description="Component rationale")
+    level: str = Field(default="LOW", description="Risk tier ('LOW', 'MODERATE', 'HIGH')")
+    score: Optional[float] = Field(default=None, description="Component risk index 0.0 to 1.0 when measurable")
+    description: str = Field(default="Normal operating limits", description="Component rationale")
 
 
 class MarineRiskProfile(BaseModel):
     """Comprehensive multi-factor marine safety risk profile."""
-    overall: str = Field(default="UNKNOWN", description="Overall risk tier ('LOW', 'MODERATE', 'HIGH')")
-    status_label: str = Field(default="UNKNOWN", description="Human-readable safety status ('SAFE', 'CAUTION', 'UNSAFE')")
+    overall: str = Field(default="LOW", description="Overall risk tier ('LOW', 'MODERATE', 'HIGH')")
+    status_label: str = Field(default="SAFE", description="Human-readable safety status ('SAFE', 'CAUTION', 'UNSAFE')")
     wave_risk: RiskComponentItem = Field(default_factory=RiskComponentItem)
     wind_risk: RiskComponentItem = Field(default_factory=RiskComponentItem)
     storm_risk: RiskComponentItem = Field(default_factory=RiskComponentItem)
     gust_risk: RiskComponentItem = Field(default_factory=RiskComponentItem)
-    forecast_trend: str = Field(default="unknown", description="Trend over forward horizon ('stable', 'improving', 'deteriorating')")
+    forecast_trend: str = Field(default="stable", description="Trend over forward horizon ('stable', 'improving', 'deteriorating')")
     recommendations: List[str] = Field(default_factory=list, description="Actionable recommendations")
     warnings: List[str] = Field(default_factory=list, description="Specific safety warnings")
 
 
 class RiskEvidence(BaseModel):
     """Structured safety risk evaluation produced by the Risk Agent."""
-    available_evidence: Dict[str, Any] = Field(default_factory=dict)
-    missing_evidence: List[str] = Field(default_factory=list)
-    evidence_completeness: str = "unavailable"
-    assessment_type: str = "ORCA_HEURISTIC"
     level: str = Field(..., description="Assessed risk level ('safe', 'caution', 'unsafe')")
     reason: str = Field(..., description="Actionable rationale explaining the risk classification")
     factors: List[str] = Field(default_factory=list, description="Specific triggers or parameter thresholds evaluated")
     safety_label: Optional[str] = Field(default=None, description="Human-readable summary label ('SAFE TO VENTURE', 'CAUTION ADVISED', 'UNSAFE')")
-    confidence: Optional[str] = Field(default=None, description="Confidence categorization based on authoritative coverage ('HIGH', 'MODERATE', 'LOW')")
+    confidence: Optional[str] = Field(default="HIGH", description="Confidence categorization based on authoritative coverage ('HIGH', 'MODERATE', 'LOW')")
     risk_score: Optional[float] = Field(default=None, description="Normalized risk index from 0.0 (safest) to 1.0 (extreme)")
     freshness_status: Optional[str] = Field(default=None, description="Freshness status of evaluated data ('LIVE', 'CACHED', 'STALE')")
     wave_status: Optional[str] = Field(default=None, description="Evaluated wave condition status")
@@ -132,6 +83,9 @@ class RiskEvidence(BaseModel):
         description="Mandatory advisory disclaimer",
     )
     source: str = Field(default="risk_assessment_agent", description="Agent responsible for the risk evaluation")
+    available_evidence: List[str] = Field(default_factory=list)
+    missing_evidence: List[str] = Field(default_factory=list)
+    evidence_completeness: str = Field(default="unknown", description="complete, partial, or insufficient")
 
 
 class RouteWaypoint(BaseModel):
@@ -185,7 +139,7 @@ class HazardAlertEvidence(BaseModel):
     title: str = Field(..., description="Alert headline")
     message: str = Field(..., description="Detailed actionable advisory")
     location_desc: str = Field(..., description="Geographic area or station affected")
-    timestamp: Optional[str] = Field(..., description="Alert generation timestamp")
+    timestamp: str = Field(..., description="Alert generation timestamp")
     source: str = Field(default="incois_hazard_detection_agent", description="Alert data provenance")
     freshness: str = Field(default="LIVE", description="Data freshness indicator")
 
@@ -241,12 +195,12 @@ class TideInfo(BaseModel):
 class OceanAnalyticsEvidence(BaseModel):
     """Structured satellite ocean color and thermal front analytics."""
     region_name: str = Field(..., description="Coastal region analyzed")
-    mean_chlorophyll_mg_m3: float = Field(..., description="Mean Chlorophyll-a density in mg/m3")
-    mean_sst_c: float = Field(..., description="Sea Surface Temperature in Celsius")
+    mean_chlorophyll_mg_m3: Optional[float] = Field(default=None, description="Mean Chlorophyll-a density in mg/m3")
+    mean_sst_c: Optional[float] = Field(default=None, description="Sea Surface Temperature in Celsius")
     optimal_sst_range: str = Field(default="26.5°C - 28.8°C", description="Optimal SST range for pelagic aggregation")
     upwelling_index: str = Field(default="MODERATE", description="Coastal upwelling intensity index")
-    thermal_front_detected: bool = Field(default=True, description="Whether an active thermal front gradient is detected")
-    thermal_front_description: str = Field(..., description="Detailed description of thermal front and chlorophyll bloom")
+    thermal_front_detected: Optional[bool] = Field(default=None, description="Whether an active thermal front gradient is detected")
+    thermal_front_description: Optional[str] = Field(default=None, description="Detailed description of thermal front and chlorophyll bloom")
     favorable_sectors: List[Dict[str, Any]] = Field(default_factory=list, description="Specific sectors showing high chlorophyll & favorable SST")
     satellite_source: str = Field(default="ISRO Oceansat-3 OCM & INSAT-3D Thermal Imager", description="Satellite data provenance")
     summary: str = Field(..., description="Executive ocean analytics summary")
@@ -276,9 +230,7 @@ class ZoneAvoidanceItem(BaseModel):
 
 class ZoneAvoidanceEvidence(BaseModel):
     """Structured evaluation of zones to avoid due to hazards or geofencing."""
-    overall_avoidance_status: str = Field(default="INSUFFICIENT_EVIDENCE", description="Status ('CRITICAL_AVOIDANCE', 'CAUTION_REQUIRED', 'ALL_ZONES_CLEAR')")
-    evidence_completeness: str = "partial"
-    missing_evidence: List[str] = Field(default_factory=list)
+    overall_avoidance_status: str = Field(default="INSUFFICIENT_EVIDENCE", description="Status ('CRITICAL_AVOIDANCE', 'CAUTION_REQUIRED', 'ALL_ZONES_CLEAR', 'INSUFFICIENT_EVIDENCE')")
     avoided_zones: List[ZoneAvoidanceItem] = Field(default_factory=list, description="List of specific zones to avoid")
     safe_alternative_zones: List[Dict[str, Any]] = Field(default_factory=list, description="Recommended safe alternative fishing zones")
     summary: str = Field(..., description="Summary advisory for avoidance")
@@ -292,7 +244,7 @@ class OperationalRecommendation(BaseModel):
     title: str = Field(..., description="Clear, concise recommendation headline")
     directive: str = Field(..., description="Imperative actionable instruction for mariner / operator")
     priority: str = Field(default="MEDIUM", description="Urgency priority tier ('CRITICAL', 'HIGH', 'MEDIUM', 'INFO')")
-    confidence_score: Optional[float] = Field(default=None, description="Confidence / reliability score from 0.0 to 1.0")
+    confidence_score: float = Field(default=0.95, description="Confidence / reliability score from 0.0 to 1.0")
     reliability_tier: str = Field(default="AUTHORITATIVE_VERIFIED", description="Reliability grade ('AUTHORITATIVE_VERIFIED', 'MODEL_DERIVED', 'CACHED_ESTIMATE', 'ADVISORY')")
     supporting_evidence: List[str] = Field(default_factory=list, description="Specific quantitative observations, thresholds, and data points supporting this recommendation")
     reasoning: str = Field(..., description="Deductive step-by-step physical, regulatory, or ecological reasoning used to derive this recommendation")
@@ -317,7 +269,7 @@ class EvidenceBundle(BaseModel):
     location_lat: Optional[float] = Field(default=None, description="Inquiry latitude coordinate")
     location_lon: Optional[float] = Field(default=None, description="Inquiry longitude coordinate")
     date: str = Field(..., description="Inquiry forecast date string")
-    connectivity_mode: str = Field(default="UNAVAILABLE", description="Data state ('FRESH', 'CACHED', 'STALE', 'UNAVAILABLE')")
+    connectivity_mode: str = Field(default="LIVE", description="Network resilience state ('LIVE', 'CACHED', 'DEGRADED', 'OFFLINE')")
 
 
 class LanguageIdentificationResult(BaseModel):

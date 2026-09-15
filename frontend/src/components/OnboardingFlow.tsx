@@ -56,10 +56,10 @@ export default function OnboardingFlow() {
   const [step, setStep] = useState<number>(1);
 
   // Form states
-  const [mobileNumber, setMobileNumber] = useState<string>('9876543210');
-  const [userName, setUserName] = useState<string>('Ramesh Tandel');
+  const [mobileNumber, setMobileNumber] = useState<string>('');
+  const [userName, setUserName] = useState<string>('');
   const [selectedRole, setSelectedRole] = useState<'FISHERMAN' | 'GOVERNMENT' | 'SUPER_ADMIN'>('FISHERMAN');
-  const [otpCode, setOtpCode] = useState<string[]>(['1', '2', '3', '4', '5', '6']);
+  const [otpCode, setOtpCode] = useState<string[]>(['', '', '', '', '', '']);
   const [otpError, setOtpError] = useState<string | null>(null);
   const [isGpsLocating, setIsGpsLocating] = useState<boolean>(false);
   const [portSearch, setPortSearch] = useState<string>('');
@@ -108,7 +108,7 @@ export default function OnboardingFlow() {
     if (success) {
       setStep(6); // Move to location step
     } else {
-      setOtpError('Invalid OTP. Use demo OTP: 123456');
+      setOtpError('The OTP could not be verified. Please request a new code.');
     }
   };
 

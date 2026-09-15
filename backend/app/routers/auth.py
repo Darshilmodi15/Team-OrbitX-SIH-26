@@ -46,6 +46,13 @@ def get_current_user_from_header(authorization: Optional[str] = Header(None)) ->
     return user
 
 
+def get_optional_current_user(authorization: Optional[str] = Header(None)) -> Optional[UserProfile]:
+    """Return the authenticated user when a bearer token is supplied."""
+    if not authorization:
+        return None
+    return get_current_user_from_header(authorization)
+
+
 def require_roles(*allowed_roles: UserRole):
     """FastAPI dependency enforcing server-side RBAC from the verified JWT user."""
     def dependency(user: UserProfile = Depends(get_current_user_from_header)) -> UserProfile:

@@ -256,6 +256,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     lat: INDIAN_PORTS[0].lat,
     lon: INDIAN_PORTS[0].lon,
   });
+  const [hasExplicitLocation, setHasExplicitLocation] = useState(false);
 
   const [farFromCoastThresholdKm, setFarFromCoastThresholdKm] = useState<number>(100.0);
   const [showFarFromCoastWarning, setShowFarFromCoastWarning] = useState<boolean>(false);
@@ -413,6 +414,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const handleUpdateUserLocation = useCallback(
     (coords: LocationCoords) => {
       setUserLocation(coords);
+      setHasExplicitLocation(true);
       recalculateGeospatial(coords);
       setLastUpdated(new Date());
 
@@ -427,6 +429,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSelectedPort(port);
       const coords = { lat: port.lat, lon: port.lon };
       setUserLocation(coords);
+      setHasExplicitLocation(true);
       recalculateGeospatial(coords);
       if (port.defaultWeather) {
         setWeather(port.defaultWeather);
@@ -445,6 +448,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let isMounted = true;
 
     async function loadTelemetryAndAlerts() {
+      if (!hasExplicitLocation) {
+        return;
+      }
+
       try {
         const [condData, oceanData, riskData, alertsData] = await Promise.all([
           fetchMarineConditions(userLocation.lat, userLocation.lon, currentDate).catch(() => null),
@@ -507,7 +514,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => {
       isMounted = false;
     };
-  }, [userLocation, currentDate, currentUser]);
+  }, [userLocation, currentDate, currentUser, hasExplicitLocation]);
 
   // ── Notification Handlers ──
   const handleMarkRead = useCallback(async (id: string) => {
