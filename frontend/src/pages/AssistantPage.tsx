@@ -613,7 +613,7 @@ export default function AssistantPage() {
           try {
             // Call authoritative Sarvam Saaras v3 STT
             voiceDiagnostic("AUDIO_UPLOAD_STARTED");
-            const result = await transcribeVoiceAudio(audioBlob, "auto");
+            const result = await transcribeVoiceAudio(audioBlob, lang || "auto");
             voiceDiagnostic("AUDIO_UPLOAD_COMPLETED");
 
             if (result && result.transcript && result.transcript.trim() && !result.is_mock) {
