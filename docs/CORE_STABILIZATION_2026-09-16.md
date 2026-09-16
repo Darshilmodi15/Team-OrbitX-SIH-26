@@ -1,6 +1,18 @@
 # ORCA core stabilization — candidate verification, 16 September 2026
 
-**Release status: incomplete.** This report describes the local candidate and distinguishes it from the existing production deployments. The candidate has not been committed or deployed in this run. Physical Android and deployed manual acceptance remain mandatory.
+**Release status: incomplete.** Physical Android and deployed manual acceptance remain mandatory.
+
+### Release preparation update — after Xcode license acceptance
+
+Git access is restored. Candidate commit `3e717555cb93216ed531ec502c9b469484a14837` on `codex/core-stabilization` is rebased onto production commit `dc2b64de7f4d90e09eca9d29a1b9f04cbcdd4257`. The newer Bhashini provider and selected-language transcription fix are preserved; overlapping map changes use the canonical snapshot implementation.
+
+Merged-candidate verification: **469 backend tests passed, 5 skipped; 128 frontend tests passed; production build passed**. The real-provider greeting, English conditions/follow-up, Gujarati, Hindi, history and exact retry replay passed. Desktop/Android-user-agent JSON matched for snapshot `5ccb9ccfe6f868fe01bbe5765c01c39ddc65d58029932af51ff48c36a84ed2de`. These remain local HTTP tests, not physical Android acceptance.
+
+A read-only production PostgreSQL check confirmed migration `0004_device_sessions`, with the snapshot/request tables not yet present. The additive `0005_marine_snapshots` migration is required for the candidate.
+
+Voice status changed with the newer production commits: Bhashini is now primary. Real local Bhashini TTS returned HTTP 200; ASR returned upstream HTTP 500 and ORCA returned a truthful unavailable response. Earlier Sarvam successes below are historical verification, not acceptance of the merged Bhashini ASR path. Production verification remains required.
+
+The sections below preserve the initial local investigation and its evidence. The Xcode blocker and uncommitted-candidate statements in that historical record are superseded by this update.
 
 ## Root causes and limits of the diagnosis
 
