@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { I18nProvider } from '@/lib/orca/i18n';
 vi.mock('@/components/orca/AppShell', () => ({ AppShell: ({ children }: any) => <>{children}</> }));
+vi.mock('@/lib/orca/voice-audio', () => ({speechWav:vi.fn(async (audio:Blob)=>audio)}));
 vi.mock('@/components/SEO', () => ({ SEO: () => null }));
 vi.mock('@/lib/orca/session', () => ({ useSession: () => ({ user: { id: 'u1' }, location: { coords: { lat: 20.9, lon: 70.3 } } }) }));
 vi.mock('@/lib/orca/snapshot', async (original) => ({ ...await original<any>(), useMarineSnapshot: () => ({ snapshot:undefined, adopt:vi.fn(), refetch:vi.fn() }) }));

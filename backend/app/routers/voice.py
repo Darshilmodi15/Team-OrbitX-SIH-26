@@ -146,6 +146,8 @@ async def transcribe_audio_file(
     )
     if result.get("is_mock"):
         status_code = result.get("upstream_status", 503)
+        if status_code == 415:
+            raise HTTPException(status_code=415, detail="STT_REQUIRES_MONO_PCM16_WAV_16000HZ")
         if status_code == 429:
             return JSONResponse(status_code=429, content={
                 "success": False,
@@ -246,6 +248,8 @@ def transcribe_base64_audio(
 
     if result.get("is_mock"):
         status_code = result.get("upstream_status", 503)
+        if status_code == 415:
+            raise HTTPException(status_code=415, detail="STT_REQUIRES_MONO_PCM16_WAV_16000HZ")
         if status_code == 429:
             raise HTTPException(status_code=429, detail="STT_QUOTA_EXHAUSTED")
         raise HTTPException(status_code=503, detail="STT_UPSTREAM_UNAVAILABLE")

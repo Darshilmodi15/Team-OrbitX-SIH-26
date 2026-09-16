@@ -34,16 +34,15 @@ import {
   Wind,
   X,
 } from "lucide-react";
-import { fetchSnapshot, useMarineSnapshot, snapshotExpired, snapshotBundle } from "@/lib/orca/snapshot";
-import { SnapshotDetails } from "@/components/orca/SnapshotDetails";
-import { MapPanel } from "@/components/orca/MapPanel";
-import { MarineConditions } from "@/components/orca/Conditions";
+import { fetchSnapshot, useMarineSnapshot, snapshotExpired } from "@/lib/orca/snapshot";
+import { VoiceControls } from "@/components/orca/VoiceControls";
+import { ChatSnapshot } from "@/components/orca/ChatSnapshot";
 import { AppShell } from "@/components/orca/AppShell";
 import { OrcaLogo } from "@/components/orca/Logo";
 import { SEO } from "@/components/SEO";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
-import { transcribeVoiceAudio, sendChatMessage, synthesizeVoiceAudio, fetchConversations, fetchConversation, createConversation, deleteConversation } from "@/services/api";
+import { sendChatMessage, synthesizeVoiceAudio, fetchConversations, fetchConversation, createConversation, deleteConversation } from "@/services/api";
 import { MarkdownRenderer } from "@/components/orca/MarkdownRenderer";
 import type { ChatMessage, ChatEvidence } from "@/lib/orca/types";
 import { cn } from "@/lib/utils";
@@ -54,12 +53,6 @@ interface ChatThread {
   updatedAt: number;
   messages: ChatMessage[];
 }
-
-type VoiceState = "idle" | "preparing" | "listening" | "processing" | "transcribing" | "ready" | "error";
-
-const voiceDiagnostic = (event: string, details?: Record<string, unknown>) => {
-  if (import.meta.env.DEV) console.info(`[ORCA Voice] ${event}`, details || {});
-};
 
 const LANG_BCP47: Record<string, string> = {
   en: "en-IN",
@@ -261,21 +254,10 @@ export default function AssistantPage() {
   const historyVersion = useRef(0);
   const newlyCreatedConversation = useRef<string | null>(null);
 
-  const [voiceState, setVoiceState] = useState<VoiceState>("idle");
-  const [voiceErrorMessage, setVoiceErrorMessage] = useState<string | null>(null);
-  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
-  const [interimTranscript, setInterimTranscript] = useState<string>("");
-  const [recordingSeconds, setRecordingSeconds] = useState<number>(0);
-  const recordingTimerRef = useRef<any>(null);
-
+  const [voiceBusy, setVoiceBusy] = useState(false);
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
   const [isLoadingAudioId, setIsLoadingAudioId] = useState<string | null>(null);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
-
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const voiceVersion = useRef(0);
 
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -318,7 +300,7 @@ export default function AssistantPage() {
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [currentThread.messages.length, isThinking, voiceState]);
+  }, [currentThread.messages.length, isThinking]);
 
   useEffect(() => {
     return () => {
@@ -326,12 +308,7 @@ export default function AssistantPage() {
         currentAudioRef.current.pause();
         currentAudioRef.current = null;
       }
-      if (recordingTimerRef.current) {
-        clearInterval(recordingTimerRef.current);
-      }
-      voiceVersion.current++;
-      if(mediaRecorderRef.current){mediaRecorderRef.current.onstop=null;if(mediaRecorderRef.current.state!=="inactive")mediaRecorderRef.current.stop();}
-      mediaStreamRef.current?.getTracks().forEach(track => track.stop());
+
     };
   }, []);
 
@@ -458,8 +435,6 @@ export default function AssistantPage() {
       });
 
       setInput("");
-      setVoiceState("idle");
-      setInterimTranscript("");
       setIsThinking(true);
 
       let snapshot = marine.snapshot;
@@ -534,6 +509,7 @@ export default function AssistantPage() {
         }
         return prev;
       });
+      return {text: botMsg.text, language: botMsg.evidence?.language};
     } catch (err) {
       console.warn("Chat request failed", err);
       const providerUnavailable = err instanceof Error && 'code' in err && err.code === 'AI_PROVIDER_UNAVAILABLE';
@@ -549,161 +525,6 @@ export default function AssistantPage() {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
-  }
-
-  /* ==========================================================================
-     Voice Recognition & Speech-to-Text Controller
-     ========================================================================== */
-  async function startRecording() {
-    voiceDiagnostic("MIC_CLICK");
-    stopAudio();
-    setVoiceErrorMessage(null);
-    setVoiceNotice(null);
-    setInterimTranscript("");
-    const recordingVersion = ++voiceVersion.current;
-    setVoiceState("preparing");
-    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-      setVoiceErrorMessage("Microphone access is not supported in this browser or context.");
-      setVoiceState("error");
-      return;
-    }
-
-    try {
-      voiceDiagnostic("MIC_PERMISSION_REQUESTED");
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      voiceDiagnostic("MIC_PERMISSION_GRANTED");
-      if(recordingVersion !== voiceVersion.current){stream.getTracks().forEach(track=>track.stop());return;}
-      mediaStreamRef.current = stream;
-      audioChunksRef.current = [];
-
-      const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"]
-        .find(type => MediaRecorder.isTypeSupported(type)) || "";
-
-      const recorderOptions: MediaRecorderOptions = mimeType ? { mimeType } : {};
-      const recorder = new MediaRecorder(stream, recorderOptions);
-      voiceDiagnostic("RECORDER_CREATED", { mimeType: recorder.mimeType || mimeType || "browser-default" });
-
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      recorder.onstop = async () => {
-        voiceDiagnostic("RECORDING_STOPPED");
-        if (recordingTimerRef.current) {
-          clearInterval(recordingTimerRef.current);
-          recordingTimerRef.current = null;
-        }
-
-        stream.getTracks().forEach((trk) => trk.stop());
-        if(recordingVersion !== voiceVersion.current) return;
-        setVoiceState("transcribing");
-        const actualMime = recorder.mimeType || "audio/webm";
-        const audioBlob = new Blob(audioChunksRef.current, { type: actualMime });
-        voiceDiagnostic("AUDIO_BLOB_CREATED", { bytes: audioBlob.size, mimeType: actualMime });
-
-        if (audioBlob.size === 0) {
-          setVoiceErrorMessage("We couldn't understand the recording. Please try again or type your question.");
-          setVoiceState("error");
-          stream.getTracks().forEach((trk) => trk.stop());
-          return;
-        }
-
-        let authoritativeSuccess = false;
-        if (audioBlob.size > 0) {
-          try {
-            // Call authoritative Sarvam Saaras v3 STT
-            voiceDiagnostic("AUDIO_UPLOAD_STARTED");
-            const result = await transcribeVoiceAudio(audioBlob, lang || "auto");
-            voiceDiagnostic("AUDIO_UPLOAD_COMPLETED");
-            if(recordingVersion !== voiceVersion.current) return;
-
-            if (result && result.transcript && result.transcript.trim() && !result.is_mock) {
-              const text = result.transcript.trim();
-              authoritativeSuccess = true;
-              voiceDiagnostic("STT_TRANSCRIPT_RECEIVED", { language: result.language_code || result.language });
-              setVoiceState("ready");
-              setVoiceErrorMessage(null);
-              setVoiceNotice(null);
-              setInput(text);
-              inputRef.current?.focus();
-            }
-          } catch (err) {
-            console.warn("Speech transcription unavailable");
-            voiceDiagnostic("STT_FAILED", { error: err instanceof Error ? err.message : "unknown" });
-          }
-        }
-
-        if (!authoritativeSuccess && recordingVersion === voiceVersion.current) {
-          setVoiceErrorMessage("Speech transcription is unavailable. Try again or type your question.");
-          setVoiceState("error");
-        }
-
-        stream.getTracks().forEach((trk) => trk.stop());
-        mediaStreamRef.current = null;
-        mediaRecorderRef.current = null;
-        audioChunksRef.current = [];
-      };
-
-      recorder.start(250);
-      voiceDiagnostic("RECORDING_STARTED");
-      mediaRecorderRef.current = recorder;
-      setVoiceState("listening");
-      setRecordingSeconds(0);
-      recordingTimerRef.current = setInterval(() => {
-        setRecordingSeconds((prev) => {
-          const next = prev + 1;
-          if (next >= 30) {
-            // Auto-stop at 30 seconds maximum
-            setTimeout(() => {
-              if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-                mediaRecorderRef.current.stop();
-              }
-            }, 0);
-          }
-          return next;
-        });
-      }, 1000);
-    } catch (err: any) {
-      mediaStreamRef.current?.getTracks().forEach(track => track.stop());
-      console.warn("Microphone access or hardware error:", err);
-      const name = err instanceof DOMException ? err.name : (err?.name || "");
-      voiceDiagnostic("MIC_START_FAILED", { name });
-      if (name === "NotAllowedError" || name === "PermissionDeniedError") {
-        setVoiceErrorMessage("Microphone unavailable: permission denied. Please allow mic access in your browser settings.");
-      } else if (name === "NotFoundError") {
-        setVoiceErrorMessage("Microphone unavailable: no microphone found. Please connect a microphone and try again.");
-      } else {
-        setVoiceErrorMessage("Microphone unavailable: could not access microphone. Please check browser permissions.");
-      }
-      setVoiceState("error");
-    }
-  }
-
-  function stopRecording() {
-    if (voiceState === "listening") {
-      setVoiceState("processing");
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-        try {
-          mediaRecorderRef.current.stop();
-        } catch {
-          setVoiceState("idle");
-        }
-      } else {
-        setVoiceState("idle");
-      }
-    } else {
-      setVoiceState("idle");
-    }
-  }
-
-  function toggleVoice() {
-    if (voiceState === "listening") {
-      stopRecording();
-    } else if (voiceState === "idle" || voiceState === "ready" || voiceState === "error") {
-      startRecording();
-    }
   }
 
   // 4 Intelligent Prompt Shortcuts (Natural Marine Queries)
@@ -1016,10 +837,10 @@ export default function AssistantPage() {
 
                     <div
                       className={cn(
-                        "rounded-lg p-3.5 sm:p-4 text-xs sm:text-sm leading-relaxed break-words shadow-xs",
+                        "rounded-2xl p-3.5 sm:p-4 text-sm sm:text-base leading-relaxed break-words",
                         m.role === "user"
                           ? "bg-secondary text-secondary-foreground font-medium whitespace-pre-wrap"
-                          : "border border-border bg-card text-foreground",
+                          : "text-foreground",
                       )}
                     >
                       {m.role === "user" ? (
@@ -1027,7 +848,7 @@ export default function AssistantPage() {
                       ) : (
                         <>
                           <MarkdownRenderer content={m.text} />
-                          {m.evidence?.marine_snapshot ? <div className="mt-3 space-y-3"><p className="text-sm font-medium">ORCA assessment: {m.evidence.marine_snapshot.risk.level} · {m.evidence.marine_snapshot.risk.reasons[0]}</p><SnapshotDetails snapshot={m.evidence.marine_snapshot}/><MarineConditions data={snapshotBundle(m.evidence.marine_snapshot).current}/><details><summary className="min-h-11 cursor-pointer py-3">{t("map.open")}</summary><MapPanel center={m.evidence.marine_snapshot.location} snapshot={m.evidence.marine_snapshot} height={220} interactive/></details></div> : m.evidence && <EvidenceTraceCard evidence={m.evidence} />}
+                          {m.evidence?.marine_snapshot ? <ChatSnapshot snapshot={m.evidence.marine_snapshot}/> : m.evidence && <EvidenceTraceCard evidence={m.evidence} />}
                         </>
                       )}
                     </div>
@@ -1055,112 +876,9 @@ export default function AssistantPage() {
             <div ref={endRef} />
           </div>
 
-          {/* Voice State Banner / Live Listening Status */}
-          {voiceState !== "idle" && (
-            <div
-              className={cn(
-                "border-t px-3.5 sm:px-4 py-2.5 text-xs flex items-center justify-between backdrop-blur transition-all",
-                voiceState === "error"
-                  ? "border-red-500/30 bg-red-950/40 text-red-200"
-                  : "border-teal-500/30 bg-teal-950/40 text-teal-200 animate-pulse",
-              )}
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                {voiceState === "listening" ? (
-                  <>
-                    <span aria-hidden="true" className="flex h-5 items-center gap-0.5">{[8,16,12,20,10].map((height,index)=><span key={index} className="w-1 rounded bg-current motion-safe:animate-pulse" style={{height,animationDelay:`${index*120}ms`}} />)}</span>
-                    <span className={cn("font-semibold", recordingSeconds >= 25 ? "text-amber-400 animate-pulse font-bold" : "text-teal-300")}>
-                      {recordingSeconds >= 25
-                        ? `${Math.max(0, 30 - recordingSeconds)} seconds remaining`
-                        : `Listening (${recordingSeconds}s)`}
-                    </span>
-                    {interimTranscript && (
-                      <span className="text-teal-400/80 italic truncate max-w-xs">
-                        "{interimTranscript}"
-                      </span>
-                    )}
-                  </>
-                ) : voiceState === "ready" ? (
-                  <span>Transcript ready — edit it below, then send.</span>
-                ) : voiceState === "preparing" ? (
-                  <>
-                    <Loader2 className="size-3.5 animate-spin text-teal-400" />
-                    <span>{t("state.loading")}</span>
-                  </>
-                ) : voiceState === "processing" || voiceState === "transcribing" ? (
-                  <>
-                    <Loader2 className="size-3.5 animate-spin text-teal-400" />
-                    <span>Transcribing voice audio...</span>
-                  </>
-                ) : (
-                  <>
-                    <AlertTriangle className="size-4 shrink-0 text-red-400" />
-                    <span className="text-red-300">
-                      {voiceErrorMessage || "We couldn't understand the recording. Please try again or type your question."}
-                    </span>
-                  </>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                {voiceState === "listening" && (
-                  <button
-                    type="button"
-                    onClick={stopRecording}
-                    className="inline-flex items-center gap-1 text-slate-950 font-bold cursor-pointer px-3 py-1 rounded bg-teal-400 hover:bg-teal-300 text-xs shadow-xs"
-                  >
-                    <span>Done Speaking</span>
-                  </button>
-                )}
-                {voiceState === "error" && (
-                  <button
-                    type="button"
-                    onClick={startRecording}
-                    className="inline-flex items-center gap-1 text-teal-300 font-semibold cursor-pointer px-2.5 py-1 rounded border border-teal-500/30 bg-teal-500/20 text-xs hover:bg-teal-500/30"
-                  >
-                    <RotateCcw className="size-3" />
-                    <span>Try Again</span>
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    voiceVersion.current++;
-                    if(mediaRecorderRef.current){mediaRecorderRef.current.onstop=null;if(mediaRecorderRef.current.state!=="inactive")mediaRecorderRef.current.stop();}
-                    mediaStreamRef.current?.getTracks().forEach(track=>track.stop());
-                    if(recordingTimerRef.current)clearInterval(recordingTimerRef.current);
-                    setVoiceState("idle");
-                  }}
-                  className="p-1 rounded text-muted-foreground hover:text-foreground cursor-pointer"
-                  title="Dismiss"
-                >
-                  <X className="size-4" />
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Bottom Docked Input */}
           <div className="border-t border-border bg-card/95 p-2.5 sm:p-4 backdrop-blur">
             <div className="mx-auto max-w-3xl space-y-2.5">
-              {/* Non-blocking device transcription notice */}
-              {voiceNotice && (
-                <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs animate-in fade-in duration-200">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Sparkles className="size-3.5 shrink-0 text-amber-400" />
-                    <span className="truncate">{voiceNotice}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setVoiceNotice(null)}
-                    className="p-1 rounded text-amber-400 hover:text-amber-200 cursor-pointer"
-                    title="Dismiss"
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                </div>
-              )}
-
               {/* Quick suggestion chips (natural prompts) */}
               {currentThread.messages.length > 0 && (
                 <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar touch-pan-x">
@@ -1168,7 +886,7 @@ export default function AssistantPage() {
                     <button
                       key={label}
                       type="button"
-                      disabled={isThinking || voiceState === "listening"}
+                      disabled={isThinking || voiceBusy}
                       onClick={() => ask(label)}
                       className="cursor-pointer shrink-0 min-h-[36px] rounded-full border border-border bg-surface px-3 sm:px-3.5 py-1.5 text-[11px] font-medium text-foreground transition hover:bg-muted hover:border-teal-500/40 shadow-xs whitespace-nowrap disabled:opacity-40 disabled:pointer-events-none"
                     >
@@ -1180,7 +898,7 @@ export default function AssistantPage() {
 
               {/* Input Box with Microphone and Send Button */}
               <form
-                className="flex items-end gap-2 rounded-xl border border-border bg-surface p-1.5 sm:p-2 shadow-inner focus-within:border-teal-500 focus-within:ring-1 focus-within:ring-teal-500 transition-all"
+                className="relative flex flex-wrap items-end gap-1 rounded-3xl border border-border bg-surface p-2 sm:p-3 shadow-inner focus-within:border-teal-500 focus-within:ring-1 focus-within:ring-teal-500 transition-all"
                 onSubmit={(e) => {
                   e.preventDefault();
                   ask(input);
@@ -1189,10 +907,10 @@ export default function AssistantPage() {
                 <textarea
                   ref={inputRef}
                   value={input}
-                  disabled={isThinking || voiceState === "listening"}
+                  disabled={isThinking || voiceBusy}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
+                    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                       e.preventDefault();
                       ask(input);
                     }
@@ -1200,39 +918,16 @@ export default function AssistantPage() {
                   rows={1}
                   placeholder={t("chat.placeholder")}
                   aria-label={t("chat.placeholder")}
-                  className="max-h-28 sm:max-h-32 min-h-11 sm:min-h-12 flex-1 resize-none bg-transparent px-2.5 sm:px-3 py-2 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground outline-none ring-0 disabled:opacity-50"
+                  className="max-h-40 min-h-14 basis-full resize-none bg-transparent px-2.5 sm:px-3 py-2 text-base text-foreground placeholder:text-muted-foreground outline-none ring-0 disabled:opacity-50"
                 />
 
-                {/* Large Microphone Button */}
-                <button
-                  type="button"
-                  disabled={isThinking}
-                  onClick={toggleVoice}
-                  title={t(voiceState === "listening" ? "chat.stop" : "voice.record")}
-                  className={cn(
-                    "flex size-11 sm:size-12 shrink-0 cursor-pointer items-center justify-center rounded-lg border transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed",
-                    voiceState === "listening"
-                      ? "border-red-500 bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/30"
-                      : voiceState === "transcribing" || voiceState === "processing"
-                      ? "border-amber-500 bg-amber-500/20 text-amber-400"
-                      : "border-border bg-card text-teal-400 hover:bg-muted hover:text-teal-300 shadow-xs",
-                  )}
-                  aria-label={t("voice.record")}
-                >
-                  {voiceState === "transcribing" || voiceState === "processing" ? (
-                    <Loader2 className="size-5 animate-spin" />
-                  ) : voiceState === "listening" ? (
-                    <MicOff className="size-5" />
-                  ) : (
-                    <Mic className="size-5" />
-                  )}
-                </button>
+                <VoiceControls key={user?.id} threadId={activeThreadId} disabled={isThinking} onBusy={busy=>{setVoiceBusy(busy);if(busy)stopAudio();}} onTranscript={text=>{setInput(text);inputRef.current?.focus();}} onAsk={ask}/>
 
                 {/* Send Button */}
                 <button
                   type="submit"
-                  disabled={!input.trim() || isThinking || voiceState === "listening"}
-                  className="flex size-11 sm:size-12 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold shadow-md transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                  disabled={!input.trim() || isThinking || voiceBusy}
+                  className="ml-auto flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold shadow-md transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                   aria-label={t("chat.send")}
                 >
                   {isThinking ? (

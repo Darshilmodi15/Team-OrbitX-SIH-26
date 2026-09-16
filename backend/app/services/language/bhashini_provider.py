@@ -10,6 +10,8 @@ Integrates Government of India Bhashini APIs for:
 import base64
 import logging
 import os
+import io
+import wave
 from typing import Any, Dict, Optional
 import httpx
 from dotenv import load_dotenv
@@ -51,6 +53,19 @@ DEFAULT_TTS_VOICES: Dict[str, str] = {
     "or": "female",
     "pa": "female",
 }
+
+# Dhruva services are language-specific. The old generic ASR ID returns HTTP 500.
+def asr_service_id(language: str) -> str:
+    override = os.getenv(f"BHASHINI_ASR_SERVICE_{language.upper()}", "").strip()
+    if override:
+        return override
+    if language == "en":
+        return "ai4bharat/whisper-medium-en--gpu--t4"
+    if language == "hi":
+        return "ai4bharat/conformer-hi-gpu--t4"
+    if language in {"ta", "te", "ml", "kn"}:
+        return "ai4bharat/conformer-multilingual-dravidian-gpu--t4"
+    return "ai4bharat/conformer-multilingual-indo_aryan-gpu--t4"
 
 
 class BhashiniLanguageProvider(LanguageProvider):
@@ -156,7 +171,7 @@ class BhashiniLanguageProvider(LanguageProvider):
         if self.inference_api_key:
             default_service_map = {
                 "translation": "ai4bharat/indictrans-v2-all-gpu--t4",
-                "asr": "bhashini/ai4bharat/conformer-multilingual-asr",
+                "asr": asr_service_id(source_lang),
                 "tts": "Bhashini/IITM/TTS",
             }
             config_data = {
@@ -228,14 +243,16 @@ class BhashiniLanguageProvider(LanguageProvider):
             "Content-Type": "application/json",
         }
 
-        # Normalize format for Bhashini: "wav" or "mp3" or "webm"
-        audio_format = "wav"
-        if "ogg" in content_type:
-            audio_format = "ogg"
-        elif "mp3" in content_type:
-            audio_format = "mp3"
-        elif "webm" in content_type:
-            audio_format = "webm"
+        # The browser decodes MP4/WebM and resamples before upload. Validate the
+        # actual WAV header rather than declaring every recording to be 16 kHz.
+        try:
+            with wave.open(io.BytesIO(audio_bytes), "rb") as audio:
+                valid = audio.getframerate() == 16000 and audio.getnchannels() == 1 and audio.getsampwidth() == 2 and audio.getcomptype() == "NONE"
+            if not valid:
+                raise ValueError("Unsupported PCM format")
+        except (wave.Error, EOFError, ValueError):
+            record("bhashini_stt", success=False, reason="AUDIO_FORMAT_UNSUPPORTED")
+            return {"transcript": "", "is_mock": True, "source": "bhashini_asr", "upstream_status": 415}
 
         audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
 
@@ -248,7 +265,7 @@ class BhashiniLanguageProvider(LanguageProvider):
                             "sourceLanguage": lang,
                         },
                         "serviceId": service_id,
-                        "audioFormat": audio_format,
+                        "audioFormat": "wav",
                         "samplingRate": 16000,
                     },
                 }

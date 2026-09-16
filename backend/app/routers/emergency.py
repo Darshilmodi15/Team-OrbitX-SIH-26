@@ -35,6 +35,15 @@ def trigger_sos_broadcast(request: SOSBroadcastRequest, user: UserProfile = Depe
     Triggers an instant SOS distress broadcast. Routes coordinates to MRCC Mumbai, Chennai, or Port Blair,
     logs beacon telemetry, and returns IMO-standard MAYDAY VHF Channel 16 transcript and hotlines.
     """
+    if request.location_source == "selected":
+        # A saved selection is owner-scoped. Do not accept an old tab's coordinates
+        # after this account changes its location on another device.
+        from app.db.session import get_db_context
+        from app.db.models import UserLocation
+        with get_db_context() as db:
+            row = db.query(UserLocation).filter(UserLocation.user_id == user.id, UserLocation.is_coastal.is_(True)).order_by(UserLocation.created_at.desc(), UserLocation.id.desc()).first()
+            if row is None or (row.latitude, row.longitude) != (request.lat, request.lon):
+                raise HTTPException(status_code=409, detail="SOS_SELECTED_LOCATION_CHANGED")
     return emergency_service.broadcast_sos(request, user.id)
 
 

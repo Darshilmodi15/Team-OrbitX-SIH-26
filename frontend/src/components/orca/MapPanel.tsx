@@ -6,7 +6,7 @@ import { snapshotBundle, snapshotPFZ, useMarineSnapshot, type MarineSnapshot } f
 import { MarineConditions } from "./Conditions";
 import { SnapshotDetails } from "./SnapshotDetails";
 const CoastMap=lazy(()=>import("./CoastMap"));
-export function MapPanel({center,interactive=false,height=240,onSelect,snapshot:provided}:{center:Coords;interactive?:boolean;height?:number;onSelect?:(c:Coords)=>void;snapshot?:MarineSnapshot}){
+export function MapPanel({center,interactive=false,height=240,onSelect,snapshot:provided,compact=false}:{center:Coords;interactive?:boolean;height?:number;onSelect?:(c:Coords)=>void;snapshot?:MarineSnapshot;compact?:boolean}){
   const {t,lang}=useI18n();const state=useMarineSnapshot();
   useEffect(()=>{if(!onSelect && !provided)state.activate();},[onSelect,provided,state.activate]);
   const s=provided ?? (onSelect ? undefined : state.snapshot);
@@ -21,6 +21,6 @@ export function MapPanel({center,interactive=false,height=240,onSelect,snapshot:
     </>}
     {mode !== "text" && <Suspense fallback={<div style={{height}}>{t("state.loading")}</div>}><CoastMap center={center} interactive={interactive} height={height} onSelect={onSelect} satellite={mode==="satellite"} snapshot={s} showPFZ={pfz} showEEZ={eez} showConditions={conditions}/></Suspense>}
     {mode === "text" && advisory.points.length > 0 && <ul>{advisory.points.map(p=><li key={p.id}>{p.name}: {p.lat}, {p.lon} · {p.distanceKm} km</li>)}</ul>}
-    {s && <><SnapshotDetails snapshot={s} offline={state.offline}/>{(interactive || mode==="text") && <MarineConditions data={snapshotBundle(s,state.offline).current}/>}</>}
+    {s && !compact && <><SnapshotDetails snapshot={s} offline={state.offline}/>{(interactive || mode==="text") && <MarineConditions data={snapshotBundle(s,state.offline).current}/>}</>}
   </div>;
 }

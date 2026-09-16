@@ -242,6 +242,8 @@ class EmergencyService:
                 "vessel_name": req.vessel_name,
                 "registration_no": req.registration_no,
                 "notes": req.notes or "",
+                "location_name": req.location_name,
+                "location_source": req.location_source,
             },
         )
 

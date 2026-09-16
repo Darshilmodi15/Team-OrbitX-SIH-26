@@ -3,7 +3,7 @@ Emergency Services, SOS Distress, and Maritime SAR Models for ORCA Marine AI.
 """
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
@@ -37,6 +37,8 @@ class SOSBroadcastRequest(BaseModel):
     emergency_nature: EmergencyNature = Field(default=EmergencyNature.GENERAL, description="Type of crisis")
     notes: Optional[str] = Field(default="", max_length=2000, description="Additional immediate situation notes")
     contact_phone: Optional[str] = Field(default=None, max_length=50, description="Skipper or contact mobile number")
+    location_name: Optional[str] = Field(default=None, max_length=255, description="User-confirmed incident location label, not a reverse-geocoded address")
+    location_source: Literal["selected", "gps", "manual", "unspecified"] = "unspecified"
 
     @field_validator("emergency_nature", mode="before")
     @classmethod

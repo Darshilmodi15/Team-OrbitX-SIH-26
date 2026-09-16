@@ -6,21 +6,29 @@ import { SEO } from "@/components/SEO";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
 import { getEmergencyServices } from "@/lib/orca/reference";
+import { incidentCopy } from "@/lib/orca/incident-copy";
 import { formatCoords } from "@/lib/orca/geo";
 
 export default function ServicesPage() {
   const { lang, t } = useI18n();
   const { location } = useSession();
+  const copy = incidentCopy(lang);
   const [copied, setCopied] = useState(false);
   const [sosOpen, setSosOpen] = useState(false);
-  const [emergencyCoords, setEmergencyCoords] = useState<{lat:number;lon:number}|null>(null);
+  const [emergencyCoords, setEmergencyCoords] = useState<{lat:number;lon:number;name?:string;source:"selected"|"gps"}|null>(null);
   const [gpsBusy, setGpsBusy] = useState(false);
   const [gpsError, setGpsError] = useState(false);
   function openEmergency() {
+    if (location) {
+      setEmergencyCoords({...location.coords, name:location.label, source:"selected"});
+      setSosOpen(true);
+    } else openGpsEmergency();
+  }
+  function openGpsEmergency() {
     if (gpsBusy) return;
     setGpsBusy(true); setGpsError(false);
     if (!navigator.geolocation) {setGpsError(true);setGpsBusy(false);return;}
-    navigator.geolocation.getCurrentPosition(position=>{setEmergencyCoords({lat:position.coords.latitude,lon:position.coords.longitude});setSosOpen(true);setGpsBusy(false);},()=>{setGpsError(true);setGpsBusy(false);},{enableHighAccuracy:true,timeout:10000,maximumAge:0});
+    navigator.geolocation.getCurrentPosition(position=>{setEmergencyCoords({lat:position.coords.latitude,lon:position.coords.longitude, source:"gps"});setSosOpen(true);setGpsBusy(false);},()=>{setGpsError(true);setGpsBusy(false);},{enableHighAccuracy:true,timeout:10000,maximumAge:0});
   }
   const services = getEmergencyServices(lang);
 
@@ -72,6 +80,7 @@ export default function ServicesPage() {
             <span className="text-foreground">{t("svc.shareLocation")}</span>
           </button>
         </div>
+        {location && <p className="mt-3 text-sm">{copy.selected}: {location.label} · {formatCoords(location.coords)}. {copy.confirmLocation} <button className="min-h-11 underline" disabled={gpsBusy} onClick={openGpsEmergency}>{copy.useGps}</button></p>}
         {copied && (
           <p className="mt-2 text-xs text-muted-foreground" role="status">
             {t("svc.copied")}
@@ -86,6 +95,8 @@ export default function ServicesPage() {
           onClose={() => setSosOpen(false)}
           userLocation={emergencyCoords}
           currentLang={lang}
+          locationName={emergencyCoords.name}
+          locationSource={emergencyCoords.source}
         />
       )}
 

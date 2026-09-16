@@ -518,6 +518,7 @@ export async function synthesizeVoiceAudio(
   language: string = 'en',
   speaker: string = 'kavya'
 ): Promise<{
+  is_mock?: boolean;
   audio_base64: string | null;
   audio_format: string;
   speaker: string;
@@ -619,6 +620,8 @@ export async function fetchEmergencyContacts(region?: string) {
 }
 
 export async function broadcastSOS(payload: {
+  location_name?: string;
+  location_source?: "selected" | "gps" | "manual" | "unspecified";
   vessel_name?: string;
   registration_no?: string;
   lat: number;
@@ -634,7 +637,8 @@ export async function broadcastSOS(payload: {
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
-    throw new Error('Failed to dispatch SOS broadcast');
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail === 'SOS_SELECTED_LOCATION_CHANGED' ? 'SOS_SELECTED_LOCATION_CHANGED' : 'SOS_STORAGE_UNAVAILABLE');
   }
   return await response.json();
 }
