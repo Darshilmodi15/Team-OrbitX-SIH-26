@@ -1,73 +1,84 @@
-import { AppShell } from "@/components/orca/AppShell";
+import { useEffect, useState } from "react";
+import { fetchSnapshotById, type MarineSnapshot } from "@/lib/orca/snapshot";
+import { Link, useSearchParams } from "react-router-dom";
+import { ArrowLeft, MapPin } from "lucide-react";
 import { MapPanel } from "@/components/orca/MapPanel";
-import { EmptyState } from "@/components/orca/States";
+import { LanguageMenu } from "@/components/orca/LanguageMenu";
+import { OrcaLogo } from "@/components/orca/Logo";
 import { SEO } from "@/components/SEO";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
-import { formatCoords } from "@/lib/orca/geo";
-
-const GLOSSARY_ITEMS = [
-  { short: "PFZ", fullKey: "glossary.pfz.full" as const, plainKey: "glossary.pfz.plain" as const },
-  { short: "IMBL", fullKey: "glossary.imbl.full" as const, plainKey: "glossary.imbl.plain" as const },
-  { short: "SST", fullKey: "glossary.sst.full" as const, plainKey: "glossary.sst.plain" as const },
-  { short: "", fullKey: "glossary.wave.full" as const, plainKey: "glossary.wave.plain" as const },
-  { short: "", fullKey: "glossary.swell.full" as const, plainKey: "glossary.swell.plain" as const },
-];
-
+import "@/components/orca/workspace.css";
 export default function MapPage() {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const { location } = useSession();
-
+  const [params] = useSearchParams();
+  const id = params.get("snapshot");
+  const [historical, setHistorical] = useState<MarineSnapshot>();
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    setHistorical(undefined);
+    setFailed(false);
+    if (id)
+      void fetchSnapshotById(id)
+        .then((value) => {
+          if (!cancelled) setHistorical(value);
+        })
+        .catch(() => {
+          if (!cancelled) setFailed(true);
+        });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
   return (
-    <AppShell>
+    <div className="orca-workspace map-workspace">
       <SEO
-        title="Interactive GIS Map & Potential Fishing Zones | ORCA Marine AI"
-        description="Coastal reference map with PFZ advisory availability, source dates, and a text-only view."
+        title="Marine Map | ORCA"
+        description="Explore source-backed marine conditions, available PFZ advisories and EEZ reference geometry."
       />
-      <h1 className="text-xl font-semibold text-foreground">{t("map.title")}</h1>
-
-      {location ? (
-        <>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {location.label ?? formatCoords(location.coords)} · {location.distanceToCoastKm} km{" "}
-            {t("loc.coastDistance").toLowerCase()}
+      <header className="map-page-header">
+        <Link
+          to="/assistant"
+          className="workspace-icon"
+          aria-label={t("nav.assistant")}
+        >
+          <ArrowLeft size={20} />
+        </Link>
+        <OrcaLogo className="size-8" />
+        <div>
+          <h1>{t("map.title")}</h1>
+          <p>
+            ORCA ·{" "}
+            {historical?.location.name || location?.label || t("loc.current")}
           </p>
-          <div className="mt-3">
-            <MapPanel center={location.coords} interactive height={420} />
-          </div>
-
-          <section className="mt-4 rounded-md border border-border bg-card p-4 shadow-xs">
-            <h2 className="text-sm font-semibold text-foreground">{t("map.legend")}</h2>
-            <ul className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-card-foreground">
-              <li className="flex items-center gap-2">
-                <span className="size-3 rounded-full bg-secondary shrink-0" aria-hidden />
-                <span>{t("map.yourPin")}</span>
-              </li>
-              <li>PFZ — {t("glossary.pfz.full")}</li>
-              <li>EEZ — Marine Regions / VLIZ reference geometry</li>
-              <li>{t("marine.title")} — provider grid points</li>
-            </ul>
-          </section>
-
-          <section className="mt-4 rounded-md border border-border bg-card p-4 shadow-xs">
-            <h2 className="text-sm font-semibold text-foreground">{t("glossary.title")}</h2>
-            <dl className="mt-2 space-y-3">
-              {GLOSSARY_ITEMS.map((g) => (
-                <div key={g.fullKey}>
-                  <dt className="text-sm font-semibold text-foreground">
-                    {g.short && lang === "en" ? `${g.short} — ` : ""}{t(g.fullKey)}
-                  </dt>
-                  <dd className="mt-0.5 text-sm text-muted-foreground">{t(g.plainKey)}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-        </>
-      ) : (
-        <div className="mt-4">
-          <EmptyState>{t("loc.title")}</EmptyState>
         </div>
-      )}
-    </AppShell>
+        <LanguageMenu />
+        <Link to="/location" className="map-change-location">
+          <MapPin size={16} />
+          {t("loc.change")}
+        </Link>
+      </header>
+      <main>
+        {id && historical?.snapshot_id !== id ? (
+          <p className="map-empty" role="status">
+            {t(failed ? "chat.unavailable" : "state.loading")}
+          </p>
+        ) : location ? (
+          <MapPanel
+            center={historical?.location || location.coords}
+            snapshot={historical}
+            interactive
+            height={620}
+            full
+          />
+        ) : (
+          <Link to="/location" className="map-empty">
+            {t("loc.title")}
+          </Link>
+        )}
+      </main>
+    </div>
   );
 }
