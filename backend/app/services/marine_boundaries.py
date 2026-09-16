@@ -224,7 +224,7 @@ class MarineBoundariesService:
             try:
                 with open(cache_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                if data.get("features"):
+                if data.get("features") and data.get("metadata", {}).get("retrieval_status") != "embedded_baseline":
                     self._memory_cache[cache_key] = data
                     return data
             except Exception:
@@ -251,10 +251,12 @@ class MarineBoundariesService:
                 if response.status == 200:
                     raw_text = response.read().decode("utf-8")
                     data = json.loads(raw_text)
-                    if data.get("features"):
+                    if data.get("features") and data.get("metadata", {}).get("retrieval_status") != "embedded_baseline":
                         # Attach traceability metadata
                         data["metadata"] = self.get_metadata()
                         data["metadata"]["retrieval_status"] = "live_wfs"
+                        from datetime import datetime, timezone
+                        data["metadata"]["retrieved_at"] = datetime.now(timezone.utc).isoformat()
                         # Save to disk cache
                         with open(cache_file, "w", encoding="utf-8") as f:
                             json.dump(data, f, indent=2)
@@ -299,7 +301,7 @@ class MarineBoundariesService:
             try:
                 with open(cache_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                if data.get("features"):
+                if data.get("features") and data.get("metadata", {}).get("retrieval_status") != "embedded_baseline":
                     self._memory_cache[cache_key] = data
                     return data
             except Exception:
@@ -326,9 +328,11 @@ class MarineBoundariesService:
                 if response.status == 200:
                     raw_text = response.read().decode("utf-8")
                     data = json.loads(raw_text)
-                    if data.get("features"):
+                    if data.get("features") and data.get("metadata", {}).get("retrieval_status") != "embedded_baseline":
                         data["metadata"] = self.get_metadata()
                         data["metadata"]["retrieval_status"] = "live_wfs"
+                        from datetime import datetime, timezone
+                        data["metadata"]["retrieved_at"] = datetime.now(timezone.utc).isoformat()
                         with open(cache_file, "w", encoding="utf-8") as f:
                             json.dump(data, f, indent=2)
                         self._memory_cache[cache_key] = data
@@ -428,43 +432,8 @@ class MarineBoundariesService:
         }
 
     def _generate_fallback_india_eez(self) -> Dict[str, Any]:
-        """Provides an accurate baseline India EEZ polygon if network is completely disconnected."""
-        # Key coordinate vertices outlining the Arabian Sea & Bay of Bengal Indian EEZ boundary
-        coords = [
-            [68.10, 23.60], [67.50, 22.80], [66.80, 21.50], [68.00, 19.50],
-            [69.50, 17.00], [70.50, 14.50], [71.50, 12.00], [72.00, 9.50],
-            [74.50, 6.50],  [77.00, 5.00],  [79.00, 5.50],  [81.50, 7.50],
-            [84.00, 10.00], [86.50, 13.00], [88.50, 16.50], [89.50, 19.50],
-            [89.10, 21.60], [88.50, 21.60], [86.70, 20.20], [83.20, 17.60],
-            [80.30, 13.10], [79.30, 9.30],  [76.20, 9.90],  [74.80, 12.80],
-            [72.80, 18.90], [70.30, 20.90], [68.60, 22.80], [68.10, 23.60],
-        ]
-        return {
-            "type": "FeatureCollection",
-            "features": [
-                {
-                    "type": "Feature",
-                    "id": "eez.8480",
-                    "geometry": {
-                        "type": "Polygon",
-                        "coordinates": [coords],
-                    },
-                    "properties": {
-                        "mrgid": 8480,
-                        "geoname": "Indian Exclusive Economic Zone",
-                        "territory1": "India",
-                        "iso_ter1": "IND",
-                        "sovereign1": "India",
-                        "pol_type": "200NM",
-                        "area_km2": 1659500,
-                    },
-                }
-            ],
-            "metadata": {
-                **self.get_metadata(),
-                "retrieval_status": "embedded_baseline",
-            },
-        }
+        """No geometry is preferable to an invented national boundary."""
+        return {"type": "FeatureCollection", "features": [], "metadata": {**self.get_metadata(), "retrieval_status": "unavailable"}}
 
 
 # Global singleton instance

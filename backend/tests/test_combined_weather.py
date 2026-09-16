@@ -40,11 +40,21 @@ def test_merge_keeps_primary_and_separate_provenance():
     assert provider.supplement.get_weather.call_count == 1
 
 
-@pytest.mark.parametrize("mode", ["stale", "unavailable"])
-def test_no_promotion(mode):
-    provider, primary, _ = setup(mode)
-    assert fetch(provider) == primary
-    provider.supplement.get_weather.assert_not_called()
+def test_stale_primary_is_not_promoted_by_fresh_optional_fields():
+    provider, primary, _ = setup("stale")
+    result = fetch(provider)
+    assert result["cache_status"] == "stale"
+    assert result["wave_height_m"] == primary["wave_height_m"]
+    assert result["supplemental_fields"]["sea_surface_temperature_c"]["source"] == "Open-Meteo Marine"
+
+
+def test_unavailable_primary_uses_real_backend_fallback():
+    provider, _, extra = setup("unavailable")
+    result = fetch(provider)
+    assert result["wave_height_m"] == extra["wave_height_m"]
+    assert result["source"] == extra["source"]
+    assert result["is_mock"] is False
+    provider.supplement.get_weather.assert_called_once()
 
 
 @pytest.mark.parametrize("change", [{"is_mock": True}, {"marine_forecast_valid_at": None},

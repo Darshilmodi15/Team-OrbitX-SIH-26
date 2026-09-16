@@ -47,8 +47,13 @@ class CombinedWeatherProvider(WeatherProvider):
 
     def get_weather(self, lat, lon, date, time_hint=None, temporal_res=None, **kwargs):
         temporal_res = temporal_res or resolve_query_time(text=time_hint or "", request_date=date)
-        primary = self.primary.get_weather(lat=lat, lon=lon, date=date,
-            time_hint=time_hint, temporal_res=temporal_res, **kwargs)
+        try:
+            primary = self.primary.get_weather(lat=lat, lon=lon, date=date,
+                time_hint=time_hint, temporal_res=temporal_res, **kwargs)
+        except Exception:
+            primary = {}
+        if primary.get("cache_status") == "unavailable" or not primary:
+            return self._supplement(lat, lon, date, time_hint, temporal_res)
         if (primary.get("source") != "INCOIS_OSF_WW3" or primary.get("is_mock", True)
                 or primary.get("cache_status") not in {"live", "fresh", "cached", "hit", "stale"}):
             return primary

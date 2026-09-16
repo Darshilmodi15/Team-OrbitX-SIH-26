@@ -5,10 +5,12 @@ import { I18nProvider } from '@/lib/orca/i18n';
 vi.mock('@/components/orca/AppShell', () => ({ AppShell: ({ children }: any) => <>{children}</> }));
 vi.mock('@/components/SEO', () => ({ SEO: () => null }));
 vi.mock('@/lib/orca/session', () => ({ useSession: () => ({ user: { id: 'u1' }, location: { coords: { lat: 20.9, lon: 70.3 } } }) }));
+vi.mock('@/lib/orca/snapshot', async (original) => ({ ...await original<any>(), useMarineSnapshot: () => ({ snapshot:undefined, adopt:vi.fn(), refetch:vi.fn() }) }));
 vi.mock('@/services/api', () => ({ fetchConversations: vi.fn(), fetchConversation: vi.fn(), createConversation: vi.fn(), sendChatMessage: vi.fn(), deleteConversation: vi.fn(), transcribeVoiceAudio: vi.fn(), synthesizeVoiceAudio: vi.fn() }));
 import { createConversation, fetchConversations, fetchConversation, sendChatMessage } from '@/services/api';
 import AssistantPage from '@/pages/AssistantPage';
 beforeEach(() => {
+  vi.mocked(fetchConversation).mockReset();
   vi.mocked(fetchConversations).mockResolvedValue([]);
   vi.mocked(createConversation).mockResolvedValue({ id: 'c1' });
   vi.mocked(sendChatMessage).mockResolvedValue({ answer: 'Provider result', language: 'en' });
@@ -80,4 +82,36 @@ it('does not display another conversation when the requested URL is denied', asy
   mount('/assistant/c/denied');
   expect(await screen.findByRole('alert')).toBeInTheDocument();
   expect(screen.queryByText('Persisted trip advice')).not.toBeInTheDocument();
+});
+
+
+it('reload of a failed request retries the persisted request ID without a duplicate user bubble',async()=>{
+  vi.mocked(fetchConversation).mockResolvedValue({id:'retry-thread',title:'Retry',updated_at:new Date().toISOString(),messages:[{id:'server-user',role:'user',content:'Explain waves',created_at:new Date().toISOString(),metadata:{request_id:'durable-attempt',request_language:'en',requested_time:null}}]});
+  mount('/assistant/c/retry-thread');
+  await waitFor(()=>expect(screen.getByPlaceholderText('Ask anything about your coastal safety…')).toHaveValue('Explain waves'));
+  fireEvent.keyDown(screen.getByPlaceholderText('Ask anything about your coastal safety…'),{key:'Enter'});
+  await waitFor(()=>expect(sendChatMessage).toHaveBeenCalledWith(expect.objectContaining({request_id:'durable-attempt',session_id:'retry-thread',message:'Explain waves'})));
+  expect(screen.getAllByText('Explain waves')).toHaveLength(1);
+});
+
+it('voice yields an editable transcript and submits only through the normal text pipeline',async()=>{
+  const {transcribeVoiceAudio}=await import('@/services/api');
+  vi.mocked(transcribeVoiceAudio).mockResolvedValue({transcript:'Test spoken question',language:'en',english_transcript:'Test spoken question',is_mock:false,source:'sarvam_saaras_v3'});
+  Object.defineProperty(window,'isSecureContext',{configurable:true,value:true});
+  const stop=vi.fn();Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{getUserMedia:vi.fn().mockResolvedValue({getTracks:()=>[{stop}]})}});
+  class Recorder{
+    static isTypeSupported(){return true;}
+    state='inactive';mimeType='audio/webm';ondataavailable:any;onstop:any;
+    start(){this.state='recording';}
+    stop(){this.state='inactive';this.ondataavailable?.({data:new Blob(['isolated audio fixture'])});void this.onstop?.();}
+  }
+  vi.stubGlobal('MediaRecorder',Recorder);
+  mount();fireEvent.click(screen.getByRole('button',{name:'Record voice'}));
+  fireEvent.click(await screen.findByRole('button',{name:'Done Speaking'}));
+  const input=screen.getByPlaceholderText('Ask anything about your coastal safety…');
+  await waitFor(()=>expect(input).toHaveValue('Test spoken question'));
+  expect(screen.getByText(/Transcript ready/)).toBeVisible();expect(sendChatMessage).not.toHaveBeenCalled();
+  fireEvent.change(input,{target:{value:'Edited spoken question'}});fireEvent.keyDown(input,{key:'Enter'});
+  await waitFor(()=>expect(sendChatMessage).toHaveBeenCalledWith(expect.objectContaining({message:'Edited spoken question'})));
+  expect(stop).toHaveBeenCalled();vi.unstubAllGlobals();
 });

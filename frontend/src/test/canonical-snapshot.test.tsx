@@ -1,0 +1,22 @@
+import { useEffect } from "react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MarineSnapshotProvider, useMarineSnapshot, type MarineSnapshot } from "@/lib/orca/snapshot";
+const session=vi.hoisted(()=>({user:{id:"owner-a"},token:"token-a",location:{coords:{lat:18.9,lon:72.7}},locationReady:true,setLocation:vi.fn()}));
+vi.mock("@/lib/orca/session",()=>({useSession:()=>session}));
+vi.mock("@/services/api",()=>({apiFetch:vi.fn(),fetchSavedLocation:vi.fn()}));
+import { apiFetch } from "@/services/api";
+const snapshot=()=>({snapshot_id:"canonical-a",location:{name:"Selected",lat:18.9,lon:72.7},request:{requested_date:"2026-09-16",requested_time:"2026-09-16T04:00:00+00:00"},weather:{wave_height_m:1.18,wind_speed_kmh:16.6},ocean:{sst_c:null,chlorophyll:null},pfz:{availability:"unavailable",zones:[]},tide:{availability:"unavailable",high_tide:null,low_tide:null},boundary:{availability:"unavailable",geometry:null},hazards:[],risk:{level:"unknown",reasons:["Missing evidence"]},provenance:{retrieved_at:new Date().toISOString(),cache_status:"cached",fields:{},source:["test-provider"]},missing_fields:["ocean.sst_c"],expires_at:new Date(Date.now()+300000).toISOString(),backend_sha:"test"} as unknown as MarineSnapshot);
+function Consumer({name,active=false}:{name:string;active?:boolean}){
+  const state=useMarineSnapshot();
+  useEffect(()=>{if(active)state.activate();},[active,state.activate]);
+  return <div><output data-testid={name}>{state.snapshot ? `${state.snapshot.snapshot_id}:${state.snapshot.weather.wave_height_m}:${state.offline}` : "none"}</output><button onClick={()=>state.adopt({...snapshot(),snapshot_id:"chat-returned",weather:{wave_height_m:2.1}})}>Adopt {name}</button></div>;
+}
+function mount(active=true){const client=new QueryClient({defaultOptions:{queries:{retry:false,gcTime:0}}});return render(<QueryClientProvider client={client}><MarineSnapshotProvider><Consumer name="dashboard" active={active}/><Consumer name="map" active={active}/><Consumer name="chat"/></MarineSnapshotProvider></QueryClientProvider>);}
+beforeEach(()=>{vi.mocked(apiFetch).mockReset();session.user={id:"owner-a"};session.token="token-a";sessionStorage.setItem("orca.auth.session","token-a");Object.defineProperty(navigator,"onLine",{configurable:true,value:true});vi.mocked(apiFetch).mockImplementation(async()=>new Response(JSON.stringify(snapshot()),{status:200}));});
+it("greeting-only chat does not activate marine providers",async()=>{mount(false);await act(async()=>{});expect(apiFetch).not.toHaveBeenCalled();expect(screen.getByTestId("chat")).toHaveTextContent("none");});
+it("dashboard and map activate one shared request and chat sees identical evidence",async()=>{mount();await waitFor(()=>expect(screen.getByTestId("dashboard")).toHaveTextContent("canonical-a:1.18:false"));for(const name of ["map","chat"])expect(screen.getByTestId(name)).toHaveTextContent("canonical-a:1.18:false");expect(apiFetch).toHaveBeenCalledTimes(1);});
+it("adopting chat evidence updates every surface without another provider request",async()=>{mount();await screen.findByText("canonical-a:1.18:false",{selector:'output[data-testid="chat"]'});fireEvent.click(screen.getByText("Adopt chat"));await waitFor(()=>expect(screen.getByTestId("dashboard")).toHaveTextContent("chat-returned:2.1:false"));expect(screen.getByTestId("map")).toHaveTextContent("chat-returned:2.1:false");expect(apiFetch).toHaveBeenCalledTimes(1);});
+it("offline state preserves the raw snapshot and labels the shared view stale",async()=>{mount();await waitFor(()=>expect(apiFetch).toHaveBeenCalledTimes(1));await waitFor(()=>expect(screen.getByTestId("map")).toHaveTextContent("canonical-a"));const raw=sessionStorage.getItem("orca.marine.cache.snapshot.v1.owner-a");act(()=>{Object.defineProperty(navigator,"onLine",{configurable:true,value:false});window.dispatchEvent(new Event("offline"));});expect(screen.getByTestId("map")).toHaveTextContent("canonical-a:1.18:true");expect(sessionStorage.getItem("orca.marine.cache.snapshot.v1.owner-a")).toBe(raw);});
+it("a new owner cannot read another owner's downloaded snapshot",async()=>{sessionStorage.setItem("orca.marine.cache.snapshot.v1.owner-a",JSON.stringify(snapshot()));session.user={id:"owner-b"};session.token="token-b";mount(false);expect(screen.getByTestId("chat")).toHaveTextContent("none");expect(apiFetch).not.toHaveBeenCalled();});

@@ -9,7 +9,7 @@ _lock = threading.RLock()
 _recent = {}
 
 
-def record(provider, *, success, http_status=None, reason=None, data_timestamp=None, mode="live"):
+def record(provider, *, success, http_status=None, reason=None, data_timestamp=None, mode="live", model=None):
     now = datetime.now(timezone.utc).isoformat()
     # Reasons are controlled codes, never raw provider bodies, URLs or exception text.
     reason = reason if reason and str(reason).replace('_', '').isalnum() else None
@@ -20,6 +20,8 @@ def record(provider, *, success, http_status=None, reason=None, data_timestamp=N
                  "last_error_summary": None if success else reason or "PROVIDER_REQUEST_FAILED",
                  "real_data_arriving": success and mode in {"live", "fallback"}, "data_mode": mode,
                  "fallback_in_use": mode == "fallback", "data_timestamp": data_timestamp}
+        if model and all(c.isalnum() or c in "-._/" for c in model):
+            value["model"] = model
         if success and mode in {"live", "fallback"}:
             value["last_successful_response"] = now
         elif not success:
@@ -68,3 +70,25 @@ def snapshot(provider):
 
 class ProviderUnavailable(RuntimeError):
     """An actual AI answer is unavailable; never substitute a scripted answer."""
+    def __init__(self, reason="AI_PROVIDER_UNAVAILABLE", http_status=None):
+        super().__init__(reason)
+        self.reason = reason
+        self.http_status = http_status
+
+
+def failure_reason(error):
+    status = getattr(error, "code", None)
+    if status == 429:
+        payload = getattr(error, "response_json", None) or getattr(error, "details", {}) or {}
+        details = payload.get("error", payload).get("details", []) if isinstance(payload, dict) else []
+        ids = [v.get("quotaId", "") for d in details for v in d.get("violations", [])]
+        if any("PerDay" in q for q in ids): return "DAILY_QUOTA_EXHAUSTED"
+        if any("PerMinute" in q for q in ids): return "RATE_LIMITED"
+        return "RATE_LIMIT_OR_QUOTA"
+    if status in (401, 403): return "AUTH_FAILED"
+    if status == 404: return "MODEL_NOT_FOUND"
+    if status == 400: return "MALFORMED_REQUEST"
+    if isinstance(status, int) and status >= 500: return "PROVIDER_OUTAGE"
+    if "timeout" in type(error).__name__.lower(): return "TIMEOUT"
+    if isinstance(error, ImportError): return "SDK_IMPORT_ERROR"
+    return "UPSTREAM_REQUEST_FAILED"

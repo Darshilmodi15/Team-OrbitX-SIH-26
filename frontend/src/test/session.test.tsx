@@ -95,3 +95,27 @@ it('does not resurrect a session when profile restoration finishes after sign-ou
   expect(result.current.user).toBeNull();
   expect(result.current.token).toBeNull();
 });
+
+
+it('waits for the authoritative saved location before allowing location-gated routes', async () => {
+  let resolveLocation!: (value: any) => void;
+  sessionStorage.setItem('orca.auth.session', authResult.access_token);
+  vi.mocked(getUserProfile).mockResolvedValue(authResult.user);
+  vi.mocked(fetchSavedLocation).mockReturnValueOnce(new Promise(resolve => { resolveLocation=resolve; }));
+  const { result }=renderHook(()=>useSession(),{wrapper});
+  await waitFor(()=>expect(result.current.user?.id).toBe('u1'));
+  expect(result.current.locationReady).toBe(false);
+  await act(async()=>resolveLocation({lat:18.9,lon:72.7,is_coastal_supported:true,distance_to_coast_km:13.85,coastal_region:'Maharashtra'}));
+  expect(result.current.locationReady).toBe(true);
+  expect(result.current.location?.coords).toEqual({lat:18.9,lon:72.7});
+});
+it('keeps the token and offers retry when profile storage is temporarily down',async()=>{
+  sessionStorage.setItem('orca.auth.session',authResult.access_token);
+  vi.mocked(getUserProfile).mockRejectedValueOnce(Object.assign(new Error('temporarily unavailable'),{status:503}));
+  const {result}=renderHook(()=>useSession(),{wrapper});
+  await waitFor(()=>expect(result.current.sessionError).toBe(true));
+  expect(sessionStorage.getItem('orca.auth.session')).toBe(authResult.access_token);
+  vi.mocked(getUserProfile).mockResolvedValueOnce(authResult.user);
+  act(()=>result.current.retrySession());
+  await waitFor(()=>expect(result.current.user?.id).toBe('u1'));
+});

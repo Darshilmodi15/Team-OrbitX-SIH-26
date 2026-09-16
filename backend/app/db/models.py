@@ -405,3 +405,26 @@ class DeviceSession(Base):
     last_seen_at = Column(DateTime(timezone=True), nullable=True)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     revoked_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class MarineSnapshotRecord(Base):
+    """Immutable owner-scoped normalized marine evidence, shared by every device."""
+    __tablename__ = "marine_snapshots"
+    id = Column(String(64), primary_key=True)
+    request_key = Column(String(64), unique=True, nullable=False)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    payload_json = Column(Text, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=func.now(), nullable=False)
+
+
+class ChatRequestRecord(Base):
+    """Durable idempotency across processes, reloads and upstream retries."""
+    __tablename__ = "chat_requests"
+    id = Column(String(64), primary_key=True)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    conversation_id = Column(String(36), ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False, index=True)
+    payload_hash = Column(String(64), nullable=False)
+    status = Column(String(16), nullable=False)
+    response_json = Column(Text, nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False)

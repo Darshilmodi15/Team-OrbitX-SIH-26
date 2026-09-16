@@ -9,7 +9,7 @@ import { SEO } from "@/components/SEO";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
 import { useMarine } from "@/lib/orca/use-marine";
-import { safetyFrom } from "@/lib/orca/marine";
+import { SnapshotDetails } from "@/components/orca/SnapshotDetails";
 import {
   Bell, CloudSun, Fish, LifeBuoy, Map as MapIcon, MessageSquare,
 } from "lucide-react";
@@ -48,10 +48,8 @@ export default function DashboardPage() {
   }
 
   const c = marine.data?.current;
-  const isTimeFresh = c?.time ? (Date.now() - Date.parse(c.time) <= 18 * 3600000) : true;
-  const isStale = c?.dataMode === "stale" || c?.dataMode === "unavailable" || !isTimeFresh;
-  const rawLevel = c && c.waveHeightM != null && c.windSpeedKmh != null ? safetyFrom(c.waveHeightM, c.windSpeedKmh, c.visibilityKm) : null;
-  const level = isStale || rawLevel === "unknown" ? null : rawLevel;
+  const risk = marine.data?.snapshot?.risk.level;
+  const level = marine.offline || c?.dataMode === "stale" ? null : risk === "unsafe" ? "dangerous" : risk === "caution" ? "caution" : null;
 
   const displayCurrent = c;
 
@@ -92,6 +90,7 @@ export default function DashboardPage() {
           </div>
         </section>
 
+        {marine.data?.snapshot && <SnapshotDetails snapshot={marine.data.snapshot} offline={marine.offline} />}
         {/* Marine conditions */}
         {displayCurrent && <MarineConditions data={displayCurrent} tide={marine.data?.tide ?? null} />}
 

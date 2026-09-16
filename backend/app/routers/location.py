@@ -52,14 +52,10 @@ def get_current_location(
     """
     Retrieves current validated location and coastal advisory status.
     """
-    cached = location_service.get_user_location(user.id)
-    if cached:
-        return cached
-
     from app.db.session import get_db_context
     from app.db.models import UserLocation
     with get_db_context() as db:
-        row = db.query(UserLocation).filter(UserLocation.user_id == user.id).order_by(UserLocation.created_at.desc()).first()
+        row = db.query(UserLocation).filter(UserLocation.user_id == user.id, UserLocation.is_coastal.is_(True)).order_by(UserLocation.created_at.desc(), UserLocation.id.desc()).first()
         if row is None:
             return None
         return location_service.validate_location(row.latitude, row.longitude).model_dump()

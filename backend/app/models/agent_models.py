@@ -300,6 +300,7 @@ class OperationalRecommendation(BaseModel):
 
 
 class EvidenceBundle(BaseModel):
+    marine_snapshot: Optional[Dict[str, Any]] = None
     """Unified collection of all structured evidence collected during query execution."""
     weather: Optional[WeatherEvidence] = Field(default=None, description="Weather evidence if collected")
     pfz_zones: List[PFZEvidence] = Field(default_factory=list, description="List of PFZ evidence items if collected")

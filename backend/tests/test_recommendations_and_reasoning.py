@@ -198,20 +198,20 @@ def test_query_endpoint_delivers_recommendations_and_evidence(client):
 
 
 def test_chat_endpoint_delivers_recommendations_and_evidence(client):
-    """Verifies that /api/chat returns structured recommendations."""
+    """Chat uses the canonical deterministic risk reasons, never legacy synthetic recommendations."""
+    assert client.post("/api/location/update", json={"lat":18.9220,"lon":72.8347}).status_code == 200
     payload = {
         "message": "Can I sail today?",
         "location": {"lat": 18.9220, "lon": 72.8347},
-        "date": "2026-08-27",
         "language": "en",
     }
     response = client.post("/api/chat", json=payload)
     assert response.status_code == 200
     data = response.json()
 
-    assert "recommendations" in data
-    assert data["recommendations"] is not None
-    assert len(data["recommendations"]) >= 1
+    assert data["recommendations"] is None
+    assert data["marine_snapshot"]["risk"]["reasons"]
+    assert data["risk_level"] == data["marine_snapshot"]["risk"]["level"]
 
 
 def test_api_recommendations_endpoint(client):

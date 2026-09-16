@@ -1,13 +1,13 @@
 import { useState } from "react";
 import type { LocationInfo, MarineBundle } from "@/lib/orca/types";
-import { usePFZ } from "@/lib/orca/use-pfz";
+import { snapshotPFZ } from "@/lib/orca/snapshot";
 import { useI18n } from "@/lib/orca/i18n";
 import { reviewCopy } from "@/lib/orca/review-copy";
 import { marineCopy } from "@/lib/orca/marine-copy";
 
 export function TripPack({ location, bundle }: { location: LocationInfo; bundle: MarineBundle }) {
   const { lang, t } = useI18n(); const copy = reviewCopy(lang); const marine = marineCopy[lang];
-  const pfz = usePFZ(undefined, location.coords, lang);
+  const pfz = { advisory: snapshotPFZ(bundle.snapshot), isPending: false };
   const [busy, setBusy] = useState(false); const [status, setStatus] = useState("");
   async function download() {
     setBusy(true); setStatus("");
@@ -22,7 +22,7 @@ export function TripPack({ location, bundle }: { location: LocationInfo; bundle:
         "Swell height": marine.swell, "Swell period": marine.swell, "Swell direction (from)": marine.swell,
         "Current speed": marine.current, "Current direction (towards)": marine.current,
       };
-      const lines = ["ORCA — " + copy.tripTitle, copy.warning, marine.notice, "", `${t("loc.current")}: ${pack.location.label} (${pack.location.lat}, ${pack.location.lon})`, `${copy.savedAt}: ${time(pack.savedAt)}`, `${copy.expiresAt}: ${time(pack.expiresAt)}`, "", t("marine.title")];
+      const lines = ["ORCA — " + copy.tripTitle, `Snapshot: ${bundle.snapshot?.snapshot_id ?? "unavailable"}`, copy.warning, marine.notice, "", `${t("loc.current")}: ${pack.location.label} (${pack.location.lat}, ${pack.location.lon})`, `${copy.savedAt}: ${time(pack.savedAt)}`, `${copy.expiresAt}: ${time(pack.expiresAt)}`, "", t("marine.title")];
       for (const r of pack.readings) lines.push(`${labels[r.label] || r.label}: ${r.value} ${r.unit}`, `${copy.source}: ${r.source}`, `${copy.validAt}: ${time(r.validAt)}`, `${copy.expiresAt}: ${time(r.expiresAt)}`, "");
       if (!pack.readings.length) lines.push(t("state.liveUnavailable"));
       lines.push("PFZ", pack.pfz.status === "current" ? `${copy.source}: ${pack.pfz.source} / ${copy.expiresAt}: ${pack.pfz.validUntil}` : t("state.liveUnavailable"));

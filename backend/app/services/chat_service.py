@@ -45,7 +45,7 @@ class ChatStorageService:
     def append(self, db: Session, user_id: str, conversation_id: str, role: str, content: str, language: str = "en", metadata: Optional[Dict[str, Any]] = None):
         row = self._owned(db, user_id, conversation_id)
         if not row: return None
-        message = ChatHistory(user_id=user_id, conversation_id=conversation_id, session_id=conversation_id, role=role, message=content, language=language, sources_used_json=json.dumps(metadata) if metadata else None)
+        message = ChatHistory(user_id=user_id, conversation_id=conversation_id, session_id=conversation_id, role=role, message=content, language=language, created_at=datetime.now(timezone.utc), sources_used_json=json.dumps(metadata) if metadata else None)
         db.add(message); row.updated_at = datetime.now(timezone.utc); db.flush(); return message
 
     def serialize(self, row: Conversation) -> ConversationSummary:

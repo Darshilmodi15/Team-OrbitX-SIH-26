@@ -55,28 +55,29 @@ function authToken(): string | null {
   return null;
 }
 
-let verificationFlight: Promise<boolean> | null = null;
+const verificationFlights = new Map<string, Promise<boolean>>();
 async function verifyTokenStillValid(token: string): Promise<boolean> {
-  if (!verificationFlight) {
-    verificationFlight = (async () => {
+  if (!verificationFlights.has(token)) {
+    const flight = (async () => {
       try {
         const res = await fetch(`${API_BASE_URL}/api/user/profile`, {
           headers: { Authorization: `Bearer ${token}` },
           signal: AbortSignal.timeout(8000),
         });
-        return res.ok;
+        return res.status !== 401;
       } catch {
         // Network timeout / glitch should never wipe user session
         return true;
       } finally {
-        verificationFlight = null;
+        verificationFlights.delete(token);
       }
     })();
+    verificationFlights.set(token, flight);
   }
-  return verificationFlight;
+  return verificationFlights.get(token)!;
 }
 
-async function apiFetch(path: string, init: RequestInit = {}) {
+export async function apiFetch(path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers);
   const token = authToken();
   if (token) headers.set("Authorization", "Bearer " + token);
@@ -101,6 +102,8 @@ export interface QueryPayload {
 }
 
 export interface ChatMessagePayload {
+  snapshot_id?: string;
+  requested_time?: string;
   message: string;
   location?: { lat: number; lon: number };
   date?: string;
@@ -117,7 +120,9 @@ export async function sendChatMessage(payload: ChatMessagePayload) {
   try {
     const requestBody = {
       message: payload.message,
-      location: payload.location || { lat: 18.9220, lon: 72.8347 },
+      location: payload.location,
+      snapshot_id: payload.snapshot_id,
+      requested_time: payload.requested_time,
       date: payload.date || new Date().toISOString().split('T')[0],
       language: payload.language || 'auto',
       session_id: payload.session_id,
@@ -272,9 +277,9 @@ export async function loginUser(email_or_phone: string, password: string) {
 export async function getUserProfile(token?: string) {
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = 'Bearer ' + token;
-  const response = await fetch(`${API_BASE_URL}/api/user/profile`, { headers });
+  const response = await fetch(`${API_BASE_URL}/api/user/profile`, { headers, signal: AbortSignal.timeout(15000) });
   if (!response.ok) {
-    throw new Error('Failed to retrieve user profile');
+    throw Object.assign(new Error('Failed to retrieve user profile'), { status: response.status });
   }
   return await response.json();
 }

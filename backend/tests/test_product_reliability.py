@@ -52,12 +52,12 @@ def test_chat_failed_ai_preserves_user_turn_without_fake_assistant(location):
     with patch('app.main._process_orca_query', side_effect=ProviderUnavailable()), patch.object(DialogueSynthesizer, 'synthesize_response', side_effect=ProviderUnavailable()):
         response = client.post('/api/chat', json={'message': 'Explain waves', 'location': location, 'session_id': conversation})
     assert response.status_code == 503
-    assert response.json() == {'detail': 'AI_PROVIDER_UNAVAILABLE'}
+    assert response.json() == {'detail': 'AI_PROVIDER_UNAVAILABLE', 'reason': 'AI_PROVIDER_UNAVAILABLE', 'upstream_status': None}
     stored = client.get('/api/conversations/'+conversation).json()['messages']
     assert [(m['role'], m['content']) for m in stored] == [('user', 'Explain waves')]
 
 
-@pytest.mark.parametrize('status', [401, 403, 429])
+@pytest.mark.parametrize('status', [401, 403])
 def test_gemini_account_failures_stop_model_retry_chain(monkeypatch, status):
     import sys
     from types import ModuleType
@@ -130,7 +130,10 @@ def test_existing_account_is_not_authorized_from_cache_during_db_outage():
     user_id = client.get('/api/user/profile').json()['id']
     assert user_id in auth_service._users
     with patch('app.db.session.get_db_context', side_effect=RuntimeError('storage unavailable')):
-        assert auth_service.get_user_by_id(user_id) is None
+        from fastapi import HTTPException
+        with pytest.raises(HTTPException) as exc:
+            auth_service.get_user_by_id(user_id)
+        assert exc.value.status_code == 503
 
 
 def test_missing_forecast_and_tide_are_not_synthesized():

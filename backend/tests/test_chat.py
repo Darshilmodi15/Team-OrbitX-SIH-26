@@ -10,6 +10,7 @@ class TestChatAndBhashiniEndpoints(unittest.TestCase):
 
     def setUp(self):
         self.client = authenticate_client(TestClient(app))
+        self.assertEqual(self.client.post("/api/location/update", json={"lat":18.9,"lon":72.7}).status_code, 200)
 
     def test_languages_endpoint(self):
         """Test GET /api/languages."""
@@ -62,7 +63,7 @@ class TestChatAndBhashiniEndpoints(unittest.TestCase):
         self.assertIn("answer", data)
         self.assertIn("reasoning", data)
         self.assertIn("sources_used", data)
-        self.assertIn("bhashini_multilingual_service", data["sources_used"])
+        self.assertEqual(data["sources_used"], data["marine_snapshot"]["provenance"]["source"])
 
     def test_chat_hindi_query(self):
         """Test POST /api/chat with Hindi query."""
@@ -78,7 +79,7 @@ class TestChatAndBhashiniEndpoints(unittest.TestCase):
         self.assertEqual(data["language"], "hi")
         self.assertIn("english_query", data)
         self.assertIn("answer", data)
-        self.assertIn("bhashini_multilingual_service", data["sources_used"])
+        self.assertEqual(data["sources_used"], data["marine_snapshot"]["provenance"]["source"])
 
     def test_chat_english_query(self):
         """Test POST /api/chat with standard English query."""
@@ -94,7 +95,7 @@ class TestChatAndBhashiniEndpoints(unittest.TestCase):
         self.assertEqual(data["language"], "en")
         self.assertIn("answer", data)
         self.assertIn("sources_used", data)
-        self.assertIn("bhashini_multilingual_service", data["sources_used"])
+        self.assertEqual(data["sources_used"], data["marine_snapshot"]["provenance"]["source"])
 
     def test_multilingual_query_backward_compatibility(self):
         """Test POST /query with multilingual support."""

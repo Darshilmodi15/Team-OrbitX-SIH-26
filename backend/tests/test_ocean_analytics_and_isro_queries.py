@@ -19,7 +19,9 @@ from tests.auth_helpers import authenticate_client
 
 @pytest.fixture
 def client():
-    return authenticate_client(TestClient(app))
+    client = authenticate_client(TestClient(app))
+    assert client.post("/api/location/update", json={"lat":18.9,"lon":72.7}).status_code == 200
+    return client
 
 
 # =========================================================================
@@ -200,7 +202,8 @@ def test_scenario_4_maritime_boundary_geofence(client):
     })
     assert resp.status_code == 200
     data = resp.json()
-    assert len(data["geofences"]) > 0
+    assert data["geofences"] is None
+    assert data["marine_snapshot"]["boundary"]["provenance"].get("retrieval_status") != "embedded_baseline"
 
 
 def test_scenario_5_multi_hazard_cyclone_alert(client):
@@ -251,7 +254,8 @@ def test_scenario_8_zone_avoidance_and_safe_routing(client):
     assert resp.status_code == 200
     data = resp.json()
     assert data['answer'].startswith("TEST_PROVIDER_RESPONSE ")
-    assert data["zone_avoidance"] is not None
+    assert data["zone_avoidance"] is None
+    assert data["marine_snapshot"]["risk"]["level"] == data["risk_level"]
 
 
 # Explicit upstream fixtures: these tests exercise orchestration, not live model prose.

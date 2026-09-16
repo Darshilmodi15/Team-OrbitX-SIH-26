@@ -209,6 +209,9 @@ def verify_forecast_timestamp(
     dt_ist = dt.astimezone(IST)
     dt_utc = dt.astimezone(UTC)
 
+    if temporal_res.period == "instant":
+        return (abs((dt_utc - temporal_res.target_utc).total_seconds()) <= 5400, "Exact requested time proximity")
+
     if temporal_res.is_explicit_future:
         # Verify date match in IST or UTC
         date_ist = dt_ist.date().isoformat()

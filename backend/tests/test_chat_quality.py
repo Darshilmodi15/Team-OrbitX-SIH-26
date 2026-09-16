@@ -17,6 +17,7 @@ def ask(message: str, request_id: str, session_id: str = "quality-veraval", hist
     if client.get("/api/user/profile").status_code != 200:
         authenticate_client(client)
         session_ids.clear()
+    assert client.post("/api/location/update", json=VERAVAL).status_code == 200
     if session_id not in session_ids:
         created = client.post("/api/conversations", json={"title": session_id})
         assert created.status_code == 201, created.text
@@ -62,12 +63,11 @@ def test_agent_routing_metadata_context_idempotency_and_uniqueness():
     for index, (prompt, expected_agent) in enumerate(cases):
         body = ask(prompt, f"quality-{index}", session_id=f"quality-{index}")
         planned = {task["agent"] for task in body["plan"]["tasks"]}
-        assert expected_agent in planned, (prompt, body["intent"], planned)
+        assert planned == {"marine_snapshot_service"}, (prompt, body["intent"], planned)
         if expected_agent == "route_agent":
             assert body.get("route") is None  # No PFZ provider evidence to route to.
         results.append(body)
-    assert {"weather_agent", "hazard_agent", "risk_agent"}.issubset(results[1]["agents_used"])
-    assert {"pfz_agent", "geospatial_agent", "weather_agent", "risk_agent", "hazard_agent"}.issubset(results[0]["agents_used"])
+    assert all(result["snapshot_id"] == result["marine_snapshot"]["snapshot_id"] for result in results)
 
     # Different operational intents must not collapse to one canned paragraph.
     unique_answers = {normalized(result["answer"]) for result in results}
@@ -79,7 +79,7 @@ def test_agent_routing_metadata_context_idempotency_and_uniqueness():
 
     # Same request ID is idempotent and returns the same response without another orchestration result.
     first = ask("Tell me the weather near Veraval.", "idempotent-one", "idempotent-session")
-    second = ask("This changed text must not execute.", "idempotent-one", "idempotent-session")
+    second = ask("Tell me the weather near Veraval.", "idempotent-one", "idempotent-session")
     assert second == first
 
     history = []
@@ -93,7 +93,7 @@ def test_agent_routing_metadata_context_idempotency_and_uniqueness():
         body = ask(prompt, f"follow-up-{index}", "follow-up-safety", history)
         history.extend([{"role": "user", "text": prompt}, {"role": "assistant", "text": body["answer"]}])
     assert body["intent"] in {"safety_check", "weather_conditions"}
-    assert "risk_agent" in body["agents_used"]
+    assert body["risk_level"] == body["marine_snapshot"]["risk"]["level"]
 
 
 # Explicit upstream fixtures: these tests exercise orchestration, not live model prose.

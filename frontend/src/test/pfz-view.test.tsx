@@ -7,6 +7,7 @@ import { PFZAdvisory } from "@/components/orca/PFZAdvisory";
 import { MapPanel } from "@/components/orca/MapPanel";
 
 const mocks = vi.hoisted(() => ({ fetch: vi.fn(), map: vi.fn() }));
+vi.mock("@/lib/orca/snapshot", async (original) => ({ ...await original<any>(), useMarineSnapshot: () => ({ snapshot:undefined, activate:()=>{}, offline:false }) }));
 vi.mock("@/services/api", () => ({ fetchPFZDataset: mocks.fetch }));
 vi.mock("@/components/orca/CoastMap", () => ({ default: (props: { selectedSector?: string }) => { mocks.map(props); return <div>Map loaded</div>; } }));
 function mount(view: React.ReactNode) {
@@ -20,7 +21,7 @@ describe("PFZ map reading flow", () => {
     localStorage.setItem("orca.map.mode", "text");
     mocks.fetch.mockResolvedValue({ data_mode: "unavailable", pfz_zones: [] });
     mount(<MapPanel center={{ lat: 19, lon: 72 }} interactive />);
-    expect(await screen.findByText(/No current PFZ advisory available/)).toBeVisible();
+    expect(await screen.findByText(/Current verified PFZ advisory unavailable/)).toBeVisible();
     expect(mocks.map).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Text only" })).toHaveAttribute("aria-pressed", "true");
     await userEvent.click(screen.getByRole("button", { name: /^Map$/ }));
@@ -61,11 +62,11 @@ describe("PFZ map reading flow", () => {
 });
 
 
-it("passes the same selected sector to the map and advisory request", async () => {
-  mocks.fetch.mockResolvedValue({ data_mode: "unavailable", pfz_zones: [] });
+it("does not independently request a PFZ sector or substitute a location", async () => {
+  mocks.fetch.mockClear();
   mount(<MapPanel center={{ lat: 19, lon: 72 }} />);
   await screen.findByText("Map loaded");
-  await userEvent.selectOptions(screen.getByLabelText(/Coastal Sector/), "nicobar");
-  await waitFor(() => expect(mocks.fetch).toHaveBeenCalledWith("nicobar", undefined, undefined, "en"));
-  expect(mocks.map).toHaveBeenLastCalledWith(expect.objectContaining({ selectedSector: "nicobar" }));
+  expect(screen.queryByLabelText(/Coastal Sector/)).not.toBeInTheDocument();
+  expect(mocks.fetch).not.toHaveBeenCalled();
+  expect(mocks.map).toHaveBeenLastCalledWith(expect.objectContaining({ center: {lat:19,lon:72} }));
 });

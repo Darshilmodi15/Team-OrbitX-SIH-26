@@ -367,9 +367,10 @@ class IncoisWeatherProvider(WeatherProvider):
             temporal_res = resolve_query_time(text=time_hint or "", request_date=date)
 
         target_date = temporal_res.target_date
+        cache_date = f"{target_date}@{temporal_res.target_utc.isoformat()}@{lat},{lon}" if temporal_res.period == "instant" else target_date
 
         # Step 1: Check cache
-        cached_data, cache_state = self.cache.get(lat, lon, allow_stale=True, target_date=target_date)
+        cached_data, cache_state = self.cache.get(lat, lon, allow_stale=True, target_date=cache_date)
         if not cached_data and not temporal_res.is_explicit_future:
             cached_data, cache_state = self.cache.get(lat, lon, allow_stale=True)
         if cached_data and cache_state == "fresh":
@@ -432,7 +433,7 @@ class IncoisWeatherProvider(WeatherProvider):
                 data=result,
                 forecast_time=forecast_valid_at,
                 source="INCOIS_OSF_WW3",
-                target_date=target_date,
+                target_date=cache_date,
                 issued_at=issued_at,
                 forecast_valid_at=forecast_valid_at,
                 retrieved_at=now_iso,
@@ -491,7 +492,7 @@ class IncoisWeatherProvider(WeatherProvider):
                     data=om_data,
                     forecast_time=om_data.get("forecast_valid_at") or om_data.get("forecast_time"),
                     source="open_meteo_marine_api",
-                    target_date=target_date,
+                    target_date=cache_date,
                     issued_at=om_data.get("issued_at"),
                     forecast_valid_at=om_data.get("forecast_valid_at"),
                     retrieved_at=om_data.get("retrieved_at"),

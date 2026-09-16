@@ -9,6 +9,7 @@ def detect_proactive_hazards(
     lon: float,
     weather: Optional[WeatherEvidence] = None,
     location_name: str = 'Operating Sector',
+    include_geofences: bool = True,
 ) -> List[HazardAlertEvidence]:
     alerts: List[HazardAlertEvidence] = []
     now_iso = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
@@ -95,7 +96,7 @@ def detect_proactive_hazards(
                 )
             )
 
-    geofences = evaluate_vessel_geofences(lat, lon)
+    geofences = evaluate_vessel_geofences(lat, lon) if include_geofences else []
     for g in geofences:
         if g.is_inside:
             alerts.append(

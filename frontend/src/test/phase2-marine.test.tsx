@@ -49,7 +49,7 @@ describe("Marine model fields", () => {
     render(<I18nProvider><MarineConditions data={current}/></I18nProvider>);
     expect(screen.getByText(/Model forecast/)).toBeVisible();
     expect(screen.getByText("0.8 m · 11.6 s · 200 °")).toBeVisible();
-    expect(screen.getByText("0.0 km/h · 74 °")).toBeVisible();
+    expect(screen.getByText("0 km/h · 74 °")).toBeVisible();
     expect(screen.getByText("18.8750, 72.6250")).toBeVisible();
   });
 });

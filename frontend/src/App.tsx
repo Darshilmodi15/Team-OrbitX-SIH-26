@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { Analytics } from "@vercel/analytics/react";
 import { I18nProvider } from "@/lib/orca/i18n";
 import { SessionProvider, useSession } from "@/lib/orca/session";
+import { MarineSnapshotProvider } from "@/lib/orca/snapshot";
 import { ThemeProvider } from "@/lib/orca/theme";
 import { AppProvider } from "./context/AppContext";
 import { CookieBanner } from "./components/CookieBanner";
@@ -49,20 +50,23 @@ function RouteFallback() {
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
-  const { user, ready } = useSession();
+  const { user, ready, sessionError, retrySession } = useSession();
+  if (sessionError) return <div role="alert" className="p-8">Session verification is temporarily unavailable.<button className="ml-3 min-h-12 rounded border px-4" onClick={retrySession}>Retry</button></div>;
   if (!ready) return <RouteFallback />;
   return user ? children : <Navigate to="/login" state={{ from: pathname }} replace />;
 }
 
 function RoleRoute({ roles, children }: { roles: Array<"user" | "government" | "admin">; children: React.ReactNode }) {
-  const { user, ready } = useSession();
+  const { user, ready, sessionError, retrySession } = useSession();
+  if (sessionError) return <div role="alert" className="p-8">Session verification is temporarily unavailable.<button className="ml-3 min-h-12 rounded border px-4" onClick={retrySession}>Retry</button></div>;
   if (!ready) return <RouteFallback />;
   if (!user) return <Navigate to="/login" replace />;
   return roles.includes(user.role) ? children : <Navigate to="/dashboard" replace />;
 }
 
 function DashboardRoute() {
-  const { user, ready } = useSession();
+  const { user, ready, sessionError, retrySession } = useSession();
+  if (sessionError) return <div role="alert" className="p-8">Session verification is temporarily unavailable.<button className="ml-3 min-h-12 rounded border px-4" onClick={retrySession}>Retry</button></div>;
   if (!ready) return <RouteFallback />;
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === "admin") return <Navigate to="/admin" replace />;
@@ -82,6 +86,7 @@ export default function App() {
       <AppProvider>
         <I18nProvider>
           <SessionProvider>
+          <MarineSnapshotProvider>
             <BrowserRouter>
               <RouteAnalyticsListener />
               <Suspense fallback={<RouteFallback />}>
@@ -96,9 +101,9 @@ export default function App() {
                   <Route path="/admin" element={<RoleRoute roles={["admin"]}><OperationsPage /></RoleRoute>} />
                   <Route path="/home" element={<Navigate to="/dashboard" replace />} />
                   <Route path="/map" element={<ProtectedRoute><LocationGate><MapPage /></LocationGate></ProtectedRoute>} />
-                  <Route path="/assistant" element={<ProtectedRoute><LocationGate><AssistantPage /></LocationGate></ProtectedRoute>} />
-                  <Route path="/assistant/c/:conversationId" element={<ProtectedRoute><LocationGate><AssistantPage /></LocationGate></ProtectedRoute>} />
-                  <Route path="/c/:conversationId" element={<ProtectedRoute><LocationGate><AssistantPage /></LocationGate></ProtectedRoute>} />
+                  <Route path="/assistant" element={<ProtectedRoute><AssistantPage /></ProtectedRoute>} />
+                  <Route path="/assistant/c/:conversationId" element={<ProtectedRoute><AssistantPage /></ProtectedRoute>} />
+                  <Route path="/c/:conversationId" element={<ProtectedRoute><AssistantPage /></ProtectedRoute>} />
                   <Route path="/alerts" element={<ProtectedRoute><LocationGate><AlertsPage /></LocationGate></ProtectedRoute>} />
                   <Route path="/services" element={<ProtectedRoute><LocationGate><ServicesPage /></LocationGate></ProtectedRoute>} />
                   <Route path="/emergency" element={<ProtectedRoute><ServicesPage /></ProtectedRoute>} />
@@ -112,6 +117,7 @@ export default function App() {
               <CookieBanner />
             </BrowserRouter>
             <ConsentedAnalytics />
+          </MarineSnapshotProvider>
           </SessionProvider>
         </I18nProvider>
       </AppProvider>

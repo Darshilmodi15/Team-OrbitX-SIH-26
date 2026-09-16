@@ -1,49 +1,26 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useI18n } from "@/lib/orca/i18n";
 import type { Coords } from "@/lib/orca/geo";
-import { PFZAdvisory } from "./PFZAdvisory";
 import { mapCopy } from "@/lib/orca/map-copy";
-
-const CoastMap = lazy(() => import("./CoastMap"));
-
-export function MapPanel({
-  center,
-  interactive = false,
-  height = 240,
-  onSelect,
-}: {
-  center: Coords;
-  interactive?: boolean;
-  height?: number;
-  onSelect?: (c: Coords) => void;
-}) {
-  const { t, lang } = useI18n();
-  const [selectedSector, setSelectedSector] = useState("");
-  const [mode, setMode] = useState<"text" | "map" | "satellite">(() => {
-    try { return localStorage.getItem("orca.map.mode") === "text" && !onSelect ? "text" : "map"; } catch { return "map"; }
-  });
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2" role="group" aria-label={t("map.layers")}>
-        {(["text", "map", "satellite"] as const).filter(item => !onSelect || item !== "text").map(item => <button type="button" key={item} aria-pressed={mode === item}
-          className={`min-h-11 rounded-md border px-4 text-sm ${mode === item ? "bg-primary text-primary-foreground" : "bg-card"}`}
-          onClick={() => { setMode(item); try { localStorage.setItem("orca.map.mode", item); } catch { /* Storage is optional. */ } }}>
-          {mapCopy[lang][item]}
-        </button>)}
-      </div>
-      {!onSelect && <PFZAdvisory showPoints={mode === "text"} selectedSector={selectedSector} onSectorChange={setSelectedSector} coords={center} />}
-      {mode !== "text" && <Suspense
-      fallback={
-        <div
-          style={{ height }}
-          className="flex w-full animate-pulse items-center justify-center rounded-md border border-border bg-muted text-sm text-muted-foreground"
-        >
-          {t("state.loading")}
-        </div>
-      }
-    >
-      <CoastMap center={center} interactive={interactive} height={height} onSelect={onSelect} satellite={mode === "satellite"} selectedSector={selectedSector} />
-    </Suspense>}
-    </div>
-  );
+import { snapshotBundle, snapshotPFZ, useMarineSnapshot, type MarineSnapshot } from "@/lib/orca/snapshot";
+import { MarineConditions } from "./Conditions";
+import { SnapshotDetails } from "./SnapshotDetails";
+const CoastMap=lazy(()=>import("./CoastMap"));
+export function MapPanel({center,interactive=false,height=240,onSelect,snapshot:provided}:{center:Coords;interactive?:boolean;height?:number;onSelect?:(c:Coords)=>void;snapshot?:MarineSnapshot}){
+  const {t,lang}=useI18n();const state=useMarineSnapshot();
+  useEffect(()=>{if(!onSelect && !provided)state.activate();},[onSelect,provided,state.activate]);
+  const s=provided ?? (onSelect ? undefined : state.snapshot);
+  const [mode,setMode]=useState<"text"|"map"|"satellite">(()=>{try{return !onSelect && localStorage.getItem("orca.map.mode")==="text" ? "text":"map";}catch{return "map";}});const [pfz,setPFZ]=useState(true),[eez,setEEZ]=useState(true),[conditions,setConditions]=useState(true);
+  const advisory=snapshotPFZ(s);
+  return <div className="space-y-3" data-snapshot-id={s?.snapshot_id}>
+    <div className="flex flex-wrap gap-2" role="group" aria-label={t("map.layers")}>{(["text","map","satellite"] as const).filter(x=>!onSelect || x!=="text").map(x=><button key={x} type="button" onClick={()=>{setMode(x);try{localStorage.setItem("orca.map.mode",x);}catch{/* Optional preference. */}}} aria-pressed={mode===x} className="min-h-11 rounded border px-3 text-sm">{mapCopy[lang][x]}</button>)}</div>
+    {!onSelect && <>
+      <p role="status" className="text-sm">{advisory.status === "current" ? `${t("glossary.pfz.full")}: ${advisory.points.length}` : lang === "en" ? "Current verified PFZ advisory unavailable" : mapCopy[lang][advisory.status]}</p>
+      {s?.boundary.availability !== "available" && <p className="text-sm">EEZ: {t("chat.unavailable")}</p>}
+      <div className="flex flex-wrap gap-4 text-sm"><label><input type="checkbox" checked={pfz} onChange={e=>setPFZ(e.target.checked)} /> PFZ</label><label><input type="checkbox" checked={eez} onChange={e=>setEEZ(e.target.checked)} /> EEZ · VLIZ</label><label><input type="checkbox" checked={conditions} onChange={e=>setConditions(e.target.checked)} /> {t("marine.title")}</label></div>
+    </>}
+    {mode !== "text" && <Suspense fallback={<div style={{height}}>{t("state.loading")}</div>}><CoastMap center={center} interactive={interactive} height={height} onSelect={onSelect} satellite={mode==="satellite"} snapshot={s} showPFZ={pfz} showEEZ={eez} showConditions={conditions}/></Suspense>}
+    {mode === "text" && advisory.points.length > 0 && <ul>{advisory.points.map(p=><li key={p.id}>{p.name}: {p.lat}, {p.lon} · {p.distanceKm} km</li>)}</ul>}
+    {s && <><SnapshotDetails snapshot={s} offline={state.offline}/>{(interactive || mode==="text") && <MarineConditions data={snapshotBundle(s,state.offline).current}/>}</>}
+  </div>;
 }

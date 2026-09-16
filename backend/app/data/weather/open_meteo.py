@@ -321,4 +321,16 @@ class OpenMeteoWeatherProvider(WeatherProvider):
             or (temporal_res.is_explicit_future and not selected_stamp)
         ):
             result.update(cache_status="unavailable", forecast="data_unavailable", forecast_valid_at=None, forecast_time=None)
+        result["supplemental_fields"] = {}
+        for field in (*MARINE_FIELDS.values(), "wind_speed_kmh", "wind_direction_deg", "wind_gust_kmh", "visibility_km", "temperature_c", "weather_code"):
+            kind = "marine" if field in MARINE_FIELDS.values() else "weather"
+            if result.get(field) is not None:
+                result["supplemental_fields"][field] = {
+                    "source": "Open-Meteo Marine" if kind == "marine" else "Open-Meteo Weather",
+                    "forecast_valid_at": marine_time if kind == "marine" else weather_time,
+                    "retrieved_at": now_iso, "issued_at": None, "cache_status": result["cache_status"],
+                    "grid_lat": value(payloads.get(kind, {}), "latitude", nonnegative=False, digits=6),
+                    "grid_lon": value(payloads.get(kind, {}), "longitude", nonnegative=False, digits=6),
+                    "measurement_kind": "model_forecast",
+                }
         return result

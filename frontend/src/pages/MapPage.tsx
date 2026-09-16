@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/orca/States";
 import { SEO } from "@/components/SEO";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
-import { COASTAL_BUFFER_KM, formatCoords } from "@/lib/orca/geo";
+import { formatCoords } from "@/lib/orca/geo";
 
 const GLOSSARY_ITEMS = [
   { short: "PFZ", fullKey: "glossary.pfz.full" as const, plainKey: "glossary.pfz.plain" as const },
@@ -43,29 +43,9 @@ export default function MapPage() {
                 <span className="size-3 rounded-full bg-secondary shrink-0" aria-hidden />
                 <span>{t("map.yourPin")}</span>
               </li>
-              <li className="flex items-center gap-2">
-                <span className="size-3 rounded-full border-2 border-accent shrink-0" aria-hidden />
-                <span>
-                  {t("map.coastalZone")} ({COASTAL_BUFFER_KM} km)
-                </span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="relative flex size-3.5 items-center justify-center shrink-0" aria-hidden="true">
-                  <span className="absolute size-3.5 rounded-xs border-2 border-[#00D9C5] bg-[#00D9C5]/20 border-dashed" />
-                  <span className="size-1.5 rounded-full bg-[#00D9C5] ring-1 ring-white" />
-                </span>
-                <span>{lang === "en" ? "PFZ Fishing Zone — " : ""}{t("glossary.pfz.full")}</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="flex size-3.5 items-center justify-center shrink-0 text-sky-500 font-bold text-xs" aria-hidden="true">
-                  ➔
-                </span>
-                <span>{lang === "en" ? "Wind / Current Vectors — " : ""}Direction & Speed</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="h-0.5 w-4 border-t-2 border-dashed border-red-500 shrink-0" aria-hidden />
-                <span>{lang === "en" ? "IMBL — " : ""}{t("glossary.imbl.full")}</span>
-              </li>
+              <li>PFZ — {t("glossary.pfz.full")}</li>
+              <li>EEZ — Marine Regions / VLIZ reference geometry</li>
+              <li>{t("marine.title")} — provider grid points</li>
             </ul>
           </section>
 

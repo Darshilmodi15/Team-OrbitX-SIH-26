@@ -34,6 +34,10 @@ import {
   Wind,
   X,
 } from "lucide-react";
+import { fetchSnapshot, useMarineSnapshot, snapshotExpired, snapshotBundle } from "@/lib/orca/snapshot";
+import { SnapshotDetails } from "@/components/orca/SnapshotDetails";
+import { MapPanel } from "@/components/orca/MapPanel";
+import { MarineConditions } from "@/components/orca/Conditions";
 import { AppShell } from "@/components/orca/AppShell";
 import { OrcaLogo } from "@/components/orca/Logo";
 import { SEO } from "@/components/SEO";
@@ -51,7 +55,7 @@ interface ChatThread {
   messages: ChatMessage[];
 }
 
-type VoiceState = "idle" | "preparing" | "listening" | "processing" | "transcribing" | "error";
+type VoiceState = "idle" | "preparing" | "listening" | "processing" | "transcribing" | "ready" | "error";
 
 const voiceDiagnostic = (event: string, details?: Record<string, unknown>) => {
   if (import.meta.env.DEV) console.info(`[ORCA Voice] ${event}`, details || {});
@@ -158,11 +162,11 @@ function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
                 </span>
               </span>
             )}
-            {(evidence.weather.sea_surface_temperature_c != null || evidence.weather.temperature_c != null) && (
+            {(evidence.weather.sea_surface_temperature_c != null) && (
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/80 text-secondary-foreground text-[11px] font-mono">
                 <Thermometer className="size-3 text-amber-400" />
                 <span>
-                  {(evidence.weather.sea_surface_temperature_c ?? evidence.weather.temperature_c)?.toFixed(1)}°C {t("marine.sst")}
+                  {evidence.weather.sea_surface_temperature_c?.toFixed(1)}°C {t("marine.sst")}
                 </span>
               </span>
             )}
@@ -241,6 +245,8 @@ export default function AssistantPage() {
   const navigate = useNavigate();
   const { conversationId } = useParams();
   const { user, location } = useSession();
+  const marine = useMarineSnapshot();
+  const retryRequest = useRef<{ question:string; thread:string; id:string; language?:string; requestedTime?:string } | null>(null);
 
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string>("");
@@ -253,6 +259,7 @@ export default function AssistantPage() {
   const [chatError, setChatError] = useState<"chat.startFailed" | "chat.requestFailed" | "chat.providerUnavailable" | null>(null);
   const requestInFlightRef = useRef(false);
   const historyVersion = useRef(0);
+  const newlyCreatedConversation = useRef<string | null>(null);
 
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [voiceErrorMessage, setVoiceErrorMessage] = useState<string | null>(null);
@@ -268,8 +275,7 @@ export default function AssistantPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const speechRecognitionRef = useRef<any>(null);
-  const browserTranscriptRef = useRef<string>("");
+  const voiceVersion = useRef(0);
 
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -289,8 +295,14 @@ export default function AssistantPage() {
       Promise.all([fetchConversations(), conversationId ? fetchConversation(conversationId) : Promise.resolve(null)]).then(([rows, selected]: [any[], any]) => {
         if (selected) rows = [selected, ...rows.filter(row => row.id !== selected.id)];
         if (cancelled || requestInFlightRef.current || version !== historyVersion.current) return;
-        const mapped = rows.map((row) => ({ id: row.id, title: row.title, updatedAt: new Date(row.updated_at).getTime(), messages: (row.messages || []).map((m: any) => ({ id: m.id, role: m.role, text: m.content, at: new Date(m.created_at).getTime(), evidence: m.metadata })) }));
+        const mapped = rows.map((row) => ({ id: row.id, title: row.title, updatedAt: new Date(row.updated_at).getTime(), messages: (row.messages || []).map((m: any) => ({ id: m.metadata?.request_id ? `${m.role === "user" ? "u" : "a"}_${m.metadata.request_id}` : m.id, role: m.role, text: m.content, at: new Date(m.created_at).getTime(), evidence: m.metadata })) }));
         setThreads(mapped);
+        const selectedRow=rows.find(row=>row.id === conversationId);
+        const last=selectedRow?.messages?.at(-1);
+        if(last?.role === "user" && last.metadata?.request_id){
+          retryRequest.current={question:last.content,thread:selectedRow.id,id:last.metadata.request_id,language:last.metadata.request_language,requestedTime:last.metadata.requested_time ?? undefined};
+          setInput(value=>value || last.content);
+        }
         if (conversationId && !mapped.some(row => row.id === conversationId)) {
           setChatError("chat.requestFailed");
         }
@@ -298,7 +310,8 @@ export default function AssistantPage() {
     };
     setActiveThreadId(conversationId || "");
     setChatError(null);
-    sync();
+    if(newlyCreatedConversation.current === conversationId) newlyCreatedConversation.current = null;
+    else sync();
     window.addEventListener("focus", sync);
     return () => { cancelled = true; window.removeEventListener("focus", sync); };
   }, [user?.id, conversationId]);
@@ -316,6 +329,8 @@ export default function AssistantPage() {
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current);
       }
+      voiceVersion.current++;
+      if(mediaRecorderRef.current){mediaRecorderRef.current.onstop=null;if(mediaRecorderRef.current.state!=="inactive")mediaRecorderRef.current.stop();}
       mediaStreamRef.current?.getTracks().forEach(track => track.stop());
     };
   }, []);
@@ -408,12 +423,16 @@ export default function AssistantPage() {
       if (!targetThreadId) {
         const created = await createConversation(question.length > 80 ? question.slice(0, 80) : question);
         targetThreadId = created.id;
+        newlyCreatedConversation.current = targetThreadId;
         setActiveThreadId(targetThreadId);
         navigate(`/assistant/c/${targetThreadId}`, { replace: true });
       }
       startingConversation = false;
       const now = Date.now();
-      const userMsg: ChatMessage = { id: `u_${now}`, role: "user", text: question, at: now };
+      const retry = retryRequest.current?.question === question && retryRequest.current.thread === targetThreadId;
+      const requestId = retry ? retryRequest.current!.id : crypto.randomUUID();
+      if(!retry) retryRequest.current = { question, thread: targetThreadId, id: requestId, language:lang || "auto",requestedTime:marine.snapshot?.request.requested_time };
+      const userMsg: ChatMessage = { id: `u_${requestId}`, role: "user", text: question, at: now };
 
       setThreads((prev) => {
         const idx = prev.findIndex((th) => th.id === targetThreadId);
@@ -424,7 +443,7 @@ export default function AssistantPage() {
             ...updated[idx],
             title: isFirst ? (question.length > 28 ? `${question.slice(0, 28)}...` : question) : updated[idx].title,
             updatedAt: now,
-            messages: [...updated[idx].messages, userMsg],
+            messages: updated[idx].messages.some(m => m.id === userMsg.id) ? updated[idx].messages : [...updated[idx].messages, userMsg],
           };
           return updated;
         } else {
@@ -439,29 +458,47 @@ export default function AssistantPage() {
       });
 
       setInput("");
+      setVoiceState("idle");
       setInterimTranscript("");
       setIsThinking(true);
 
+      let snapshot = marine.snapshot;
+      const greeting = /^(hello|hi|hey|thanks|thank you|good morning|good evening|namaste|namaskar|નમસ્તે|નમસ્કાર|હેલો|આભાર|नमस्ते|नमस्कार|धन्यवाद)[!.?\s]*$/i.test(question);
+      if (!greeting && snapshot && snapshotExpired(snapshot)) {
+        const refreshed = await marine.refetch() as {data?: typeof snapshot};
+        snapshot = refreshed.data;
+      }
+      if(!greeting && retry && retryRequest.current?.requestedTime && snapshot?.request.requested_time !== retryRequest.current.requestedTime){
+        snapshot=await fetchSnapshot(retryRequest.current.requestedTime);
+        marine.adopt(snapshot);
+      }
+      if(!retry && retryRequest.current) retryRequest.current.requestedTime=snapshot?.request.requested_time;
       const res = await sendChatMessage({
         message: question,
         ...(location ? { location: { lat: location.coords.lat, lon: location.coords.lon } } : {}),
         date: new Date().toISOString().split("T")[0],
-        language: lang || "auto",
+        language: retryRequest.current?.language || lang || "auto",
         session_id: targetThreadId,
-        request_id: crypto.randomUUID(),
+        request_id: requestId,
+        snapshot_id: greeting ? undefined : snapshot?.snapshot_id,
+        requested_time: greeting ? undefined : retryRequest.current?.requestedTime,
       });
 
       if (!res || !res.answer) {
         throw new Error("Empty authoritative response");
       }
 
+      retryRequest.current = null;
+      if(res.marine_snapshot) marine.adopt(res.marine_snapshot);
       const botNow = Date.now();
       const botMsg: ChatMessage = {
-        id: `a_${botNow}`,
+        id: `a_${requestId}`,
         role: "assistant",
         text: res.answer,
         at: botNow,
         evidence: {
+          snapshot_id: res.snapshot_id,
+          marine_snapshot: res.marine_snapshot,
           sources: res.sources_used || [],
           reasoning: res.reasoning || [],
           risk_level: res.risk_level || null,
@@ -523,7 +560,7 @@ export default function AssistantPage() {
     setVoiceErrorMessage(null);
     setVoiceNotice(null);
     setInterimTranscript("");
-    browserTranscriptRef.current = "";
+    const recordingVersion = ++voiceVersion.current;
     setVoiceState("preparing");
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
       setVoiceErrorMessage("Microphone access is not supported in this browser or context.");
@@ -531,39 +568,11 @@ export default function AssistantPage() {
       return;
     }
 
-    // Start concurrent SpeechRecognition for visual interim preview and device transcription fallback
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-    if (SpeechRecognition) {
-      try {
-        const recognition = new SpeechRecognition();
-        recognition.lang = LANG_BCP47[lang] || "en-IN";
-        recognition.interimResults = true;
-        recognition.continuous = true;
-
-        recognition.onresult = (event: any) => {
-          let full = "";
-          for (let i = 0; i < event.results.length; i++) {
-            full += event.results[i][0].transcript;
-          }
-          if (full.trim()) {
-            browserTranscriptRef.current = full.trim();
-            setInterimTranscript(full.trim());
-          }
-        };
-        recognition.onerror = (event: any) => console.info("Browser speech preview unavailable:", event?.error || "unknown");
-        recognition.start();
-        speechRecognitionRef.current = recognition;
-      } catch (err) {
-        console.info("Browser speech preview could not start:", err);
-      }
-    }
-
     try {
       voiceDiagnostic("MIC_PERMISSION_REQUESTED");
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       voiceDiagnostic("MIC_PERMISSION_GRANTED");
+      if(recordingVersion !== voiceVersion.current){stream.getTracks().forEach(track=>track.stop());return;}
       mediaStreamRef.current = stream;
       audioChunksRef.current = [];
 
@@ -587,21 +596,14 @@ export default function AssistantPage() {
           recordingTimerRef.current = null;
         }
 
-        if (speechRecognitionRef.current) {
-          try {
-            speechRecognitionRef.current.stop();
-          } catch {
-            // ignore
-          }
-        }
-
+        stream.getTracks().forEach((trk) => trk.stop());
+        if(recordingVersion !== voiceVersion.current) return;
         setVoiceState("transcribing");
-        const deviceTranscript = browserTranscriptRef.current.trim();
         const actualMime = recorder.mimeType || "audio/webm";
         const audioBlob = new Blob(audioChunksRef.current, { type: actualMime });
         voiceDiagnostic("AUDIO_BLOB_CREATED", { bytes: audioBlob.size, mimeType: actualMime });
 
-        if (audioBlob.size === 0 && !deviceTranscript) {
+        if (audioBlob.size === 0) {
           setVoiceErrorMessage("We couldn't understand the recording. Please try again or type your question.");
           setVoiceState("error");
           stream.getTracks().forEach((trk) => trk.stop());
@@ -615,43 +617,33 @@ export default function AssistantPage() {
             voiceDiagnostic("AUDIO_UPLOAD_STARTED");
             const result = await transcribeVoiceAudio(audioBlob, lang || "auto");
             voiceDiagnostic("AUDIO_UPLOAD_COMPLETED");
+            if(recordingVersion !== voiceVersion.current) return;
 
             if (result && result.transcript && result.transcript.trim() && !result.is_mock) {
               const text = result.transcript.trim();
               authoritativeSuccess = true;
               voiceDiagnostic("STT_TRANSCRIPT_RECEIVED", { language: result.language_code || result.language });
-              setVoiceState("idle");
+              setVoiceState("ready");
               setVoiceErrorMessage(null);
               setVoiceNotice(null);
               setInput(text);
               inputRef.current?.focus();
             }
           } catch (err) {
-            console.warn("Authoritative STT unavailable, falling back to device transcript:", err);
+            console.warn("Speech transcription unavailable");
             voiceDiagnostic("STT_FAILED", { error: err instanceof Error ? err.message : "unknown" });
           }
         }
 
-        if (!authoritativeSuccess) {
-          if (deviceTranscript) {
-            // Level 2 Fallback: browser SpeechRecognition preview
-            setVoiceState("idle");
-            setVoiceErrorMessage(null);
-            setVoiceNotice("Cloud speech service unavailable — using device transcription");
-            setInput(deviceTranscript);
-            inputRef.current?.focus();
-          } else {
-            // Neither Sarvam nor device SpeechRecognition returned text
-            setVoiceErrorMessage("We couldn't understand the recording. Please try again or type your question.");
-            setVoiceState("error");
-          }
+        if (!authoritativeSuccess && recordingVersion === voiceVersion.current) {
+          setVoiceErrorMessage("Speech transcription is unavailable. Try again or type your question.");
+          setVoiceState("error");
         }
 
         stream.getTracks().forEach((trk) => trk.stop());
         mediaStreamRef.current = null;
         mediaRecorderRef.current = null;
         audioChunksRef.current = [];
-        speechRecognitionRef.current = null;
       };
 
       recorder.start(250);
@@ -674,7 +666,6 @@ export default function AssistantPage() {
         });
       }, 1000);
     } catch (err: any) {
-      speechRecognitionRef.current?.stop();
       mediaStreamRef.current?.getTracks().forEach(track => track.stop());
       console.warn("Microphone access or hardware error:", err);
       const name = err instanceof DOMException ? err.name : (err?.name || "");
@@ -693,13 +684,6 @@ export default function AssistantPage() {
   function stopRecording() {
     if (voiceState === "listening") {
       setVoiceState("processing");
-      if (speechRecognitionRef.current) {
-        try {
-          speechRecognitionRef.current.stop();
-        } catch {
-          // ignore
-        }
-      }
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
         try {
           mediaRecorderRef.current.stop();
@@ -717,7 +701,7 @@ export default function AssistantPage() {
   function toggleVoice() {
     if (voiceState === "listening") {
       stopRecording();
-    } else if (voiceState === "idle" || voiceState === "error") {
+    } else if (voiceState === "idle" || voiceState === "ready" || voiceState === "error") {
       startRecording();
     }
   }
@@ -1043,7 +1027,7 @@ export default function AssistantPage() {
                       ) : (
                         <>
                           <MarkdownRenderer content={m.text} />
-                          {m.evidence && <EvidenceTraceCard evidence={m.evidence} />}
+                          {m.evidence?.marine_snapshot ? <div className="mt-3 space-y-3"><p className="text-sm font-medium">ORCA assessment: {m.evidence.marine_snapshot.risk.level} · {m.evidence.marine_snapshot.risk.reasons[0]}</p><SnapshotDetails snapshot={m.evidence.marine_snapshot}/><MarineConditions data={snapshotBundle(m.evidence.marine_snapshot).current}/><details><summary className="min-h-11 cursor-pointer py-3">{t("map.open")}</summary><MapPanel center={m.evidence.marine_snapshot.location} snapshot={m.evidence.marine_snapshot} height={220} interactive/></details></div> : m.evidence && <EvidenceTraceCard evidence={m.evidence} />}
                         </>
                       )}
                     </div>
@@ -1084,7 +1068,7 @@ export default function AssistantPage() {
               <div className="flex items-center gap-2.5 min-w-0">
                 {voiceState === "listening" ? (
                   <>
-                    <span className="size-3 shrink-0 rounded-full bg-red-500 animate-ping" />
+                    <span aria-hidden="true" className="flex h-5 items-center gap-0.5">{[8,16,12,20,10].map((height,index)=><span key={index} className="w-1 rounded bg-current motion-safe:animate-pulse" style={{height,animationDelay:`${index*120}ms`}} />)}</span>
                     <span className={cn("font-semibold", recordingSeconds >= 25 ? "text-amber-400 animate-pulse font-bold" : "text-teal-300")}>
                       {recordingSeconds >= 25
                         ? `${Math.max(0, 30 - recordingSeconds)} seconds remaining`
@@ -1096,6 +1080,8 @@ export default function AssistantPage() {
                       </span>
                     )}
                   </>
+                ) : voiceState === "ready" ? (
+                  <span>Transcript ready — edit it below, then send.</span>
                 ) : voiceState === "preparing" ? (
                   <>
                     <Loader2 className="size-3.5 animate-spin text-teal-400" />
@@ -1138,7 +1124,13 @@ export default function AssistantPage() {
                 )}
                 <button
                   type="button"
-                  onClick={() => setVoiceState("idle")}
+                  onClick={() => {
+                    voiceVersion.current++;
+                    if(mediaRecorderRef.current){mediaRecorderRef.current.onstop=null;if(mediaRecorderRef.current.state!=="inactive")mediaRecorderRef.current.stop();}
+                    mediaStreamRef.current?.getTracks().forEach(track=>track.stop());
+                    if(recordingTimerRef.current)clearInterval(recordingTimerRef.current);
+                    setVoiceState("idle");
+                  }}
                   className="p-1 rounded text-muted-foreground hover:text-foreground cursor-pointer"
                   title="Dismiss"
                 >

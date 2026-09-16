@@ -55,6 +55,7 @@ export type MarineTide = {
 };
 
 export type MarineBundle = {
+  snapshot?: import("./snapshot").MarineSnapshot;
   current: MarineSnapshot;
   forecast: ForecastPoint[];
   past: ForecastPoint[];
@@ -83,6 +84,8 @@ export type EmergencyService = {
 };
 
 export type ChatEvidence = {
+  snapshot_id?: string;
+  marine_snapshot?: import("./snapshot").MarineSnapshot;
   sources?: string[];
   reasoning?: string[];
   risk_level?: string | null;

@@ -169,9 +169,9 @@ def session_is_active(payload: Dict[str, Any]) -> bool:
                 expires_at = expires_at.replace(tzinfo=timezone.utc)
             return expires_at > datetime.now(timezone.utc)
     except Exception as err:
-        logger.warning(f"DeviceSession verification notice: {err}")
-        # On transient database verification failure, allow token if signature & exp are valid
-        return True
+        logger.warning("DeviceSession verification unavailable: %s", type(err).__name__)
+        from fastapi import HTTPException
+        raise HTTPException(status_code=503, detail="AUTH_STORAGE_UNAVAILABLE") from err
 
 
 class AuthService:
@@ -399,6 +399,8 @@ class AuthService:
                     self._users[user_id] = user_data
         except Exception as exc:
             logger.warning("DB profile lookup failed: %s", type(exc).__name__)
+            from fastapi import HTTPException
+            raise HTTPException(status_code=503, detail="AUTH_STORAGE_UNAVAILABLE") from exc
 
         # Development/test demo identities may exist only in memory. Once the
         # database answered, a missing/inactive account must not fall back.

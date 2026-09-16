@@ -27,8 +27,8 @@ function Metric({
   );
 }
 
-const num = (v: number | null | undefined, unit: string, digits = 1) =>
-  v == null || !Number.isFinite(v) ? "\u2014" : `${v.toFixed(digits)} ${unit}`;
+const num = (v: number | null | undefined, unit: string, _digits = 1) =>
+  v == null || !Number.isFinite(v) ? "\u2014" : `${v} ${unit}`;
 
 function tideTime(time: string | null, height: number | null) {
   if (!time) return "\u2014";
@@ -53,11 +53,11 @@ export function MarineConditions({ data, tide = null }: { data: MarineSnapshot; 
         </h2>
         <p className="text-xs text-muted-foreground">
           {t(mode === "stale" ? "health.stale" : mode === "cached" ? "health.cached" : mode === "fallback" ? "health.fallback" : (mode === "fresh" || mode === "live") ? "state.live" : "chat.unavailable")} · {t("state.updated")} {updatedAt} · {t("state.source")}:{" "}
-          {data.sources.join(", ")}
+          {data.sources.join(", ") || t("chat.unavailable")}
         </p>
       </div>
       {data.measurementKind === "model_forecast" && <div className="rounded-md border p-3 text-xs space-y-2">
-        <p className="font-medium">{copy.model} · <a href="https://open-meteo.com/en/docs/marine-weather-api" target="_blank" rel="noopener noreferrer" className="underline">Open-Meteo</a> · <a href="https://www.dwd.de/EN/Home/home_node.html" target="_blank" rel="noopener noreferrer" className="underline">DWD</a> · <a href="https://marine.copernicus.eu/" target="_blank" rel="noopener noreferrer" className="underline">Copernicus Marine</a></p>
+        <p className="font-medium">{copy.model} · {data.sources.join(", ")}</p>
         <p>{copy.notice}</p>
         <dl className="grid gap-2 sm:grid-cols-3">
           <div><dt className="text-muted-foreground">{copy.marineTime}</dt><dd>{stamp(data.marineForecastValidAt)}</dd></div>
@@ -81,7 +81,7 @@ export function MarineConditions({ data, tide = null }: { data: MarineSnapshot; 
           value={
             data.windSpeedKmh == null
               ? "\u2014"
-              : `${Math.round(data.windSpeedKmh)} km/h ${compassDirection(data.windDirectionDeg, lang)}`
+              : `${data.windSpeedKmh} km/h ${compassDirection(data.windDirectionDeg, lang)}`
           }
         />
         <Metric Icon={Eye} label={t("marine.visibility")} value={num(data.visibilityKm, "km")} />
@@ -92,6 +92,7 @@ export function MarineConditions({ data, tide = null }: { data: MarineSnapshot; 
         <Metric Icon={Waves} label={copy.swell} value={`${num(data.swellWaveHeightM, "m")} · ${num(data.swellWavePeriodS, "s")} · ${num(data.swellWaveDirectionDeg, "°", 0)}`} />
         <Metric Icon={Gauge} label={copy.current} value={`${num(data.oceanCurrentSpeedKmh, "km/h")} · ${num(data.oceanCurrentDirectionDeg, "°", 0)}`} />
         <Metric Icon={CloudSun} label={t("marine.weather")} value={describeWeather(data.weatherCode, lang)} />
+        {!tide && <><Metric Icon={Clock} label={t("marine.highTide")} value={t("chat.unavailable")} /><Metric Icon={Clock} label={t("marine.lowTide")} value={t("chat.unavailable")} /></>}
         {tide && (
           <>
             <Metric Icon={Clock} label={t("marine.highTide")} value={tideTime(tide.highTideTime, tide.highTideHeightM)} />
