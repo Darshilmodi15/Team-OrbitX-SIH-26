@@ -306,3 +306,15 @@ it("rejects map context from a different saved location", async () => {
   expect(snapshotMock.adopt).not.toHaveBeenCalled();
   expect(sendChatMessage).not.toHaveBeenCalled();
 });
+
+
+it("shows loading instead of an empty conversation while saved history is pending", async () => {
+  let resolve!: (value: any) => void;
+  vi.mocked(fetchConversations).mockReturnValueOnce(new Promise(done => { resolve = done; }));
+  vi.mocked(fetchConversation).mockResolvedValueOnce({id:"saved", title:"Saved chat", updated_at:new Date().toISOString(), messages:[{id:"m1",role:"assistant",content:"Persisted answer",created_at:new Date().toISOString()}]});
+  mount("/assistant/c/saved");
+  expect(screen.queryByText("No conversations yet")).not.toBeInTheDocument();
+  expect(screen.queryByText("How can I help at sea today?")).not.toBeInTheDocument();
+  resolve([]);
+  expect(await screen.findByText("Persisted answer")).toBeInTheDocument();
+});

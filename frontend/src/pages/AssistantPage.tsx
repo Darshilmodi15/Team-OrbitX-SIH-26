@@ -304,6 +304,7 @@ export default function AssistantPage() {
   >(null);
   const requestInFlightRef = useRef(false);
   const historyVersion = useRef(0);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const newlyCreatedConversation = useRef<string | null>(null);
 
   const [voiceBusy, setVoiceBusy] = useState(false);
@@ -359,6 +360,7 @@ export default function AssistantPage() {
     const sync = () => {
       if (requestInFlightRef.current) return;
       const version = historyVersion.current;
+      setHistoryLoading(true);
       Promise.all([
         fetchConversations(),
         conversationId
@@ -410,13 +412,15 @@ export default function AssistantPage() {
         })
         .catch(() => {
           if (!cancelled) setChatError("chat.requestFailed");
-        });
+        })
+        .finally(() => { if (!cancelled) setHistoryLoading(false); });
     };
     setActiveThreadId(conversationId || "");
     setChatError(null);
-    if (newlyCreatedConversation.current === conversationId)
+    if (newlyCreatedConversation.current === conversationId) {
       newlyCreatedConversation.current = null;
-    else sync();
+      setHistoryLoading(false);
+    } else sync();
     window.addEventListener("focus", sync);
     return () => {
       cancelled = true;
@@ -895,7 +899,7 @@ export default function AssistantPage() {
         </label>
         <p className="sidebar-caption">{copy.history}</p>
         <div className="chat-history">
-          {!threads.length && <p className="sidebar-empty">{copy.empty}</p>}
+          {!threads.length && <p className="sidebar-empty" role={historyLoading ? "status" : undefined}>{historyLoading ? t("state.loading") : copy.empty}</p>}
           {threads
             .filter((th) =>
               th.title.toLocaleLowerCase().includes(search.toLocaleLowerCase()),
@@ -1010,7 +1014,9 @@ export default function AssistantPage() {
           </Link>
         )}
         <div className="chat-stream">
-          {!currentThread.messages.length ? (
+          {historyLoading && conversationId && !currentThread.messages.length ? (
+            <p role="status" className="chat-welcome">{t("state.loading")}</p>
+          ) : !currentThread.messages.length ? (
             <div className="chat-welcome">
               <OrcaLogo className="size-12" />
               <h2>{copy.welcome}</h2>
