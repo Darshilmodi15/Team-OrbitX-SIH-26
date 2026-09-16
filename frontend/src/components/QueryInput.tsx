@@ -384,7 +384,7 @@ export default function QueryInput({
       {isTranscribing && (
         <div className="mb-2.5 flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-800">
           <span className="h-3 w-3 animate-spin rounded-full border-2 border-teal-600 border-t-transparent" />
-          <span>Transcribing speech through Sarvam AI Saaras v3...</span>
+          <span>Transcribing speech through Bhashini AI...</span>
         </div>
       )}
 

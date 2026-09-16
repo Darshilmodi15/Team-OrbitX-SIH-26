@@ -131,9 +131,8 @@ class TestVoiceEndpoints(unittest.TestCase):
         res = self.client.get("/api/voice/speakers")
         self.assertEqual(res.status_code, 200)
         data = res.json()
-        self.assertIn("Sarvam AI", data["provider"])
-        self.assertEqual(data["default_speaker"], "shubh")
-        self.assertIn("ratan", data["available_speakers"])
+        self.assertTrue("Bhashini" in data["provider"] or "Sarvam AI" in data["provider"])
+        self.assertIn(data["default_speaker"], ["shubh", "female"])
         self.assertIn("gu", data["supported_languages"])
 
     def test_voice_speak_endpoint(self):

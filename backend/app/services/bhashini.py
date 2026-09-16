@@ -754,7 +754,7 @@ class BhashiniService:
             )
 
         # Only unresolved text needs an external identification request.
-        if any(c.isalpha() for c in cleaned_text) and self.sarvam_service:
+        if any(c.isalpha() for c in cleaned_text) and self.sarvam_service and self.is_sarvam_configured:
             sarvam_res = self.sarvam_service.identify_language(cleaned_text)
             if sarvam_res is not None:
                 if session_id:
@@ -1274,36 +1274,25 @@ class BhashiniService:
         
         Pipeline:
         1. Identity check (source == target)
-        2. Sarvam AI Mayura v1 Translation (if SARVAM_API_KEY configured)
-        3. Live Bhashini NMT (MeitY ULCA / Dhruva API)
-        4. Gemini NMT Fallback
-        5. Maritime Rule-based Domain Fallback
+        2. Live Bhashini NMT (MeitY ULCA / Dhruva API)
+        3. Gemini NMT Fallback
+        4. Maritime Rule-based Domain Fallback
         """
         if not text or not text.strip() or source_lang == target_lang:
             return text
 
-        # 1. Try Sarvam AI Mayura v1 Translation if configured
-        try:
-            from app.services.language import language_service
-            if language_service and language_service.is_configured:
-                sarvam_trans = language_service.translate(text, source_lang, target_lang)
-                if sarvam_trans and sarvam_trans.strip() and sarvam_trans != text:
-                    return sarvam_trans.strip()
-        except Exception as s_err:
-            logger.debug(f"Sarvam translation attempt failed: {s_err}")
-
-        # 2. Try Live Bhashini NMT API if credentials are present
+        # 1. Try Live Bhashini NMT API if credentials are present
         if self.is_configured:
             bhashini_res = self.translate_bhashini(text, source_lang, target_lang)
             if bhashini_res:
                 return bhashini_res
 
-        # 3. Try Gemini NMT Fallback
+        # 2. Try Gemini NMT Fallback
         gemini_result = self._translate_with_gemini(text, source_lang, target_lang)
         if gemini_result:
             return gemini_result
 
-        # 4. Fallback to Maritime domain translation
+        # 3. Fallback to Maritime domain translation
         dict_result = self._translate_with_dictionary(text, source_lang, target_lang)
         if dict_result and dict_result != text:
             return dict_result

@@ -7,7 +7,7 @@
  * - /api/marine/* (conditions, risk, forecast)
  * - /api/marine-boundaries/* (eez, check)
  * - /api/geofences
- * - /api/voice/* (Sarvam AI STT Saaras v3 & TTS Bulbul v3)
+ * - /api/voice/* (Bhashini AI STT & TTS)
  */
 
 const PRODUCTION_API_BASE_URL = 'https://orca-backend-ycue.onrender.com';
@@ -469,7 +469,7 @@ export async function fetchGeofences(lat?: number, lon?: number): Promise<any | 
 }
 
 /* ==========================================================================
-   Sarvam AI Voice & Speech APIs
+   Bhashini Voice & Speech APIs
    ========================================================================== */
 
 export async function transcribeVoiceAudio(

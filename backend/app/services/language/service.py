@@ -4,9 +4,11 @@ Unified Language & Speech Service for ORCA Marine AI.
 Supports interchangeable language providers (Sarvam AI, Bhashini, Mock/Gemini)
 with multi-turn session persistence, instant script classification, and caching.
 """
+import os
 import logging
 from typing import Any, Dict, Optional
 from app.services.language.base import LanguageProvider
+from app.services.language.bhashini_provider import BhashiniLanguageProvider
 from app.services.language.sarvam import SarvamLanguageProvider
 
 logger = logging.getLogger(__name__)
@@ -21,7 +23,7 @@ SUPPORTED_LANGUAGES: Dict[str, str] = {
     "te": "Telugu (తెలుగు)",
     "ml": "Malayalam (മലയാളം)",
     "kn": "Kannada (ಕನ್ನಡ)",
-    "or": "Odia (ଓଡ଼ିଆ)",
+    "or": "Odia (ଓડ଼ିଆ)",
     "pa": "Punjabi (ਪੰਜਾਬੀ)",
     "as": "Assamese (অসমীয়া)",
     "ur": "Urdu (اردو)",
@@ -31,10 +33,18 @@ SUPPORTED_LANGUAGES: Dict[str, str] = {
 class LanguageService:
     """
     Central Language & Speech Service coordinating translation, STT, and TTS.
+    Defaults to MeitY Bhashini as primary provider.
     """
 
     def __init__(self, provider: Optional[LanguageProvider] = None):
-        self.provider: LanguageProvider = provider or SarvamLanguageProvider()
+        if provider:
+            self.provider = provider
+        else:
+            configured_provider = os.getenv("LANGUAGE_PROVIDER", "bhashini").strip().lower()
+            if configured_provider == "sarvam":
+                self.provider = SarvamLanguageProvider()
+            else:
+                self.provider = BhashiniLanguageProvider()
         self._session_languages: Dict[str, str] = {}
         self._translation_cache: Dict[tuple[str, str, str], str] = {}
 

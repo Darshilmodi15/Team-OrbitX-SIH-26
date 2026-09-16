@@ -61,7 +61,7 @@ class TranscribeResponse(BaseModel):
     english_transcript: str = Field(..., description="English translation of transcribed speech")
     source: str = Field(..., description="Provider source (e.g. 'sarvam_saaras_v3')")
     is_mock: bool = Field(default=False, description="Whether mock provider was used")
-    provider: str = Field(default="sarvam", description="Normalized STT provider")
+    provider: str = Field(default="bhashini", description="Normalized STT provider")
     fallback_used: bool = False
     original_transcript: Optional[str] = None
     detected_languages: Optional[List[str]] = None
@@ -69,7 +69,7 @@ class TranscribeResponse(BaseModel):
     response_language: Optional[str] = None
     english_normalized_query: Optional[str] = None
     language_confidence: Optional[float] = None
-    transcription_provider: Optional[str] = "sarvam"
+    transcription_provider: Optional[str] = "bhashini"
 
 
 class SpeakRequest(BaseModel):
@@ -171,12 +171,13 @@ async def transcribe_audio_file(
     transcript = raw_transcript.strip()
     stt_detected = result.get("detected_iso")
     stt_lang = stt_detected if (stt_detected and stt_detected != "auto") else (language if language and language != "auto" else None)
+    provider_name = "bhashini" if "bhashini" in result.get("source", "") else ("sarvam" if "sarvam" in result.get("source", "") else "bhashini")
     from app.services.bhashini import bhashini_service
     decision = bhashini_service.determine_query_language(
         text=transcript,
         requested_lang=stt_lang or language,
         user_profile_lang=stt_lang,
-        transcription_provider="sarvam",
+        transcription_provider=provider_name,
     )
     resp_lang = decision.response_language
     if stt_lang and stt_lang not in ("en", "auto") and (resp_lang == "en" and not any(ord(c) >= 128 for c in transcript)):
@@ -194,9 +195,9 @@ async def transcribe_audio_file(
         language_code=sarvam_code,
         language_name=lang_name,
         english_transcript=eng_trans,
-        source=result.get("source", "sarvam_saaras_v3"),
+        source=result.get("source", f"{provider_name}_asr"),
         is_mock=False,
-        provider="sarvam",
+        provider=provider_name,
         fallback_used=decision.fallback_used,
         original_transcript=decision.original_transcript,
         detected_languages=decision.detected_languages,
@@ -204,7 +205,7 @@ async def transcribe_audio_file(
         response_language=decision.response_language,
         english_normalized_query=decision.english_normalized_query,
         language_confidence=decision.language_confidence,
-        transcription_provider=decision.transcription_provider,
+        transcription_provider=provider_name,
     )
 
 
@@ -256,12 +257,13 @@ def transcribe_base64_audio(
     transcript = raw_transcript.strip()
     stt_detected = result.get("detected_iso")
     stt_lang = stt_detected if (stt_detected and stt_detected != "auto") else (payload.language if payload.language and payload.language != "auto" else None)
+    provider_name = "bhashini" if "bhashini" in result.get("source", "") else ("sarvam" if "sarvam" in result.get("source", "") else "bhashini")
     from app.services.bhashini import bhashini_service
     decision = bhashini_service.determine_query_language(
         text=transcript,
         requested_lang=stt_lang or payload.language,
         user_profile_lang=stt_lang,
-        transcription_provider="sarvam",
+        transcription_provider=provider_name,
     )
     resp_lang = decision.response_language
     if stt_lang and stt_lang not in ("en", "auto") and (resp_lang == "en" and not any(ord(c) >= 128 for c in transcript)):
@@ -279,9 +281,9 @@ def transcribe_base64_audio(
         language_code=sarvam_code,
         language_name=lang_name,
         english_transcript=eng_trans,
-        source=result.get("source", "sarvam_saaras_v3"),
+        source=result.get("source", f"{provider_name}_asr"),
         is_mock=False,
-        provider="sarvam",
+        provider=provider_name,
         fallback_used=decision.fallback_used,
         original_transcript=decision.original_transcript,
         detected_languages=decision.detected_languages,
@@ -289,7 +291,7 @@ def transcribe_base64_audio(
         response_language=decision.response_language,
         english_normalized_query=decision.english_normalized_query,
         language_confidence=decision.language_confidence,
-        transcription_provider=decision.transcription_provider,
+        transcription_provider=provider_name,
     )
 
 
@@ -300,7 +302,7 @@ def synthesize_speech(
     authorization: Optional[str] = Header(None),
 ):
     """
-    Synthesizes regional Indic speech audio using Sarvam Bulbul v3 neural voices.
+    Synthesizes regional Indic speech audio using neural TTS (Bhashini / Sarvam).
     """
     rate_limiter.check("voice_tts", _resolve_caller_rate_key(request, authorization), limit=30, window_seconds=60)
     if len(payload.text) > MAX_TTS_CHARS:
@@ -313,13 +315,15 @@ def synthesize_speech(
 
     if result.get("is_mock") or not result.get("audio_base64"):
         raise HTTPException(status_code=503, detail="TTS_UPSTREAM_UNAVAILABLE")
+    default_speaker = "female" if "bhashini" in result.get("source", "") else "shubh"
+    default_source = "bhashini_tts" if "bhashini" in result.get("source", "") else "sarvam_bulbul_v3"
     return SpeakResponse(
         audio_base64=result.get("audio_base64"),
         audio_format=result.get("audio_format", "wav"),
-        sample_rate=result.get("sample_rate", 22050),
-        speaker=result.get("speaker", "shubh"),
+        sample_rate=result.get("sample_rate", 8000),
+        speaker=result.get("speaker", default_speaker),
         language_code=result.get("language_code", to_sarvam_code(payload.language or "en")),
-        source=result.get("source", "sarvam_bulbul_v3"),
+        source=result.get("source", default_source),
         is_mock=result.get("is_mock", False),
     )
 
@@ -327,11 +331,19 @@ def synthesize_speech(
 @router.get("/speakers")
 def list_available_speakers():
     """
-    Lists supported Sarvam voice personas and language mapping.
+    Lists supported voice personas and language mapping.
     """
+    provider_cls_name = getattr(language_service.provider, "__class__", type(None)).__name__.lower()
+    if "sarvam" in provider_cls_name:
+        return {
+            "provider": "Sarvam AI (Bulbul v3)",
+            "default_speaker": "shubh",
+            "available_speakers": list(BULBUL_V3_SPEAKERS),
+            "supported_languages": SUPPORTED_LANGUAGES,
+        }
     return {
-        "provider": "Sarvam AI (Bulbul v3)",
-        "default_speaker": "shubh",
-        "available_speakers": list(BULBUL_V3_SPEAKERS),
+        "provider": "MeitY Bhashini (IITM / AI4Bharat Indic-TTS)",
+        "default_speaker": "female",
+        "available_speakers": ["female", "male"],
         "supported_languages": SUPPORTED_LANGUAGES,
     }

@@ -1,5 +1,6 @@
 """Language & Speech service exports for ORCA Marine AI."""
 from app.services.language.base import LanguageProvider
+from app.services.language.bhashini_provider import BhashiniLanguageProvider
 from app.services.language.sarvam import (
     BULBUL_V3_SPEAKERS,
     SarvamLanguageProvider,
@@ -14,6 +15,7 @@ from app.services.language.service import (
 
 __all__ = [
     "LanguageProvider",
+    "BhashiniLanguageProvider",
     "BULBUL_V3_SPEAKERS",
     "SarvamLanguageProvider",
     "LanguageService",
@@ -22,3 +24,4 @@ __all__ = [
     "to_sarvam_code",
     "to_iso_code",
 ]
+

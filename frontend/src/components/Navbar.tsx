@@ -235,7 +235,7 @@ export default function Navbar({
               <div className="absolute right-0 top-full mt-1.5 z-50 w-52 rounded-xl border border-slate-200 bg-white p-1 shadow-xl animate-scaleIn">
                 <div className="px-2 py-1.5 border-b border-slate-100">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    {t.selectLanguage} (Sarvam AI)
+                    {t.selectLanguage} (Bhashini AI)
                   </p>
                 </div>
                 <div className="max-h-64 overflow-y-auto py-1">

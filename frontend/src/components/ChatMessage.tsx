@@ -73,7 +73,7 @@ export default function ChatMessage({ message }: ChatMessageProps) {
           <div className="flex items-center gap-2">
             <span className="font-extrabold text-[#0A2540] text-xs">ORCA Marine AI</span>
             <span className="px-1.5 py-0.2 rounded bg-teal-50 text-[#0D9488] font-mono font-bold text-[9px] border border-teal-200">
-              INCOIS & SARVAM AI
+              INCOIS & BHASHINI AI
             </span>
           </div>
           <span className="text-slate-400 font-mono text-[10px]">{message.timestamp}</span>
