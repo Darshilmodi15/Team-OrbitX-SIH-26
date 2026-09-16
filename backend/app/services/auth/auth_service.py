@@ -370,6 +370,55 @@ class AuthService:
         profile = self._to_profile(user_data)
         return profile, token
 
+    def login_or_register_google(
+        self, subject: str, email: str, name: str,
+        authoritative_email: bool, preferred_language: str = "en",
+        user_agent: str = "", ip_address: str = "",
+    ) -> Tuple[UserProfile, str]:
+        """Bind verified Google subjects to durable accounts; never mint fallback users."""
+        from fastapi import HTTPException
+        from sqlalchemy.exc import IntegrityError
+        from sqlalchemy import func
+        from app.db.session import get_db_context
+        from app.db.models import User
+        from app.repositories import UserRepository
+        email_clean = email.strip().lower()
+        try:
+            with get_db_context() as db:
+                db_user = db.query(User).filter(User.google_subject == subject).with_for_update().first()
+                if db_user is None:
+                    db_user = db.query(User).filter(func.lower(User.email) == email_clean).with_for_update().first()
+                    if db_user is not None:
+                        if db_user.google_subject or not authoritative_email:
+                            raise HTTPException(status_code=409, detail="Sign in with your existing ORCA credentials to use this account.")
+                    else:
+                        pwd_hash, salt = hash_password(uuid.uuid4().hex + uuid.uuid4().hex)
+                        db_user = UserRepository.create_user(
+                            db=db, name=name, email=email_clean,
+                            password_hash=pwd_hash, password_salt=salt,
+                            preferred_language=preferred_language, role=UserRole.USER.value,
+                        )
+                    db_user.google_subject = subject
+                if not db_user.is_active:
+                    raise HTTPException(status_code=403, detail="This account is disabled.")
+                db_user.last_login = datetime.now(timezone.utc)
+                db.flush()
+                user_id = db_user.id
+                role = db_user.role
+                identity = db_user.email or user_id
+        except HTTPException:
+            raise
+        except IntegrityError as exc:
+            raise HTTPException(status_code=409, detail="Account sign-in changed. Please retry.") from exc
+        except Exception as exc:
+            logger.warning("Google account persistence failed: %s", type(exc).__name__)
+            raise HTTPException(status_code=503, detail="ACCOUNT_STORAGE_UNAVAILABLE") from exc
+        profile = self.get_user_by_id(user_id)
+        if profile is None:
+            raise HTTPException(status_code=503, detail="ACCOUNT_STORAGE_UNAVAILABLE")
+        token = create_token(user_id, role, identity, user_agent, ip_address)
+        return profile, token
+
     def get_user_by_id(self, user_id: str) -> Optional[UserProfile]:
         """Retrieves a profile, preferring current database role/account state."""
         user_data = None

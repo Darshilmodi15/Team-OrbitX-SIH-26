@@ -2,8 +2,12 @@
 Authentication and User Profile Router for ORCA Marine AI.
 """
 from typing import Optional
-from fastapi import APIRouter, Depends, Header, HTTPException, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from pydantic import BaseModel, Field, ConfigDict
+import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 from app.models.user_models import (
     AuthResponse,
@@ -20,8 +24,9 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication & User Management"]
 
 
 class GoogleLoginRequest(BaseModel):
-    google_token: str = Field(..., min_length=20, description="OAuth ID token from Google")
-    preferred_language: Optional[str] = Field(default="en", description="Default language preference")
+    model_config = ConfigDict(extra="forbid")
+    google_token: str = Field(..., min_length=20, max_length=16384, description="OAuth ID token from Google")
+    preferred_language: Optional[str] = Field(default="en", max_length=10, description="Default language preference")
 
 
 def get_current_user_from_header(authorization: Optional[str] = Header(None)) -> UserProfile:
@@ -88,14 +93,42 @@ def login_user(request: LoginRequest):
 
 
 @router.post("/google", response_model=AuthResponse)
-def login_with_google(request: GoogleLoginRequest):
-    """
-    Handles Google OAuth sign-in / registration for mobile & web.
-    """
-    raise HTTPException(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail="Google sign-in is disabled until server-side ID-token verification is configured.",
+def login_with_google(request: GoogleLoginRequest, req: Request):
+    """Verify a Google ID token before creating an ordinary ORCA session."""
+    google_client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+    if not google_client_id:
+        raise HTTPException(status_code=503, detail="Google sign-in is not configured.")
+    from google.oauth2 import id_token
+    from google.auth.transport import requests as google_requests
+    from google.auth.exceptions import GoogleAuthError, TransportError
+    import requests
+    try:
+        id_info = id_token.verify_oauth2_token(
+            request.google_token, google_requests.Request(), google_client_id,
+        )
+    except (TransportError, requests.exceptions.RequestException) as exc:
+        logger.warning("Google verification unavailable: %s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="Google verification is temporarily unavailable. Try again.") from exc
+    except (GoogleAuthError, ValueError, TypeError, KeyError) as exc:
+        raise HTTPException(status_code=401, detail="Invalid or expired Google ID token.") from exc
+    email = id_info.get("email")
+    subject = id_info.get("sub")
+    if (id_info.get("email_verified") is not True or not isinstance(email, str)
+            or "@" not in email or len(email) > 255
+            or not isinstance(subject, str) or not subject or len(subject) > 255):
+        raise HTTPException(status_code=401, detail="Google sign-in requires a verified email and account identity.")
+    # Only Gmail and verified Workspace claims establish current ownership of
+    # an email for linking. Other existing accounts require password sign-in.
+    authoritative_email = email.lower().endswith("@gmail.com") or bool(id_info.get("hd"))
+    name = str(id_info.get("name") or id_info.get("given_name") or email.split("@")[0])[:255]
+    profile, token = auth_service.login_or_register_google(
+        subject=subject, email=email, name=name,
+        authoritative_email=authoritative_email,
+        preferred_language=request.preferred_language or "en",
+        user_agent=req.headers.get("user-agent", "")[:512],
+        ip_address=req.client.host if req.client else "",
     )
+    return AuthResponse(access_token=token, user=profile)
 
 
 # User profile routes mounted at /api/user

@@ -274,6 +274,20 @@ export async function loginUser(email_or_phone: string, password: string) {
   return await response.json();
 }
 
+export async function loginGoogle(googleToken: string, preferredLanguage = 'en') {
+  const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal: AbortSignal.timeout(60000),
+    body: JSON.stringify({ google_token: googleToken, preferred_language: preferredLanguage }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(typeof err.detail === 'string' ? err.detail : 'Google sign-in failed. Please retry.');
+  }
+  return response.json();
+}
+
 export async function getUserProfile(token?: string) {
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = 'Bearer ' + token;

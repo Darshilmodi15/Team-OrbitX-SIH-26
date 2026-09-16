@@ -1,12 +1,13 @@
 import { clearMarineCaches } from "./marine-cache";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useRef, type ReactNode } from "react";
-import { logoutSession, getUserProfile, fetchSavedLocation, loginUser, registerUser, setAuthFailureHandler } from "@/services/api";
+import { logoutSession, getUserProfile, fetchSavedLocation, loginGoogle, loginUser, registerUser, setAuthFailureHandler } from "@/services/api";
 import type { LocationInfo, OrcaUser } from "./types";
 
 const SESSION_TOKEN_KEY = "orca.auth.session";
 type Credentials = { contact: string; password: string; remember: boolean };
 type Registration = Credentials & { name: string; preferredLanguage?: string };
 type SessionValue = { user: OrcaUser | null; location: LocationInfo | null; ready: boolean; sessionError: boolean; retrySession: () => void; locationReady: boolean; token: string | null;
+  signInGoogle: (credential: string, remember: boolean, language?: string) => Promise<OrcaUser>;
   signIn: (input: Credentials) => Promise<OrcaUser>; register: (input: Registration) => Promise<OrcaUser>;
   signOut: (redirectUrl?: string) => Promise<void>; setLocation: (loc: LocationInfo | null) => void };
 const SessionContext = createContext<SessionValue | null>(null);
@@ -111,9 +112,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return next;
   }, []);
   const signIn = useCallback(async ({ contact, password, remember }: Credentials) => establish(await loginUser(contact, password), remember), [establish]);
+  const signInGoogle = useCallback(async (credential: string, remember: boolean, language = "en") => establish(await loginGoogle(credential, language), remember), [establish]);
   const register = useCallback(async ({ contact, password, remember, name, preferredLanguage }: Registration) => { const isEmail = contact.includes("@"); return establish(await registerUser({ name, password, preferred_language: preferredLanguage || "en", ...(isEmail ? { email: contact } : { mobile_number: contact }) }), remember); }, [establish]);
   const setLocation = useCallback((loc: LocationInfo | null) => { locationVersion.current++; setLocationState(loc); setLocationReady(true); }, []);
-  const value = useMemo(() => ({ user, token, location, ready, sessionError, retrySession, locationReady, signIn, register, signOut, setLocation }), [user, token, location, ready, sessionError, retrySession, locationReady, signIn, register, signOut, setLocation]);
+  const value = useMemo(() => ({ user, token, location, ready, sessionError, retrySession, locationReady, signIn, signInGoogle, register, signOut, setLocation }), [user, token, location, ready, sessionError, retrySession, locationReady, signIn, signInGoogle, register, signOut, setLocation]);
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
 export function useSession() { const ctx = useContext(SessionContext); if (!ctx) throw new Error("useSession must be used inside SessionProvider"); return ctx; }

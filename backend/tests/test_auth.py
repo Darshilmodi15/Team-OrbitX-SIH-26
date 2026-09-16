@@ -116,8 +116,10 @@ class TestAuthEndpoints(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json()["user"]["role"], "USER")
 
-    def test_google_email_only_bypass_is_disabled(self):
-        res = self.client.post("/api/auth/google", json={"google_token": "x" * 30})
+    def test_google_without_configuration_is_disabled(self):
+        from unittest.mock import patch
+        with patch.dict(os.environ, {"GOOGLE_CLIENT_ID": ""}):
+            res = self.client.post("/api/auth/google", json={"google_token": "x" * 30})
         self.assertEqual(res.status_code, 503)
 
     def test_production_environment_never_seeds_predictable_accounts(self):

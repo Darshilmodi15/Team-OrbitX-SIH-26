@@ -42,6 +42,7 @@ class User(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     name = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, nullable=True, index=True)
+    google_subject = Column(String(255), unique=True, nullable=True, index=True)
     mobile_number = Column(String(20), unique=True, nullable=True, index=True)
     password_hash = Column(String(255), nullable=False)
     password_salt = Column(String(64), nullable=False)

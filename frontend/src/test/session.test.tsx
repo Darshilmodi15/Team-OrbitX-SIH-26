@@ -2,8 +2,8 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 
-vi.mock('@/services/api', () => ({ logoutSession: vi.fn().mockResolvedValue(undefined), loginUser: vi.fn(), registerUser: vi.fn(), getUserProfile: vi.fn(), fetchSavedLocation: vi.fn().mockResolvedValue(null), setAuthFailureHandler: vi.fn() }));
-import { getUserProfile, logoutSession, loginUser, fetchSavedLocation } from '@/services/api';
+vi.mock('@/services/api', () => ({ logoutSession: vi.fn().mockResolvedValue(undefined), loginUser: vi.fn(), loginGoogle: vi.fn(), registerUser: vi.fn(), getUserProfile: vi.fn(), fetchSavedLocation: vi.fn().mockResolvedValue(null), setAuthFailureHandler: vi.fn() }));
+import { getUserProfile, logoutSession, loginUser, loginGoogle, fetchSavedLocation } from '@/services/api';
 import { SessionProvider, useSession } from '@/lib/orca/session';
 
 const wrapper = ({ children }: { children: ReactNode }) => <SessionProvider>{children}</SessionProvider>;
@@ -118,4 +118,25 @@ it('keeps the token and offers retry when profile storage is temporarily down',a
   vi.mocked(getUserProfile).mockResolvedValueOnce(authResult.user);
   act(()=>result.current.retrySession());
   await waitFor(()=>expect(result.current.user?.id).toBe('u1'));
+});
+
+
+it('establishes Google login through the same session and remember preference', async () => {
+  vi.mocked(loginGoogle).mockResolvedValue(authResult);
+  const {result} = renderHook(() => useSession(), {wrapper});
+  await waitFor(() => expect(result.current.ready).toBe(true));
+  await act(() => result.current.signInGoogle('google-id-token', false, 'gu'));
+  expect(loginGoogle).toHaveBeenCalledWith('google-id-token', 'gu');
+  expect(result.current.user?.id).toBe('u1');
+  expect(sessionStorage.getItem('orca.auth.session')).toBe(authResult.access_token);
+  expect(localStorage.getItem('orca.auth.session')).toBeNull();
+});
+
+it('does not establish a session when Google verification fails', async () => {
+  vi.mocked(loginGoogle).mockRejectedValue(new Error('Invalid Google token'));
+  const {result} = renderHook(() => useSession(), {wrapper});
+  await waitFor(() => expect(result.current.ready).toBe(true));
+  await act(async () => { await expect(result.current.signInGoogle('invalid', true)).rejects.toThrow('Invalid Google token'); });
+  expect(result.current.user).toBeNull();
+  expect(sessionStorage.getItem('orca.auth.session')).toBeNull();
 });

@@ -1,5 +1,6 @@
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import {
   AlertCircle,
   ArrowLeft,
@@ -29,7 +30,7 @@ interface FieldErrors {
 
 export default function AuthPage() {
   const { lang, t } = useI18n();
-  const { signIn, register } = useSession();
+  const { signIn, signInGoogle, register } = useSession();
   const navigate = useNavigate();
   const { state } = useLocation();
   const [mode, setMode] = useState<"signin" | "register">("signin");
@@ -41,6 +42,7 @@ export default function AuthPage() {
   });
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
+  const submittingRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [remember, setRemember] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -87,12 +89,41 @@ export default function AuthPage() {
     return Object.keys(errors).length === 0;
   };
 
+  async function submitGoogle(credential: string) {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setIsSubmitting(true);
+    setGeneralError(null);
+    try {
+      const signedIn = await signInGoogle(credential, remember, lang);
+      const from =
+        typeof state?.from === "string" &&
+        /^\/assistant\/c\/[0-9a-f-]{36}$/i.test(state.from)
+          ? state.from
+          : null;
+      navigate(
+        from || (signedIn.role === "user" ? "/location" : "/dashboard"),
+        { replace: true },
+      );
+    } catch (error) {
+      setGeneralError(
+        error instanceof Error
+          ? error.message
+          : "Google sign-in failed. Please retry.",
+      );
+    } finally {
+      submittingRef.current = false;
+      setIsSubmitting(false);
+    }
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (submittingRef.current) return;
     setGeneralError(null);
 
     if (!validate()) return;
-
+    submittingRef.current = true;
     setIsSubmitting(true);
     try {
       const contact = form.contact.trim();
@@ -132,6 +163,7 @@ export default function AuthPage() {
           : "Authentication failed. Please verify credentials and retry.";
       setGeneralError(msg);
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   }
@@ -222,6 +254,19 @@ export default function AuthPage() {
             >
               <AlertCircle className="size-4 shrink-0 mt-0.5" />
               <span>{generalError}</span>
+            </div>
+          )}
+
+          {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+            <div className="my-5">
+              <GoogleSignInButton
+                onSuccess={submitGoogle}
+                onError={setGeneralError}
+                disabled={isSubmitting}
+              />
+              <p className="mt-4 text-center text-xs text-muted-foreground">
+                or continue with email or mobile
+              </p>
             </div>
           )}
 
