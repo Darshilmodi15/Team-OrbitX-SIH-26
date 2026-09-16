@@ -228,7 +228,7 @@ export default function CoastMap({
       );
   }, [ready, center.lat, center.lon, recenter]);
   return (
-    <div className="space-y-2">
+    <div className="coast-map space-y-2">
       {tileError && (
         <p role="status" className="text-sm">
           Map tiles unavailable. Snapshot values remain available below.

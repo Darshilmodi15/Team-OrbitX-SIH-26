@@ -1071,7 +1071,7 @@
   flex: 1;
   min-height: 0;
 }
-.full-map .map-canvas > div {
+.full-map .map-canvas > .coast-map {
   height: 100%;
 }
 .full-map .map-canvas .leaflet-container {
