@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&display=swap');
 .public-page {
   background: #f8faf8;
   color: #17332f;
@@ -84,15 +85,18 @@
   font-size: 13px;
 }
 .public-hero-word {
-  font-size: clamp(100px, min(26vw, 32vh), 360px);
-  font-weight: 650;
+  font-family: 'Plus Jakarta Sans', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: clamp(75px, min(19vw, 24vh), 250px);
+  font-weight: 800;
   line-height: 1;
-  letter-spacing: -0.065em;
+  letter-spacing: -0.04em;
   text-align: center;
-  margin: 25px 0 0;
-  opacity: 0.94;
+  margin: 18px auto 0;
   user-select: none;
-  color: #e5f7ef;
+  pointer-events: none;
+  color: #ffffff;
+  opacity: 0.92;
+  text-shadow: 0 4px 24px rgba(0, 18, 30, 0.35);
 }
 .public-hero-bottom {
   margin-top: auto;
@@ -486,9 +490,9 @@
     font-size: 12px;
   }
   .public-hero-word {
-    font-size: 27vw;
-    margin-top: 50px;
-    letter-spacing: -0.055em;
+    font-size: 20vw;
+    margin-top: 30px;
+    letter-spacing: -0.04em;
   }
   .public-hero h1 {
     font-size: 45px;
