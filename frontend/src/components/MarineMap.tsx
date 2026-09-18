@@ -354,6 +354,12 @@ export default function MarineMap({
         className="h-full w-full z-0"
       >
         <TileLayer attribution={tileAttribution} url={tileUrl} maxZoom={19} />
+        {baseMapType === 'satellite' && (
+          <TileLayer
+            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png"
+            maxZoom={19}
+          />
+        )}
         <MapResizer />
         <MapController center={activeUserLocation} highlightTarget={highlightedMapTarget} />
         <MapEventsHandler onMapClick={handleMapClick} />
