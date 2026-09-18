@@ -42,6 +42,7 @@ import {
   sendChatMessage,
 } from "@/services/api";
 import AssistantPage from "@/pages/AssistantPage";
+vi.mock('@/components/orca/AppearanceMenu', () => ({ AppearanceMenu: () => null }));
 beforeEach(() => {
   vi.mocked(fetchConversation).mockReset();
   vi.mocked(fetchConversations).mockResolvedValue([]);

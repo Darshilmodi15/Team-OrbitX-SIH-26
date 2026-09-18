@@ -30,6 +30,8 @@ type Props = {
   snapshot?: MarineSnapshot;
   compact?: boolean;
   full?: boolean;
+  /** False in the picker until a person explicitly chooses a location. */
+  hasSelection?: boolean;
 };
 export function MapPanel({
   center,
@@ -39,6 +41,7 @@ export function MapPanel({
   snapshot: provided,
   compact = false,
   full = false,
+  hasSelection = true,
 }: Props) {
   const { t, lang } = useI18n();
   const network = useConnectivity();
@@ -221,7 +224,7 @@ export function MapPanel({
               {t("map.layers")}
             </button>
           )}
-          {mode !== "text" && (
+          {mode !== "text" && hasSelection && (
             <button
               className="workspace-icon"
               title={copy.recenter}
@@ -256,7 +259,8 @@ export function MapPanel({
               showPFZ={pfz}
               showEEZ={eez}
               showConditions={conditions}
-              showLocation={pin}
+              showLocation={pin && hasSelection}
+              zoom={onSelect ? (hasSelection ? 8 : 4) : undefined}
               recenter={recenter}
               showVectors={vectors}
               species={showSpecies && optionalAllowed ? species.data : undefined}

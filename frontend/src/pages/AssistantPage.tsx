@@ -43,6 +43,7 @@ import {
 import { VoiceControls } from "@/components/orca/VoiceControls";
 import { ChatSnapshot } from "@/components/orca/ChatSnapshot";
 import { LanguageMenu } from "@/components/orca/LanguageMenu";
+import { AppearanceMenu } from "@/components/orca/AppearanceMenu";
 import "@/components/orca/workspace.css";
 import { OrcaLogo } from "@/components/orca/Logo";
 import { SEO } from "@/components/SEO";
@@ -430,7 +431,9 @@ export default function AssistantPage() {
   }, [user?.id, conversationId]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    // Scroll only the conversation, never its ancestors or the document.
+    const stream = endRef.current?.parentElement;
+    if (stream && currentThread.messages.length) stream.scrollTo({ top: stream.scrollHeight, behavior: "smooth" });
   }, [currentThread.messages.length, isThinking]);
 
   useEffect(() => {
@@ -982,6 +985,7 @@ export default function AssistantPage() {
             {currentThread.messages.length ? currentThread.title : "ORCA"}
           </h1>
           <LanguageMenu />
+          <AppearanceMenu />
           <Link
             className="workspace-icon"
             to="/map"

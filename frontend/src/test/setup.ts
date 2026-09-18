@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { afterEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
+if (typeof HTMLElement !== 'undefined') Object.defineProperty(HTMLElement.prototype, 'scrollTo', {value: () => {}, configurable: true});
 
 function memoryStorage(): Storage {
   const values = new Map<string, string>();

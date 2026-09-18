@@ -17,6 +17,7 @@ import { OrcaLogo } from "@/components/orca/Logo";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
 import { LanguageMenu } from "@/components/orca/LanguageMenu";
+import { AppearanceMenu } from "@/components/orca/AppearanceMenu";
 import "@/components/orca/public-pages.css";
 import { SEO } from "@/components/SEO";
 import { trackEvent } from "@/lib/orca/analytics";
@@ -190,7 +191,7 @@ export default function AuthPage() {
               <ArrowLeft className="size-3.5 transition-transform group-hover:-translate-x-0.5" />
               <span>Back to home</span>
             </Link>
-            <LanguageMenu />
+            <div className="flex items-center gap-1"><LanguageMenu /><AppearanceMenu /></div>
           </div>
 
           <div className="flex items-center gap-3">

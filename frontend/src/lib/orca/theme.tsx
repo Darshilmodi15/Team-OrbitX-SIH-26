@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useLayoutEffect, useState, useMemo, useCallback } from "react";
 
 export type Theme = "light" | "dark" | "system";
 export type ResolvedTheme = "light" | "dark";
@@ -9,11 +9,15 @@ interface ThemeContextValue {
   isDark: boolean;
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
+  textSize: number;
+  setTextSize: (size: number) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 const STORAGE_KEY = "orca_theme";
+export const TEXT_SIZES = [90, 100, 112.5, 125, 150] as const;
+const TEXT_SIZE_KEY = "orca_text_size";
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<Theme>(() => {
@@ -23,15 +27,23 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return stored;
       }
     } catch {}
-    return "light";
+    return "system";
+  });
+  const [textSize, setTextSizeState] = useState(() => {
+    try {
+      const stored = Number(localStorage.getItem(TEXT_SIZE_KEY));
+      if (TEXT_SIZES.some(size => size === stored)) return stored;
+    } catch { /* Use the browser default when storage is unavailable. */ }
+    return 100;
   });
 
   const [systemDark, setSystemDark] = useState(() => {
-    if (typeof window === "undefined") return false;
+    if (typeof window === "undefined" || !window.matchMedia) return false;
     return window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
 
   useEffect(() => {
+    if (!window.matchMedia) return;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const handler = (e: MediaQueryListEvent) => setSystemDark(e.matches);
     media.addEventListener("change", handler);
@@ -43,7 +55,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const isDark = resolvedTheme === "dark";
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = document.documentElement;
     if (isDark) {
       root.classList.add("dark");
@@ -51,6 +63,16 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       root.classList.remove("dark");
     }
   }, [isDark]);
+
+  useLayoutEffect(() => {
+    document.documentElement.style.fontSize = `${textSize}%`;
+  }, [textSize]);
+
+  const setTextSize = useCallback((size: number) => {
+    if (!TEXT_SIZES.some(value => value === size)) return;
+    setTextSizeState(size);
+    try { localStorage.setItem(TEXT_SIZE_KEY, String(size)); } catch { /* Optional preference. */ }
+  }, []);
 
   const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme);
@@ -64,8 +86,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [resolvedTheme, setTheme]);
 
   const value = useMemo(
-    () => ({ theme, resolvedTheme, isDark, setTheme, toggleTheme }),
-    [theme, resolvedTheme, isDark, setTheme, toggleTheme]
+    () => ({ theme, resolvedTheme, isDark, setTheme, toggleTheme, textSize, setTextSize }),
+    [theme, resolvedTheme, isDark, setTheme, toggleTheme, textSize, setTextSize]
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

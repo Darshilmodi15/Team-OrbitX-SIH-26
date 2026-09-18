@@ -11,6 +11,7 @@ import { RouteAnalyticsListener } from "./lib/orca/analytics";
 import { OrcaLogo } from "./components/orca/Logo";
 import { LocationGate } from "./components/orca/LocationGate";
 import { Radio } from "lucide-react";
+import { RouteScrollReset } from "./components/orca/RouteScrollReset";
 
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const LanguagePage = lazy(() => import("./pages/LanguagePage"));
@@ -90,6 +91,7 @@ export default function App() {
             <BrowserRouter>
               <RouteAnalyticsListener />
               <Suspense fallback={<RouteFallback />}>
+                <RouteScrollReset />
                 <Routes>
                   <Route path="/" element={<LandingPage />} />
                   <Route path="/language" element={<LanguagePage />} />

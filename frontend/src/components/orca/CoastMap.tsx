@@ -23,6 +23,7 @@ export default function CoastMap({
   showVectors = false,
   species,
   earth,
+  zoom,
 }: {
   center: Coords;
   interactive?: boolean;
@@ -39,6 +40,7 @@ export default function CoastMap({
   showVectors?: boolean;
   species?: SpeciesResult;
   earth?: EarthResult;
+  zoom?: number;
 }) {
   const el = useRef<HTMLDivElement>(null),
     mapRef = useRef<LeafletMap | null>(null),
@@ -47,6 +49,7 @@ export default function CoastMap({
     selectRef = useRef(onSelect);
   selectRef.current = onSelect;
   const inspectRef = useRef(onInspect);
+  const previousZoom = useRef(zoom);
   inspectRef.current = onInspect;
   const [ready, setReady] = useState(false),
     [tileError, setTileError] = useState(false);
@@ -63,7 +66,7 @@ export default function CoastMap({
       leaflet.current = L;
       const map = L.map(el.current, {
         center: [center.lat, center.lon],
-        zoom: 8,
+        zoom: zoom ?? 8,
         fadeAnimation: false,
         zoomControl: false,
         dragging: interactive,
@@ -257,17 +260,19 @@ export default function CoastMap({
     t,
   ]);
   useEffect(() => {
-    if (ready)
-      mapRef.current?.setView(
-        [center.lat, center.lon],
-        mapRef.current.getZoom(),
-      );
-  }, [ready, center.lat, center.lon, recenter]);
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    // Zoom in on the first explicit selection, then preserve user zoom
+    // while they fine-tune their pin with subsequent map clicks.
+    const nextZoom = previousZoom.current !== zoom ? zoom ?? map.getZoom() : map.getZoom();
+    previousZoom.current = zoom;
+    map.setView([center.lat, center.lon], nextZoom);
+  }, [ready, center.lat, center.lon, recenter, zoom]);
   return (
     <div className="coast-map space-y-2">
       {tileError && (
         <p role="status" className="text-sm">
-          Map tiles unavailable. Snapshot values remain available below.
+          {onSelect ? "Map tiles unavailable. You can still search or enter coordinates." : "Map tiles unavailable. Snapshot values remain available below."}
         </p>
       )}
       <div

@@ -1,12 +1,12 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Laptop, Loader2, Monitor, Moon, Smartphone, Sun, Trash2, X } from "lucide-react";
+import { Loader2, Monitor, Smartphone, X } from "lucide-react";
 import { AppShell } from "@/components/orca/AppShell";
 import { SEO } from "@/components/SEO";
 import { openCookieSettings } from "@/components/CookieBanner";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
-import { useTheme } from "@/lib/orca/theme";
+import { AppearanceControls } from "@/components/orca/AppearanceMenu";
 import { formatCoords } from "@/lib/orca/geo";
 import { cn } from "@/lib/utils";
 import { fetchActiveSessions, revokeSessionById, type DeviceSessionInfo } from "@/services/api";
@@ -30,7 +30,6 @@ function timeAgo(iso: string | null): string {
 
 export default function SettingsPage() {
   const { t } = useI18n();
-  const { theme, setTheme } = useTheme();
   const { user, location, signOut } = useSession();
 
   const [sessions, setSessions] = useState<DeviceSessionInfo[]>([]);
@@ -64,53 +63,9 @@ export default function SettingsPage() {
       />
       <h1 className="text-xl font-semibold text-foreground">{t("nav.settings")}</h1>
 
-      {/* Theme Settings Section */}
-      <section className="mt-4 rounded-md border border-border bg-card p-4 shadow-xs">
-        <h2 className="text-sm font-semibold text-foreground">{t("theme.title")}</h2>
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          <button
-            type="button"
-            onClick={() => setTheme("light")}
-            aria-pressed={theme === "light"}
-            className={cn(
-              "flex min-h-11 flex-col items-center justify-center gap-1 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-muted transition-colors cursor-pointer",
-              theme === "light"
-                ? "border-secondary bg-secondary/20 text-secondary font-bold"
-                : "bg-card text-foreground hover:text-foreground"
-            )}
-          >
-            <Sun className="size-4" aria-hidden />
-            <span>{t("theme.light")}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setTheme("dark")}
-            aria-pressed={theme === "dark"}
-            className={cn(
-              "flex min-h-11 flex-col items-center justify-center gap-1 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-muted transition-colors cursor-pointer",
-              theme === "dark"
-                ? "border-secondary bg-secondary/20 text-secondary font-bold"
-                : "bg-card text-foreground hover:text-foreground"
-            )}
-          >
-            <Moon className="size-4" aria-hidden />
-            <span>{t("theme.dark")}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setTheme("system")}
-            aria-pressed={theme === "system"}
-            className={cn(
-              "flex min-h-11 flex-col items-center justify-center gap-1 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-muted transition-colors cursor-pointer",
-              theme === "system"
-                ? "border-secondary bg-secondary/20 text-secondary font-bold"
-                : "bg-card text-foreground hover:text-foreground"
-            )}
-          >
-            <Laptop className="size-4" aria-hidden />
-            <span>{t("theme.system")}</span>
-          </button>
-        </div>
+      <section className="mt-4 max-w-xl rounded-xl border border-border bg-card p-4 shadow-xs">
+        <h2 className="mb-3 text-sm font-semibold text-foreground">{t("theme.title")}</h2>
+        <AppearanceControls />
       </section>
 
       {/* Location Section */}

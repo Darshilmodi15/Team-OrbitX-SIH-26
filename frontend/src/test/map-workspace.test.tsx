@@ -37,6 +37,18 @@ const snapshot: any = {
   weather: {},
   ocean: {},
 };
+it('does not draw a user pin or location advisory before picker selection', async () => {
+  const choose = vi.fn();
+  const client = new QueryClient({defaultOptions:{queries:{retry:false}}});
+  const view = testingRender(<QueryClientProvider client={client}><I18nProvider><MapPanel center={{lat:21,lon:79}} onSelect={choose} hasSelection={false} /></I18nProvider></QueryClientProvider>);
+  await screen.findByText('Map tiles mounted');
+  expect(map.mock.lastCall?.[0]).toMatchObject({showLocation:false, zoom:4});
+  expect(screen.queryByRole('button', {name:'Recenter on selected location'})).toBeNull();
+  expect(screen.queryByText(/PFZ advisory unavailable/)).toBeNull();
+  expect(request).not.toHaveBeenCalled();
+  view.rerender(<QueryClientProvider client={client}><I18nProvider><MapPanel center={{lat:20.9,lon:70.3}} onSelect={choose} hasSelection /></I18nProvider></QueryClientProvider>);
+  expect(map.mock.lastCall?.[0]).toMatchObject({showLocation:true, zoom:8});
+});
 beforeEach(() => {
   localStorage.clear();
   map.mockClear();
