@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&display=swap');
 .public-page {
   background: #f8faf8;
   color: #17332f;
@@ -84,9 +85,9 @@
   font-size: 13px;
 }
 .public-hero-word {
-  font-family: 'Outfit', system-ui, sans-serif;
+  font-family: 'Syne', sans-serif;
   font-size: clamp(100px, min(26vw, 32vh), 360px);
-  font-weight: 700; /* Made slightly bolder for better glass presence */
+  font-weight: 800; /* Extra bold for Syne */
   line-height: 1;
   letter-spacing: -0.065em;
   text-align: center;
