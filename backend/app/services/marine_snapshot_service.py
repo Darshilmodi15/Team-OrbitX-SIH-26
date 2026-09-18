@@ -23,6 +23,8 @@ from app.services.temporal import TemporalResolution, IST
 from app.services.pfz.incois_pfz_service import incois_pfz_service
 from app.services.marine_boundaries import marine_boundaries_service, _point_in_geometry, _distance_to_geometry_boundary
 from app.data.pfz.mock import haversine_km
+from app.services.provenance import describe_field
+from app.services.display_geometry import reference_geometry
 
 UTC = timezone.utc
 logger = logging.getLogger("orca.snapshot")
@@ -94,7 +96,7 @@ def _boundary(lat, lon):
     return {"availability": "available", "eez": {"name": "Indian EEZ", "inside": inside},
         "nearest_boundary_distance": distance, "distance_unit": "km",
         "distance_method": "Approximate distance to EEZ polygon edge, which may include coastline; not distance to an international border",
-        "warnings": ["EEZ dataset is a reference layer, not a navigation clearance."], "geometry": geo, "provenance": meta}
+        "warnings": ["EEZ dataset is a reference layer, not a navigation clearance. Display geometry is simplified; calculations use the original."], "geometry": reference_geometry(geo), "provenance": meta}
 
 
 class MarineSnapshotService:
@@ -119,7 +121,7 @@ class MarineSnapshotService:
         target = request_time(requested_time)
         now = datetime.now(UTC)
         sha = os.getenv("RENDER_GIT_COMMIT") or os.getenv("BACKEND_SHA") or "local-unversioned"
-        key = digest(["snapshot-v2", user_id, location, target.isoformat(), sha])
+        key = digest(["snapshot-v4", user_id, location, target.isoformat(), sha])
         row = db.query(MarineSnapshotRecord).filter_by(request_key=key, user_id=user_id).first()
         previous_id = row.id if row else None
         if row:
@@ -194,7 +196,8 @@ class MarineSnapshotService:
                 value = None
             values[field] = value
             if value is not None:
-                field_sources[("ocean." if field == "sst_c" else "weather.") + field] = source
+                parameter = ("ocean." if field == "sst_c" else "weather.") + field
+                field_sources[parameter] = {**source, **describe_field(parameter, value, source)}
         valid_sources = list(field_sources.values())
         upstream_stale = any(s["cache_status"] == "stale" or (stamp(s["retrieved_at"]) and (now-stamp(s["retrieved_at"])).total_seconds() > 10800) for s in valid_sources)
         mode = "stale" if upstream_stale else "cached" if valid_sources else "unavailable"

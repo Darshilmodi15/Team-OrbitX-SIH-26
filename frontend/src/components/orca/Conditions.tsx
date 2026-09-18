@@ -8,14 +8,26 @@ import { compassDirection, describeWeather } from "@/lib/orca/marine";
 import type { ForecastPoint, MarineSnapshot, MarineTide } from "@/lib/orca/types";
 import { marineCopy } from "@/lib/orca/marine-copy";
 import { SafetyPill } from "./SafetyStatus";
+import type { MarineSnapshot as CanonicalSnapshot, FieldSource } from "@/lib/orca/snapshot";
 
 function Metric({
-  Icon, label, value,
+  Icon, label, value, provenance,
 }: {
   Icon: ComponentType<{ className?: string }>;
   label: string;
   value: string;
+  provenance?: FieldSource | Array<FieldSource | undefined>;
 }) {
+  const sources = (Array.isArray(provenance) ? provenance : [provenance]).filter((source): source is FieldSource => !!source);
+  if (sources.length) return <details className="min-w-0 rounded-md border border-border bg-card p-3 shadow-xs text-xs">
+    <summary className="cursor-pointer"><Icon className="inline size-4 mr-2 text-secondary"/><span>{label}</span><strong className="block mt-1 text-base">{value}</strong><span>Forecast · {[...new Set(sources.map(source=>source.source))].join(" · ")}</span></summary>
+    {sources.map((source,index)=><div key={source.parameter || index} className="mt-2 border-t pt-2">
+      <p>{source.parameter?.replace(/^(weather|ocean)\./, "").replaceAll("_", " ") || label} · {source.source}</p>
+      <p>Valid {source.forecast_valid_at || "Unavailable"}<br/>Retrieved {source.retrieved_at || "Unavailable"}<br/>{source.cache_status}</p>
+      <p>Grid {source.grid_lat ?? "Unavailable"}, {source.grid_lon ?? "Unavailable"}</p>
+      <p>{source.product || "Product unavailable"}<br/>Resolution: {source.spatial_resolution || "Unavailable"}</p>
+    </div>)}
+  </details>;
   return (
     <div className="flex min-w-0 items-start gap-2.5 rounded-md border border-border bg-card p-3 shadow-xs">
       <Icon className="mt-0.5 size-4 shrink-0 text-secondary" aria-hidden />
@@ -35,7 +47,7 @@ function tideTime(time: string | null, height: number | null) {
   return height == null ? time : `${time} · ${height.toFixed(1)} m`;
 }
 
-export function MarineConditions({ data, tide = null }: { data: MarineSnapshot; tide?: MarineTide | null }) {
+export function MarineConditions({ data, tide = null, snapshot }: { data: MarineSnapshot; tide?: MarineTide | null; snapshot?: CanonicalSnapshot }) {
   const { lang, t } = useI18n();
   const copy = marineCopy[lang] ?? marineCopy.en;
   const stamp = (value?: string | null) => value && Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleString(lang, { timeZoneName: "short" }) : "—";
@@ -74,9 +86,10 @@ export function MarineConditions({ data, tide = null }: { data: MarineSnapshot; 
         </li>)}</ul>
       </details>}
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4">
-        <Metric Icon={Waves} label={t("marine.wave")} value={num(data.waveHeightM, "m")} />
+        <Metric Icon={Waves} label={t("marine.wave")} value={num(data.waveHeightM, "m")} provenance={snapshot?.provenance.fields["weather.wave_height_m"]}/>
         <Metric
           Icon={Wind}
+          provenance={[snapshot?.provenance.fields["weather.wind_speed_kmh"],snapshot?.provenance.fields["weather.wind_direction_deg"]]}
           label={t("marine.wind")}
           value={
             data.windSpeedKmh == null
@@ -84,14 +97,14 @@ export function MarineConditions({ data, tide = null }: { data: MarineSnapshot; 
               : `${data.windSpeedKmh} km/h ${compassDirection(data.windDirectionDeg, lang)}`
           }
         />
-        <Metric Icon={Eye} label={t("marine.visibility")} value={num(data.visibilityKm, "km")} />
-        <Metric Icon={Thermometer} label={t("marine.sst")} value={num(data.seaTemperatureC, "\u00b0C")} />
-        <Metric Icon={Gauge} label={t("marine.period")} value={num(data.wavePeriodS, "s", 0)} />
-        <Metric Icon={Waves} label={copy.waveDirection} value={num(data.waveDirectionDeg, "°", 0)} />
-        <Metric Icon={Waves} label={copy.windWave} value={`${num(data.windWaveHeightM, "m")} · ${num(data.windWavePeriodS, "s")} · ${num(data.windWaveDirectionDeg, "°", 0)}`} />
-        <Metric Icon={Waves} label={copy.swell} value={`${num(data.swellWaveHeightM, "m")} · ${num(data.swellWavePeriodS, "s")} · ${num(data.swellWaveDirectionDeg, "°", 0)}`} />
-        <Metric Icon={Gauge} label={copy.current} value={`${num(data.oceanCurrentSpeedKmh, "km/h")} · ${num(data.oceanCurrentDirectionDeg, "°", 0)}`} />
-        <Metric Icon={CloudSun} label={t("marine.weather")} value={describeWeather(data.weatherCode, lang)} />
+        <Metric Icon={Eye} label={t("marine.visibility")} value={num(data.visibilityKm, "km")} provenance={snapshot?.provenance.fields["weather.visibility_km"]}/>
+        <Metric Icon={Thermometer} label={t("marine.sst")} value={num(data.seaTemperatureC, "\u00b0C")} provenance={snapshot?.provenance.fields["ocean.sst_c"]}/>
+        <Metric Icon={Gauge} label={t("marine.period")} value={num(data.wavePeriodS, "s", 0)} provenance={snapshot?.provenance.fields["weather.wave_period_s"]}/>
+        <Metric Icon={Waves} label={copy.waveDirection} value={num(data.waveDirectionDeg, "°", 0)} provenance={snapshot?.provenance.fields["weather.wave_direction_deg"]}/>
+        <Metric Icon={Waves} label={copy.windWave} value={`${num(data.windWaveHeightM, "m")} · ${num(data.windWavePeriodS, "s")} · ${num(data.windWaveDirectionDeg, "°", 0)}`} provenance={["wind_wave_height_m","wind_wave_period_s","wind_wave_direction_deg"].map(key=>snapshot?.provenance.fields[`weather.${key}`])}/>
+        <Metric Icon={Waves} label={copy.swell} value={`${num(data.swellWaveHeightM, "m")} · ${num(data.swellWavePeriodS, "s")} · ${num(data.swellWaveDirectionDeg, "°", 0)}`} provenance={["swell_height_m","swell_period_s","swell_direction_deg"].map(key=>snapshot?.provenance.fields[`weather.${key}`])}/>
+        <Metric Icon={Gauge} label={copy.current} value={`${num(data.oceanCurrentSpeedKmh, "km/h")} · ${num(data.oceanCurrentDirectionDeg, "°", 0)}`} provenance={["current_speed","current_direction"].map(key=>snapshot?.provenance.fields[`weather.${key}`])}/>
+        <Metric Icon={CloudSun} label={t("marine.weather")} value={describeWeather(data.weatherCode, lang)} provenance={snapshot?.provenance.fields["weather.weather_code"]}/>
         {!tide && <><Metric Icon={Clock} label={t("marine.highTide")} value={t("chat.unavailable")} /><Metric Icon={Clock} label={t("marine.lowTide")} value={t("chat.unavailable")} /></>}
         {tide && (
           <>

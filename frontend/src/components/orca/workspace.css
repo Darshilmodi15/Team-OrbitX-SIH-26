@@ -1125,6 +1125,12 @@
 .chat-composer textarea:focus-visible {
   outline: none;
 }
+.map-network-status { font-size: 12px; color: var(--ws-muted); padding: 4px; }
+.map-layer-panel { max-height: 80%; overflow-y: auto; overscroll-behavior: contain; }
+.map-layer-panel details p { line-height: 1.5; overflow-wrap: anywhere; }
+.marine-map-panel[data-network-mode="DEGRADED"] *, .marine-map-panel[data-network-mode="OFFLINE"] * { animation: none !important; transition: none !important; }
+.map-mode button:disabled { opacity: .45; cursor: not-allowed; }
+@media(max-width:600px) { .map-network-status { flex-basis: 100%; } .map-toolbar { flex-wrap: wrap; } }
 .chat-composer:focus-within {
   outline: 2px solid color-mix(in srgb, var(--ws-accent) 35%, transparent);
   outline-offset: 1px;

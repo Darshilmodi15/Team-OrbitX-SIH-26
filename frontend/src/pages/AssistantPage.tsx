@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { OperationalTrace } from "@/components/orca/OperationalTrace";
 import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
@@ -730,6 +731,7 @@ export default function AssistantPage() {
         evidence: {
           snapshot_id: res.snapshot_id,
           marine_snapshot: res.marine_snapshot,
+          operational_trace: res.operational_trace,
           sources: res.sources_used || [],
           reasoning: res.reasoning || [],
           risk_level: res.risk_level || null,
@@ -1055,6 +1057,7 @@ export default function AssistantPage() {
                       <div className="assistant-content">
                         <MarkdownRenderer content={m.text} />
                       </div>
+                      <OperationalTrace trace={m.evidence?.operational_trace} />
                       {m.evidence?.marine_snapshot ? (
                         <ChatSnapshot snapshot={m.evidence.marine_snapshot} />
                       ) : (

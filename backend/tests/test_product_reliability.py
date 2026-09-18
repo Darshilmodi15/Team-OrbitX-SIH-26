@@ -67,8 +67,9 @@ def test_gemini_account_failures_stop_model_retry_chain(monkeypatch, status):
     provider = Mock()
     provider.models.generate_content.side_effect = error
     monkeypatch.setenv('GEMINI_API_KEY', 'test-only-key')
-    google_mod = sys.modules.setdefault('google', ModuleType('google'))
-    genai_mod = sys.modules.setdefault('google.genai', ModuleType('google.genai'))
+    import google as google_mod
+    genai_mod = ModuleType('google.genai')
+    monkeypatch.setitem(sys.modules, 'google.genai', genai_mod)
     monkeypatch.setattr(google_mod, 'genai', genai_mod, raising=False)
     monkeypatch.setattr(genai_mod, 'Client', Mock(return_value=provider), raising=False)
     with pytest.raises(ProviderUnavailable):

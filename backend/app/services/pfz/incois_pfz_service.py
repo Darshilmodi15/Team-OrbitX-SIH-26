@@ -17,6 +17,7 @@ from typing import Any, Dict, Optional
 
 import httpx
 from app.services.provider_health import record
+from app.services.pfz.geometry import validated_geometry
 
 logger = logging.getLogger(__name__)
 
@@ -257,6 +258,10 @@ class IncoisPFZService:
             lat, lon = _number(z.get("latitude"), -90, 90), _number(z.get("longitude"), -180, 180)
             if lat is None or lon is None: continue
             points.append({"id": str(z.get("id", f"pfz-{i}")), "latitude": lat, "longitude": lon,
+                           "geometry": validated_geometry(z.get("geometry")) if z.get("geometry_meaning") in {"official_advisory_area", "search_region"} else None,
+                           "geometry_meaning": z.get("geometry_meaning") if z.get("geometry_meaning") in {"official_advisory_area", "search_region"} else None,
+                           "search_radius_m": _number(z.get("search_radius_m"), 1, 100000) if z.get("radius_meaning") == "advisory_search_radius" else None,
+                           "radius_meaning": "advisory_search_radius" if z.get("radius_meaning") == "advisory_search_radius" else None,
                            "landing_centre": z.get("landing_centre") if isinstance(z.get("landing_centre"), str) else "PFZ",
                            "distance_km": _number(z.get("distance_km")), "bearing_deg": _number(z.get("bearing_deg"), 0, 360),
                            "depth_m": _number(z.get("depth_m")),

@@ -10,6 +10,7 @@
  * - /api/voice/* (Bhashini AI STT & TTS)
  */
 
+import { recordNetworkSample } from '@/lib/orca/connectivity';
 const PRODUCTION_API_BASE_URL = 'https://orca-backend-ycue.onrender.com';
 
 function getApiBaseUrl(): string {
@@ -81,7 +82,16 @@ export async function apiFetch(path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers);
   const token = authToken();
   if (token) headers.set("Authorization", "Bearer " + token);
-  const response = await fetch(`${API_BASE_URL}${path}`, { ...init, signal: init.signal ?? AbortSignal.timeout(60000), headers });
+  const started = performance.now();
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, { ...init, signal: init.signal ?? AbortSignal.timeout(60000), headers });
+    // Expensive optional provider computations are not network-speed probes.
+    if (!path.startsWith("/api/intelligence/")) recordNetworkSample(performance.now() - started, response.status >= 500 || response.status === 429);
+  } catch (error) {
+    if (!init.signal?.aborted) recordNetworkSample(performance.now() - started, true);
+    throw error;
+  }
   if (response.status === 401 && token && token === authToken()) {
     // Only invoke auth failure if the token is truly invalid on verified profile check
     verifyTokenStillValid(token).then((stillValid) => {

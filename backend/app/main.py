@@ -204,6 +204,8 @@ app.include_router(emergency_router)
 app.include_router(admin_router)
 app.include_router(notifications_router)
 app.include_router(chat_router)
+from app.routers.intelligence import router as intelligence_router
+app.include_router(intelligence_router)
 
 
 @app.get("/health")
@@ -378,6 +380,7 @@ class ChatRequest(BaseModel):
 
 
 class ChatResponse(BaseModel):
+    operational_trace: List[Dict[str, Any]] = Field(default_factory=list)
     ai_model: Optional[str] = None
     ai_fallback_used: bool = False
     snapshot_id: Optional[str] = None
@@ -1235,6 +1238,7 @@ def handle_chat(request: ChatRequest, user: UserProfile = Depends(get_current_us
         raise
 
     response = ChatResponse(
+        operational_trace=result.get("operational_trace", []),
         ai_model=result.get("ai_model"), ai_fallback_used=result.get("ai_fallback_used", False),
         snapshot_id=result.get("snapshot_id"), marine_snapshot=result.get("marine_snapshot"),
         language=result["language"],
@@ -1286,6 +1290,7 @@ def handle_chat(request: ChatRequest, user: UserProfile = Depends(get_current_us
         "ai_model": response.ai_model,
         "ai_fallback_used": response.ai_fallback_used,
         "snapshot_id": response.snapshot_id,
+        "operational_trace": response.operational_trace,
         "marine_snapshot": response.marine_snapshot.model_dump(mode="json") if response.marine_snapshot else None,
         "sources": response.sources_used,
         "risk_level": response.risk_level,

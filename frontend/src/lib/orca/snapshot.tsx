@@ -4,15 +4,17 @@ import { fetchSavedLocation, apiFetch } from "@/services/api";
 import { useSession } from "./session";
 import type { MarineBundle, MarineSnapshot as Readings } from "./types";
 import type { PFZAdvisory } from "./pfz";
+import { useConnectivity } from "./connectivity";
 
-export type FieldSource = { source: string; issued_at: string | null; forecast_valid_at: string | null; retrieved_at: string | null; grid_lat: number | null; grid_lon: number | null; cache_status: string };
+export type FieldSource = { source: string; issued_at: string | null; forecast_valid_at: string | null; retrieved_at: string | null; grid_lat: number | null; grid_lon: number | null; cache_status: string; parameter?: string; value?: number | null; unit?: string | null; provider?: string; product?: string | null; evidence_type?: string; platform?: string | null; sensor?: string | null; satellite?: string | null; spatial_resolution?: string | null; temporal_resolution?: string | null; source_url?: string | null };
+export type PFZZone = {id: string; latitude: number; longitude: number; landing_centre?: string; distance_km: number; species?: string[]; geometry?: GeoJSON.Polygon | GeoJSON.MultiPolygon | null; geometry_meaning?: string | null; search_radius_m?: number | null; radius_meaning?: string | null};
 export type MarineSnapshot = {
   snapshot_id: string;
   location: { name: string | null; lat: number; lon: number };
   request: { requested_date: string; requested_time: string };
   weather: Record<string, number | string | null>;
   ocean: { sst_c: number | null; chlorophyll: number | null };
-  pfz: { availability: string; advisory_id: string | null; issued_at: string | null; valid_until: string | null; source: string | null; zones: Array<{id: string; latitude: number; longitude: number; landing_centre?: string; distance_km: number; species?: string[]}> };
+  pfz: { availability: string; advisory_id: string | null; issued_at: string | null; valid_until: string | null; source: string | null; zones: PFZZone[] };
   tide: { availability: string; high_tide: null; low_tide: null };
   boundary: { availability: string; eez: { name: string; inside: boolean } | null; nearest_boundary_distance: number | null; warnings: string[]; geometry: GeoJSON.FeatureCollection | null; provenance: Record<string, unknown> };
   hazards: Array<{id: string; severity: string; title: string; message: string; timestamp: string | null; source: string}>;
@@ -64,6 +66,7 @@ export function snapshotBundle(s: MarineSnapshot, offline = false): MarineBundle
 type ContextValue = { snapshot?: MarineSnapshot; isPending: boolean; isError: boolean; isFetching: boolean; offline: boolean; activate: () => void; refetch: () => Promise<unknown>; adopt: (snapshot: MarineSnapshot) => void; requestedTime?: string; setRequestedTime: (value?: string) => void };
 const SnapshotContext = createContext<ContextValue | null>(null);
 export function MarineSnapshotProvider({children}: {children:ReactNode}) {
+  const connectivity = useConnectivity();
   const {user,location,token,locationReady,setLocation}=useSession();
   const client=useQueryClient();
   const [active,setActive]=useState("");
@@ -83,7 +86,7 @@ export function MarineSnapshotProvider({children}: {children:ReactNode}) {
       }
       try { if(!signal.aborted && sessionStorage.getItem("orca.auth.session") === token) sessionStorage.setItem(PREFIX+owner,JSON.stringify(result)); } catch { /* Optional storage. */ }
       return result;
-    }, staleTime:300000, refetchInterval:300000, retry:1,
+    }, staleTime:300000, refetchInterval: connectivity === "OFFLINE" ? false : connectivity === "DEGRADED" ? 900000 : 300000, retry:1,
     placeholderData:saved && (!requestedTime || saved.request.requested_time === requestedTime) ? saved : undefined});
   useEffect(()=>{setRequestedTime(undefined);},[owner,lat,lon]);
   useEffect(()=>{const update=()=>setOffline(!navigator.onLine);window.addEventListener("online",update);window.addEventListener("offline",update);const timer=window.setInterval(()=>setClock(Date.now()),1000);return()=>{window.removeEventListener("online",update);window.removeEventListener("offline",update);clearInterval(timer);};},[]);
