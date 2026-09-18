@@ -152,7 +152,11 @@ app = FastAPI(
 
 @app.exception_handler(ProviderUnavailable)
 async def unavailable_provider_handler(request, exc):
-    return JSONResponse(status_code=503, content={"detail": "AI_PROVIDER_UNAVAILABLE", "reason": exc.reason, "upstream_status": exc.http_status})
+    status = 504 if exc.reason in {"TIMEOUT", "UPSTREAM_TIMEOUT"} else 502 if exc.reason in {"MALFORMED_REQUEST", "EVIDENCE_VALIDATION_FAILED", "EMPTY_RESPONSE"} else 503
+    content = {"detail": "AI_PROVIDER_UNAVAILABLE", "reason": exc.reason, "upstream_status": exc.http_status}
+    if getattr(exc, "request_id", None):
+        content["request_id"] = exc.request_id
+    return JSONResponse(status_code=status, content=content)
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request, exc):
@@ -1229,7 +1233,9 @@ def handle_chat(request: ChatRequest, user: UserProfile = Depends(get_current_us
         db.rollback()
         raise HTTPException(status_code=409, detail="CHAT_REQUEST_IN_PROGRESS")
     try:
-        result = process_snapshot_chat(request, user, db, weather_provider, history_dicts)
+        from app.services.provider_health import provider_request
+        with provider_request(request.request_id):
+            result = process_snapshot_chat(request, user, db, weather_provider, history_dicts)
     except Exception:
         db.rollback()
         if record_id:

@@ -1,4 +1,4 @@
-from app.services.provider_health import record, ProviderUnavailable, failure_reason
+from app.services.provider_health import record, ProviderUnavailable, failure_reason, log_attempt
 from app.services.planner import is_emergency_contact_lookup
 """
 ORCA Marine AI - Conversational Dialogue & Dynamic Reasoning Synthesizer.
@@ -185,9 +185,10 @@ User's Latest Query: {user_query} (English interpretation: {english_query})
 Generate the complete, natural response in language '{target_lang}':"""
 
         api_key = api_key.strip()
+        client = None
         try:
             from google import genai
-            client = genai.Client(api_key=api_key, http_options={"timeout": 20000})
+            client = genai.Client(api_key=api_key, http_options={"timeout": 20000, "retry_options": {"attempts": 1}})
             preferred_model = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
             candidate_models = [preferred_model, *os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3.5-flash-lite").split(",")]
             seen_models = set()
@@ -199,7 +200,31 @@ Generate the complete, natural response in language '{target_lang}':"""
                     models_to_try.append(m)
 
             last_err = None
+            attempts = 0
+            deadline = time.monotonic() + 40
+            def generate(model, contents, config):
+                nonlocal attempts
+                # Primary + one alternate + one evidence repair, sharing 40 seconds.
+                remaining_ms = int((deadline - time.monotonic()) * 1000)
+                if attempts >= 3 or remaining_ms <= 0:
+                    raise ProviderUnavailable("RETRY_BUDGET_EXHAUSTED")
+                retry_count = attempts
+                attempts += 1
+                started = time.monotonic()
+                try:
+                    result = client.models.generate_content(model=model, contents=contents,
+                        config={**config, "http_options": {"timeout": min(20000, remaining_ms), "retry_options": {"attempts": 1}}})
+                except Exception as exc:
+                    log_attempt(model=model, status=getattr(exc, "code", None), category=failure_reason(exc),
+                                latency_ms=(time.monotonic()-started)*1000, retry_count=retry_count)
+                    raise
+                log_attempt(model=model, status=200, category="SUCCESS",
+                            latency_ms=(time.monotonic()-started)*1000, retry_count=retry_count)
+                return result
+
             for model_name in models_to_try:
+                if attempts >= 2:
+                    break
                 with _model_lock:
                     cooling = _model_cooldowns.get(model_name, 0) > time.monotonic()
                 if cooling:
@@ -208,9 +233,7 @@ Generate the complete, natural response in language '{target_lang}':"""
                     config = {"system_instruction": system_instruction, "automatic_function_calling": {"disable": True}}
                     if "3.7" in model_name and is_emergency_contact_lookup(english_query):
                         config["thinking_config"] = {"thinking_level": "low"}
-                    response = client.models.generate_content(
-                        model=model_name, contents=prompt, config=config,
-                    )
+                    response = generate(model_name, prompt, config)
                     text = (response.text or "").strip()
                     if text:
                         if evidence.marine_snapshot:
@@ -220,7 +243,8 @@ Generate the complete, natural response in language '{target_lang}':"""
                                 # One bounded regeneration with explicit schema
                                 # feedback. Never show the invalid draft or replace
                                 # it with a scripted answer.
-                                logger.warning("Gemini response rejected category=EVIDENCE_VALIDATION_FAILED model=%s; regenerating once", model_name)
+                                log_attempt(model=model_name, status=200, category="EVIDENCE_VALIDATION_FAILED",
+                                            latency_ms=0, retry_count=attempts-1)
                                 allowed = [f"[[{section}.{field}]]" for section in ("weather", "ocean")
                                            for field, value in evidence.marine_snapshot[section].items()
                                            if isinstance(value, (int, float)) and not isinstance(value, bool)]
@@ -230,31 +254,26 @@ Generate the complete, natural response in language '{target_lang}':"""
                                     ". Missing fields must be described as unavailable. Use [[radio.distress_channel]] for VHF, "
                                     "and [[contacts.emergency]] or [[contacts.coast_guard]] for emergency numbers. "
                                     "Do not use other reference tokens. Keep the required response language.")
-                                repaired = client.models.generate_content(model=model_name, contents=prompt + correction, config=config)
+                                repaired = generate(model_name, prompt + correction, config)
                                 text = cls._resolve_measurements((repaired.text or "").strip(), evidence.marine_snapshot)
                                 if not text:
                                     raise ProviderUnavailable("EMPTY_RESPONSE")
                         fallback = model_name != preferred_model
                         record("gemini", success=True, http_status=200, model=model_name, mode="fallback" if fallback else "live")
                         return SynthesisText(text, model_name, fallback)
-                except ProviderUnavailable:
+                    raise ProviderUnavailable("EMPTY_RESPONSE", 200)
+                except ProviderUnavailable as exc:
+                    record("gemini", success=False, reason=exc.reason, model=model_name)
                     raise
                 except Exception as model_err:
                     last_err = model_err
                     status = getattr(model_err, "code", None)
-                    logger.warning(
-                        "[ORCA AI Diagnostic] model=%s status=%s error=%s category=%s",
-                        model_name,
-                        status,
-                        type(model_err).__name__,
-                        "QUOTA_EXHAUSTED" if status == 429 else "AUTH_FAILED" if status in (401, 403) else "MODEL_FAILED"
-                    )
                     reason = failure_reason(model_err)
                     record("gemini", success=False, http_status=status, reason=reason, model=model_name)
                     if status == 429:
                         with _model_lock:
                             _model_cooldowns[model_name] = time.monotonic() + 300
-                    if status not in (404, 429):
+                    if status not in (404, 429, 500, 502, 503, 504) and reason not in {"TIMEOUT", "NETWORK_ERROR"}:
                         break
                     # A configured alternate model still generates a real answer.
                     continue
@@ -271,6 +290,12 @@ Generate the complete, natural response in language '{target_lang}':"""
             record("gemini", success=False, http_status=status if isinstance(status, int) else None, reason=reason)
             logger.warning("Gemini synthesis failed category=%s", reason)
             raise ProviderUnavailable(reason, status) from err
+        finally:
+            if client is not None:
+                try:
+                    client.close()
+                except Exception:
+                    logger.warning("Gemini client cleanup failed")
 
     @classmethod
     def _resolve_measurements(cls, text, snapshot):

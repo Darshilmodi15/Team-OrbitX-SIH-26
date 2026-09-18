@@ -52,7 +52,9 @@ def test_chat_failed_ai_preserves_user_turn_without_fake_assistant(location):
     with patch('app.main._process_orca_query', side_effect=ProviderUnavailable()), patch.object(DialogueSynthesizer, 'synthesize_response', side_effect=ProviderUnavailable()):
         response = client.post('/api/chat', json={'message': 'Explain waves', 'location': location, 'session_id': conversation})
     assert response.status_code == 503
-    assert response.json() == {'detail': 'AI_PROVIDER_UNAVAILABLE', 'reason': 'AI_PROVIDER_UNAVAILABLE', 'upstream_status': None}
+    body = response.json()
+    assert body.pop('request_id')
+    assert body == {'detail': 'AI_PROVIDER_UNAVAILABLE', 'reason': 'AI_PROVIDER_UNAVAILABLE', 'upstream_status': None}
     stored = client.get('/api/conversations/'+conversation).json()['messages']
     assert [(m['role'], m['content']) for m in stored] == [('user', 'Explain waves')]
 
