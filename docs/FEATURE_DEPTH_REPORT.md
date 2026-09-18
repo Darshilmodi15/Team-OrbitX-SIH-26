@@ -2,6 +2,10 @@
 
 18 September 2026. Local implementation checkpoint, **not a production release or feature freeze**.
 
+Historical checkpoint: commit, branding and chat results below are superseded by
+[the stabilization acceptance report](STABILIZATION_ACCEPTANCE_2026-09-18.md).
+The original findings are retained as an audit trail, not current release status.
+
 ## 1–3. Baseline, final identity and changed files
 
 - Baseline frontend/backend SHA: `ccae56034e238f4ea13675ed0222c6e3af2554ad`.
