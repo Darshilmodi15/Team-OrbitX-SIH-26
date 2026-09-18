@@ -19,6 +19,8 @@ import {
 import { MarineConditions } from "./Conditions";
 import { SnapshotDetails } from "./SnapshotDetails";
 import "./workspace.css";
+import { useConnectivity } from "@/lib/orca/connectivity";
+import { useOptionalEvidence, type SpeciesResult, type EarthResult } from "@/lib/orca/intelligence";
 const CoastMap = lazy(() => import("./CoastMap"));
 type Props = {
   center: Coords;
@@ -28,6 +30,8 @@ type Props = {
   snapshot?: MarineSnapshot;
   compact?: boolean;
   full?: boolean;
+  /** False in the picker until a person explicitly chooses a location. */
+  hasSelection?: boolean;
 };
 export function MapPanel({
   center,
@@ -37,14 +41,16 @@ export function MapPanel({
   snapshot: provided,
   compact = false,
   full = false,
+  hasSelection = true,
 }: Props) {
   const { t, lang } = useI18n();
+  const network = useConnectivity();
   const state = useMarineSnapshot();
   useEffect(() => {
     if (!onSelect && !provided) state.activate();
   }, [onSelect, provided, state.activate]);
   const s = provided ?? (onSelect ? undefined : state.snapshot);
-  const [mode, setMode] = useState<"text" | "map" | "satellite">(() => {
+  const [preferredMode, setMode] = useState<"text" | "map" | "satellite">(() => {
     try {
       return !onSelect && localStorage.getItem("orca.map.mode") === "text"
         ? "text"
@@ -53,6 +59,11 @@ export function MapPanel({
       return "map";
     }
   });
+  const mode = network === "OFFLINE" && !onSelect ? "text" : network === "DEGRADED" && preferredMode === "satellite" ? "map" : preferredMode;
+  const [vectors, setVectors] = useState(false), [showSpecies, setShowSpecies] = useState(false), [showEarth, setShowEarth] = useState(false);
+  const optionalAllowed = !onSelect && network !== "OFFLINE" && network !== "DEGRADED";
+  const species = useOptionalEvidence<SpeciesResult>("species", s?.snapshot_id, showSpecies && optionalAllowed);
+  const earth = useOptionalEvidence<EarthResult>("earth-observation", s?.snapshot_id, showEarth && optionalAllowed);
   const [pfz, setPFZ] = useState(true),
     [eez, setEEZ] = useState(true),
     [conditions, setConditions] = useState(false),
@@ -125,7 +136,7 @@ export function MapPanel({
             <strong>{s.risk.level}</strong>
           </div>
           {mode === "text" ? (
-            <MarineConditions data={snapshotBundle(s, state.offline).current} />
+            <MarineConditions data={snapshotBundle(s, state.offline).current} snapshot={s} />
           ) : (
             <>
               <div className="map-reading-grid">
@@ -176,8 +187,10 @@ export function MapPanel({
     <div
       className={`orca-workspace marine-map-panel ${full ? "full-map" : ""} ${compact ? "compact-map" : ""}`}
       data-snapshot-id={s?.snapshot_id}
+      data-network-mode={network}
     >
       <div className="map-toolbar">
+        <span className="map-network-status" role="status">{network === "DEGRADED" ? "Low-data mode" : network === "OFFLINE" ? "Offline · saved information" : network === "FULL" ? "Full connection" : "Connected"}</span>
         <div className="map-mode" role="group" aria-label={t("map.layers")}>
           {(["map", "satellite", "text"] as const)
             .filter((x) => !onSelect || x !== "text")
@@ -194,6 +207,7 @@ export function MapPanel({
                   }
                 }}
                 aria-pressed={mode === x}
+                disabled={x === "satellite" && (network === "DEGRADED" || network === "OFFLINE")}
               >
                 {mapCopy[lang][x]}
               </button>
@@ -210,7 +224,7 @@ export function MapPanel({
               {t("map.layers")}
             </button>
           )}
-          {mode !== "text" && (
+          {mode !== "text" && hasSelection && (
             <button
               className="workspace-icon"
               title={copy.recenter}
@@ -245,8 +259,12 @@ export function MapPanel({
               showPFZ={pfz}
               showEEZ={eez}
               showConditions={conditions}
-              showLocation={pin}
+              showLocation={pin && hasSelection}
+              zoom={onSelect ? (hasSelection ? 8 : 4) : undefined}
               recenter={recenter}
+              showVectors={vectors}
+              species={showSpecies && optionalAllowed ? species.data : undefined}
+              earth={showEarth && optionalAllowed ? earth.data : undefined}
             />
           </Suspense>
           {!onSelect && (
@@ -301,6 +319,7 @@ export function MapPanel({
                     />
                   </label>
                   {!advisory.points.length && <p>{unavailable}</p>}
+                  {advisory.points.length > 0 && <p>Point halos are symbols, not distance or confidence boundaries. Only supplied advisory geometry is drawn to scale.</p>}
                   <label>
                     <span>
                       <i className="legend-line" />
@@ -316,6 +335,7 @@ export function MapPanel({
                   {!s?.boundary.geometry && <p>EEZ: {t("chat.unavailable")}</p>}
                   <details>
                     <summary>{copy.advanced}</summary>
+                    <label><span>Direction samples</span><input type="checkbox" checked={vectors} onChange={e=>setVectors(e.target.checked)} /></label>
                     <label>
                       <span>{copy.grid}</span>
                       <input
@@ -324,6 +344,21 @@ export function MapPanel({
                         onChange={(e) => setConditions(e.target.checked)}
                       />
                     </label>
+                    <p>MPA / restricted areas: unavailable without verified geometry.</p>
+                    <p>Hazards: {s?.hazards.length || 0} snapshot alerts. No affected-area geometry supplied.</p>
+                    <p>Species evidence classes: official advisory, habitat suitability model, and historical occurrence. Official species advisories and a validated suitability model are not available here.</p>
+                    <label><span>Historical species · OBIS</span><input type="checkbox" checked={showSpecies} disabled={!optionalAllowed || !s} onChange={e=>setShowSpecies(e.target.checked)} /></label>
+                    {showSpecies && <div role="status">
+                      <p>{species.isPending ? "Loading historical records…" : species.isError ? "Historical records unavailable" : `OBIS: ${species.data?.status}`}</p>
+                      {species.data && <><p>{species.data.disclaimer}</p><p>Retrieved {species.data.retrieved_at} · {species.data.cache_status}</p>
+                        {species.data.evidence.slice(0,8).map(item=><p key={item.scientific_name}><strong>{item.scientific_name}</strong><br/>{item.occurrence_count} records in returned sample · latest {item.data_period.latest_in_sample || "Unavailable"}<br/>Historical occurrence</p>)}</>}
+                    </div>}
+                    <label><span>Flood context · Experimental</span><input type="checkbox" checked={showEarth} disabled={!optionalAllowed || !s} onChange={e=>setShowEarth(e.target.checked)} /></label>
+                    {showEarth && <div role="status"><p>{earth.isPending ? "Loading Earth Engine context…" : earth.isError ? "Earth Engine unavailable" : `Earth Engine: ${earth.data?.status}`}</p>
+                      {earth.data && <><p>{earth.data.limitations}</p><p>Rainfall observation: {earth.data.observation_period?.start || "Unavailable"} · age at retrieval {earth.data.observation_age_hours ?? "Unavailable"} hours</p><p>Retrieved {earth.data.retrieved_at} · {earth.data.cache_status}</p><p>Analysis cells: rainfall rate, mm/h. Pale: 0; blue: 10 or more. Not flood extent.</p>
+                        {earth.data.datasets.map(dataset=><p key={dataset.dataset_id}><a href={dataset.source_url} target="_blank" rel="noreferrer">{dataset.organization}</a><br/>{dataset.spatial_resolution} · {dataset.temporal_resolution}</p>)}</>}
+                    </div>}
+                    {!optionalAllowed && <p>Optional online layers pause in low-data and offline modes.</p>}
                   </details>
                 </section>
               )}
@@ -351,6 +386,9 @@ export function MapPanel({
                       {copy.grid}
                     </span>
                   )}
+                  {vectors && <span>↑ Direction samples</span>}
+                  {showSpecies && optionalAllowed && species.data?.status === "available" && <span><i className="legend-dot" style={{background:"#7c3aed"}} />Historical species</span>}
+                  {showEarth && optionalAllowed && earth.data?.status === "available" && <span><i className="legend-line" style={{background:"#2563eb"}} />Rainfall cells · experimental</span>}
                 </div>
               )}
               {!compact && (

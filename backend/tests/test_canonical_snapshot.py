@@ -72,6 +72,26 @@ def test_chat_same_evidence_and_durable_idempotency(client,monkeypatch):
     assert history[0]["metadata"]["request_language"] == "en"
     assert history[-1]["metadata"]["request_id"] == payload["request_id"]
     assert history[-1]["metadata"]["marine_snapshot"] == snap
+    trace = first.json()["operational_trace"]
+    assert trace and history[-1]["metadata"]["operational_trace"] == trace
+    assert all("status" in stage and "timestamp" in stage for stage in trace)
+
+
+def test_optional_evidence_rejects_cross_account_before_upstream(client, monkeypatch):
+    from app.services.species import species_service
+    from app.services.earth_observation import earth_observation_service
+    snap = client.get("/api/marine/snapshot").json()
+    other = authenticate_client(TestClient(app))
+    calls = []
+    for service in (species_service, earth_observation_service):
+        monkeypatch.setattr(service, "get", lambda lat, lon: calls.append((lat, lon)) or {"status": "empty"})
+    for name in ("species", "earth-observation"):
+        path = f"/api/intelligence/{name}?snapshot_id={snap['snapshot_id']}"
+        assert other.get(path).status_code == 404
+        assert not calls
+    for name in ("species", "earth-observation"):
+        assert client.get(f"/api/intelligence/{name}?snapshot_id={snap['snapshot_id']}").status_code == 200
+    assert calls == [(18.9, 72.7), (18.9, 72.7)]
 
 
 def test_failed_provider_retry_does_not_duplicate_user(client,monkeypatch):
@@ -203,8 +223,9 @@ def test_google_daily_quota_diagnostic_and_real_model_failover(monkeypatch):
     assert failure_reason(error) == "DAILY_QUOTA_EXHAUSTED"
     provider=Mock()
     provider.models.generate_content.side_effect=[error,Mock(text="Hello from the real provider interface")]
-    google=sys.modules.setdefault("google",ModuleType("google"))
-    genai=sys.modules.setdefault("google.genai",ModuleType("google.genai"))
+    import google
+    genai=ModuleType("google.genai")
+    monkeypatch.setitem(sys.modules,"google.genai",genai)
     monkeypatch.setattr(google,"genai",genai,raising=False)
     monkeypatch.setattr(genai,"Client",Mock(return_value=provider),raising=False)
     monkeypatch.setenv("GEMINI_API_KEY","test-only")
@@ -228,8 +249,9 @@ def test_invalid_model_draft_is_regenerated_once_and_never_returned(client, monk
     evidence=marine_snapshot_service.evidence(MarineSnapshot.model_validate(snap))
     provider=Mock()
     provider.models.generate_content.side_effect=[Mock(text="Wave 999 m"),Mock(text="Wave [[weather.wave_height_m]] m")]
-    google=sys.modules.setdefault("google",ModuleType("google"))
-    genai=sys.modules.setdefault("google.genai",ModuleType("google.genai"))
+    import google
+    genai=ModuleType("google.genai")
+    monkeypatch.setitem(sys.modules,"google.genai",genai)
     monkeypatch.setattr(google,"genai",genai,raising=False)
     monkeypatch.setattr(genai,"Client",Mock(return_value=provider),raising=False)
     monkeypatch.setenv("GEMINI_API_KEY","test-only")

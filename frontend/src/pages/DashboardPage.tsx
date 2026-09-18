@@ -92,7 +92,7 @@ export default function DashboardPage() {
 
         {marine.data?.snapshot && <SnapshotDetails snapshot={marine.data.snapshot} offline={marine.offline} />}
         {/* Marine conditions */}
-        {displayCurrent && <MarineConditions data={displayCurrent} tide={marine.data?.tide ?? null} />}
+        {displayCurrent && <MarineConditions data={displayCurrent} tide={marine.data?.tide ?? null} snapshot={marine.data?.snapshot} />}
 
         {marine.data && <TripPack key={`${location.coords.lat},${location.coords.lon}`} location={location} bundle={marine.data} />}
 

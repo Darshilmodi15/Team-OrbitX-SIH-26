@@ -4,6 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, MapPin } from "lucide-react";
 import { MapPanel } from "@/components/orca/MapPanel";
 import { LanguageMenu } from "@/components/orca/LanguageMenu";
+import { AppearanceMenu } from "@/components/orca/AppearanceMenu";
 import { OrcaLogo } from "@/components/orca/Logo";
 import { SEO } from "@/components/SEO";
 import { useI18n } from "@/lib/orca/i18n";
@@ -55,6 +56,7 @@ export default function MapPage() {
           </p>
         </div>
         <LanguageMenu />
+        <AppearanceMenu />
         <Link to="/location" className="map-change-location">
           <MapPin size={16} />
           {t("loc.change")}

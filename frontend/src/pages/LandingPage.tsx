@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { OrcaLogo } from "@/components/orca/Logo";
 import { LanguageMenu } from "@/components/orca/LanguageMenu";
+import { AppearanceMenu } from "@/components/orca/AppearanceMenu";
 import { useI18n } from "@/lib/orca/i18n";
 import { SEO } from "@/components/SEO";
 import { openCookieSettings } from "@/components/CookieBanner";
@@ -73,6 +74,7 @@ export default function LandingPage() {
             {copy.explore}
           </a>
           <LanguageMenu />
+          <AppearanceMenu />
           <Link to="/login" className="public-signin">
             {t("cta.signIn")}
             <ArrowUpRight size={16} />

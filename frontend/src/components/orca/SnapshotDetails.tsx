@@ -81,9 +81,13 @@ export function SnapshotDetails({
         <ul>
           {Object.entries(snapshot.provenance.fields).map(([field, source]) => (
             <li key={field} className="mt-3">
+              <details>
+              <summary className="cursor-pointer">
               <strong>
                 {field.replace(/^(weather|ocean)\./, "").replaceAll("_", " ")}
               </strong>
+              {source.value != null ? ` · ${source.value} ${source.unit || ""}` : ""} · {source.evidence_type === "model_forecast" ? "Forecast model" : "Source details"}
+              </summary>
               <br />
               {source.source} · valid {source.forecast_valid_at ?? "—"}
               <br />
@@ -92,6 +96,12 @@ export function SnapshotDetails({
               <br />
               Grid {source.grid_lat ?? "—"}, {source.grid_lon ?? "—"} ·{" "}
               {source.cache_status}
+              <br/>Product: {source.product || "Unavailable"}
+              <br/>Spatial resolution: {source.spatial_resolution || "Unavailable"}
+              <br/>Temporal resolution: {source.temporal_resolution || "Unavailable"}
+              <br/>Satellite / sensor: {source.satellite || source.sensor || "Not attributed for this model value"}
+              {source.source_url && /^https:\/\//.test(source.source_url) && <p><a href={source.source_url} target="_blank" rel="noreferrer">Provider documentation</a></p>}
+              </details>
             </li>
           ))}
         </ul>

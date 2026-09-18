@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { OperationalTrace } from "@/components/orca/OperationalTrace";
 import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
@@ -42,6 +43,7 @@ import {
 import { VoiceControls } from "@/components/orca/VoiceControls";
 import { ChatSnapshot } from "@/components/orca/ChatSnapshot";
 import { LanguageMenu } from "@/components/orca/LanguageMenu";
+import { AppearanceMenu } from "@/components/orca/AppearanceMenu";
 import "@/components/orca/workspace.css";
 import { OrcaLogo } from "@/components/orca/Logo";
 import { SEO } from "@/components/SEO";
@@ -429,7 +431,9 @@ export default function AssistantPage() {
   }, [user?.id, conversationId]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    // Scroll only the conversation, never its ancestors or the document.
+    const stream = endRef.current?.parentElement;
+    if (stream && currentThread.messages.length) stream.scrollTo({ top: stream.scrollHeight, behavior: "smooth" });
   }, [currentThread.messages.length, isThinking]);
 
   useEffect(() => {
@@ -730,6 +734,7 @@ export default function AssistantPage() {
         evidence: {
           snapshot_id: res.snapshot_id,
           marine_snapshot: res.marine_snapshot,
+          operational_trace: res.operational_trace,
           sources: res.sources_used || [],
           reasoning: res.reasoning || [],
           risk_level: res.risk_level || null,
@@ -980,6 +985,7 @@ export default function AssistantPage() {
             {currentThread.messages.length ? currentThread.title : "ORCA"}
           </h1>
           <LanguageMenu />
+          <AppearanceMenu />
           <Link
             className="workspace-icon"
             to="/map"
@@ -1055,6 +1061,7 @@ export default function AssistantPage() {
                       <div className="assistant-content">
                         <MarkdownRenderer content={m.text} />
                       </div>
+                      <OperationalTrace trace={m.evidence?.operational_trace} />
                       {m.evidence?.marine_snapshot ? (
                         <ChatSnapshot snapshot={m.evidence.marine_snapshot} />
                       ) : (

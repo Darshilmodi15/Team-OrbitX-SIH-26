@@ -2,11 +2,44 @@
 import json
 import logging
 import threading
+import re
+from contextvars import ContextVar
+from contextlib import contextmanager
+from uuid import uuid4
+import httpx
 from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    logger.addHandler(logging.StreamHandler())
 _lock = threading.RLock()
 _recent = {}
+request_id_context = ContextVar("provider_request_id", default=None)
+
+
+@contextmanager
+def provider_request(request_id=None):
+    # Caller-controlled correlation IDs must never inject lines into logs.
+    correlation = request_id if isinstance(request_id, str) and re.fullmatch(r"[A-Za-z0-9_-]{1,128}", request_id) else uuid4().hex
+    token = request_id_context.set(correlation)
+    try:
+        yield correlation
+    except ProviderUnavailable as exc:
+        exc.request_id = correlation
+        raise
+    finally:
+        request_id_context.reset(token)
+
+
+def log_attempt(*, model, status, category, latency_ms, retry_count):
+    event = {"request_id": request_id_context.get(), "provider": "gemini",
+             "model": model if isinstance(model, str) and re.fullmatch(r"[A-Za-z0-9._/-]{1,128}", model) else None,
+             "upstream_status": status if type(status) is int else None,
+             "category": category, "latency_ms": round(latency_ms), "retry_count": retry_count}
+    # No prompt, response, key, URL, exception string or user identity.
+    logger.log(logging.INFO if category == "SUCCESS" else logging.WARNING,
+               "provider_attempt %s", json.dumps(event, separators=(",", ":")))
 
 
 def record(provider, *, success, http_status=None, reason=None, data_timestamp=None, mode="live", model=None):
@@ -81,14 +114,18 @@ def failure_reason(error):
     if status == 429:
         payload = getattr(error, "response_json", None) or getattr(error, "details", {}) or {}
         details = payload.get("error", payload).get("details", []) if isinstance(payload, dict) else []
-        ids = [v.get("quotaId", "") for d in details for v in d.get("violations", [])]
+        ids = [str(v.get("quotaId", "")) for d in details if isinstance(d, dict)
+               for v in (d.get("violations") or []) if isinstance(v, dict)] if isinstance(details, list) else []
         if any("PerDay" in q for q in ids): return "DAILY_QUOTA_EXHAUSTED"
         if any("PerMinute" in q for q in ids): return "RATE_LIMITED"
         return "RATE_LIMIT_OR_QUOTA"
     if status in (401, 403): return "AUTH_FAILED"
     if status == 404: return "MODEL_NOT_FOUND"
     if status == 400: return "MALFORMED_REQUEST"
+    if status in (408, 504): return "UPSTREAM_TIMEOUT"
     if isinstance(status, int) and status >= 500: return "PROVIDER_OUTAGE"
+    if isinstance(error, httpx.TimeoutException): return "TIMEOUT"
+    if isinstance(error, httpx.NetworkError): return "NETWORK_ERROR"
     if "timeout" in type(error).__name__.lower(): return "TIMEOUT"
     if isinstance(error, ImportError): return "SDK_IMPORT_ERROR"
     return "UPSTREAM_REQUEST_FAILED"

@@ -1,0 +1,15 @@
+{
+  "project_id": "team-orbitx-sih26",
+  "project_number": "795586847632",
+  "checked_date": "2026-09-18",
+  "method": "read-only Service Usage consumerQuotaMetrics with local ADC",
+  "http_status": 200,
+  "monthly_eecu_seconds_effective_limit": 3600000,
+  "monthly_eecu_hours_effective_limit": 1000,
+  "read_requests_per_minute_project": 6000,
+  "read_requests_per_minute_project_user": 6000,
+  "remaining_usage": "NOT_VERIFIED",
+  "noncommercial_eligibility": "NOT_INDEPENDENTLY_VERIFIED",
+  "production_backend_identity": "NOT_VERIFIED",
+  "changes_to_iam_billing_or_quota": false
+}

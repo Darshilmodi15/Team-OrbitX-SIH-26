@@ -62,7 +62,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 19px;
+  font-size: 1.1875rem;
   letter-spacing: 0.04em;
 }
 .sidebar-new {
@@ -72,7 +72,7 @@
   min-height: 46px;
   padding: 10px 12px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 500;
 }
 .sidebar-new:hover,
@@ -91,7 +91,7 @@
   gap: 12px;
   border-radius: 9px;
   padding: 11px 12px;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 .history-search {
   display: flex;
@@ -106,15 +106,15 @@
   background: transparent;
   border: 0;
   outline: none;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .sidebar-caption {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--ws-muted);
   padding: 14px 12px 5px;
 }
 .sidebar-empty {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--ws-muted);
   padding: 8px 12px;
 }
@@ -140,7 +140,7 @@
   white-space: nowrap;
   text-align: left;
   padding: 12px;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .history-delete {
   padding: 12px 9px;
@@ -156,7 +156,7 @@
   align-items: center;
   gap: 10px;
   padding: 10px;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 .sidebar-location span {
   overflow: hidden;
@@ -164,7 +164,7 @@
   white-space: nowrap;
 }
 .sidebar-profile {
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 .sidebar-profile > span:nth-child(2) {
   flex: 1;
@@ -192,7 +192,7 @@
   padding: 10px 22px;
 }
 .chat-header h1 {
-  font-size: 17px;
+  font-size: 1.0625rem;
   font-weight: 550;
   flex: 1;
   min-width: 0;
@@ -234,7 +234,7 @@
   text-align: center;
 }
 .chat-welcome h2 {
-  font-size: clamp(25px, 3vw, 34px);
+  font-size: clamp(1.5625rem, 3vw, 2.125rem);
   font-weight: 550;
   letter-spacing: -0.035em;
   line-height: 1.25;
@@ -242,7 +242,7 @@
   color: var(--ws-ink);
 }
 .chat-welcome > p {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--ws-muted);
   margin-top: 13px;
 }
@@ -263,7 +263,7 @@
   text-align: left;
   border: 1px solid var(--ws-line);
   border-radius: 15px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.5;
 }
 .chat-suggestions svg {
@@ -292,7 +292,7 @@
   background: var(--ws-hover);
   border-radius: 24px;
   white-space: pre-wrap;
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.65;
 }
 .assistant-label {
@@ -300,11 +300,11 @@
   align-items: center;
   gap: 10px;
   font-weight: 550;
-  font-size: 13px;
+  font-size: 0.8125rem;
   margin-bottom: 15px;
 }
 .assistant-content {
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.8;
 }
 .message-actions {
@@ -320,7 +320,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--ws-muted);
   padding: 8px 0 24px;
 }
@@ -354,7 +354,7 @@
   border: 0;
   background: transparent;
   padding: 2px 10px 10px;
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.5;
   color: var(--ws-ink);
 }
@@ -365,7 +365,7 @@
 }
 .composer-language {
   flex: 1;
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--ws-muted);
   padding-left: 3px;
 }
@@ -388,7 +388,7 @@
   text-align: center;
   max-width: 760px;
   margin: 10px auto 0;
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--ws-muted);
 }
 .attachment-control {
@@ -404,12 +404,12 @@
   background: var(--ws-bg);
   border-radius: 14px;
   box-shadow: 0 8px 24px #0001;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .chat-error,
 .chat-location-notice {
   padding: 12px 24px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   background: var(--ws-side);
 }
 .chat-error {
@@ -437,7 +437,7 @@
   text-align: center;
 }
 .voice-dictation-status p {
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .voice-dictation-ready {
   position: absolute;
@@ -452,7 +452,7 @@
   border: 1px solid var(--border);
   border-radius: 14px;
   margin-bottom: 8px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   box-shadow: 0 4px 16px #0001;
 }
 .voice-dialog {
@@ -478,11 +478,11 @@
   box-shadow: inset 0 0 45px #ffffff88;
 }
 .voice-dialog h2 {
-  font-size: 20px;
+  font-size: 1.25rem;
 }
 .voice-dialog > p {
   max-width: 430px;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--muted-foreground);
 }
 @media (max-width: 767px) {
@@ -515,7 +515,7 @@
     min-height: 58px;
   }
   .chat-header h1 {
-    font-size: 16px;
+    font-size: 1rem;
   }
   .chat-stream {
     padding: 18px 18px 8px;
@@ -533,7 +533,7 @@
   }
   .chat-suggestions button {
     padding: 12px 10px;
-    font-size: 12px;
+    font-size: 0.75rem;
     align-items: flex-start;
     gap: 8px;
   }
@@ -544,17 +544,17 @@
     padding: 8px 12px max(10px, env(safe-area-inset-bottom));
   }
   .composer-footnote {
-    font-size: 10px;
+    font-size: 0.625rem;
     line-height: 1.5;
     max-height: 30px;
     overflow: hidden;
   }
   .user-bubble {
     max-width: 92%;
-    font-size: 15px;
+    font-size: 0.9375rem;
   }
   .assistant-content {
-    font-size: 15px;
+    font-size: 0.9375rem;
   }
   .chat-message {
     margin-bottom: 28px;
@@ -581,11 +581,11 @@
   min-width: 0;
 }
 .map-page-header h1 {
-  font-size: 17px;
+  font-size: 1.0625rem;
   font-weight: 600;
 }
 .map-page-header p {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--ws-muted);
   margin-top: 3px;
 }
@@ -593,7 +593,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   padding: 10px 14px;
   border: 1px solid var(--ws-line);
   border-radius: 24px;
@@ -628,7 +628,7 @@
   min-height: 38px;
   border-radius: 22px;
   padding: 8px 16px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--ws-muted);
 }
 .map-mode button[aria-pressed="true"] {
@@ -645,7 +645,7 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   border: 1px solid var(--ws-line);
   border-radius: 22px;
   padding: 10px 15px;
@@ -666,7 +666,7 @@
   display: grid;
   place-items: center;
   background: var(--ws-side);
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 .map-location-chip {
   position: absolute;
@@ -679,12 +679,12 @@
   background: var(--ws-bg);
   border-radius: 22px;
   padding: 10px 14px;
-  font-size: 12px;
+  font-size: 0.75rem;
   box-shadow: 0 2px 12px #0002;
   max-width: calc(100% - 36px);
 }
 .map-location-chip span {
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--ws-muted);
 }
 .map-layer-panel {
@@ -704,14 +704,14 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 .map-layer-panel label {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   min-height: 44px;
 }
 .map-layer-panel label > span {
@@ -725,7 +725,7 @@
   height: 17px;
 }
 .map-layer-panel p {
-  font-size: 11px;
+  font-size: 0.6875rem;
   line-height: 1.5;
   color: var(--ws-muted);
   padding-bottom: 6px;
@@ -734,7 +734,7 @@
   border-top: 1px solid var(--ws-line);
   margin-top: 8px;
   padding-top: 12px;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 .map-layer-panel summary {
   cursor: pointer;
@@ -750,7 +750,7 @@
   background: var(--ws-bg);
   border-radius: 12px;
   padding: 12px 14px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   max-width: 70%;
   box-shadow: 0 2px 12px #0002;
 }
@@ -793,7 +793,7 @@
   padding: 12px 16px;
   background: var(--ws-bg);
   border-radius: 24px;
-  font-size: 12px;
+  font-size: 0.75rem;
   box-shadow: 0 2px 12px #0002;
 }
 .map-info-panel {
@@ -817,26 +817,26 @@
   justify-content: space-between;
 }
 .map-eyebrow {
-  font-size: 10px;
+  font-size: 0.625rem;
   text-transform: uppercase;
   letter-spacing: 0.09em;
   color: var(--ws-muted);
 }
 .map-info-panel h2,
 .map-text-view h2 {
-  font-size: 21px;
+  font-size: 1.3125rem;
   font-weight: 550;
   line-height: 1.3;
 }
 .map-coordinate {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--ws-muted);
   margin: 8px 0 16px;
 }
 .map-risk {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: 0.75rem;
   border-top: 1px solid var(--ws-line);
   padding: 15px 0;
 }
@@ -858,7 +858,7 @@
   border-radius: 24px;
   background: var(--ws-ink);
   color: var(--ws-bg);
-  font-size: 13px;
+  font-size: 0.8125rem;
   margin-top: 18px;
 }
 .map-status-strip {
@@ -867,7 +867,7 @@
   flex-wrap: wrap;
   gap: 8px;
   padding: 11px 16px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--ws-muted);
   background: var(--ws-bg);
 }
@@ -879,7 +879,7 @@
 .map-text-intro {
   padding-bottom: 24px;
   color: var(--ws-muted);
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 .map-empty {
   display: block;
@@ -889,7 +889,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-size: 12px;
+  font-size: 0.75rem;
   padding: 10px 14px;
   border: 1px solid var(--ws-line);
   border-radius: 22px;
@@ -910,7 +910,7 @@
   justify-content: space-between;
   padding: 12px 16px;
   border-top: 1px solid var(--ws-line);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 .chat-snapshot > details {
   border: 0 !important;
@@ -922,11 +922,11 @@
 }
 .compact-map .map-mode button {
   padding: 6px 10px;
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 .compact-map .map-tool {
   padding: 8px 10px;
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 @media (max-width: 767px) {
   .map-page-header {
@@ -934,7 +934,7 @@
     gap: 8px;
   }
   .map-page-header h1 {
-    font-size: 15px;
+    font-size: 0.9375rem;
   }
   .map-page-header p {
     max-width: 140px;
@@ -943,7 +943,7 @@
     text-overflow: ellipsis;
   }
   .map-change-location {
-    font-size: 11px;
+    font-size: 0.6875rem;
     padding: 9px;
   }
   .map-workspace > main {
@@ -958,7 +958,7 @@
   }
   .map-mode button {
     padding: 7px 12px;
-    font-size: 12px;
+    font-size: 0.75rem;
   }
   .map-tool {
     padding: 9px 12px;
@@ -966,7 +966,7 @@
   .map-location-chip {
     left: 12px;
     top: 12px;
-    font-size: 11px;
+    font-size: 0.6875rem;
   }
   .map-location-chip span {
     display: none;
@@ -999,7 +999,7 @@
     left: 12px;
     bottom: 25px;
     max-width: 75%;
-    font-size: 10px;
+    font-size: 0.625rem;
     gap: 10px;
     padding: 10px;
   }
@@ -1012,7 +1012,7 @@
     top: 10px;
   }
   .map-status-strip {
-    font-size: 10px;
+    font-size: 0.625rem;
   }
   .map-text-view {
     padding: 18px;
@@ -1035,17 +1035,17 @@
 }
 .map-reading-grid span {
   display: block;
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--ws-muted);
   margin-bottom: 8px;
 }
 .map-reading-grid strong {
   display: block;
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 550;
 }
 .map-reading-source {
-  font-size: 11px;
+  font-size: 0.6875rem;
   line-height: 1.7;
   color: var(--ws-muted);
   margin: 8px 0;
@@ -1125,6 +1125,12 @@
 .chat-composer textarea:focus-visible {
   outline: none;
 }
+.map-network-status { font-size: 0.75rem; color: var(--ws-muted); padding: 4px; }
+.map-layer-panel { max-height: 80%; overflow-y: auto; overscroll-behavior: contain; }
+.map-layer-panel details p { line-height: 1.5; overflow-wrap: anywhere; }
+.marine-map-panel[data-network-mode="DEGRADED"] *, .marine-map-panel[data-network-mode="OFFLINE"] * { animation: none !important; transition: none !important; }
+.map-mode button:disabled { opacity: .45; cursor: not-allowed; }
+@media(max-width:600px) { .map-network-status { flex-basis: 100%; } .map-toolbar { flex-wrap: wrap; } }
 .chat-composer:focus-within {
   outline: 2px solid color-mix(in srgb, var(--ws-accent) 35%, transparent);
   outline-offset: 1px;

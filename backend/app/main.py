@@ -152,7 +152,11 @@ app = FastAPI(
 
 @app.exception_handler(ProviderUnavailable)
 async def unavailable_provider_handler(request, exc):
-    return JSONResponse(status_code=503, content={"detail": "AI_PROVIDER_UNAVAILABLE", "reason": exc.reason, "upstream_status": exc.http_status})
+    status = 504 if exc.reason in {"TIMEOUT", "UPSTREAM_TIMEOUT"} else 502 if exc.reason in {"MALFORMED_REQUEST", "EVIDENCE_VALIDATION_FAILED", "EMPTY_RESPONSE"} else 503
+    content = {"detail": "AI_PROVIDER_UNAVAILABLE", "reason": exc.reason, "upstream_status": exc.http_status}
+    if getattr(exc, "request_id", None):
+        content["request_id"] = exc.request_id
+    return JSONResponse(status_code=status, content=content)
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request, exc):
@@ -204,6 +208,8 @@ app.include_router(emergency_router)
 app.include_router(admin_router)
 app.include_router(notifications_router)
 app.include_router(chat_router)
+from app.routers.intelligence import router as intelligence_router
+app.include_router(intelligence_router)
 
 
 @app.get("/health")
@@ -378,6 +384,7 @@ class ChatRequest(BaseModel):
 
 
 class ChatResponse(BaseModel):
+    operational_trace: List[Dict[str, Any]] = Field(default_factory=list)
     ai_model: Optional[str] = None
     ai_fallback_used: bool = False
     snapshot_id: Optional[str] = None
@@ -1226,7 +1233,9 @@ def handle_chat(request: ChatRequest, user: UserProfile = Depends(get_current_us
         db.rollback()
         raise HTTPException(status_code=409, detail="CHAT_REQUEST_IN_PROGRESS")
     try:
-        result = process_snapshot_chat(request, user, db, weather_provider, history_dicts)
+        from app.services.provider_health import provider_request
+        with provider_request(request.request_id):
+            result = process_snapshot_chat(request, user, db, weather_provider, history_dicts)
     except Exception:
         db.rollback()
         if record_id:
@@ -1235,6 +1244,7 @@ def handle_chat(request: ChatRequest, user: UserProfile = Depends(get_current_us
         raise
 
     response = ChatResponse(
+        operational_trace=result.get("operational_trace", []),
         ai_model=result.get("ai_model"), ai_fallback_used=result.get("ai_fallback_used", False),
         snapshot_id=result.get("snapshot_id"), marine_snapshot=result.get("marine_snapshot"),
         language=result["language"],
@@ -1286,6 +1296,7 @@ def handle_chat(request: ChatRequest, user: UserProfile = Depends(get_current_us
         "ai_model": response.ai_model,
         "ai_fallback_used": response.ai_fallback_used,
         "snapshot_id": response.snapshot_id,
+        "operational_trace": response.operational_trace,
         "marine_snapshot": response.marine_snapshot.model_dump(mode="json") if response.marine_snapshot else None,
         "sources": response.sources_used,
         "risk_level": response.risk_level,

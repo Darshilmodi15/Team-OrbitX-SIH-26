@@ -1,0 +1,2140 @@
+{
+  "checked_at": "2026-09-18T16:44:48.114339+00:00",
+  "scope": "Real providers; public reference coordinates and synthetic speech fixtures; no production mutation",
+  "locations": {
+    "Mumbai offshore": {
+      "earth": {
+        "status": "available",
+        "experimental": true,
+        "title": "Coastal & River Flood Context",
+        "datasets": [
+          {
+            "dataset_id": "NASA/GPM_L3/IMERG_V07",
+            "organization": "NASA GPM",
+            "variable": "precipitation",
+            "unit": "mm/h",
+            "spatial_resolution": "0.1 degree (about 11 km)",
+            "temporal_resolution": "30 minutes",
+            "evidence_type": "satellite-derived precipitation estimate",
+            "source_url": "https://developers.google.com/earth-engine/datasets/catalog/NASA_GPM_L3_IMERG_V07",
+            "limitations": "Retrieval latency and gaps vary. Latest catalog observation may be old; this is not a forecast."
+          },
+          {
+            "dataset_id": "JRC/GSW1_4/GlobalSurfaceWater",
+            "organization": "EC JRC / Google",
+            "variable": "occurrence",
+            "unit": "%",
+            "spatial_resolution": "30 m native; aggregated to 1 km for context",
+            "temporal_resolution": "1984-2021 historical summary",
+            "evidence_type": "Landsat-derived historical surface water",
+            "source_url": "https://developers.google.com/earth-engine/datasets/catalog/JRC_GSW1_4_GlobalSurfaceWater",
+            "limitations": "Historical water occurrence, not present flooding, a floodplain map, or tidal inundation prediction."
+          },
+          {
+            "dataset_id": "USGS/SRTMGL1_003",
+            "organization": "NASA / USGS",
+            "variable": "elevation",
+            "unit": "m",
+            "spatial_resolution": "30 m native; aggregated to 1 km for context",
+            "temporal_resolution": "February 2000 acquisition",
+            "evidence_type": "radar-derived terrain",
+            "source_url": "https://developers.google.com/earth-engine/datasets/catalog/USGS_SRTMGL1_003",
+            "limitations": "Not bathymetry. Vertical error and unresolved barriers prevent parcel-level or storm-surge flood prediction."
+          }
+        ],
+        "retrieved_at": "2026-09-18T16:44:48.160596+00:00",
+        "cache_status": "fresh",
+        "geometry": {
+          "type": "FeatureCollection",
+          "features": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                  [
+                    [
+                      72.55000000000001,
+                      18.749999999999996
+                    ],
+                    [
+                      72.65,
+                      18.749999999999996
+                    ],
+                    [
+                      72.65,
+                      18.849999999999998
+                    ],
+                    [
+                      72.55000000000001,
+                      18.849999999999998
+                    ],
+                    [
+                      72.55000000000001,
+                      18.749999999999996
+                    ]
+                  ]
+                ]
+              },
+              "properties": {
+                "rainfall_mm_h": 0,
+                "historical_water_occurrence_pct": 99.75454747116234,
+                "elevation_m": 0
+              }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                  [
+                    [
+                      72.65,
+                      18.749999999999996
+                    ],
+                    [
+                      72.75,
+                      18.749999999999996
+                    ],
+                    [
+                      72.75,
+                      18.849999999999998
+                    ],
+                    [
+                      72.65,
+                      18.849999999999998
+                    ],
+                    [
+                      72.65,
+                      18.749999999999996
+                    ]
+                  ]
+                ]
+              },
+              "properties": {
+                "rainfall_mm_h": 0,
+                "historical_water_occurrence_pct": 99.9252833533844,
+                "elevation_m": 0
+              }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                  [
+                    [
+                      72.75,
+                      18.749999999999996
+                    ],
+                    [
+                      72.85,
+                      18.749999999999996
+                    ],
+                    [
+                      72.85,
+                      18.849999999999998
+                    ],
+                    [
+                      72.75,
+                      18.849999999999998
+                    ],
+                    [
+                      72.75,
+                      18.749999999999996
+                    ]
+                  ]
+                ]
+              },
+              "properties": {
+                "rainfall_mm_h": 0,
+                "historical_water_occurrence_pct": 99.95481298651987,
+                "elevation_m": 0
+              }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                  [
+                    [
+                      72.55000000000001,
+                      18.849999999999998
+                    ],
+                    [
+                      72.65,
+                      18.849999999999998
+                    ],
+                    [
+                      72.65,
+                      18.95
+                    ],
+                    [
+                      72.55000000000001,
+                      18.95
+                    ],
+                    [
+                      72.55000000000001,
+                      18.849999999999998
+                    ]
+                  ]
+                ]
+              },
+              "properties": {
+                "rainfall_mm_h": 0,
+                "historical_water_occurrence_pct": 99.85161483253589,
+                "elevation_m": 0
+              }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                  [
+                    [
+                      72.65,
+                      18.849999999999998
+                    ],
+                    [
+                      72.75,
+                      18.849999999999998
+                    ],
+                    [
+                      72.75,
+                      18.95
+                    ],
+                    [
+                      72.65,
+                      18.95
+                    ],
+                    [
+                      72.65,
+                      18.849999999999998
+                    ]
+                  ]
+                ]
+              },
+              "properties": {
+                "rainfall_mm_h": 0,
+                "historical_water_occurrence_pct": 99.97483460479249,
+                "elevation_m": 0
+              }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                  [
+                    [
+                      72.75,
+                      18.849999999999998
+                    ],
+                    [
+                      72.85,
+                      18.849999999999998
+                    ],
+                    [
+                      72.85,
+                      18.95
+                    ],
+                    [
+                      72.75,
+                      18.95
+                    ],
+                    [
+                      72.75,
+                      18.849999999999998
+                    ]
+                  ]
+                ]
+              },
+              "properties": {
+                "rainfall_mm_h": 0,
+                "historical_water_occurrence_pct": 99.44854601919819,
+                "elevation_m": 1.1043789153958106
+              }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                  [
+                    [
+                      72.55000000000001,
+                      18.95
+                    ],
+                    [
+                      72.65,
+                      18.95
+                    ],
+                    [
+                      72.65,
+                      19.05
+                    ],
+                    [
+                      72.55000000000001,
+                      19.05
+                    ],
+                    [
+                      72.55000000000001,
+                      18.95
+                    ]
+                  ]
+                ]
+              },
+              "properties": {
+                "rainfall_mm_h": 0,
+                "historical_water_occurrence_pct": 99.68044954624678,
+                "elevation_m": 0
+              }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                  [
+                    [
+                      72.65,
+                      18.95
+                    ],
+                    [
+                      72.75,
+                      18.95
+                    ],
+                    [
+                      72.75,
+                      19.05
+                    ],
+                    [
+                      72.65,
+                      19.05
+                    ],
+                    [
+                      72.65,
+                      18.95
+                    ]
+                  ]
+                ]
+              },
+              "properties": {
+                "rainfall_mm_h": 0,
+                "historical_water_occurrence_pct": 99.90241662179702,
+                "elevation_m": 0
+              }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                  [
+                    [
+                      72.75,
+                      18.95
+                    ],
+                    [
+                      72.85,
+                      18.95
+                    ],
+                    [
+                      72.85,
+                      19.05
+                    ],
+                    [
+                      72.75,
+                      19.05
+                    ],
+                    [
+                      72.75,
+                      18.95
+                    ]
+                  ]
+                ]
+              },
+              "properties": {
+                "rainfall_mm_h": 0,
+                "historical_water_occurrence_pct": 98.98593212001954,
+                "elevation_m": 3.3988796050132906
+              }
+            }
+          ]
+        },
+        "observation_period": {
+          "start": "2026-09-17T03:00:00+00:00",
+          "end": "2026-09-17T03:30:00+00:00"
+        },
+        "limitations": "Experimental rainfall, historical water and terrain context only. Not live flood prediction; no validated exposure score or river-distance model.",
+        "observation_age_hours": 37.7,
+        "analysis_scale_m": 1000
+      },
+      "earth_ms": 9205,
+      "obis": {
+        "status": "available",
+        "evidence": [
+          {
+            "species_name": "Paracondylactis sinensis",
+            "scientific_name": "Paracondylactis sinensis",
+            "evidence_type": "HISTORICAL_OCCURRENCE",
+            "suitability_score": null,
+            "occurrence_count": 5,
+            "advisory_id": null,
+            "location": {
+              "query_bounds": [
+                72.46262417375736,
+                18.675422206252243,
+                72.93737582624264,
+                19.124577793747754
+              ]
+            },
+            "data_period": {
+              "earliest_in_sample": "2019-01-22T17:57:00+05:30",
+              "latest_in_sample": "2024-05-27T09:09:12+05:30"
+            },
+            "source": "OBIS",
+            "source_url": "https://obis.org/",
+            "datasets": [
+              "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+            ],
+            "confidence": "Presence in historical records only; sampling is not exhaustive",
+            "disclaimer": "Historical occurrence, not live fish detection or a catch forecast. Counts and latest dates describe only the returned sample."
+          },
+          {
+            "species_name": "Bornella stellifera",
+            "scientific_name": "Bornella stellifera",
+            "evidence_type": "HISTORICAL_OCCURRENCE",
+            "suitability_score": null,
+            "occurrence_count": 3,
+            "advisory_id": null,
+            "location": {
+              "query_bounds": [
+                72.46262417375736,
+                18.675422206252243,
+                72.93737582624264,
+                19.124577793747754
+              ]
+            },
+            "data_period": {
+              "earliest_in_sample": "2019-06-05T06:38:11+05:30",
+              "latest_in_sample": "2026-02-02T17:40:41+05:30"
+            },
+            "source": "OBIS",
+            "source_url": "https://obis.org/",
+            "datasets": [
+              "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+            ],
+            "confidence": "Presence in historical records only; sampling is not exhaustive",
+            "disclaimer": "Historical occurrence, not live fish detection or a catch forecast. Counts and latest dates describe only the returned sample."
+          },
+          {
+            "species_name": "Euchelus asper",
+            "scientific_name": "Euchelus asper",
+            "evidence_type": "HISTORICAL_OCCURRENCE",
+            "suitability_score": null,
+            "occurrence_count": 3,
+            "advisory_id": null,
+            "location": {
+              "query_bounds": [
+                72.46262417375736,
+                18.675422206252243,
+                72.93737582624264,
+                19.124577793747754
+              ]
+            },
+            "data_period": {
+              "earliest_in_sample": "2023-03-24T07:15:36+05:30",
+              "latest_in_sample": "2026-01-02T16:56:00+05:30"
+            },
+            "source": "OBIS",
+            "source_url": "https://obis.org/",
+            "datasets": [
+              "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+            ],
+            "confidence": "Presence in historical records only; sampling is not exhaustive",
+            "disclaimer": "Historical occurrence, not live fish detection or a catch forecast. Counts and latest dates describe only the returned sample."
+          },
+          {
+            "species_name": "Gyrineum natator",
+            "scientific_name": "Gyrineum natator",
+            "evidence_type": "HISTORICAL_OCCURRENCE",
+            "suitability_score": null,
+            "occurrence_count": 3,
+            "advisory_id": null,
+            "location": {
+              "query_bounds": [
+                72.46262417375736,
+                18.675422206252243,
+                72.93737582624264,
+                19.124577793747754
+              ]
+            },
+            "data_period": {
+              "earliest_in_sample": "2021-03-01",
+              "latest_in_sample": "2023-02-07T18:17:52+05:30"
+            },
+            "source": "OBIS",
+            "source_url": "https://obis.org/",
+            "datasets": [
+              "8ea620e9-37d5-4ff6-9a02-0bc94356c2d5",
+              "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+            ],
+            "confidence": "Presence in historical records only; sampling is not exhaustive",
+            "disclaimer": "Historical occurrence, not live fish detection or a catch forecast. Counts and latest dates describe only the returned sample."
+          },
+          {
+            "species_name": "Volegalea cochlidium",
+            "scientific_name": "Volegalea cochlidium",
+            "evidence_type": "HISTORICAL_OCCURRENCE",
+            "suitability_score": null,
+            "occurrence_count": 3,
+            "advisory_id": null,
+            "location": {
+              "query_bounds": [
+                72.46262417375736,
+                18.675422206252243,
+                72.93737582624264,
+                19.124577793747754
+              ]
+            },
+            "data_period": {
+              "earliest_in_sample": "2017-12-03T17:55:00+05:30",
+              "latest_in_sample": "2025-01-27T15:59:19+05:30"
+            },
+            "source": "OBIS",
+            "source_url": "https://obis.org/",
+            "datasets": [
+              "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+            ],
+            "confidence": "Presence in historical records only; sampling is not exhaustive",
+            "disclaimer": "Historical occurrence, not live fish detection or a catch forecast. Counts and latest dates describe only the returned sample."
+          },
+          {
+            "species_name": "Charybdis (Charybdis) annulata",
+            "scientific_name": "Charybdis (Charybdis) annulata",
+            "evidence_type": "HISTORICAL_OCCURRENCE",
+            "suitability_score": null,
+            "occurrence_count": 2,
+            "advisory_id": null,
+            "location": {
+              "query_bounds": [
+                72.46262417375736,
+                18.675422206252243,
+                72.93737582624264,
+                19.124577793747754
+              ]
+            },
+            "data_period": {
+              "earliest_in_sample": "2026-04-21T07:58:14+05:30",
+              "latest_in_sample": "2026-04-21T08:32:28+05:30"
+            },
+            "source": "OBIS",
+            "source_url": "https://obis.org/",
+            "datasets": [
+              "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+            ],
+            "confidence": "Presence in historical records only; sampling is not exhaustive",
+            "disclaimer": "Historical occurrence, not live fish detection or a catch forecast. Counts and latest dates describe only the returned sample."
+          },
+          {
+            "species_name": "Grapsus albolineatus",
+            "scientific_name": "Grapsus albolineatus",
+            "evidence_type": "HISTORICAL_OCCURRENCE",
+            "suitability_score": null,
+            "occurrence_count": 2,
+            "advisory_id": null,
+            "location": {
+              "query_bounds": [
+                72.46262417375736,
+                18.675422206252243,
+                72.93737582624264,
+                19.124577793747754
+              ]
+            },
+            "data_period": {
+              "earliest_in_sample": "2025-12-08T18:00:36+05:30",
+              "latest_in_sample": "2026-05-03T06:40:00+05:30"
+            },
+            "source": "OBIS",
+            "source_url": "https://obis.org/",
+            "datasets": [
+              "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+            ],
+            "confidence": "Presence in historical records only; sampling is not exhaustive",
+            "disclaimer": "Historical occurrence, not live fish detection or a catch forecast. Counts and latest dates describe only the returned sample."
+          },
+          {
+            "species_name": "Petrolisthes boscii",
+            "scientific_name": "Petrolisthes boscii",
+            "evidence_type": "HISTORICAL_OCCURRENCE",
+            "suitability_score": null,
+            "occurrence_count": 2,
+            "advisory_id": null,
+            "location": {
+              "query_bounds": [
+                72.46262417375736,
+                18.675422206252243,
+                72.93737582624264,
+                19.124577793747754
+              ]
+            },
+            "data_period": {
+              "earliest_in_sample": "2024-10-04T17:41:25+05:30",
+              "latest_in_sample": "2026-01-31T16:36:00+05:30"
+            },
+            "source": "OBIS",
+            "source_url": "https://obis.org/",
+            "datasets": [
+              "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+            ],
+            "confidence": "Presence in historical records only; sampling is not exhaustive",
+            "disclaimer": "Historical occurrence, not live fish detection or a catch forecast. Counts and latest dates describe only the returned sample."
+          },
+          {
+            "species_name": "Planaxis sulcatus",
+            "scientific_name": "Planaxis sulcatus",
+            "evidence_type": "HISTORICAL_OCCURRENCE",
+            "suitability_score": null,
+            "occurrence_count": 2,
+            "advisory_id": null,
+            "location": {
+              "query_bounds": [
+                72.46262417375736,
+                18.675422206252243,
+                72.93737582624264,
+                19.124577793747754
+              ]
+            },
+            "data_period": {
+              "earliest_in_sample": "2022-11-23T17:40:34+05:30",
+              "latest_in_sample": "2023-03-26T07:13:14+05:30"
+            },
+            "source": "OBIS",
+            "source_url": "https://obis.org/",
+            "datasets": [
+              "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+            ],
+            "confidence": "Presence in historical records only; sampling is not exhaustive",
+            "disclaimer": "Historical occurrence, not live fish detection or a catch forecast. Counts and latest dates describe only the returned sample."
+          },
+          {
+            "species_name": "Scutus unguis",
+            "scientific_name": "Scutus unguis",
+            "evidence_type": "HISTORICAL_OCCURRENCE",
+            "suitability_score": null,
+            "occurrence_count": 2,
+            "advisory_id": null,
+            "location": {
+              "query_bounds": [
+                72.46262417375736,
+                18.675422206252243,
+                72.93737582624264,
+                19.124577793747754
+              ]
+            },
+            "data_period": {
+              "earliest_in_sample": "2023-02-18T17:08:54+05:30",
+              "latest_in_sample": "2024-04-13T08:37:43+05:30"
+            },
+            "source": "OBIS",
+            "source_url": "https://obis.org/",
+            "datasets": [
+              "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+            ],
+            "confidence": "Presence in historical records only; sampling is not exhaustive",
+            "disclaimer": "Historical occurrence, not live fish detection or a catch forecast. Counts and latest dates describe only the returned sample."
+          },
+          {
+            "species_name": "Semiricinula tissoti",
+            "scientific_name": "Semiricinula tissoti",
+            "evidence_type": "HISTORICAL_OCCURRENCE",
+            "suitability_score": null,
+            "occurrence_count": 2,
+            "advisory_id": null,
+            "location": {
+              "query_bounds": [
+                72.46262417375736,
+                18.675422206252243,
+                72.93737582624264,
+                19.124577793747754
+              ]
+            },
+            "data_period": {
+              "earliest_in_sample": "2024-05-24T06:44:05+05:30",
+              "latest_in_sample": "2026-05-19T07:41:00+05:30"
+            },
+            "source": "OBIS",
+            "source_url": "https://obis.org/",
+            "datasets": [
+              "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+            ],
+            "confidence": "Presence in historical records only; sampling is not exhaustive",
+            "disclaimer": "Historical occurrence, not live fish detection or a catch forecast. Counts and latest dates describe only the returned sample."
+          },
+          {
+            "species_name": "Amphibalanus amphitrite",
+            "scientific_name": "Amphibalanus amphitrite",
+            "evidence_type": "HISTORICAL_OCCURRENCE",
+            "suitability_score": null,
+            "occurrence_count": 1,
+            "advisory_id": null,
+            "location": {
+              "query_bounds": [
+                72.46262417375736,
+                18.675422206252243,
+                72.93737582624264,
+                19.124577793747754
+              ]
+            },
+            "data_period": {
+              "earliest_in_sample": "2022-05-03T07:44:33+05:30",
+              "latest_in_sample": "2022-05-03T07:44:33+05:30"
+            },
+            "source": "OBIS",
+            "source_url": "https://obis.org/",
+            "datasets": [
+              "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+            ],
+            "confidence": "Presence in historical records only; sampling is not exhaustive",
+            "disclaimer": "Historical occurrence, not live fish detection or a catch forecast. Counts and latest dates describe only the returned sample."
+          },
+          {
+            "species_name": "Anthopleura dixoniana",
+            "scientific_name": "Anthopleura dixoniana",
+            "evidence_type": "HISTORICAL_OCCURRENCE",
+            "suitability_score": null,
+            "occurrence_count": 1,
+            "advisory_id": null,
+            "location": {
+              "query_bounds": [
+                72.46262417375736,
+                18.675422206252243,
+                72.93737582624264,
+                19.124577793747754
+              ]
+            },
+            "data_period": {
+              "earliest_in_sample": "2019-01-04T18:46:00+05:30",
+              "latest_in_sample": "2019-01-04T18:46:00+05:30"
+            },
+            "source": "OBIS",
+            "source_url": "https://obis.org/",
+            "datasets": [
+              "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+            ],
+            "confidence": "Presence in historical records only; sampling is not exhaustive",
+            "disclaimer": "Historical occurrence, not live fish detection or a catch forecast. Counts and latest dates describe only the returned sample."
+          },
+          {
+            "species_name": "Austruca annulipes",
+            "scientific_name": "Austruca annulipes",
+            "evidence_type": "HISTORICAL_OCCURRENCE",
+            "suitability_score": null,
+            "occurrence_count": 1,
+            "advisory_id": null,
+            "location": {
+              "query_bounds": [
+                72.46262417375736,
+                18.675422206252243,
+                72.93737582624264,
+                19.124577793747754
+              ]
+            },
+            "data_period": {
+              "earliest_in_sample": "2015-02-20T09:45:00+02:00",
+              "latest_in_sample": "2015-02-20T09:45:00+02:00"
+            },
+            "source": "OBIS",
+            "source_url": "https://obis.org/",
+            "datasets": [
+              "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+            ],
+            "confidence": "Presence in historical records only; sampling is not exhaustive",
+            "disclaimer": "Historical occurrence, not live fish detection or a catch forecast. Counts and latest dates describe only the returned sample."
+          },
+          {
+            "species_name": "Auxis thazard",
+            "scientific_name": "Auxis thazard",
+            "evidence_type": "HISTORICAL_OCCURRENCE",
+            "suitability_score": null,
+            "occurrence_count": 1,
+            "advisory_id": null,
+            "location": {
+              "query_bounds": [
+                72.46262417375736,
+                18.675422206252243,
+                72.93737582624264,
+                19.124577793747754
+              ]
+            },
+            "data_period": {
+              "earliest_in_sample": "2022-12-02T09:20:55+05:30",
+              "latest_in_sample": "2022-12-02T09:20:55+05:30"
+            },
+            "source": "OBIS",
+            "source_url": "https://obis.org/",
+            "datasets": [
+              "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+            ],
+            "confidence": "Presence in historical records only; sampling is not exhaustive",
+            "disclaimer": "Historical occurrence, not live fish detection or a catch forecast. Counts and latest dates describe only the returned sample."
+          },
+          {
+            "species_name": "Bunodosoma goanense",
+            "scientific_name": "Bunodosoma goanense",
+            "evidence_type": "HISTORICAL_OCCURRENCE",
+            "suitability_score": null,
+            "occurrence_count": 1,
+            "advisory_id": null,
+            "location": {
+              "query_bounds": [
+                72.46262417375736,
+                18.675422206252243,
+                72.93737582624264,
+                19.124577793747754
+              ]
+            },
+            "data_period": {
+              "earliest_in_sample": "2018-11-18T14:18:32+05:30",
+              "latest_in_sample": "2018-11-18T14:18:32+05:30"
+            },
+            "source": "OBIS",
+            "source_url": "https://obis.org/",
+            "datasets": [
+              "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+            ],
+            "confidence": "Presence in historical records only; sampling is not exhaustive",
+            "disclaimer": "Historical occurrence, not live fish detection or a catch forecast. Counts and latest dates describe only the returned sample."
+          },
+          {
+            "species_name": "Calidris ferruginea",
+            "scientific_name": "Calidris ferruginea",
+            "evidence_type": "HISTORICAL_OCCURRENCE",
+            "suitability_score": null,
+            "occurrence_count": 1,
+            "advisory_id": null,
+            "location": {
+              "query_bounds": [
+                72.46262417375736,
+                18.675422206252243,
+                72.93737582624264,
+                19.124577793747754
+              ]
+            },
+            "data_period": {
+              "earliest_in_sample": "2016-04-17T17:03:00+05:30",
+              "latest_in_sample": "2016-04-17T17:03:00+05:30"
+            },
+            "source": "OBIS",
+            "source_url": "https://obis.org/",
+            "datasets": [
+              "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+            ],
+            "confidence": "Presence in historical records only; sampling is not exhaustive",
+            "disclaimer": "Historical occurrence, not live fish detection or a catch forecast. Counts and latest dates describe only the returned sample."
+          },
+          {
+            "species_name": "Chlidonias hybrida",
+            "scientific_name": "Chlidonias hybrida",
+            "evidence_type": "HISTORICAL_OCCURRENCE",
+            "suitability_score": null,
+            "occurrence_count": 1,
+            "advisory_id": null,
+            "location": {
+              "query_bounds": [
+                72.46262417375736,
+                18.675422206252243,
+                72.93737582624264,
+                19.124577793747754
+              ]
+            },
+            "data_period": {
+              "earliest_in_sample": "2023-11-21T07:56:00+05:30",
+              "latest_in_sample": "2023-11-21T07:56:00+05:30"
+            },
+            "source": "OBIS",
+            "source_url": "https://obis.org/",
+            "datasets": [
+              "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+            ],
+            "confidence": "Presence in historical records only; sampling is not exhaustive",
+            "disclaimer": "Historical occurrence, not live fish detection or a catch forecast. Counts and latest dates describe only the returned sample."
+          },
+          {
+            "species_name": "Clanculus depictus",
+            "scientific_name": "Clanculus depictus",
+            "evidence_type": "HISTORICAL_OCCURRENCE",
+            "suitability_score": null,
+            "occurrence_count": 1,
+            "advisory_id": null,
+            "location": {
+              "query_bounds": [
+                72.46262417375736,
+                18.675422206252243,
+                72.93737582624264,
+                19.124577793747754
+              ]
+            },
+            "data_period": {
+              "earliest_in_sample": "2024-05-27T07:15:00+05:30",
+              "latest_in_sample": "2024-05-27T07:15:00+05:30"
+            },
+            "source": "OBIS",
+            "source_url": "https://obis.org/",
+            "datasets": [
+              "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+            ],
+            "confidence": "Presence in historical records only; sampling is not exhaustive",
+            "disclaimer": "Historical occurrence, not live fish detection or a catch forecast. Counts and latest dates describe only the returned sample."
+          },
+          {
+            "species_name": "Conus achatinus",
+            "scientific_name": "Conus achatinus",
+            "evidence_type": "HISTORICAL_OCCURRENCE",
+            "suitability_score": null,
+            "occurrence_count": 1,
+            "advisory_id": null,
+            "location": {
+              "query_bounds": [
+                72.46262417375736,
+                18.675422206252243,
+                72.93737582624264,
+                19.124577793747754
+              ]
+            },
+            "data_period": {
+              "earliest_in_sample": "2019-12-31T16:14:00+05:30",
+              "latest_in_sample": "2019-12-31T16:14:00+05:30"
+            },
+            "source": "OBIS",
+            "source_url": "https://obis.org/",
+            "datasets": [
+              "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+            ],
+            "confidence": "Presence in historical records only; sampling is not exhaustive",
+            "disclaimer": "Historical occurrence, not live fish detection or a catch forecast. Counts and latest dates describe only the returned sample."
+          }
+        ],
+        "points": [
+          {
+            "lat": 18.98235,
+            "lon": 72.808395,
+            "scientific_name": "Euchelus asper",
+            "event_date": "2025-04-16T06:20:58+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.986038,
+            "lon": 72.812443,
+            "scientific_name": "Sardinella sindensis",
+            "event_date": null,
+            "dataset_id": "d6af0fac-8a21-4d77-8872-f10d471fc0cf"
+          },
+          {
+            "lat": 19.097417713,
+            "lon": 72.8264476731,
+            "scientific_name": "Paracondylactis sinensis",
+            "event_date": "2024-05-27T09:09:12+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.0845691984,
+            "lon": 72.8253997806,
+            "scientific_name": "Paracondylactis sinensis",
+            "event_date": "2020-02-08T16:05:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.9771483741,
+            "lon": 72.8052967787,
+            "scientific_name": "Bornella stellifera",
+            "event_date": "2019-06-05T06:38:11+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.98185,
+            "lon": 72.8062583333,
+            "scientific_name": "Goniobranchus bombayanus",
+            "event_date": "2024-10-17T18:29:26+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.0697503511,
+            "lon": 72.8221598268,
+            "scientific_name": "Volegalea cochlidium",
+            "event_date": "2025-01-27T15:59:19+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.9590238267,
+            "lon": 72.7942307756,
+            "scientific_name": "Zoanthus sansibaricus",
+            "event_date": "2019-01-04T18:05:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.982845,
+            "lon": 72.8058616667,
+            "scientific_name": "Volegalea cochlidium",
+            "event_date": "2020-11-16T17:48:21+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.9806638889,
+            "lon": 72.8092333333,
+            "scientific_name": "Istigobius ornatus",
+            "event_date": "2024-10-04T16:36:17+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.9802777778,
+            "lon": 72.8064666667,
+            "scientific_name": "Clanculus depictus",
+            "event_date": "2024-05-27T07:15:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.0527537988,
+            "lon": 72.8626249731,
+            "scientific_name": "Phalacrocorax fuscicollis",
+            "event_date": "2025-03-08T09:33:11+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19,
+            "lon": 72.83,
+            "scientific_name": "Paratapes textile",
+            "event_date": "1958-11",
+            "dataset_id": "8ea620e9-37d5-4ff6-9a02-0bc94356c2d5"
+          },
+          {
+            "lat": 19.097417713,
+            "lon": 72.8264476731,
+            "scientific_name": "Paracondylactis sinensis",
+            "event_date": "2022-04-20T07:10:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.958350036,
+            "lon": 72.7973476664,
+            "scientific_name": "Cratena lineata",
+            "event_date": "2018-11-06T17:51:00+02:00",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.98135,
+            "lon": 72.8076361111,
+            "scientific_name": "Petrolisthes boscii",
+            "event_date": "2024-10-04T17:41:25+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.9791358448,
+            "lon": 72.8028381371,
+            "scientific_name": "Goniobranchus trimarginatus",
+            "event_date": "2019-06-06T06:58:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.070029084,
+            "lon": 72.82188034,
+            "scientific_name": "Suberites aurantiacus",
+            "event_date": "2023-01-25T08:47:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.957025,
+            "lon": 72.79493,
+            "scientific_name": "Doriopsilla miniata",
+            "event_date": "2023-05-21T07:25:52+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.9581414539,
+            "lon": 72.7966293469,
+            "scientific_name": "Elysia hirasei",
+            "event_date": "2018-11-06T16:28:00+02:00",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.0721816,
+            "lon": 72.8187613997,
+            "scientific_name": "Tibia curta",
+            "event_date": "2024-03-10T18:39:24+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.0968518648,
+            "lon": 72.8272134438,
+            "scientific_name": "Indothais lacera",
+            "event_date": "2019-03-24T08:13:45Z",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.0538972222,
+            "lon": 72.8189055556,
+            "scientific_name": "Charybdis (Charybdis) annulata",
+            "event_date": "2026-04-21T07:58:14+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.9633474,
+            "lon": 72.9314864,
+            "scientific_name": "Onychoprion anaethetus",
+            "event_date": "2024-07-30T12:02:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.9579829385,
+            "lon": 72.7962528645,
+            "scientific_name": "Anthopleura dixoniana",
+            "event_date": "2019-01-04T18:46:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.0644028333,
+            "lon": 72.81862,
+            "scientific_name": "Planaxis sulcatus",
+            "event_date": "2023-03-26T07:13:14+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.9571333333,
+            "lon": 72.7949666667,
+            "scientific_name": "Trapania japonica",
+            "event_date": "2021-02-28T18:12:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.9911080468,
+            "lon": 72.8572463674,
+            "scientific_name": "Austruca annulipes",
+            "event_date": "2015-02-20T09:45:00+02:00",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.0855560303,
+            "lon": 72.823059082,
+            "scientific_name": "Paracondylactis sinensis",
+            "event_date": "2019-11-11T17:05:43+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.085224,
+            "lon": 72.8226623997,
+            "scientific_name": "Amphibalanus amphitrite",
+            "event_date": "2022-05-03T07:44:33+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.0845741301,
+            "lon": 72.8252051398,
+            "scientific_name": "Dendrodoris fumata",
+            "event_date": "2026-04-19T08:01:09+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.9576527778,
+            "lon": 72.7971444444,
+            "scientific_name": "Purpura bufo",
+            "event_date": "2025-10-07T17:28:17+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.0557570912,
+            "lon": 72.8233723122,
+            "scientific_name": "Conus achatinus",
+            "event_date": "2019-12-31T16:14:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.9138543,
+            "lon": 72.8237601,
+            "scientific_name": "Sterna hirundo",
+            "event_date": "2024-09-04T09:28:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.9591997222,
+            "lon": 72.7970961111,
+            "scientific_name": "Pelagella kolabana",
+            "event_date": "2025-10-08T18:28:22+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19,
+            "lon": 72.83,
+            "scientific_name": "Nassarius stolatus",
+            "event_date": "1958-11",
+            "dataset_id": "8ea620e9-37d5-4ff6-9a02-0bc94356c2d5"
+          },
+          {
+            "lat": 18.9862593179,
+            "lon": 72.8548892404,
+            "scientific_name": "Pseudosiderastrea tayamai",
+            "event_date": "2017-11-19T18:12:10+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.097417713,
+            "lon": 72.8264476731,
+            "scientific_name": "Scutus unguis",
+            "event_date": "2023-02-18T17:08:54+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.9554119952,
+            "lon": 72.7957146276,
+            "scientific_name": "Bornella stellifera",
+            "event_date": "2022-09-28T19:10:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.1095171,
+            "lon": 72.8241298,
+            "scientific_name": "Paracondylactis sinensis",
+            "event_date": "2019-01-22T17:57:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.0490099722,
+            "lon": 72.8214159722,
+            "scientific_name": "Charybdis (Charybdis) annulata",
+            "event_date": "2026-04-21T08:32:28+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.98,
+            "lon": 72.83,
+            "scientific_name": "Gyrineum natator",
+            "event_date": null,
+            "dataset_id": "8ea620e9-37d5-4ff6-9a02-0bc94356c2d5"
+          },
+          {
+            "lat": 18.95,
+            "lon": 72.8,
+            "scientific_name": "Himantura uarnak",
+            "event_date": null,
+            "dataset_id": "a0737a06-66ef-41e7-9458-9c05f53340b5"
+          },
+          {
+            "lat": 18.9138543,
+            "lon": 72.8237601,
+            "scientific_name": "Sterna repressa",
+            "event_date": "2024-09-06T09:35:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.9820472222,
+            "lon": 72.8060416667,
+            "scientific_name": "Pseudopterogorgia fredericki",
+            "event_date": "2025-10-09T18:38:56+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.1243132694,
+            "lon": 72.8338677977,
+            "scientific_name": "Gymnura poecilura",
+            "event_date": "2025-06-14",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.0682119,
+            "lon": 72.8226682,
+            "scientific_name": "Volegalea cochlidium",
+            "event_date": "2017-12-03T17:55:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.0557570912,
+            "lon": 72.8233723122,
+            "scientific_name": "Gyrineum natator",
+            "event_date": "2021-03-01",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.122783573,
+            "lon": 72.9074834581,
+            "scientific_name": "Chlidonias hybrida",
+            "event_date": "2023-11-21T07:56:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.9587498245,
+            "lon": 72.7954490103,
+            "scientific_name": "Menippe rumphii",
+            "event_date": "2025-03-30T07:17:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.9819991565,
+            "lon": 72.8061045433,
+            "scientific_name": "Grapsus albolineatus",
+            "event_date": "2026-05-03T06:40:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.9119450326,
+            "lon": 72.824963741,
+            "scientific_name": "Auxis thazard",
+            "event_date": "2022-12-02T09:20:55+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.0706157997,
+            "lon": 72.8206725997,
+            "scientific_name": "Semiricinula tissoti",
+            "event_date": "2024-05-24T06:44:05+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.0861878,
+            "lon": 72.8222868997,
+            "scientific_name": "Scutus unguis",
+            "event_date": "2024-04-13T08:37:43+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.0582471667,
+            "lon": 72.8190083333,
+            "scientific_name": "Gyrineum natator",
+            "event_date": "2023-02-07T18:17:52+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.05404,
+            "lon": 72.8187,
+            "scientific_name": "Polycyathus verrilli",
+            "event_date": "2021-02-26T17:33:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.0866108553,
+            "lon": 72.825074309,
+            "scientific_name": "Euchelus asper",
+            "event_date": "2026-01-02T16:56:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.7038154,
+            "lon": 72.8134842,
+            "scientific_name": "Oceanites oceanicus",
+            "event_date": "2015-10-17T10:58:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.9570666,
+            "lon": 72.7989051,
+            "scientific_name": "Semiricinula tissoti",
+            "event_date": "2026-05-19T07:41:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.7274388889,
+            "lon": 72.8625861111,
+            "scientific_name": "Petrolisthes boscii",
+            "event_date": "2026-01-31T16:36:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.0546638333,
+            "lon": 72.8194666667,
+            "scientific_name": "Euchelus asper",
+            "event_date": "2023-03-24T07:15:36+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.911,
+            "lon": 72.8267,
+            "scientific_name": "Gelochelidon nilotica",
+            "event_date": "2025-09-18T10:24:11+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.9108,
+            "lon": 72.8266,
+            "scientific_name": "Egretta garzetta",
+            "event_date": "2025-09-20T08:18:57+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.7500638889,
+            "lon": 72.8642583333,
+            "scientific_name": "Porpita porpita",
+            "event_date": "2023-05-20T18:19:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.9568944444,
+            "lon": 72.7948305556,
+            "scientific_name": "Bornella stellifera",
+            "event_date": "2026-02-02T17:40:41+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.0840126739,
+            "lon": 72.8286534548,
+            "scientific_name": "Bunodosoma goanense",
+            "event_date": "2018-11-18T14:18:32+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.0580721667,
+            "lon": 72.820655,
+            "scientific_name": "Saccostrea cuccullata",
+            "event_date": "2023-02-07T17:55:54+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.9924132,
+            "lon": 72.8547164,
+            "scientific_name": "Calidris ferruginea",
+            "event_date": "2016-04-17T17:03:00+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 18.9716762611,
+            "lon": 72.8014924005,
+            "scientific_name": "Grapsus albolineatus",
+            "event_date": "2025-12-08T18:00:36+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          },
+          {
+            "lat": 19.0723583333,
+            "lon": 72.8186033333,
+            "scientific_name": "Planaxis sulcatus",
+            "event_date": "2022-11-23T17:40:34+05:30",
+            "dataset_id": "eaea291a-1e1d-4382-b86f-ac3cc15b8d5a"
+          }
+        ],
+        "source": "OBIS",
+        "source_url": "https://obis.org/manual/access/",
+        "retrieved_at": "2026-09-18T16:44:57.365750+00:00",
+        "cache_status": "fresh",
+        "sample_limit": 100,
+        "query_bounds": [
+          72.46262417375736,
+          18.675422206252243,
+          72.93737582624264,
+          19.124577793747754
+        ],
+        "disclaimer": "Historical occurrence, not live fish detection or a catch forecast. Counts and latest dates describe only the returned sample.",
+        "total_matching_records": 7758,
+        "returned_records": 100
+      },
+      "obis_ms": 6117
+    },
+    "Paradip coast": {
+      "earth": {
+        "status": "available",
+        "experimental": true,
+        "title": "Coastal & River Flood Context",
+        "datasets": [
+          {
+            "dataset_id": "NASA/GPM_L3/IMERG_V07",
+            "organization": "NASA GPM",
+            "variable": "precipitation",
+            "unit": "mm/h",
+            "spatial_resolution": "0.1 degree (about 11 km)",
+            "temporal_resolution": "30 minutes",
+            "evidence_type": "satellite-derived precipitation estimate",
+            "source_url": "https://developers.google.com/earth-engine/datasets/catalog/NASA_GPM_L3_IMERG_V07",
+            "limitations": "Retrieval latency and gaps vary. Latest catalog observation may be old; this is not a forecast."
+          },
+          {
+            "dataset_id": "JRC/GSW1_4/GlobalSurfaceWater",
+            "organization": "EC JRC / Google",
+            "variable": "occurrence",
+            "unit": "%",
+            "spatial_resolution": "30 m native; aggregated to 1 km for context",
+            "temporal_resolution": "1984-2021 historical summary",
+            "evidence_type": "Landsat-derived historical surface water",
+            "source_url": "https://developers.google.com/earth-engine/datasets/catalog/JRC_GSW1_4_GlobalSurfaceWater",
+            "limitations": "Historical water occurrence, not present flooding, a floodplain map, or tidal inundation prediction."
+          },
+          {
+            "dataset_id": "USGS/SRTMGL1_003",
+            "organization": "NASA / USGS",
+            "variable": "elevation",
+            "unit": "m",
+            "spatial_resolution": "30 m native; aggregated to 1 km for context",
+            "temporal_resolution": "February 2000 acquisition",
+            "evidence_type": "radar-derived terrain",
+            "source_url": "https://developers.google.com/earth-engine/datasets/catalog/USGS_SRTMGL1_003",
+            "limitations": "Not bathymetry. Vertical error and unresolved barriers prevent parcel-level or storm-surge flood prediction."
+          }
+        ],
+        "retrieved_at": "2026-09-18T16:45:03.482495+00:00",
+        "cache_status": "fresh",
+        "geometry": {
+          "type": "FeatureCollection",
+          "features": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                  [
+                    [
+                      86.52000000000001,
+                      20.11
+                    ],
+                    [
+                      86.62,
+                      20.11
+                    ],
+                    [
+                      86.62,
+                      20.21
+                    ],
+                    [
+                      86.52000000000001,
+                      20.21
+                    ],
+                    [
+                      86.52000000000001,
+                      20.11
+                    ]
+                  ]
+                ]
+              },
+              "properties": {
+                "rainfall_mm_h": 0,
+                "historical_water_occurrence_pct": 98.70691789299956,
+                "elevation_m": 0.4403495440729482
+              }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                  [
+                    [
+                      86.62,
+                      20.11
+                    ],
+                    [
+                      86.72,
+                      20.11
+                    ],
+                    [
+                      86.72,
+                      20.21
+                    ],
+                    [
+                      86.62,
+                      20.21
+                    ],
+                    [
+                      86.62,
+                      20.11
+                    ]
+                  ]
+                ]
+              },
+              "properties": {
+                "rainfall_mm_h": 0,
+                "historical_water_occurrence_pct": 99.23162498811429,
+                "elevation_m": 0
+              }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                  [
+                    [
+                      86.72,
+                      20.11
+                    ],
+                    [
+                      86.82,
+                      20.11
+                    ],
+                    [
+                      86.82,
+                      20.21
+                    ],
+                    [
+                      86.72,
+                      20.21
+                    ],
+                    [
+                      86.72,
+                      20.11
+                    ]
+                  ]
+                ]
+              },
+              "properties": {
+                "rainfall_mm_h": 0,
+                "historical_water_occurrence_pct": 99.01717928286826,
+                "elevation_m": 0
+              }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                  [
+                    [
+                      86.52000000000001,
+                      20.21
+                    ],
+                    [
+                      86.62,
+                      20.21
+                    ],
+                    [
+                      86.62,
+                      20.310000000000002
+                    ],
+                    [
+                      86.52000000000001,
+                      20.310000000000002
+                    ],
+                    [
+                      86.52000000000001,
+                      20.21
+                    ]
+                  ]
+                ]
+              },
+              "properties": {
+                "rainfall_mm_h": 0,
+                "historical_water_occurrence_pct": 83.40446379967338,
+                "elevation_m": 3.8823548029751533
+              }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                  [
+                    [
+                      86.62,
+                      20.21
+                    ],
+                    [
+                      86.72,
+                      20.21
+                    ],
+                    [
+                      86.72,
+                      20.310000000000002
+                    ],
+                    [
+                      86.62,
+                      20.310000000000002
+                    ],
+                    [
+                      86.62,
+                      20.21
+                    ]
+                  ]
+                ]
+              },
+              "properties": {
+                "rainfall_mm_h": 0,
+                "historical_water_occurrence_pct": 95.94122993032413,
+                "elevation_m": 1.5958678731886347
+              }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                  [
+                    [
+                      86.72,
+                      20.21
+                    ],
+                    [
+                      86.82,
+                      20.21
+                    ],
+                    [
+                      86.82,
+                      20.310000000000002
+                    ],
+                    [
+                      86.72,
+                      20.310000000000002
+                    ],
+                    [
+                      86.72,
+                      20.21
+                    ]
+                  ]
+                ]
+              },
+              "properties": {
+                "rainfall_mm_h": 0,
+                "historical_water_occurrence_pct": 99.16064844246644,
+                "elevation_m": 0.039011580079731704
+              }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                  [
+                    [
+                      86.52000000000001,
+                      20.310000000000002
+                    ],
+                    [
+                      86.62,
+                      20.310000000000002
+                    ],
+                    [
+                      86.62,
+                      20.410000000000004
+                    ],
+                    [
+                      86.52000000000001,
+                      20.410000000000004
+                    ],
+                    [
+                      86.52000000000001,
+                      20.310000000000002
+                    ]
+                  ]
+                ]
+              },
+              "properties": {
+                "rainfall_mm_h": 0,
+                "historical_water_occurrence_pct": 73.22571588994953,
+                "elevation_m": 4.1823333861009955
+              }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                  [
+                    [
+                      86.62,
+                      20.310000000000002
+                    ],
+                    [
+                      86.72,
+                      20.310000000000002
+                    ],
+                    [
+                      86.72,
+                      20.410000000000004
+                    ],
+                    [
+                      86.62,
+                      20.410000000000004
+                    ],
+                    [
+                      86.62,
+                      20.310000000000002
+                    ]
+                  ]
+                ]
+              },
+              "properties": {
+                "rainfall_mm_h": 0,
+                "historical_water_occurrence_pct": 74.01121876593581,
+                "elevation_m": 3.5796303329535353
+              }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                  [
+                    [
+                      86.72,
+                      20.310000000000002
+                    ],
+                    [
+                      86.82,
+                      20.310000000000002
+                    ],
+                    [
+                      86.82,
+                      20.410000000000004
+                    ],
+                    [
+                      86.72,
+                      20.410000000000004
+                    ],
+                    [
+                      86.72,
+                      20.310000000000002
+                    ]
+                  ]
+                ]
+              },
+              "properties": {
+                "rainfall_mm_h": 0,
+                "historical_water_occurrence_pct": 89.99308615711892,
+                "elevation_m": 2.371344473984048
+              }
+            }
+          ]
+        },
+        "observation_period": {
+          "start": "2026-09-17T03:00:00+00:00",
+          "end": "2026-09-17T03:30:00+00:00"
+        },
+        "limitations": "Experimental rainfall, historical water and terrain context only. Not live flood prediction; no validated exposure score or river-distance model.",
+        "observation_age_hours": 37.8,
+        "analysis_scale_m": 1000
+      },
+      "earth_ms": 8909,
+      "obis": {
+        "status": "empty",
+        "evidence": [],
+        "points": [],
+        "source": "OBIS",
+        "source_url": "https://obis.org/manual/access/",
+        "retrieved_at": "2026-09-18T16:45:12.391775+00:00",
+        "cache_status": "fresh",
+        "sample_limit": 100,
+        "query_bounds": [
+          86.43061145552186,
+          20.035422206252246,
+          86.90938854447815,
+          20.484577793747757
+        ],
+        "disclaimer": "Historical occurrence, not live fish detection or a catch forecast. Counts and latest dates describe only the returned sample.",
+        "total_matching_records": 1735,
+        "returned_records": 100
+      },
+      "obis_ms": 5445
+    }
+  },
+  "voice": [
+    {
+      "language": "en",
+      "human_noisy_long_code_switch": "NOT_RUN",
+      "acceptance": "PENDING_NATIVE_SPEAKER_AND_DEVICE_REVIEW",
+      "detected_language": "en",
+      "detection_ms": 1,
+      "translation": {
+        "status": "not_required"
+      },
+      "tts_ms": 3291,
+      "tts": {
+        "source": "bhashini_tts",
+        "is_mock": false,
+        "audio_present": true,
+        "error_type": null
+      },
+      "stt_ms": 1562,
+      "stt": {
+        "source": "bhashini_asr",
+        "is_mock": false,
+        "transcript_present": true,
+        "upstream_status": null,
+        "fixture": "BHASHINI synthesized speech converted to mono 16kHz PCM16 WAV"
+      }
+    },
+    {
+      "language": "hi",
+      "human_noisy_long_code_switch": "NOT_RUN",
+      "acceptance": "PENDING_NATIVE_SPEAKER_AND_DEVICE_REVIEW",
+      "detected_language": "hi",
+      "detection_ms": 0,
+      "translation": {
+        "http_status": 200,
+        "provider": "bhashini",
+        "service_id": "ai4bharat/indictrans-v2-all-gpu--t4",
+        "has_translation": true
+      },
+      "translation_ms": 346,
+      "tts_ms": 1304,
+      "tts": {
+        "source": "bhashini_tts",
+        "is_mock": false,
+        "audio_present": true,
+        "error_type": null
+      },
+      "stt_ms": 950,
+      "stt": {
+        "source": "bhashini_asr",
+        "is_mock": false,
+        "transcript_present": true,
+        "upstream_status": null,
+        "fixture": "BHASHINI synthesized speech converted to mono 16kHz PCM16 WAV"
+      }
+    },
+    {
+      "language": "gu",
+      "human_noisy_long_code_switch": "NOT_RUN",
+      "acceptance": "PENDING_NATIVE_SPEAKER_AND_DEVICE_REVIEW",
+      "detected_language": "gu",
+      "detection_ms": 0,
+      "translation": {
+        "http_status": 200,
+        "provider": "bhashini",
+        "service_id": "ai4bharat/indictrans-v2-all-gpu--t4",
+        "has_translation": true
+      },
+      "translation_ms": 750,
+      "tts_ms": 1270,
+      "tts": {
+        "source": "bhashini_tts",
+        "is_mock": false,
+        "audio_present": true,
+        "error_type": null
+      },
+      "stt_ms": 847,
+      "stt": {
+        "source": "bhashini_asr",
+        "is_mock": false,
+        "transcript_present": true,
+        "upstream_status": null,
+        "fixture": "BHASHINI synthesized speech converted to mono 16kHz PCM16 WAV"
+      }
+    },
+    {
+      "language": "mr",
+      "human_noisy_long_code_switch": "NOT_RUN",
+      "acceptance": "PENDING_NATIVE_SPEAKER_AND_DEVICE_REVIEW",
+      "detected_language": "mr",
+      "detection_ms": 0,
+      "translation": {
+        "http_status": 200,
+        "provider": "bhashini",
+        "service_id": "ai4bharat/indictrans-v2-all-gpu--t4",
+        "has_translation": true
+      },
+      "translation_ms": 412,
+      "tts_ms": 1273,
+      "tts": {
+        "source": "bhashini_tts",
+        "is_mock": false,
+        "audio_present": true,
+        "error_type": null
+      },
+      "stt_ms": 1033,
+      "stt": {
+        "source": "bhashini_asr",
+        "is_mock": false,
+        "transcript_present": true,
+        "upstream_status": null,
+        "fixture": "BHASHINI synthesized speech converted to mono 16kHz PCM16 WAV"
+      }
+    },
+    {
+      "language": "bn",
+      "human_noisy_long_code_switch": "NOT_RUN",
+      "acceptance": "PENDING_NATIVE_SPEAKER_AND_DEVICE_REVIEW",
+      "detected_language": "bn",
+      "detection_ms": 0,
+      "translation": {
+        "http_status": 200,
+        "provider": "bhashini",
+        "service_id": "ai4bharat/indictrans-v2-all-gpu--t4",
+        "has_translation": true
+      },
+      "translation_ms": 370,
+      "tts_ms": 1568,
+      "tts": {
+        "source": "bhashini_tts",
+        "is_mock": false,
+        "audio_present": true,
+        "error_type": null
+      },
+      "stt_ms": 936,
+      "stt": {
+        "source": "bhashini_asr",
+        "is_mock": false,
+        "transcript_present": true,
+        "upstream_status": null,
+        "fixture": "BHASHINI synthesized speech converted to mono 16kHz PCM16 WAV"
+      }
+    },
+    {
+      "language": "ta",
+      "human_noisy_long_code_switch": "NOT_RUN",
+      "acceptance": "PENDING_NATIVE_SPEAKER_AND_DEVICE_REVIEW",
+      "detected_language": "ta",
+      "detection_ms": 0,
+      "translation": {
+        "http_status": 200,
+        "provider": "bhashini",
+        "service_id": "ai4bharat/indictrans-v2-all-gpu--t4",
+        "has_translation": true
+      },
+      "translation_ms": 1109,
+      "tts_ms": 4205,
+      "tts": {
+        "source": "bhashini_tts",
+        "is_mock": false,
+        "audio_present": true,
+        "error_type": null
+      },
+      "stt_ms": 2281,
+      "stt": {
+        "source": "bhashini_asr",
+        "is_mock": false,
+        "transcript_present": true,
+        "upstream_status": null,
+        "fixture": "BHASHINI synthesized speech converted to mono 16kHz PCM16 WAV"
+      }
+    },
+    {
+      "language": "te",
+      "human_noisy_long_code_switch": "NOT_RUN",
+      "acceptance": "PENDING_NATIVE_SPEAKER_AND_DEVICE_REVIEW",
+      "detected_language": "te",
+      "detection_ms": 0,
+      "translation": {
+        "http_status": 200,
+        "provider": "bhashini",
+        "service_id": "ai4bharat/indictrans-v2-all-gpu--t4",
+        "has_translation": true
+      },
+      "translation_ms": 1055,
+      "tts_ms": 3913,
+      "tts": {
+        "source": "bhashini_tts",
+        "is_mock": false,
+        "audio_present": true,
+        "error_type": null
+      },
+      "stt_ms": 961,
+      "stt": {
+        "source": "bhashini_asr",
+        "is_mock": false,
+        "transcript_present": true,
+        "upstream_status": null,
+        "fixture": "BHASHINI synthesized speech converted to mono 16kHz PCM16 WAV"
+      }
+    },
+    {
+      "language": "ml",
+      "human_noisy_long_code_switch": "NOT_RUN",
+      "acceptance": "PENDING_NATIVE_SPEAKER_AND_DEVICE_REVIEW",
+      "detected_language": "ml",
+      "detection_ms": 0,
+      "translation": {
+        "http_status": 200,
+        "provider": "bhashini",
+        "service_id": "ai4bharat/indictrans-v2-all-gpu--t4",
+        "has_translation": true
+      },
+      "translation_ms": 363,
+      "tts_ms": 1480,
+      "tts": {
+        "source": "bhashini_tts",
+        "is_mock": false,
+        "audio_present": true,
+        "error_type": null
+      },
+      "stt_ms": 947,
+      "stt": {
+        "source": "bhashini_asr",
+        "is_mock": false,
+        "transcript_present": true,
+        "upstream_status": null,
+        "fixture": "BHASHINI synthesized speech converted to mono 16kHz PCM16 WAV"
+      }
+    },
+    {
+      "language": "kn",
+      "human_noisy_long_code_switch": "NOT_RUN",
+      "acceptance": "PENDING_NATIVE_SPEAKER_AND_DEVICE_REVIEW",
+      "detected_language": "kn",
+      "detection_ms": 0,
+      "translation": {
+        "http_status": 200,
+        "provider": "bhashini",
+        "service_id": "ai4bharat/indictrans-v2-all-gpu--t4",
+        "has_translation": true
+      },
+      "translation_ms": 410,
+      "tts_ms": 1084,
+      "tts": {
+        "source": "bhashini_tts",
+        "is_mock": false,
+        "audio_present": true,
+        "error_type": null
+      },
+      "stt_ms": 931,
+      "stt": {
+        "source": "bhashini_asr",
+        "is_mock": false,
+        "transcript_present": true,
+        "upstream_status": null,
+        "fixture": "BHASHINI synthesized speech converted to mono 16kHz PCM16 WAV"
+      }
+    },
+    {
+      "language": "or",
+      "human_noisy_long_code_switch": "NOT_RUN",
+      "acceptance": "PENDING_NATIVE_SPEAKER_AND_DEVICE_REVIEW",
+      "detected_language": "or",
+      "detection_ms": 0,
+      "translation": {
+        "http_status": 200,
+        "provider": "bhashini",
+        "service_id": "ai4bharat/indictrans-v2-all-gpu--t4",
+        "has_translation": true
+      },
+      "translation_ms": 359,
+      "tts_ms": 1145,
+      "tts": {
+        "source": "bhashini_tts",
+        "is_mock": false,
+        "audio_present": true,
+        "error_type": null
+      },
+      "stt_ms": 1130,
+      "stt": {
+        "source": "bhashini_asr",
+        "is_mock": false,
+        "transcript_present": true,
+        "upstream_status": null,
+        "fixture": "BHASHINI synthesized speech converted to mono 16kHz PCM16 WAV"
+      }
+    },
+    {
+      "language": "pa",
+      "human_noisy_long_code_switch": "NOT_RUN",
+      "acceptance": "PENDING_NATIVE_SPEAKER_AND_DEVICE_REVIEW",
+      "detected_language": "pa",
+      "detection_ms": 0,
+      "translation": {
+        "http_status": 200,
+        "provider": "bhashini",
+        "service_id": "ai4bharat/indictrans-v2-all-gpu--t4",
+        "has_translation": true
+      },
+      "translation_ms": 339,
+      "tts_ms": 876,
+      "tts": {
+        "source": "bhashini_tts",
+        "is_mock": false,
+        "audio_present": true,
+        "error_type": null
+      },
+      "stt_ms": 1560,
+      "stt": {
+        "source": "bhashini_asr",
+        "is_mock": false,
+        "transcript_present": true,
+        "upstream_status": null,
+        "fixture": "BHASHINI synthesized speech converted to mono 16kHz PCM16 WAV"
+      }
+    }
+  ]
+}

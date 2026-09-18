@@ -277,10 +277,11 @@ export function VoiceControls(props: Props) {
         heardSpeech = false,
         silence = 0;
       capture.start(250);
+      const recordingStarted = performance.now();
       setPhase("listening");
       setSeconds(0);
       timer.current = setInterval(() => {
-        elapsed += 100;
+        elapsed = performance.now() - recordingStarted;
         setSeconds(Math.floor(elapsed / 1000));
         if (analyser && samples) {
           analyser.getFloatTimeDomainData(samples);
@@ -294,7 +295,7 @@ export function VoiceControls(props: Props) {
           } else silence += 100;
         }
         if (
-          elapsed >= 30000 ||
+          elapsed >= 45000 ||
           (conversation && heardSpeech && silence >= 1400 && elapsed > 1200)
         )
           finish();
@@ -342,7 +343,7 @@ export function VoiceControls(props: Props) {
   );
   const status =
     phase === "listening"
-      ? `${labels.listening} · ${seconds}s / 30s`
+      ? `${labels.listening} · ${seconds}s / 45s`
       : phase === "transcribing"
         ? labels.processing
         : phase === "speaking"

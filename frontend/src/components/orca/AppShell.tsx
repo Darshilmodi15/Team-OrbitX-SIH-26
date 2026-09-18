@@ -11,6 +11,7 @@ import { useState, type ReactNode } from "react";
 
 import { OrcaWordmark } from "./Logo";
 import { LanguageMenu } from "./LanguageMenu";
+import { AppearanceMenu } from "./AppearanceMenu";
 import { Footer } from "@/components/Footer";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
@@ -75,6 +76,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               {t(user?.role === "government" ? "ops.officer" : user?.role === "admin" ? "ops.admin" : "nav.dashboard")}
             </span>}
             <LanguageMenu />
+            <AppearanceMenu />
             <Link
               to="/settings"
               aria-label={t("nav.settings")}

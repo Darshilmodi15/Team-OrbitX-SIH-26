@@ -84,6 +84,7 @@ export type EmergencyService = {
 };
 
 export type ChatEvidence = {
+  operational_trace?: Array<{stage:string;provider:string;status:string;latency_ms:number|null;timestamp:string;detail:string|null}>;
   snapshot_id?: string;
   marine_snapshot?: import("./snapshot").MarineSnapshot;
   sources?: string[];

@@ -1,4 +1,6 @@
-import {fireEvent,render,screen} from '@testing-library/react';
+import {fireEvent,render as testingRender,screen} from '@testing-library/react';
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
+function render(ui:React.ReactNode){return testingRender(<QueryClientProvider client={new QueryClient()}>{ui}</QueryClientProvider>);}
 import {expect,it,vi} from 'vitest';
 import {I18nProvider} from '@/lib/orca/i18n';
 import {ChatSnapshot} from '@/components/orca/ChatSnapshot';

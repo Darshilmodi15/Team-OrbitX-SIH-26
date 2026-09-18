@@ -1,5 +1,7 @@
 """Chat resolves intent first and explains only canonical snapshot evidence."""
 import re
+from time import perf_counter
+from datetime import datetime, timezone
 from fastapi import HTTPException
 from app.models.agent_models import EvidenceBundle
 from app.services.bhashini import bhashini_service, SUPPORTED_LANGUAGES
@@ -15,8 +17,18 @@ def simple_conversation(text):
 
 
 def process_snapshot_chat(request, user, db, provider, history):
+    trace = []
+    started = perf_counter()
+    def event(stage, provider_name, status="complete", detail=None):
+        nonlocal started
+        now = perf_counter()
+        trace.append({"stage":stage, "provider":provider_name, "status":status,
+            "latency_ms":round((now-started)*1000, 1),
+            "timestamp":datetime.now(timezone.utc).isoformat(), "detail":detail})
+        started = now
     decision = bhashini_service.determine_query_language(text=request.message,
         requested_lang=request.language or "auto", session_id=request.session_id)
+    event("Language selection", "ORCA language layer", detail=decision.response_language)
     english = decision.english_normalized_query or request.message
     general = simple_conversation(request.message) or simple_conversation(english)
     intent = "general" if general else _fallback_intent(english).get("intent", "general")
@@ -25,6 +37,7 @@ def process_snapshot_chat(request, user, db, provider, history):
     # actually used it; greetings and definitions remain provider independent.
     previous = chat_snapshot_from_history(db, user.id, request.session_id)
     marine = not general and not definition and (intent != "general" or previous is not None or request.snapshot_id is not None)
+    event("Intent routing", "ORCA intent rules", detail=intent)
     snap = None
     evidence = EvidenceBundle(date=request.date, connectivity_mode="UNAVAILABLE")
     if marine:
@@ -48,12 +61,19 @@ def process_snapshot_chat(request, user, db, provider, history):
                 raise
         if snap:
             evidence = marine_snapshot_service.evidence(snap)
+    event("Evidence retrieval", ", ".join(snap.provenance["source"]) if snap else "None",
+          "complete" if snap else "skipped" if not marine else "unavailable",
+          detail="Owned canonical snapshot" if snap else "No local marine evidence used")
+    if snap:
+        trace.append({"stage":"Risk assessment", "provider":"ORCA deterministic risk engine", "status":"snapshot_result",
+                      "latency_ms":None, "timestamp":snap.provenance["retrieved_at"], "detail":snap.risk["level"]})
     location_title = (f"{snap.location.name}; requested time {snap.request.requested_time}" if snap else
         "No marine evidence requested for this conversational turn. Do not infer whether the user has a saved location." if general or definition else
         "No marine evidence available. Give general explanations only; ask for a saved location before local advice.")
     answer = DialogueSynthesizer.synthesize_response(user_query=request.message, english_query=english,
         detected_intent=intent, evidence=evidence, location_title=location_title,
         target_lang=decision.response_language, history=history if snap else [])
+    event("Response generation", getattr(answer, "model", None) or "Configured language model", detail=decision.response_language)
     result = {"language":decision.response_language, "language_name":SUPPORTED_LANGUAGES.get(decision.response_language, decision.response_language),
         "original_message":request.message, "english_query":english, "answer":str(answer),
         "ai_model":getattr(answer, "model", None), "ai_fallback_used":getattr(answer, "fallback_used", False),
@@ -69,7 +89,7 @@ def process_snapshot_chat(request, user, db, provider, history):
         "original_transcript":decision.original_transcript, "detected_languages":decision.detected_languages,
         "dominant_language":decision.dominant_language, "response_language":decision.response_language,
         "english_normalized_query":english, "language_confidence":decision.language_confidence,
-        "transcription_provider":decision.transcription_provider}
+        "transcription_provider":decision.transcription_provider, "operational_trace":trace}
     return result
 
 

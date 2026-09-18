@@ -108,6 +108,17 @@
   --chart-5: #16A34A;
 }
 
+/* Keep preference popovers inside narrow screens at larger text sizes. */
+@media (max-width: 767px) {
+  .appearance-panel,
+  .language-panel {
+    position: fixed;
+    top: calc(3.5rem + 0.5rem);
+    right: 1rem;
+    max-width: calc(100vw - 2rem);
+  }
+}
+
 .dark {
   color-scheme: dark;
   --background: #071526;
