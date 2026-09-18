@@ -84,8 +84,9 @@
   font-size: 13px;
 }
 .public-hero-word {
+  font-family: 'Outfit', system-ui, sans-serif;
   font-size: clamp(100px, min(26vw, 32vh), 360px);
-  font-weight: 650;
+  font-weight: 700; /* Made slightly bolder for better glass presence */
   line-height: 1;
   letter-spacing: -0.065em;
   text-align: center;
