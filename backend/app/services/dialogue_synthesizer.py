@@ -161,6 +161,8 @@ CONVERSATION GUIDELINES:
 7. The current target language overrides the language of previous conversation turns."""
 
         if evidence.marine_snapshot:
+            if evidence.marine_snapshot.get("provenance", {}).get("demo_scenario"):
+                system_instruction += "\nThis is a DEMO SCENARIO, an illustrative dataset. State this prominently in the selected response language. Never describe it as live or current provider data. No real departure recommendation.\n"
             prompt_snapshot = {**evidence.marine_snapshot, "boundary": {k:v for k,v in evidence.marine_snapshot["boundary"].items() if k != "geometry"}}
             system_instruction += "\nCANONICAL MARINE SNAPSHOT (sole authority for environmental facts):\n" + json.dumps(prompt_snapshot, ensure_ascii=False)
             system_instruction += """

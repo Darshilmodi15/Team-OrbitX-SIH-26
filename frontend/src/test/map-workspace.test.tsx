@@ -91,7 +91,7 @@ it("never mounts map tiles in saved text mode and retains snapshot information",
   expect(map).not.toHaveBeenCalled();
   expect(screen.getByText(/No map tiles are loaded/)).toBeVisible();
   expect(
-    screen.getByText("Current verified PFZ advisory unavailable"),
+    screen.getByText("No current verified PFZ advisory"),
   ).toBeVisible();
 });
 it("keeps advanced sample points off and disables an unavailable PFZ layer", async () => {

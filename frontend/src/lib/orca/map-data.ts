@@ -10,7 +10,7 @@ export function marineMapData(snapshot?: MarineSnapshot) {
   const current = snapshotPFZ(snapshot).status === "current";
   const pfz = snapshot && current ? snapshot.pfz.zones.map(point => ({...point,
     bearing: bearing(snapshot.location, {lat:point.latitude,lon:point.longitude}),
-    geometry: ["official_advisory_area", "search_region"].includes(point.geometry_meaning || "") ? point.geometry : null,
+    geometry: (["official_advisory_area", "search_region"].includes(point.geometry_meaning || "") || !!snapshot.provenance.demo_scenario && point.geometry_meaning === "illustrative_search_region") ? point.geometry : null,
     radius: point.radius_meaning === "advisory_search_radius" && Number.isFinite(point.search_radius_m) && point.search_radius_m! > 0 ? point.search_radius_m : null,
   })) : [];
   const vectors: Array<{lat:number;lon:number;degrees:number;kind:string;convention:string;source:string;validAt:string|null}> = [];

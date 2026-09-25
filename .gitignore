@@ -42,3 +42,6 @@ Thumbs.db
 frontend/test-results/
 backend/test-results/
 .vercel
+
+# Local verification state (sessions and isolated database)
+.local/

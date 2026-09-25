@@ -228,8 +228,14 @@ def get_providers_health():
 
 
 @app.get("/api/marine/snapshot", response_model=MarineSnapshot)
-def get_snapshot(requested_time: Optional[str] = None, lat: Optional[float] = Query(None, ge=-90, le=90), lon: Optional[float] = Query(None, ge=-180, le=180), user: UserProfile = Depends(get_current_user_from_header), db: Session = Depends(get_db)):
-    return marine_snapshot_service.resolve(db, user.id, weather_provider, requested_time, lat, lon)
+def get_snapshot(demo_scenario: Optional[str] = None, requested_time: Optional[str] = None, lat: Optional[float] = Query(None, ge=-90, le=90), lon: Optional[float] = Query(None, ge=-180, le=180), user: UserProfile = Depends(get_current_user_from_header), db: Session = Depends(get_db)):
+    return marine_snapshot_service.resolve(db, user.id, weather_provider, requested_time, lat, lon, demo_scenario)
+
+
+@app.get("/api/marine/demo-scenarios")
+def get_demo_scenarios(user: UserProfile = Depends(get_current_user_from_header)):
+    from app.services.demo_scenarios import SCENARIOS
+    return SCENARIOS if os.getenv("DEMO_MODE", "false").lower() == "true" else {}
 
 
 @app.get("/api/marine/snapshots/{snapshot_id}", response_model=MarineSnapshot)

@@ -1,3 +1,5 @@
+import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "@/services/api";
 import { lazy, Suspense, useEffect, useState } from "react";
 import {
   ArrowUpRight,
@@ -61,13 +63,24 @@ export function MapPanel({
   });
   const mode = network === "OFFLINE" && !onSelect ? "text" : network === "DEGRADED" && preferredMode === "satellite" ? "map" : preferredMode;
   const [vectors, setVectors] = useState(false), [showSpecies, setShowSpecies] = useState(false), [showEarth, setShowEarth] = useState(false);
-  const optionalAllowed = !onSelect && network !== "OFFLINE" && network !== "DEGRADED";
+  const optionalAllowed = !onSelect && network !== "OFFLINE" && network !== "DEGRADED" && !s?.provenance.demo_scenario;
   const species = useOptionalEvidence<SpeciesResult>("species", s?.snapshot_id, showSpecies && optionalAllowed);
   const earth = useOptionalEvidence<EarthResult>("earth-observation", s?.snapshot_id, showEarth && optionalAllowed);
   const [pfz, setPFZ] = useState(true),
     [eez, setEEZ] = useState(true),
     [conditions, setConditions] = useState(false),
     [pin, setPin] = useState(true);
+  const displayGeometry = useQuery({
+    queryKey: ["eez-display", s?.boundary.geometry_ref],
+    enabled: !!s?.boundary.geometry_ref && eez && mode !== "text" && network !== "OFFLINE",
+    queryFn: async ({signal}) => {
+      const response = await apiFetch("/api/marine-boundaries/eez/display", {signal});
+      if (!response.ok) throw new Error("EEZ_UNAVAILABLE");
+      return response.json() as Promise<GeoJSON.FeatureCollection>;
+    },
+    staleTime: 86400000, gcTime: 300000, retry: 1,
+  });
+  const geometry = s?.boundary.geometry ?? displayGeometry.data;
   const [layersOpen, setLayersOpen] = useState(false),
     [infoOpen, setInfoOpen] = useState(false),
     [recenter, setRecenter] = useState(0);
@@ -106,7 +119,7 @@ export function MapPanel({
   const askHref = `/assistant?${s ? `snapshot=${encodeURIComponent(s.snapshot_id)}&` : ""}prompt=${encodeURIComponent(`${t("chat.s2")} (${center.lat}, ${center.lon})`)}`;
   const unavailable =
     lang === "en"
-      ? "Current verified PFZ advisory unavailable"
+      ? "No current verified PFZ advisory"
       : mapCopy[lang][advisory.status];
   const details = () => (
     <>
@@ -133,7 +146,7 @@ export function MapPanel({
         <>
           <div className="map-risk">
             <span>{t("marine.title")}</span>
-            <strong>{s.risk.level}</strong>
+            <strong>{s.risk.level === "low" ? (lang === "gu" ? "સલામત · ઉપલબ્ધ માપન મુજબ" : "SAFE · assessed dimensions") : s.risk.level === "caution" ? t("status.caution") : s.risk.level === "unsafe" ? t("status.dangerous") : (lang === "gu" ? "જીવંત માહિતી અપૂરતી છે" : "Insufficient live data")}</strong>
           </div>
           {mode === "text" ? (
             <MarineConditions data={snapshotBundle(s, state.offline).current} snapshot={s} />
@@ -189,6 +202,7 @@ export function MapPanel({
       data-snapshot-id={s?.snapshot_id}
       data-network-mode={network}
     >
+      {s?.provenance.demo_scenario && <div role="status" className="border-b border-amber-500 p-3 text-sm font-semibold">Demo Scenario · Illustrative Dataset · Not live</div>}
       <div className="map-toolbar">
         <span className="map-network-status" role="status">{network === "DEGRADED" ? "Low-data mode" : network === "OFFLINE" ? "Offline · saved information" : network === "FULL" ? "Full connection" : "Connected"}</span>
         <div className="map-mode" role="group" aria-label={t("map.layers")}>
@@ -256,6 +270,7 @@ export function MapPanel({
               onInspect={!onSelect ? () => setInfoOpen(true) : undefined}
               satellite={mode === "satellite"}
               snapshot={s}
+              boundaryGeometry={geometry}
               showPFZ={pfz}
               showEEZ={eez}
               showConditions={conditions}
@@ -309,7 +324,7 @@ export function MapPanel({
                   <label>
                     <span>
                       <i className="legend-dot pfz" />
-                      PFZ
+                      {s?.provenance.demo_scenario ? "Demo PFZ" : "PFZ"}
                     </span>
                     <input
                       type="checkbox"
@@ -327,12 +342,12 @@ export function MapPanel({
                     </span>
                     <input
                       type="checkbox"
-                      checked={eez && !!s?.boundary.geometry}
-                      disabled={!s?.boundary.geometry}
+                      checked={eez && !!(s?.boundary.geometry || s?.boundary.geometry_ref)}
+                      disabled={!(s?.boundary.geometry || s?.boundary.geometry_ref)}
                       onChange={(e) => setEEZ(e.target.checked)}
                     />
                   </label>
-                  {!s?.boundary.geometry && <p>EEZ: {t("chat.unavailable")}</p>}
+                  {(!(s?.boundary.geometry || s?.boundary.geometry_ref) || displayGeometry.isError) && <p role="status">EEZ: {t("chat.unavailable")}</p>}
                   <details>
                     <summary>{copy.advanced}</summary>
                     <label><span>Direction samples</span><input type="checkbox" checked={vectors} onChange={e=>setVectors(e.target.checked)} /></label>
@@ -371,10 +386,10 @@ export function MapPanel({
                   {advisory.points.length > 0 && pfz && (
                     <span>
                       <i className="legend-dot pfz" />
-                      PFZ
+                      {s?.provenance.demo_scenario ? "Demo PFZ" : "PFZ"}
                     </span>
                   )}
-                  {s?.boundary.geometry && eez && (
+                  {geometry && eez && (
                     <span>
                       <i className="legend-line" />
                       EEZ · VLIZ

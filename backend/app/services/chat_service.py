@@ -14,7 +14,9 @@ class ChatStorageService:
 
     def list(self, db: Session, user_id: str, limit: int = 50) -> List[ConversationSummary]:
         rows = db.query(Conversation).filter(Conversation.user_id == user_id).order_by(Conversation.updated_at.desc()).limit(limit).all()
-        return [self.serialize(row) for row in rows]
+        # Sidebar summaries must not materialize every message and snapshot.
+        return [ConversationSummary(id=row.id, title=row.title, created_at=row.created_at,
+            updated_at=row.updated_at) for row in rows]
 
     def create(self, db: Session, user_id: str, title: str = "New conversation", conversation_id: Optional[str] = None) -> Conversation:
         row = Conversation(id=conversation_id or str(uuid4()), user_id=user_id, title=title.strip() or "New conversation")
@@ -23,7 +25,10 @@ class ChatStorageService:
 
     def get(self, db: Session, user_id: str, conversation_id: str) -> Optional[ConversationSummary]:
         row = self._owned(db, user_id, conversation_id)
-        return self.serialize(row) if row else None
+        if not row:
+            return None
+        messages = db.query(ChatHistory).filter_by(user_id=user_id, conversation_id=conversation_id).order_by(ChatHistory.created_at, ChatHistory.id).yield_per(10)
+        return self.serialize(row, messages)
 
     def delete(self, db: Session, user_id: str, conversation_id: str) -> bool:
         row = self._owned(db, user_id, conversation_id)
@@ -48,8 +53,20 @@ class ChatStorageService:
         message = ChatHistory(user_id=user_id, conversation_id=conversation_id, session_id=conversation_id, role=role, message=content, language=language, created_at=datetime.now(timezone.utc), sources_used_json=json.dumps(metadata) if metadata else None)
         db.add(message); row.updated_at = datetime.now(timezone.utc); db.flush(); return message
 
-    def serialize(self, row: Conversation) -> ConversationSummary:
-        return ConversationSummary(id=row.id, title=row.title, created_at=row.created_at, updated_at=row.updated_at, messages=[StoredChatMessage(id=m.id, role=m.role, content=m.message, created_at=m.created_at, metadata=json.loads(m.sources_used_json) if m.sources_used_json else None) for m in row.messages[-500:]])
+    def serialize(self, row: Conversation, messages=None) -> ConversationSummary:
+        def metadata(message):
+            data = json.loads(message.sources_used_json) if message.sources_used_json else None
+            # Older messages embedded EEZ polygons. Preserve facts and identity,
+            # but fetch reference display geometry only when opening the map.
+            boundary = (data or {}).get("marine_snapshot", {}) or {}
+            boundary = boundary.get("boundary", {})
+            if boundary.get("geometry"):
+                boundary["geometry"] = None
+                boundary["geometry_ref"] = "/api/marine-boundaries/eez/display"
+            return data
+        return ConversationSummary(id=row.id, title=row.title, created_at=row.created_at, updated_at=row.updated_at,
+            messages=[StoredChatMessage(id=m.id, role=m.role, content=m.message, created_at=m.created_at,
+                metadata=metadata(m)) for m in (messages if messages is not None else row.messages)])
 
 
 chat_storage_service = ChatStorageService()

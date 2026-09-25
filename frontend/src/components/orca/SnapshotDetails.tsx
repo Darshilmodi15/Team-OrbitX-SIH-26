@@ -32,7 +32,7 @@ export function SnapshotDetails({
       data-snapshot-id={snapshot.snapshot_id}
     >
       <summary className="cursor-pointer leading-6">
-        {t("chat.evidence")}{" "}
+        {snapshot.provenance.demo_scenario ? "Demo Scenario · Illustrative Dataset · " : ""}{t("chat.evidence")}{" "}
         <span className="text-muted-foreground">
           ·{" "}
           {t(

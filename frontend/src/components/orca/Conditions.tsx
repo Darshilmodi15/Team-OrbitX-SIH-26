@@ -2,7 +2,8 @@ import {
   Clock, CloudSun, Eye, Gauge, Thermometer, Waves, Wind,
 } from "lucide-react";
 import type { ComponentType } from "react";
-import { useMemo } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
+import { metricInfo } from "@/lib/orca/metric-info";
 import { useI18n } from "@/lib/orca/i18n";
 import { compassDirection, describeWeather } from "@/lib/orca/marine";
 import type { ForecastPoint, MarineSnapshot, MarineTide } from "@/lib/orca/types";
@@ -11,32 +12,36 @@ import { SafetyPill } from "./SafetyStatus";
 import type { MarineSnapshot as CanonicalSnapshot, FieldSource } from "@/lib/orca/snapshot";
 
 function Metric({
-  Icon, label, value, provenance,
+  Icon, label, value, provenance, info,
 }: {
   Icon: ComponentType<{ className?: string }>;
   label: string;
   value: string;
+  info?: string;
   provenance?: FieldSource | Array<FieldSource | undefined>;
 }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [open,setOpen] = useState(false);
+  useEffect(()=>{if(open) dialog.current?.showModal();},[open]);
   const sources = (Array.isArray(provenance) ? provenance : [provenance]).filter((source): source is FieldSource => !!source);
-  if (sources.length) return <details className="min-w-0 rounded-md border border-border bg-card p-3 shadow-xs text-xs">
-    <summary className="cursor-pointer"><Icon className="inline size-4 mr-2 text-secondary"/><span>{label}</span><strong className="block mt-1 text-base">{value}</strong><span>Forecast · {[...new Set(sources.map(source=>source.source))].join(" · ")}</span></summary>
-    {sources.map((source,index)=><div key={source.parameter || index} className="mt-2 border-t pt-2">
-      <p>{source.parameter?.replace(/^(weather|ocean)\./, "").replaceAll("_", " ") || label} · {source.source}</p>
-      <p>Valid {source.forecast_valid_at || "Unavailable"}<br/>Retrieved {source.retrieved_at || "Unavailable"}<br/>{source.cache_status}</p>
-      <p>Grid {source.grid_lat ?? "Unavailable"}, {source.grid_lon ?? "Unavailable"}</p>
-      <p>{source.product || "Product unavailable"}<br/>Resolution: {source.spatial_resolution || "Unavailable"}</p>
-    </div>)}
-  </details>;
-  return (
-    <div className="flex min-w-0 items-start gap-2.5 rounded-md border border-border bg-card p-3 shadow-xs">
-      <Icon className="mt-0.5 size-4 shrink-0 text-secondary" aria-hidden />
-      <div className="min-w-0">
-        <p className="break-words text-xs font-medium text-muted-foreground">{label}</p>
-        <p className="break-words text-base font-semibold text-foreground">{value}</p>
-      </div>
+  return <div className="min-w-0 rounded-md border border-border bg-card p-3 shadow-xs text-xs">
+    <div className="flex items-center justify-between gap-2">
+      <span><Icon className="inline size-4 mr-2 text-secondary"/>{label}</span>
+      <button aria-label={`About ${label}`} onClick={()=>setOpen(true)} className="min-h-9 min-w-9 rounded-full border text-sm">ⓘ</button>
     </div>
-  );
+    <strong className="mt-1 block text-base">{value}</strong>
+    <p className="mt-1 text-muted-foreground">{sources.some(s=>s.cache_status === "simulated") ? "Illustrative Dataset" : "Forecast"} · {[...new Set(sources.map(source=>source.source))].join(" · ") || "Source unavailable"}</p>
+    {open && <dialog ref={dialog} onClose={()=>setOpen(false)} className="m-auto max-h-[85dvh] w-[min(92vw,28rem)] overflow-y-auto rounded-xl border border-border bg-card p-5 text-foreground shadow-xl backdrop:bg-black/60">
+      <div className="flex items-start justify-between gap-4"><h3 className="text-lg font-semibold">{label}</h3><button className="min-h-10 min-w-10 rounded border" aria-label="Close information" onClick={()=>dialog.current?.close()}>×</button></div>
+      <p className="my-3 text-sm">{info ? metricInfo[info] : "This value is supplied with the snapshot. Missing measurements are shown as a dash."}</p>
+      <p className="font-semibold">{value}</p>
+      {sources.map((source,index)=><div key={source.parameter || index} className="mt-3 border-t pt-3 text-xs">
+        <p>{source.source}</p><p>Valid: {source.forecast_valid_at || "Not available"}</p>
+        <p>Retrieved: {source.retrieved_at || "Not available"} · {source.cache_status}</p>
+      </div>)}
+      <p className="mt-3 text-xs text-muted-foreground">Educational information; check official advisories before departure.</p>
+    </dialog>}
+  </div>;
 }
 
 const num = (v: number | null | undefined, unit: string, _digits = 1) =>
@@ -68,7 +73,7 @@ export function MarineConditions({ data, tide = null, snapshot }: { data: Marine
           {data.sources.join(", ") || t("chat.unavailable")}
         </p>
       </div>
-      {data.measurementKind === "model_forecast" && <div className="rounded-md border p-3 text-xs space-y-2">
+      {data.measurementKind === "model_forecast" && !snapshot?.provenance.demo_scenario && <div className="rounded-md border p-3 text-xs space-y-2">
         <p className="font-medium">{copy.model} · {data.sources.join(", ")}</p>
         <p>{copy.notice}</p>
         <dl className="grid gap-2 sm:grid-cols-3">
@@ -85,27 +90,29 @@ export function MarineConditions({ data, tide = null, snapshot }: { data: Marine
           {field.replaceAll("_", " ")}: {info.source} · {copy.marineTime}: {stamp(info.forecast_valid_at)} · {t("state.updated")}: {stamp(info.retrieved_at)} · {info.cache_status} · {copy.grid}: {info.grid_lat ?? "—"}, {info.grid_lon ?? "—"}
         </li>)}</ul>
       </details>}
+      {snapshot?.provenance.demo_scenario && <p className="font-semibold text-amber-600">Demo Scenario · Illustrative Dataset · Not live</p>}
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4">
-        <Metric Icon={Waves} label={t("marine.wave")} value={num(data.waveHeightM, "m")} provenance={snapshot?.provenance.fields["weather.wave_height_m"]}/>
+        <Metric Icon={Waves} info="wave_height_m" label={t("marine.wave")} value={num(data.waveHeightM, "m")} provenance={snapshot?.provenance.fields["weather.wave_height_m"]}/>
         <Metric
           Icon={Wind}
           provenance={[snapshot?.provenance.fields["weather.wind_speed_kmh"],snapshot?.provenance.fields["weather.wind_direction_deg"]]}
-          label={t("marine.wind")}
+          info="wind_speed_kmh" label={t("marine.wind")}
           value={
             data.windSpeedKmh == null
               ? "\u2014"
               : `${data.windSpeedKmh} km/h ${compassDirection(data.windDirectionDeg, lang)}`
           }
         />
-        <Metric Icon={Eye} label={t("marine.visibility")} value={num(data.visibilityKm, "km")} provenance={snapshot?.provenance.fields["weather.visibility_km"]}/>
-        <Metric Icon={Thermometer} label={t("marine.sst")} value={num(data.seaTemperatureC, "\u00b0C")} provenance={snapshot?.provenance.fields["ocean.sst_c"]}/>
-        <Metric Icon={Gauge} label={t("marine.period")} value={num(data.wavePeriodS, "s", 0)} provenance={snapshot?.provenance.fields["weather.wave_period_s"]}/>
-        <Metric Icon={Waves} label={copy.waveDirection} value={num(data.waveDirectionDeg, "°", 0)} provenance={snapshot?.provenance.fields["weather.wave_direction_deg"]}/>
+        <Metric Icon={Wind} info="wind_direction_deg" label={t("marine.windDir")} value={num(data.windDirectionDeg, "°")} provenance={snapshot?.provenance.fields["weather.wind_direction_deg"]}/>
+        {data.visibilityKm != null && <Metric Icon={Eye} label={t("marine.visibility")} value={num(data.visibilityKm, "km")} provenance={snapshot?.provenance.fields["weather.visibility_km"]}/>}
+        <Metric Icon={Thermometer} info="sst_c" label={t("marine.sst")} value={num(data.seaTemperatureC, "\u00b0C")} provenance={snapshot?.provenance.fields["ocean.sst_c"]}/>
+        <Metric Icon={Gauge} info="wave_period_s" label={t("marine.period")} value={num(data.wavePeriodS, "s", 0)} provenance={snapshot?.provenance.fields["weather.wave_period_s"]}/>
+        <Metric Icon={Waves} info="wave_direction_deg" label={copy.waveDirection} value={num(data.waveDirectionDeg, "°", 0)} provenance={snapshot?.provenance.fields["weather.wave_direction_deg"]}/>
         <Metric Icon={Waves} label={copy.windWave} value={`${num(data.windWaveHeightM, "m")} · ${num(data.windWavePeriodS, "s")} · ${num(data.windWaveDirectionDeg, "°", 0)}`} provenance={["wind_wave_height_m","wind_wave_period_s","wind_wave_direction_deg"].map(key=>snapshot?.provenance.fields[`weather.${key}`])}/>
-        <Metric Icon={Waves} label={copy.swell} value={`${num(data.swellWaveHeightM, "m")} · ${num(data.swellWavePeriodS, "s")} · ${num(data.swellWaveDirectionDeg, "°", 0)}`} provenance={["swell_height_m","swell_period_s","swell_direction_deg"].map(key=>snapshot?.provenance.fields[`weather.${key}`])}/>
-        <Metric Icon={Gauge} label={copy.current} value={`${num(data.oceanCurrentSpeedKmh, "km/h")} · ${num(data.oceanCurrentDirectionDeg, "°", 0)}`} provenance={["current_speed","current_direction"].map(key=>snapshot?.provenance.fields[`weather.${key}`])}/>
+        <Metric Icon={Waves} info="swell_height_m" label={copy.swell} value={`${num(data.swellWaveHeightM, "m")} · ${num(data.swellWavePeriodS, "s")} · ${num(data.swellWaveDirectionDeg, "°", 0)}`} provenance={["swell_height_m","swell_period_s","swell_direction_deg"].map(key=>snapshot?.provenance.fields[`weather.${key}`])}/>
+        <Metric Icon={Gauge} info="current_speed" label={copy.current} value={`${num(data.oceanCurrentSpeedKmh, "km/h")} · ${num(data.oceanCurrentDirectionDeg, "°", 0)}`} provenance={["current_speed","current_direction"].map(key=>snapshot?.provenance.fields[`weather.${key}`])}/>
         <Metric Icon={CloudSun} label={t("marine.weather")} value={describeWeather(data.weatherCode, lang)} provenance={snapshot?.provenance.fields["weather.weather_code"]}/>
-        {!tide && <><Metric Icon={Clock} label={t("marine.highTide")} value={t("chat.unavailable")} /><Metric Icon={Clock} label={t("marine.lowTide")} value={t("chat.unavailable")} /></>}
+
         {tide && (
           <>
             <Metric Icon={Clock} label={t("marine.highTide")} value={tideTime(tide.highTideTime, tide.highTideHeightM)} />

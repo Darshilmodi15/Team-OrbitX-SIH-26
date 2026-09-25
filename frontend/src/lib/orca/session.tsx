@@ -6,7 +6,7 @@ import type { LocationInfo, OrcaUser } from "./types";
 const SESSION_TOKEN_KEY = "orca.auth.session";
 type Credentials = { contact: string; password: string; remember: boolean };
 type Registration = Credentials & { name: string; preferredLanguage?: string };
-type SessionValue = { user: OrcaUser | null; location: LocationInfo | null; ready: boolean; sessionError: boolean; retrySession: () => void; locationReady: boolean; token: string | null;
+type SessionValue = { sessionExpired: boolean; user: OrcaUser | null; location: LocationInfo | null; ready: boolean; sessionError: boolean; retrySession: () => void; locationReady: boolean; token: string | null;
   signInGoogle: (credential: string, remember: boolean, language?: string) => Promise<OrcaUser>;
   signIn: (input: Credentials) => Promise<OrcaUser>; register: (input: Registration) => Promise<OrcaUser>;
   signOut: (redirectUrl?: string) => Promise<void>; setLocation: (loc: LocationInfo | null) => void };
@@ -27,6 +27,7 @@ function readToken() {
 }
 function mapUser(raw: any): OrcaUser { const role = raw.role === "GOVERNMENT" ? "government" : raw.role === "SUPER_ADMIN" ? "admin" : "user"; return { id: raw.id, name: raw.name, operationalRegion: raw.operational_region, contact: raw.email || raw.mobile_number || "", role }; }
 export function SessionProvider({ children }: { children: ReactNode }) {
+  const [sessionExpired, setSessionExpired] = useState(false);
   const [sessionError, setSessionError] = useState(false);
   const [retryVersion, setRetryVersion] = useState(0);
   const retrySession = useCallback(() => { setSessionError(false); setRetryVersion(v => v + 1); }, []);
@@ -56,7 +57,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, []);
   useEffect(() => {
-    setAuthFailureHandler(clearSession);
+    setAuthFailureHandler(() => {setSessionExpired(true); clearSession();});
     const savedToken = readToken();
     let cancelled = false;
     const version = authVersion.current;
@@ -64,7 +65,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     else getUserProfile(savedToken).then(raw => {
       if (cancelled || version !== authVersion.current) return;
       setLocationReady(false); setToken(savedToken); setUser(mapUser(raw));
-    }).catch((error) => { if (!cancelled && version === authVersion.current) { if (error?.status === 401) clearSession(); else setSessionError(true); } })
+    }).catch((error) => { if (!cancelled && version === authVersion.current) { if (error?.status === 401) {setSessionExpired(true); clearSession();} else setSessionError(true); } })
       .finally(() => { if (!cancelled) setReady(true); });
     return () => { cancelled = true; setAuthFailureHandler(null); };
   }, [clearSession, retryVersion]);
@@ -82,6 +83,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [user?.id, token, retryVersion]);
   const signOut = useCallback(async (redirectUrl?: string) => {
     const savedToken = readToken();
+    setSessionExpired(false);
     clearSession();
     if (savedToken) await logoutSession(savedToken).catch(() => {});
     if (typeof window !== "undefined" && redirectUrl && window.location.pathname !== redirectUrl) {
@@ -90,6 +92,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [clearSession]);
   const establish = useCallback((result: any, remember: boolean) => {
     clearMarineCaches();
+    setSessionExpired(false);
+    setSessionError(false);
     authVersion.current++;
     locationVersion.current++;
     setLocationReady(false);
@@ -115,7 +119,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const signInGoogle = useCallback(async (credential: string, remember: boolean, language = "en") => establish(await loginGoogle(credential, language), remember), [establish]);
   const register = useCallback(async ({ contact, password, remember, name, preferredLanguage }: Registration) => { const isEmail = contact.includes("@"); return establish(await registerUser({ name, password, preferred_language: preferredLanguage || "en", ...(isEmail ? { email: contact } : { mobile_number: contact }) }), remember); }, [establish]);
   const setLocation = useCallback((loc: LocationInfo | null) => { locationVersion.current++; setLocationState(loc); setLocationReady(true); }, []);
-  const value = useMemo(() => ({ user, token, location, ready, sessionError, retrySession, locationReady, signIn, signInGoogle, register, signOut, setLocation }), [user, token, location, ready, sessionError, retrySession, locationReady, signIn, signInGoogle, register, signOut, setLocation]);
+  const value = useMemo(() => ({ sessionExpired, user, token, location, ready, sessionError, retrySession, locationReady, signIn, signInGoogle, register, signOut, setLocation }), [sessionExpired, user, token, location, ready, sessionError, retrySession, locationReady, signIn, signInGoogle, register, signOut, setLocation]);
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
 export function useSession() { const ctx = useContext(SessionContext); if (!ctx) throw new Error("useSession must be used inside SessionProvider"); return ctx; }

@@ -14,6 +14,7 @@ export default function CoastMap({
   onSelect,
   satellite = false,
   snapshot,
+  boundaryGeometry,
   showPFZ = true,
   showEEZ = true,
   showConditions = false,
@@ -31,6 +32,7 @@ export default function CoastMap({
   onSelect?: (c: Coords) => void;
   satellite?: boolean;
   snapshot?: MarineSnapshot;
+  boundaryGeometry?: GeoJSON.FeatureCollection | null;
   showPFZ?: boolean;
   showEEZ?: boolean;
   showConditions?: boolean;
@@ -127,7 +129,7 @@ export default function CoastMap({
         radius: 9,
         color: "#fff",
         weight: 2,
-        fillColor: "#0d9488",
+        fillColor: "#22d3ee",
         fillOpacity: 1,
       })
         .bindTooltip(text(t("map.yourPin")))
@@ -138,9 +140,9 @@ export default function CoastMap({
       snapshot &&
       showEEZ &&
       snapshot.boundary.availability === "available" &&
-      snapshot.boundary.geometry
+      (boundaryGeometry || snapshot.boundary.geometry)
     ) {
-      L.geoJSON(snapshot.boundary.geometry, {
+      L.geoJSON((boundaryGeometry || snapshot.boundary.geometry)!, {
         style: { color: "#a16207", weight: 2, fillOpacity: 0.025 },
         onEachFeature: (_f, layer) =>
           layer.bindPopup(
@@ -158,15 +160,15 @@ export default function CoastMap({
           `Distance: ${p.distance_km ?? "Unavailable"} km · bearing ${p.bearing.toFixed(0)}°`,
           `Issued: ${snapshot.pfz.issued_at || "Unavailable"}`, `Valid until: ${snapshot.pfz.valid_until || "Unavailable"}`,
           `Source: ${snapshot.pfz.source || "Unavailable"}`, `Geometry: ${p.geometry?.type || "Point"}`,
-          `Freshness: current advisory`, p.radius ? `Advisory search radius: ${p.radius} m` : "Symbol halo only; no geographic range implied."])
+          `Data type: ${snapshot.provenance.demo_scenario ? "Demo Scenario / Illustrative Dataset — not live" : "Verified advisory"}`, p.radius ? `Advisory search radius: ${p.radius} m` : "Symbol halo only; no geographic range implied."])
           popup.appendChild(text(line));
         const link = document.createElement("a");
-        link.textContent = t("nav.assistant");
+        link.textContent = "Ask ORCA";
         link.href = `/assistant?snapshot=${encodeURIComponent(snapshot.snapshot_id)}&prompt=${encodeURIComponent(`Explain the available advisory for PFZ ${p.id} (${p.latitude}, ${p.longitude}).`)}`;
         link.style.display = "block";
         link.style.marginTop = "12px";
         popup.appendChild(link);
-        if (p.geometry) L.geoJSON(p.geometry, {style:{color:"#059669",weight:2,fillOpacity:0.1}}).bindPopup(popup.cloneNode(true) as HTMLElement).addTo(group);
+        if (p.geometry) L.geoJSON(p.geometry, {style:{color:"#059669",weight:2,fillOpacity:0.1,dashArray:"8 6"}}).bindPopup(popup.cloneNode(true) as HTMLElement).addTo(group);
         if (p.radius) L.circle([p.latitude,p.longitude], {radius:p.radius,color:"#059669",weight:2,fillOpacity:0.08}).bindPopup(popup.cloneNode(true) as HTMLElement).addTo(group);
         L.circleMarker([p.latitude,p.longitude], {radius:22,color:"#10b981",weight:2,fillColor:"#10b981",fillOpacity:0.12}).addTo(group);
         L.circleMarker([p.latitude,p.longitude], {radius:15,color:"#10b981",weight:1,fillOpacity:0.15}).addTo(group);
@@ -250,6 +252,7 @@ export default function CoastMap({
     center.lat,
     center.lon,
     snapshot,
+    boundaryGeometry,
     showPFZ,
     showEEZ,
     showConditions,

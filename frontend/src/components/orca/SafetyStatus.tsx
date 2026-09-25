@@ -16,8 +16,8 @@ export function useSafetyLabel() {
   return (level: SafetyLevel) => t(MAP[level].label);
 }
 
-export function SafetyStatusCard({ level, note }: { level: SafetyLevel; note?: string }) {
-  const { t } = useI18n();
+export function SafetyStatusCard({ level, note, reasons }: { level: SafetyLevel; note?: string; reasons?: string[] }) {
+  const { t, lang } = useI18n();
   const { Icon, label, desc, cls } = MAP[level];
 
   return (
@@ -26,8 +26,9 @@ export function SafetyStatusCard({ level, note }: { level: SafetyLevel; note?: s
       <div className="mt-2 flex items-start gap-3">
         <Icon className="mt-0.5 size-7 shrink-0" aria-hidden />
         <div className="min-w-0">
-          <h2 className="text-xl font-bold leading-tight text-foreground">{t(label)}</h2>
-          <p className="mt-1 text-sm font-medium text-foreground/90">{t(desc)}</p>
+          <h2 className="text-xl font-bold leading-tight text-foreground">{level === "unknown" ? (lang === "gu" ? "જીવંત માહિતી અપૂરતી છે" : lang === "hi" ? "पर्याप्त लाइव डेटा नहीं" : "Insufficient live data") : level === "safe" ? (lang === "gu" ? "સલામત · ઉપલબ્ધ માપન મુજબ" : lang === "hi" ? "सुरक्षित · उपलब्ध माप के अनुसार" : "SAFE · assessed dimensions") : t(label)}</h2>
+          {level !== "unknown" && <p className="mt-1 text-sm font-medium text-foreground/90">{t(desc)}</p>}
+          {reasons?.length ? <details className="mt-3 text-xs"><summary className="cursor-pointer">{lang === "gu" ? "શા માટે?" : lang === "hi" ? "क्यों?" : "Why?"}</summary><ul className="mt-2 space-y-1">{reasons.map((reason,index)=><li key={index}>{reason}</li>)}</ul></details> : null}
           {note && <p className="mt-1 text-xs text-foreground/80">{note}</p>}
         </div>
       </div>

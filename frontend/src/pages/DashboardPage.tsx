@@ -1,4 +1,6 @@
 import { Link } from "react-router-dom";
+import { ServiceState } from "@/components/orca/ServiceState";
+import { DemoControls } from "@/components/orca/DemoControls";
 import { AppShell } from "@/components/orca/AppShell";
 import { SafetyStatusCard } from "@/components/orca/SafetyStatus";
 import { MarineConditions, ForecastTimeline } from "@/components/orca/Conditions";
@@ -49,7 +51,7 @@ export default function DashboardPage() {
 
   const c = marine.data?.current;
   const risk = marine.data?.snapshot?.risk.level;
-  const level = marine.offline || c?.dataMode === "stale" ? null : risk === "unsafe" ? "dangerous" : risk === "caution" ? "caution" : null;
+  const level = marine.offline || c?.dataMode === "stale" ? "unknown" : risk === "unsafe" ? "dangerous" : risk === "caution" ? "caution" : risk === "low" ? "safe" : "unknown";
 
   const displayCurrent = c;
 
@@ -61,16 +63,18 @@ export default function DashboardPage() {
       />
       <div className="space-y-5">
         <h1 className="text-xl font-semibold text-foreground">{t("nav.dashboard")}</h1>
+        <DemoControls />
+        {marine.data?.snapshot?.provenance.demo_scenario && <p role="status" className="rounded-md border border-amber-500 p-3 font-semibold">Demo Scenario · Illustrative Dataset · Not live</p>}
 
         {/* Safety status */}
         {marine.isError ? (
-          <EmptyState>{t("status.title")}: {t("chat.unavailable")}</EmptyState>
+          <ServiceState kind="marine" retry={()=>void marine.refetch()} />
         ) : marine.isPending ? (
           <LoadingState label={t("state.loadingMarine")} />
         ) : level ? (
-          <SafetyStatusCard level={level} />
+          <SafetyStatusCard level={level} reasons={marine.data?.snapshot?.risk.reasons} />
         ) : (
-          <EmptyState>{t("status.title")}: {t("chat.unavailable")}</EmptyState>
+          <ServiceState kind="marine" retry={()=>void marine.refetch()} />
         )}
 
         {/* Quick actions */}
@@ -97,11 +101,7 @@ export default function DashboardPage() {
         {marine.data && <TripPack key={`${location.coords.lat},${location.coords.lon}`} location={location} bundle={marine.data} />}
 
         {/* Forecast */}
-        {marine.data?.forecast && (marine.data.forecast.length > 0 ? (
-          <ForecastTimeline points={marine.data.forecast} />
-        ) : (
-          <p className="text-sm text-muted-foreground">{t("forecast.title")}: {t("chat.unavailable")}</p>
-        ))}
+        {!!marine.data?.forecast?.length && <ForecastTimeline points={marine.data.forecast} />}
 
         {/* Map preview */}
         <section className="space-y-2">

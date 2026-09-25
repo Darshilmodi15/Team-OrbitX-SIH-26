@@ -24,7 +24,6 @@ from app.services.pfz.incois_pfz_service import incois_pfz_service
 from app.services.marine_boundaries import marine_boundaries_service, _point_in_geometry, _distance_to_geometry_boundary
 from app.data.pfz.mock import haversine_km
 from app.services.provenance import describe_field
-from app.services.display_geometry import reference_geometry
 
 UTC = timezone.utc
 logger = logging.getLogger("orca.snapshot")
@@ -96,7 +95,8 @@ def _boundary(lat, lon):
     return {"availability": "available", "eez": {"name": "Indian EEZ", "inside": inside},
         "nearest_boundary_distance": distance, "distance_unit": "km",
         "distance_method": "Approximate distance to EEZ polygon edge, which may include coastline; not distance to an international border",
-        "warnings": ["EEZ dataset is a reference layer, not a navigation clearance. Display geometry is simplified; calculations use the original."], "geometry": reference_geometry(geo), "provenance": meta}
+        "warnings": ["EEZ dataset is a reference layer, not a navigation clearance. Display geometry is retrieved separately; calculations use the original."],
+        "geometry": None, "geometry_ref": "/api/marine-boundaries/eez/display", "provenance": meta}
 
 
 class MarineSnapshotService:
@@ -114,14 +114,16 @@ class MarineSnapshotService:
         self.log(user_id, result)
         return result
 
-    def resolve(self, db, user_id, provider, requested_time=None, lat=None, lon=None):
+    def resolve(self, db, user_id, provider, requested_time=None, lat=None, lon=None, demo_scenario=None):
+        from app.services.demo_scenarios import validate_demo, LiveProvider, DemoScenarioProvider
+        validate_demo(demo_scenario)
         location = saved_location(db, user_id)
         if (lat is not None or lon is not None) and (lat, lon) != (location["lat"], location["lon"]):
             raise HTTPException(status_code=409, detail="SAVED_LOCATION_MISMATCH")
         target = request_time(requested_time)
         now = datetime.now(UTC)
         sha = os.getenv("RENDER_GIT_COMMIT") or os.getenv("BACKEND_SHA") or "local-unversioned"
-        key = digest(["snapshot-v4", user_id, location, target.isoformat(), sha])
+        key = digest(["snapshot-v5", user_id, location, target.isoformat(), sha, demo_scenario])
         row = db.query(MarineSnapshotRecord).filter_by(request_key=key, user_id=user_id).first()
         previous_id = row.id if row else None
         if row:
@@ -131,7 +133,10 @@ class MarineSnapshotService:
                 return result
         # Release the read transaction before slow upstream calls.
         db.commit()
-        result = self.build(location, target, now, sha, provider)
+        selected = LiveProvider(lambda: self.build(location, target, now, sha, provider))
+        if demo_scenario:
+            selected = DemoScenarioProvider(selected, demo_scenario, now)
+        result = selected.snapshot()
         payload = result.model_dump(mode="json")
         payload["snapshot_id"] = digest([user_id, key, payload])
         result = MarineSnapshot.model_validate(payload)
@@ -230,7 +235,7 @@ class MarineSnapshotService:
             request={"requested_date": target.date().isoformat(), "requested_time": target.isoformat()}, weather=weather,
             ocean={"sst_c": values["sst_c"], "chlorophyll": None}, pfz=pfz,
             tide={"availability":"unavailable", "high_tide":None, "low_tide":None, "reason":"NO_CONFIGURED_AUTHORITATIVE_TIDE_SOURCE"},
-            boundary=boundary, hazards=hazards, risk={**risk.model_dump(), "reasons": [risk.reason, *risk.factors]},
+            boundary=boundary, hazards=hazards, risk={**risk.model_dump(), "reasons": [risk.reason, *[f"{key}: {value}" for key, value in risk.available_evidence.items()], *risk.factors]},
             provenance={"provider": sources, "source": sources, "issued_at": raw.get("issued_at"),
                 "forecast_valid_at": raw.get("forecast_valid_at") if valid_sources else None,
                 "retrieved_at": now.isoformat(), "grid_lat": raw.get("grid_lat"), "grid_lon": raw.get("grid_lon"),
@@ -243,10 +248,10 @@ class MarineSnapshotService:
         raw = result.model_dump()
         weather = {original: raw["weather"].get(field) for field, original in FIELDS.items()}
         weather.update(sea_surface_temperature_c=raw["ocean"]["sst_c"], forecast="unavailable",
-            source=", ".join(raw["provenance"]["source"]) or "unavailable", is_mock=False,
+            source=", ".join(raw["provenance"]["source"]) or "unavailable", is_mock=bool(raw["provenance"].get("demo_scenario")),
             cache_status=raw["provenance"]["cache_status"], forecast_valid_at=raw["provenance"]["forecast_valid_at"],
             retrieved_at=raw["provenance"]["retrieved_at"], supplemental_fields=raw["provenance"]["fields"])
-        zones = [PFZEvidence(name=z.get("landing_centre") or "PFZ", latitude=z["latitude"], longitude=z["longitude"], distance_km=z["distance_km"], species=z.get("species", []), source=raw["pfz"]["source"], is_mock=False) for z in raw["pfz"]["zones"]]
+        zones = [PFZEvidence(name=z.get("landing_centre") or "PFZ", latitude=z["latitude"], longitude=z["longitude"], distance_km=z["distance_km"], species=z.get("species", []), source=raw["pfz"]["source"], is_mock=bool(raw["provenance"].get("demo_scenario"))) for z in raw["pfz"]["zones"]]
         return EvidenceBundle(weather=WeatherEvidence(**weather), risk=RiskEvidence(**raw["risk"]), pfz_zones=zones,
             date=raw["request"]["requested_date"], location_lat=result.location.lat, location_lon=result.location.lon,
             connectivity_mode=raw["provenance"]["cache_status"].upper(), marine_snapshot=raw)

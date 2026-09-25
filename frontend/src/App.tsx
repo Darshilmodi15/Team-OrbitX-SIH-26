@@ -10,6 +10,7 @@ import { CookieBanner } from "./components/CookieBanner";
 import { RouteAnalyticsListener } from "./lib/orca/analytics";
 import { OrcaLogo } from "./components/orca/Logo";
 import { LocationGate } from "./components/orca/LocationGate";
+import { ServiceState } from "./components/orca/ServiceState";
 import { Radio } from "lucide-react";
 import { RouteScrollReset } from "./components/orca/RouteScrollReset";
 
@@ -31,8 +32,8 @@ const OperationsPage = lazy(() => import("./pages/OperationsPage"));
 
 function RouteFallback() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#06182C] px-4 text-slate-100 selection:bg-teal-500/30">
-      <div className="relative flex size-20 items-center justify-center rounded-3xl bg-slate-900/90 border border-teal-500/30 shadow-2xl shadow-teal-500/20 backdrop-blur-xl">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 text-foreground selection:bg-teal-500/30">
+      <div className="relative flex size-20 items-center justify-center rounded-3xl bg-card border border-teal-500/30 shadow-2xl shadow-teal-500/20 backdrop-blur-xl">
         <OrcaLogo className="size-10 drop-shadow-[0_0_15px_rgba(45,212,191,0.5)] motion-safe:animate-pulse" />
         <div className="absolute -inset-1 rounded-3xl border border-teal-500/20 motion-safe:animate-ping opacity-40 pointer-events-none" />
       </div>
@@ -42,7 +43,7 @@ function RouteFallback() {
         <span>ORCA</span>
       </div>
 
-      <div className="mt-3 h-1 w-36 overflow-hidden rounded-full bg-slate-800">
+      <div className="mt-3 h-1 w-36 overflow-hidden rounded-full bg-muted">
         <div className="h-full w-full bg-gradient-to-r from-teal-500 via-sky-400 to-teal-500 motion-safe:animate-[shimmer_1.5s_infinite_linear] [background-size:200%_100%]" />
       </div>
     </div>
@@ -51,24 +52,27 @@ function RouteFallback() {
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
-  const { user, ready, sessionError, retrySession } = useSession();
-  if (sessionError) return <div role="alert" className="p-8">Session verification is temporarily unavailable.<button className="ml-3 min-h-12 rounded border px-4" onClick={retrySession}>Retry</button></div>;
+  const { user, ready, sessionExpired, sessionError, retrySession } = useSession();
+  if (sessionError) return <ServiceState retry={retrySession} />;
   if (!ready) return <RouteFallback />;
+  if (sessionExpired) return <ServiceState kind="expired" />;
   return user ? children : <Navigate to="/login" state={{ from: pathname }} replace />;
 }
 
 function RoleRoute({ roles, children }: { roles: Array<"user" | "government" | "admin">; children: React.ReactNode }) {
-  const { user, ready, sessionError, retrySession } = useSession();
-  if (sessionError) return <div role="alert" className="p-8">Session verification is temporarily unavailable.<button className="ml-3 min-h-12 rounded border px-4" onClick={retrySession}>Retry</button></div>;
+  const { user, ready, sessionExpired, sessionError, retrySession } = useSession();
+  if (sessionError) return <ServiceState retry={retrySession} />;
   if (!ready) return <RouteFallback />;
+  if (sessionExpired) return <ServiceState kind="expired" />;
   if (!user) return <Navigate to="/login" replace />;
   return roles.includes(user.role) ? children : <Navigate to="/dashboard" replace />;
 }
 
 function DashboardRoute() {
-  const { user, ready, sessionError, retrySession } = useSession();
-  if (sessionError) return <div role="alert" className="p-8">Session verification is temporarily unavailable.<button className="ml-3 min-h-12 rounded border px-4" onClick={retrySession}>Retry</button></div>;
+  const { user, ready, sessionExpired, sessionError, retrySession } = useSession();
+  if (sessionError) return <ServiceState retry={retrySession} />;
   if (!ready) return <RouteFallback />;
+  if (sessionExpired) return <ServiceState kind="expired" />;
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === "admin") return <Navigate to="/admin" replace />;
   if (user.role === "government") return <Navigate to="/officer" replace />;

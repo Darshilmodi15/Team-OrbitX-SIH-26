@@ -16,6 +16,12 @@ from app.services.marine_boundaries import (
 router = APIRouter(prefix="/api/marine-boundaries", tags=["Marine Boundaries"])
 
 
+@router.get("/eez/display")
+def get_display_geometry():
+    from app.services.display_geometry import reference_geometry
+    return reference_geometry(marine_boundaries_service.fetch_eez_by_mrgid())
+
+
 class LocationCheckRequest(BaseModel):
     lat: float = Field(..., description="Vessel latitude coordinate")
     lon: float = Field(..., description="Vessel longitude coordinate")

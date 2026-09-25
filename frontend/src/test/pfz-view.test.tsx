@@ -21,7 +21,7 @@ describe("PFZ map reading flow", () => {
     localStorage.setItem("orca.map.mode", "text");
     mocks.fetch.mockResolvedValue({ data_mode: "unavailable", pfz_zones: [] });
     mount(<MapPanel center={{ lat: 19, lon: 72 }} interactive />);
-    expect(await screen.findByText(/Current verified PFZ advisory unavailable/)).toBeVisible();
+    expect(await screen.findByText(/No current verified PFZ advisory/)).toBeVisible();
     expect(mocks.map).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Text only" })).toHaveAttribute("aria-pressed", "true");
     await userEvent.click(screen.getByRole("button", { name: /^Map$/ }));

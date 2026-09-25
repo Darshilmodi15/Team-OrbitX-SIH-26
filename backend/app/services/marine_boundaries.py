@@ -12,6 +12,9 @@ Official Source:
 """
 
 import json
+from collections import OrderedDict
+from threading import RLock
+from functools import wraps
 import math
 from pathlib import Path
 import ssl
@@ -175,6 +178,14 @@ def _distance_to_geometry_boundary(lat: float, lon: float, geom: Dict[str, Any])
     return min_dist if min_dist != float("inf") else 0.0
 
 
+def _single_flight(method):
+    @wraps(method)
+    def wrapped(self, *args, **kwargs):
+        with self._lock:
+            return method(self, *args, **kwargs)
+    return wrapped
+
+
 class MarineBoundariesService:
     """
     Service responsible for fetching and caching official Marine Regions WFS EEZ data,
@@ -189,7 +200,14 @@ class MarineBoundariesService:
         else:
             self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        self._memory_cache: Dict[str, Dict[str, Any]] = {}
+        self._memory_cache = OrderedDict()
+        self._lock = RLock()
+
+    def _remember(self, key, data):
+        self._memory_cache[key] = data
+        self._memory_cache.move_to_end(key)
+        while len(self._memory_cache) > 2:
+            self._memory_cache.popitem(last=False)
 
     def get_metadata(self) -> Dict[str, Any]:
         """Returns traceability metadata for Marine Regions VLIZ dataset."""
@@ -207,6 +225,7 @@ class MarineBoundariesService:
             "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
         }
 
+    @_single_flight
     def fetch_eez_by_mrgid(self, mrgid: int = DEFAULT_MRGID, force_refresh: bool = False) -> Dict[str, Any]:
         """
         Fetches GeoJSON for a specified EEZ MRGID (defaults to 8480: India).
@@ -225,7 +244,7 @@ class MarineBoundariesService:
                 with open(cache_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 if data.get("features") and data.get("metadata", {}).get("retrieval_status") != "embedded_baseline":
-                    self._memory_cache[cache_key] = data
+                    self._remember(cache_key, data)
                     return data
             except Exception:
                 pass
@@ -249,8 +268,11 @@ class MarineBoundariesService:
             ctx = _get_ssl_context()
             with urllib.request.urlopen(req, context=ctx, timeout=12) as response:
                 if response.status == 200:
-                    raw_text = response.read().decode("utf-8")
-                    data = json.loads(raw_text)
+                    raw = response.read(12 * 1024 * 1024 + 1)
+                    if len(raw) > 12 * 1024 * 1024:
+                        raise ValueError("GEOMETRY_RESPONSE_TOO_LARGE")
+                    data = json.loads(raw)
+                    del raw
                     if data.get("features") and data.get("metadata", {}).get("retrieval_status") != "embedded_baseline":
                         # Attach traceability metadata
                         data["metadata"] = self.get_metadata()
@@ -260,7 +282,7 @@ class MarineBoundariesService:
                         # Save to disk cache
                         with open(cache_file, "w", encoding="utf-8") as f:
                             json.dump(data, f, indent=2)
-                        self._memory_cache[cache_key] = data
+                        self._remember(cache_key, data)
                         return data
         except Exception as exc:
             # If live fetch fails, fallback to existing disk cache or fallback generator
@@ -269,14 +291,14 @@ class MarineBoundariesService:
                     with open(cache_file, "r", encoding="utf-8") as f:
                         data = json.load(f)
                     data["metadata"]["retrieval_status"] = "cached_fallback"
-                    self._memory_cache[cache_key] = data
+                    self._remember(cache_key, data)
                     return data
                 except Exception:
                     pass
 
         # 4. Built-in fallback polygon for India EEZ if WFS was unreachable and no cache exists
         fallback_data = self._generate_fallback_india_eez()
-        self._memory_cache[cache_key] = fallback_data
+        self._remember(cache_key, fallback_data)
         try:
             with open(cache_file, "w", encoding="utf-8") as f:
                 json.dump(fallback_data, f, indent=2)
@@ -284,6 +306,7 @@ class MarineBoundariesService:
             pass
         return fallback_data
 
+    @_single_flight
     def fetch_boundaries_geojson(self, force_refresh: bool = False) -> Dict[str, Any]:
         """
         Fetches official international maritime boundaries (treaties, court rulings, median lines)
@@ -302,7 +325,7 @@ class MarineBoundariesService:
                 with open(cache_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 if data.get("features") and data.get("metadata", {}).get("retrieval_status") != "embedded_baseline":
-                    self._memory_cache[cache_key] = data
+                    self._remember(cache_key, data)
                     return data
             except Exception:
                 pass
@@ -326,8 +349,11 @@ class MarineBoundariesService:
             ctx = _get_ssl_context()
             with urllib.request.urlopen(req, context=ctx, timeout=15) as response:
                 if response.status == 200:
-                    raw_text = response.read().decode("utf-8")
-                    data = json.loads(raw_text)
+                    raw = response.read(12 * 1024 * 1024 + 1)
+                    if len(raw) > 12 * 1024 * 1024:
+                        raise ValueError("GEOMETRY_RESPONSE_TOO_LARGE")
+                    data = json.loads(raw)
+                    del raw
                     if data.get("features") and data.get("metadata", {}).get("retrieval_status") != "embedded_baseline":
                         data["metadata"] = self.get_metadata()
                         data["metadata"]["retrieval_status"] = "live_wfs"
@@ -335,7 +361,7 @@ class MarineBoundariesService:
                         data["metadata"]["retrieved_at"] = datetime.now(timezone.utc).isoformat()
                         with open(cache_file, "w", encoding="utf-8") as f:
                             json.dump(data, f, indent=2)
-                        self._memory_cache[cache_key] = data
+                        self._remember(cache_key, data)
                         return data
         except Exception:
             if cache_file.is_file():
@@ -343,7 +369,7 @@ class MarineBoundariesService:
                     with open(cache_file, "r", encoding="utf-8") as f:
                         data = json.load(f)
                     data["metadata"]["retrieval_status"] = "cached_fallback"
-                    self._memory_cache[cache_key] = data
+                    self._remember(cache_key, data)
                     return data
                 except Exception:
                     pass

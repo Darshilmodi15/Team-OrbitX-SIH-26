@@ -99,7 +99,7 @@ export default function AuthPage() {
       const signedIn = await signInGoogle(credential, remember, lang);
       const from =
         typeof state?.from === "string" &&
-        /^\/assistant\/c\/[0-9a-f-]{36}$/i.test(state.from)
+        (/^(?:\/(?:dashboard|map|assistant|location)|\/assistant\/c\/[0-9a-f-]{36})$/i.test(state.from))
           ? state.from
           : null;
       navigate(
@@ -150,7 +150,7 @@ export default function AuthPage() {
       });
       const from =
         typeof state?.from === "string" &&
-        /^\/assistant\/c\/[0-9a-f-]{36}$/i.test(state.from)
+        (/^(?:\/(?:dashboard|map|assistant|location)|\/assistant\/c\/[0-9a-f-]{36})$/i.test(state.from))
           ? state.from
           : null;
       navigate(

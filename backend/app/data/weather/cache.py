@@ -10,6 +10,8 @@ Architecture:
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 import json
+from collections import OrderedDict
+from threading import RLock
 import logging
 import math
 import os
@@ -52,11 +54,14 @@ class MarineWeatherCache:
         fresh_ttl_seconds: float = 3 * 3600,     # 3 hours fresh TTL
         max_stale_seconds: float = 24 * 3600,   # 24 hours max stale retention
         redis_url: Optional[str] = None,
+        capacity: int = 256,
     ):
         self.grid_resolution = grid_resolution_deg
         self.fresh_ttl = fresh_ttl_seconds
         self.max_stale = max_stale_seconds
-        self._memory_cache: Dict[str, CachedMarineRecord] = {}
+        self._memory_cache = OrderedDict()
+        self.capacity = max(1, capacity)
+        self._lock = RLock()
         
         # Telemetry metrics
         self.hits_count = 0
@@ -264,11 +269,22 @@ class MarineWeatherCache:
             except Exception as e:
                 logger.debug("Redis get error: %s", type(e).__name__)
 
-        return self._memory_cache.get(key)
+        with self._lock:
+            record = self._memory_cache.get(key)
+            if record and time.time() - record.retrieval_timestamp > self.max_stale:
+                del self._memory_cache[key]
+                return None
+            if record:
+                self._memory_cache.move_to_end(key)
+            return record
 
     def _store_record(self, key: str, record: CachedMarineRecord) -> None:
         """Stores record in memory and in Redis if available."""
-        self._memory_cache[key] = record
+        with self._lock:
+            self._memory_cache[key] = record
+            self._memory_cache.move_to_end(key)
+            while len(self._memory_cache) > self.capacity:
+                self._memory_cache.popitem(last=False)
         if self._redis_client:
             try:
                 payload = {
@@ -293,7 +309,8 @@ class MarineWeatherCache:
 
     def clear(self) -> None:
         """Clears all cached records."""
-        self._memory_cache.clear()
+        with self._lock:
+            self._memory_cache.clear()
         if self._redis_client:
             try:
                 keys = self._redis_client.keys("orca:marine:v3:*")
