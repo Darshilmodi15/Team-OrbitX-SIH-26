@@ -45,3 +45,4 @@ backend/test-results/
 
 # Local verification state (sessions and isolated database)
 .local/
+.neon
