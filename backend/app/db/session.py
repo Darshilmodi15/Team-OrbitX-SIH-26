@@ -20,11 +20,16 @@ def get_database_url() -> str:
     Defaults to local SQLite if not configured.
     """
     url = os.getenv("DATABASE_URL", "").strip()
-    if not url:
+
+    # Strip wrapping quotes if pasted with quotes ("..." or '...')
+    if (url.startswith('"') and url.endswith('"')) or (url.startswith("'") and url.endswith("'")):
+        url = url[1:-1].strip()
+
+    if not url or url.lower() in ("none", "null", "undefined", "false", '""', "''"):
         # Fallback to local SQLite database in workspace
         db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "orca_dev.db")
         return f"sqlite:///{db_path}"
-    
+
     # Fix Render/Heroku postgres:// schema prefix
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
@@ -39,7 +44,16 @@ def get_database_url() -> str:
                 url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
             except ImportError:
                 pass
-    
+
+    # Safety check: ensure URL is parsable by SQLAlchemy
+    try:
+        from sqlalchemy.engine import make_url
+        make_url(url)
+    except Exception as exc:
+        logger.warning("Malformed DATABASE_URL detected (%s). Falling back to local SQLite.", exc)
+        db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "orca_dev.db")
+        return f"sqlite:///{db_path}"
+
     return url
 
 
