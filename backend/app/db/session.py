@@ -28,6 +28,17 @@ def get_database_url() -> str:
     # Fix Render/Heroku postgres:// schema prefix
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
+
+    # Ensure compatibility with whichever postgres driver is installed (psycopg v3 or psycopg2)
+    if url.startswith("postgresql://") and not url.startswith("postgresql+"):
+        try:
+            import psycopg  # noqa: F401 - psycopg 3
+        except ImportError:
+            try:
+                import psycopg2  # noqa: F401 - fallback to psycopg2
+                url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+            except ImportError:
+                pass
     
     return url
 
