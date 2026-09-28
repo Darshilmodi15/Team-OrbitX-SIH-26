@@ -109,7 +109,7 @@ export default function AuthPage() {
           ? state.from
           : null;
       navigate(
-        from || (signedIn.role === "user" ? "/location" : "/dashboard"),
+        from || "/location",
         { replace: true },
       );
     } catch (error) {
@@ -160,7 +160,7 @@ export default function AuthPage() {
           ? state.from
           : null;
       navigate(
-        from || (signedIn.role === "user" ? "/location" : "/dashboard"),
+        from || "/location",
         { replace: true },
       );
     } catch (err: unknown) {

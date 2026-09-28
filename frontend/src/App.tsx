@@ -107,12 +107,12 @@ export default function App() {
                   <Route path="/admin" element={<RoleRoute roles={["admin"]}><OperationsPage /></RoleRoute>} />
                   <Route path="/home" element={<Navigate to="/dashboard" replace />} />
                   <Route path="/map" element={<ProtectedRoute><LocationGate><MapPage /></LocationGate></ProtectedRoute>} />
-                  <Route path="/assistant" element={<ProtectedRoute><AssistantPage /></ProtectedRoute>} />
-                  <Route path="/assistant/c/:conversationId" element={<ProtectedRoute><AssistantPage /></ProtectedRoute>} />
-                  <Route path="/c/:conversationId" element={<ProtectedRoute><AssistantPage /></ProtectedRoute>} />
+                  <Route path="/assistant" element={<ProtectedRoute><LocationGate><AssistantPage /></LocationGate></ProtectedRoute>} />
+                  <Route path="/assistant/c/:conversationId" element={<ProtectedRoute><LocationGate><AssistantPage /></LocationGate></ProtectedRoute>} />
+                  <Route path="/c/:conversationId" element={<ProtectedRoute><LocationGate><AssistantPage /></LocationGate></ProtectedRoute>} />
                   <Route path="/alerts" element={<ProtectedRoute><LocationGate><AlertsPage /></LocationGate></ProtectedRoute>} />
                   <Route path="/services" element={<ProtectedRoute><LocationGate><ServicesPage /></LocationGate></ProtectedRoute>} />
-                  <Route path="/emergency" element={<ProtectedRoute><ServicesPage /></ProtectedRoute>} />
+                  <Route path="/emergency" element={<ProtectedRoute><LocationGate><ServicesPage /></LocationGate></ProtectedRoute>} />
                   <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
                   <Route path="/privacy" element={<PrivacyPage />} />
                   <Route path="/terms" element={<TermsPage />} />
