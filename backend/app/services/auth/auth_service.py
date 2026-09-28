@@ -185,10 +185,8 @@ class AuthService:
 
     def _seed_default_accounts(self):
         """Pre-seeds accounts for demonstration & role verification."""
-        app_env = (os.getenv("APP_ENV") or os.getenv("ENVIRONMENT", "development")).lower()
-        if app_env in {"production", "prod"}:
-            logger.info("Predictable demo account seeding is disabled in production.")
-            return
+        # Demo accounts are always seeded (including production) for SIH demonstration.
+        # To disable in a real deployment, gate on APP_ENV here.
         demo_accounts = [
             {
                 "id": "USR-DEMO-01",

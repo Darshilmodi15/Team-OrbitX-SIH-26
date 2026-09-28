@@ -42,11 +42,17 @@ export default function AuthPage() {
     confirm: "",
   });
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [generalError, setGeneralError] = useState<string | null>(null);
+  const [googleError, setGoogleError] = useState<string | null>(null);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const submittingRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [remember, setRemember] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+
+  const clearErrors = () => {
+    setGoogleError(null);
+    setLoginError(null);
+  };
 
   const set =
     (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,7 +60,7 @@ export default function AuthPage() {
       if (fieldErrors[k]) {
         setFieldErrors((prev) => ({ ...prev, [k]: undefined }));
       }
-      setGeneralError(null);
+      setLoginError(null);
     };
 
   const validate = (): boolean => {
@@ -94,7 +100,7 @@ export default function AuthPage() {
     if (submittingRef.current) return;
     submittingRef.current = true;
     setIsSubmitting(true);
-    setGeneralError(null);
+    clearErrors();
     try {
       const signedIn = await signInGoogle(credential, remember, lang);
       const from =
@@ -107,7 +113,7 @@ export default function AuthPage() {
         { replace: true },
       );
     } catch (error) {
-      setGeneralError(
+      setGoogleError(
         error instanceof Error
           ? error.message
           : "Google sign-in failed. Please retry.",
@@ -121,7 +127,7 @@ export default function AuthPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (submittingRef.current) return;
-    setGeneralError(null);
+    clearErrors();
 
     if (!validate()) return;
     submittingRef.current = true;
@@ -162,7 +168,7 @@ export default function AuthPage() {
         err instanceof Error
           ? err.message
           : "Authentication failed. Please verify credentials and retry.";
-      setGeneralError(msg);
+      setLoginError(msg);
     } finally {
       submittingRef.current = false;
       setIsSubmitting(false);
@@ -230,7 +236,7 @@ export default function AuthPage() {
               onClick={() => {
                 setMode("signin");
                 setFieldErrors({});
-                setGeneralError(null);
+                clearErrors();
               }}
             >
               {t("cta.signIn")}
@@ -241,30 +247,30 @@ export default function AuthPage() {
               onClick={() => {
                 setMode("register");
                 setFieldErrors({});
-                setGeneralError(null);
+                clearErrors();
               }}
             >
               {t("cta.register")}
             </button>
           </div>
-          {/* General Error Banner */}
-          {generalError && (
-            <div
-              role="alert"
-              className="mt-4 flex items-start gap-2.5 rounded-lg border border-rose-500/40 bg-rose-500/10 p-3.5 text-xs text-rose-400 animate-in fade-in"
-            >
-              <AlertCircle className="size-4 shrink-0 mt-0.5" />
-              <span>{generalError}</span>
-            </div>
-          )}
 
           {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
             <div className="my-5">
               <GoogleSignInButton
                 onSuccess={submitGoogle}
-                onError={setGeneralError}
+                onError={setGoogleError}
                 disabled={isSubmitting}
               />
+              {/* Google sign-in error — shown near the Google button */}
+              {googleError && (
+                <div
+                  role="alert"
+                  className="mt-3 flex items-start gap-2.5 rounded-lg border border-rose-500/40 bg-rose-500/10 p-3 text-xs text-rose-400 animate-in fade-in"
+                >
+                  <AlertCircle className="size-4 shrink-0 mt-0.5" />
+                  <span>{googleError}</span>
+                </div>
+              )}
               <p className="mt-4 text-center text-xs text-muted-foreground">
                 or continue with email or mobile
               </p>
@@ -422,6 +428,17 @@ export default function AuthPage() {
               </div>
             )}
 
+            {/* Email/Mobile login error — shown near the form fields, above Remember me */}
+            {loginError && (
+              <div
+                role="alert"
+                className="flex items-start gap-2.5 rounded-lg border border-rose-500/40 bg-rose-500/10 p-3 text-xs text-rose-400 animate-in fade-in"
+              >
+                <AlertCircle className="size-4 shrink-0 mt-0.5" />
+                <span>{loginError}</span>
+              </div>
+            )}
+
             <div className="flex items-center justify-between gap-3 text-xs">
               <label className="flex cursor-pointer items-center gap-2">
                 <input
@@ -468,7 +485,7 @@ export default function AuthPage() {
               onClick={() => {
                 setMode(mode === "signin" ? "register" : "signin");
                 setFieldErrors({});
-                setGeneralError(null);
+                clearErrors();
               }}
             >
               {mode === "signin" ? t("cta.register") : t("cta.signIn")}

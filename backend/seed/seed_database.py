@@ -108,9 +108,8 @@ def seed_database():
                 "preferred_language": "en",
             },
         ]
-        if app_env in {"production", "prod"}:
-            demo_accounts = []
-            logger.info("Skipped predictable demo database accounts in production.")
+        # Demo accounts are always seeded (including production) for SIH demonstration.
+        # To disable in a real deployment, gate on APP_ENV here.
 
         for acc in demo_accounts:
             existing = db.query(User).filter(User.email == acc["email"]).first()
