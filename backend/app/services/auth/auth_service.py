@@ -183,10 +183,14 @@ class AuthService:
         self._lookup: Dict[str, str] = {}  # email/phone -> user_id
         self._seed_default_accounts()
 
+    @staticmethod
+    def _runtime_environment() -> str:
+        return (os.getenv("APP_ENV") or os.getenv("ENVIRONMENT") or ENVIRONMENT or "development").lower()
+
     def _seed_default_accounts(self):
         """Pre-seeds accounts for demonstration & role verification."""
-        # Demo accounts are always seeded (including production) for SIH demonstration.
-        # To disable in a real deployment, gate on APP_ENV here.
+        if self._runtime_environment() in {"production", "prod"}:
+            return
         demo_accounts = [
             {
                 "id": "USR-DEMO-01",
@@ -451,7 +455,7 @@ class AuthService:
 
         # Development/test demo identities may exist only in memory. Once the
         # database answered, a missing/inactive account must not fall back.
-        if ENVIRONMENT not in {"production", "prod"} and user_id.startswith("USR-DEMO-") and user_data is None and not database_checked:
+        if self._runtime_environment() not in {"production", "prod"} and user_id.startswith("USR-DEMO-") and user_data is None and not database_checked:
             user_data = self._users.get(user_id)
 
         if not user_data:

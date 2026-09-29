@@ -136,6 +136,20 @@ class TestAuthEndpoints(unittest.TestCase):
             else:
                 os.environ["APP_ENV"] = previous
 
+    def test_non_production_environment_seeds_demo_accounts(self):
+        from app.services.auth.auth_service import AuthService
+        previous = os.environ.get("APP_ENV")
+        os.environ["APP_ENV"] = "development"
+        try:
+            isolated = AuthService()
+            self.assertIn("fisherman@orca.marine", isolated._lookup)
+            self.assertIn("officer@fisheries.gov.in", isolated._lookup)
+        finally:
+            if previous is None:
+                os.environ.pop("APP_ENV", None)
+            else:
+                os.environ["APP_ENV"] = previous
+
 
 if __name__ == "__main__":
     unittest.main()
