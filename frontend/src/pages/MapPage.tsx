@@ -15,6 +15,7 @@ export default function MapPage() {
   const { location } = useSession();
   const [params] = useSearchParams();
   const id = params.get("snapshot");
+  const returnTo = params.get("return") || "/assistant";
   const [historical, setHistorical] = useState<MarineSnapshot>();
   const [failed, setFailed] = useState(false);
   useEffect(() => {
@@ -41,7 +42,7 @@ export default function MapPage() {
       />
       <header className="map-page-header">
         <Link
-          to="/assistant"
+          to={returnTo.startsWith("/") ? returnTo : "/assistant"}
           className="workspace-icon"
           aria-label={t("nav.assistant")}
         >

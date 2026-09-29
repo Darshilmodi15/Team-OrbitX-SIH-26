@@ -113,7 +113,8 @@ function riskToSafety(value: unknown): SafetyLevel | null {
   if (risk.includes("emergency") || risk.includes("critical")) return "emergency";
   if (risk.includes("unsafe") || risk.includes("danger")) return "dangerous";
   if (risk.includes("caution") || risk.includes("warning") || risk.includes("moderate")) return "caution";
-  if (risk.includes("safe") || risk.includes("low") || risk.includes("unknown")) return "unknown";
+  if (risk.includes("safe") || risk.includes("low")) return "safe";
+  if (risk.includes("unknown")) return "unknown";
   return null;
 }
 

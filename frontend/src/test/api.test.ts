@@ -38,15 +38,17 @@ describe('authenticated API contracts', () => {
   it('shows a provider outage instead of pretending a chat answer succeeded', async () => {
     vi.mocked(fetch).mockResolvedValue(jsonResponse({ detail: 'AI_PROVIDER_UNAVAILABLE' }, 503));
     await expect(sendChatMessage({ message: 'Hello' })).rejects.toThrow('AI provider is temporarily unavailable');
-    expect(fetch).toHaveBeenCalledOnce();
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
-  it('sends one chat request with session and request IDs', async () => {
-    vi.mocked(fetch).mockResolvedValue(jsonResponse({ answer: 'verified' }));
+  it('retries one transient chat failure without changing the request identity', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ detail: 'gateway timeout' }, 504))
+      .mockResolvedValueOnce(jsonResponse({ answer: 'verified' }));
     await sendChatMessage({ message: 'Weather?', session_id: 's1', request_id: 'r1' });
-    expect(fetch).toHaveBeenCalledOnce();
+    expect(fetch).toHaveBeenCalledTimes(2);
     const payload = JSON.parse(String(vi.mocked(fetch).mock.calls[0][1]?.body));
     expect(payload).toMatchObject({ message: 'Weather?', session_id: 's1', request_id: 'r1' });
+    expect(vi.mocked(fetch).mock.calls[1][1]?.body).toBe(vi.mocked(fetch).mock.calls[0][1]?.body);
   });
 
   it('attaches the bearer token centrally', async () => {

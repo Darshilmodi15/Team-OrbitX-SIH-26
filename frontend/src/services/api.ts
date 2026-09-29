@@ -126,6 +126,7 @@ export interface ChatMessagePayload {
 export async function sendChatMessage(payload: ChatMessagePayload) {
   const endpoint = `${API_BASE_URL}/api/chat`;
   const startTime = performance.now();
+  let response: Response | undefined;
   
   try {
     const requestBody = {
@@ -140,13 +141,31 @@ export async function sendChatMessage(payload: ChatMessagePayload) {
       request_id: payload.request_id,
     };
 
-    const response = await apiFetch(`/api/chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    });
+    // Render and upstream providers occasionally return a transient gateway
+    // error on the first request. Keep the same request_id across one bounded
+    // retry so the backend can deduplicate an already-accepted request.
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        response = await apiFetch(`/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+          signal: AbortSignal.timeout(30000),
+        });
+      } catch (error) {
+        if (attempt === 0 && error instanceof Error && !/AbortError|timeout/i.test(error.name + error.message)) {
+          await new Promise((resolve) => setTimeout(resolve, 150));
+          continue;
+        }
+        throw error;
+      }
+      if (attempt === 0 && [502, 503, 504, 429].includes(response.status)) {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        continue;
+      }
+      break;
+    }
+    if (!response) throw new Error('No chat response');
 
     const elapsedMs = Math.round(performance.now() - startTime);
 
