@@ -269,6 +269,7 @@ export default function AssistantPage() {
   const { t, lang } = useI18n();
   const navigate = useNavigate();
   const route = useLocation();
+  const mapHref = `/map?return=${encodeURIComponent(route.pathname + route.search)}`;
   const mapSnapshotId = new URLSearchParams(route.search).get("snapshot");
   const [resolvedMapSnapshot, setResolvedMapSnapshot] = useState<string | null>(
     null,
@@ -419,6 +420,7 @@ export default function AssistantPage() {
     };
     setActiveThreadId(conversationId || "");
     setChatError(null);
+    retryRequest.current = null;
     if (newlyCreatedConversation.current === conversationId) {
       newlyCreatedConversation.current = null;
       setHistoryLoading(false);
@@ -526,6 +528,7 @@ export default function AssistantPage() {
     setActiveThreadId("");
     navigate("/assistant");
     setChatError(null);
+    retryRequest.current = null;
     setMobileDrawerOpen(false);
     setInput("");
     inputRef.current?.focus();
@@ -884,7 +887,7 @@ export default function AssistantPage() {
             <LayoutDashboard size={18} />
             {t("nav.dashboard")}
           </Link>
-          <Link to="/map">
+          <Link to={mapHref}>
             <MapIcon size={18} />
             {t("nav.map")}
           </Link>
@@ -988,7 +991,7 @@ export default function AssistantPage() {
           <AppearanceMenu />
           <Link
             className="workspace-icon"
-            to="/map"
+            to={mapHref}
             title={t("nav.map")}
             aria-label={t("nav.map")}
           >

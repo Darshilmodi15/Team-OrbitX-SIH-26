@@ -111,7 +111,7 @@ const en = {
   "status.safeDesc": "Current conditions are within normal operational limits.",
   "status.caution": "Caution",
   "status.cautionDesc": "Conditions are changing. Exercise additional caution.",
-  "status.dangerous": "Dangerous",
+  "status.dangerous": "UNSAFE",
   "status.dangerousDesc": "Current conditions may be unsafe for marine activity.",
   "status.emergency": "Emergency",
   "status.emergencyDesc": "Immediate safety action may be required.",
