@@ -16,6 +16,17 @@ export interface AnalyticsEvent {
 
 const STORAGE_KEY = "orca_analytics_events";
 const MAX_STORED_EVENTS = 100;
+export const LAST_MEANINGFUL_ROUTE_KEY = "orca.last-meaningful-route";
+const NON_DESTINATION_ROUTES = new Set(["/", "/location", "/map", "/login", "/auth"]);
+
+export function readLastMeaningfulRoute(): string | null {
+  try {
+    const value = sessionStorage.getItem(LAST_MEANINGFUL_ROUTE_KEY);
+    return value && value.startsWith("/") && !value.startsWith("//") ? value : null;
+  } catch {
+    return null;
+  }
+}
 
 function isAnalyticsAllowed(): boolean {
   if (typeof window === "undefined") return false;
@@ -115,7 +126,15 @@ export function RouteAnalyticsListener() {
   const location = useLocation();
 
   useEffect(() => {
-    trackPageView(location.pathname + location.search);
+    const route = location.pathname + location.search;
+    if (!NON_DESTINATION_ROUTES.has(location.pathname)) {
+      try {
+        sessionStorage.setItem(LAST_MEANINGFUL_ROUTE_KEY, route);
+      } catch {
+        // Session storage is optional.
+      }
+    }
+    trackPageView(route);
   }, [location.pathname, location.search]);
 
   return null;

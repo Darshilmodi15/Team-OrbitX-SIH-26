@@ -9,13 +9,18 @@ import { OrcaLogo } from "@/components/orca/Logo";
 import { SEO } from "@/components/SEO";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
+import { readLastMeaningfulRoute } from "@/lib/orca/analytics";
 import "@/components/orca/workspace.css";
 export default function MapPage() {
   const { t } = useI18n();
   const { location } = useSession();
   const [params] = useSearchParams();
   const id = params.get("snapshot");
-  const returnTo = params.get("return") || "/assistant";
+  const requestedReturn = params.get("return");
+  const returnTo =
+    requestedReturn && requestedReturn.startsWith("/") && !requestedReturn.startsWith("//")
+      ? requestedReturn
+      : readLastMeaningfulRoute() || "/dashboard";
   const [historical, setHistorical] = useState<MarineSnapshot>();
   const [failed, setFailed] = useState(false);
   useEffect(() => {
@@ -42,7 +47,7 @@ export default function MapPage() {
       />
       <header className="map-page-header">
         <Link
-          to={returnTo.startsWith("/") ? returnTo : "/assistant"}
+          to={returnTo}
           className="workspace-icon"
           aria-label={t("nav.assistant")}
         >

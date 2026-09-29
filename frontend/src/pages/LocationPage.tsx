@@ -17,6 +17,7 @@ import {
   type Coords,
   type PlaceResult,
 } from "@/lib/orca/geo";
+import { readLastMeaningfulRoute } from "@/lib/orca/analytics";
 
 // An India-wide viewport, never an inferred user location.
 const DEFAULT_CENTER: Coords = { lat: 21, lon: 79 };
@@ -136,8 +137,9 @@ export default function LocationPage() {
       area: "coastal",
       source,
     });
-    const from = route.state?.from;
-    navigate((["/dashboard", "/map", "/assistant", "/alerts", "/services"].includes(from) || /^\/assistant\/c\/[0-9a-f-]{36}$/i.test(from)) ? from : "/dashboard", { replace: true });
+    const from = typeof route.state?.from === "string" ? route.state.from : readLastMeaningfulRoute();
+    const safeFrom = from && from.startsWith("/") && !from.startsWith("//") && from !== "/location" ? from : "/dashboard";
+    navigate(safeFrom, { replace: true });
     } catch { setNotice(t("state.error")); } finally { setBusy(false); }
   }
 
@@ -199,7 +201,7 @@ export default function LocationPage() {
         {searchOpen && results.length > 0 && (
           <ul id="place-results" role="listbox" aria-label={t("loc.search")} className="mt-2 max-h-56 divide-y divide-border overflow-y-auto rounded-lg border border-border bg-card shadow-lg">
             {results.map((result, index) => <li key={`${result.name}-${result.coords.lat}-${result.coords.lon}`} id={`place-result-${index}`} role="option" aria-selected={activeResult === index}>
-              <button type="button" disabled={busy} onClick={() => selectResult(result)} className={`flex min-h-12 w-full flex-col items-start px-4 py-2 text-left text-foreground hover:bg-muted ${activeResult === index ? "bg-muted" : ""}`}>
+              <button type="button" disabled={busy} onMouseDown={(event) => event.preventDefault()} onClick={() => selectResult(result)} className={`flex min-h-12 w-full flex-col items-start px-4 py-2 text-left text-foreground hover:bg-muted ${activeResult === index ? "bg-muted" : ""}`}>
                 <span className="text-sm font-semibold">{result.name}</span><span className="text-xs text-muted-foreground">{result.admin}</span>
               </button>
             </li>)}
