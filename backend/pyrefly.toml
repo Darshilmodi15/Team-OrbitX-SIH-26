@@ -1,0 +1,4 @@
+project-includes = ["."]
+project-excludes = ["**/.venv/**", "**/__pycache__/**"]
+search-path = ["."]
+python-interpreter-path = ".venv/bin/python"
