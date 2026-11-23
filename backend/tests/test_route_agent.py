@@ -52,6 +52,28 @@ class TestRouteAgent(unittest.TestCase):
         self.assertIn(route.risk_assessment, ["CAUTION", "HIGH RISK"])
         self.assertTrue(any("Headwind" in note or "wind" in note.lower() for note in route.advisory_notes))
 
+    def test_unavailable_or_mock_weather_returns_unknown(self):
+        for kwargs in (
+            {"is_mock": True, "wave_height_m": 0.5, "wind_speed_kmh": 10.0},
+            {"cache_status": "unavailable", "wave_height_m": 0.5, "wind_speed_kmh": 10.0},
+            {"cache_status": "stale", "wave_height_m": 0.5, "wind_speed_kmh": 10.0},
+        ):
+            weather = WeatherEvidence(source="TEST", forecast="calm", **kwargs)
+            route = plan_safe_marine_route(19.97, 72.73, 19.72, 72.08, weather=weather)
+            self.assertEqual(route.risk_assessment, "UNKNOWN")
+            self.assertEqual(route.waypoints[0].risk_level, "unknown")
+
+    def test_gale_wind_escalates_to_high_risk(self):
+        weather = WeatherEvidence(
+            source="INCOIS_OSF_WW3",
+            forecast="windy",
+            wave_height_m=1.2,
+            wind_speed_kmh=55.0,
+            is_mock=False,
+        )
+        route = plan_safe_marine_route(19.97, 72.73, 19.72, 72.08, weather=weather)
+        self.assertEqual(route.risk_assessment, "HIGH RISK")
+
 
 if __name__ == "__main__":
     unittest.main()

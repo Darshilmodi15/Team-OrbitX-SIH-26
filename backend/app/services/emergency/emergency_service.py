@@ -283,22 +283,31 @@ class EmergencyService:
         return response
 
     def update_details(self, sos_id, user_id, request):
+        from fastapi import HTTPException
         from app.db.session import get_db_context
         from app.db.models import SOSRequest
         import json
-        with get_db_context() as db:
-            row = db.query(SOSRequest).filter(SOSRequest.id == sos_id, SOSRequest.user_id == user_id).with_for_update().first()
-            if row is None:
-                return None
-            row.notes = request.notes
-            if "contact_phone" in request.model_fields_set:
-                row.contact_phone = request.contact_phone
-            telemetry = json.loads(row.recorded_telemetry_json or "{}")
-            telemetry.update(notes=row.notes, contact_phone=row.contact_phone)
-            row.recorded_telemetry_json = json.dumps(telemetry)
-            # Keep operator transcript consistent with the updated details.
-            row.mayday_message = self.generate_mayday_transcript(row.vessel_name, row.registration_no, row.latitude, row.longitude, EmergencyNature(row.emergency_nature), row.crew_count, row.notes)
-            return self._from_db(row)
+        try:
+            with get_db_context() as db:
+                row = db.query(SOSRequest).filter(SOSRequest.id == sos_id, SOSRequest.user_id == user_id).with_for_update().first()
+                if row is None:
+                    return None
+                if row.status == "RESOLVED":
+                    raise HTTPException(status_code=409, detail="SOS_ALREADY_RESOLVED")
+                row.notes = request.notes
+                if "contact_phone" in request.model_fields_set:
+                    row.contact_phone = request.contact_phone
+                telemetry = json.loads(row.recorded_telemetry_json or "{}")
+                telemetry.update(notes=row.notes, contact_phone=row.contact_phone)
+                row.recorded_telemetry_json = json.dumps(telemetry)
+                # Keep operator transcript consistent with the updated details.
+                row.mayday_message = self.generate_mayday_transcript(row.vessel_name, row.registration_no, row.latitude, row.longitude, EmergencyNature(row.emergency_nature), row.crew_count, row.notes)
+                return self._from_db(row)
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.warning("SOS details update failed: %s", type(e).__name__)
+            raise HTTPException(status_code=503, detail="SOS_STORAGE_UNAVAILABLE") from e
 
     def get_active_sos(self) -> List[SOSBroadcastResponse]:
         """Returns active distress broadcasts."""
@@ -335,7 +344,9 @@ class EmergencyService:
 
     def _from_db(self, row) -> SOSBroadcastResponse:
         import json
-        return SOSBroadcastResponse(sos_id=row.id, status=row.status, broadcast_timestamp=row.created_at.replace(tzinfo=timezone.utc).isoformat(), assigned_mrcc=row.assigned_mrcc, mayday_message=row.mayday_message, emergency_hotlines=json.loads(row.emergency_hotlines_json or "[]"), recorded_telemetry=json.loads(row.recorded_telemetry_json or "{}"))
+        ts = row.created_at
+        ts_utc = ts.astimezone(timezone.utc) if ts.tzinfo is not None else ts.replace(tzinfo=timezone.utc)
+        return SOSBroadcastResponse(sos_id=row.id, status=row.status, broadcast_timestamp=ts_utc.isoformat(), assigned_mrcc=row.assigned_mrcc, mayday_message=row.mayday_message, emergency_hotlines=json.loads(row.emergency_hotlines_json or "[]"), recorded_telemetry=json.loads(row.recorded_telemetry_json or "{}"))
 
 
 emergency_service = EmergencyService()

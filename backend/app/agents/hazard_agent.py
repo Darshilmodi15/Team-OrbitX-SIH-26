@@ -79,7 +79,8 @@ def detect_proactive_hazards(
                 title='ORCA: Provider thunderstorm forecast',
                 message=f'Provider weather code {weather.weather_code} indicates thunderstorm forecast conditions. This is not a retrieved official cyclone or lightning observation.',
                 location_desc=location_name, timestamp=weather.forecast_time,
-                source='ORCA heuristic', freshness=weather.cache_status.upper(),
+                source='ORCA heuristic',
+                freshness={"fresh": "FRESH", "live": "FRESH", "cached": "CACHED", "stale": "STALE"}.get(weather.cache_status, "UNAVAILABLE"),
             ))
 
         if weather.wave_period_s and weather.wave_period_s >= 13.0 and wave_h is not None and wave_h >= 1.5:

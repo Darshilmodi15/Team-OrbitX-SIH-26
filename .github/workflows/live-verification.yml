@@ -27,6 +27,7 @@ jobs:
       - run: python -m pip install -r backend/requirements.txt
       - name: Verify local API against real providers
         env:
+          LANGUAGE_PROVIDER: sarvam
           SARVAM_API_KEY: ${{ secrets.SARVAM_API_KEY }}
         run: python backend/scripts/verify_live.py --output live-results/report.json
       - uses: actions/upload-artifact@v4

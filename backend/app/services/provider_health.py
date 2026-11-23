@@ -92,7 +92,9 @@ def snapshot(provider):
     stamp = result.get("data_timestamp") or result.get("last_successful_response")
     if stamp:
         try:
-            age = max(0, (datetime.now(timezone.utc) - datetime.fromisoformat(stamp.replace('Z', '+00:00')).replace(tzinfo=timezone.utc)).total_seconds())
+            parsed = datetime.fromisoformat(stamp.replace('Z', '+00:00'))
+            parsed_utc = parsed.astimezone(timezone.utc) if parsed.tzinfo is not None else parsed.replace(tzinfo=timezone.utc)
+            age = max(0, (datetime.now(timezone.utc) - parsed_utc).total_seconds())
             result["data_age_seconds"] = round(age)
             if age > 3600 and result["status"] == "HEALTHY":
                 result.update(status="DEGRADED", real_data_arriving=False, data_mode="stale", last_error_summary="STALE_LAST_SUCCESS")

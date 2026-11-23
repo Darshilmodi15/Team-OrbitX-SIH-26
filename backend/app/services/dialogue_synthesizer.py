@@ -248,8 +248,10 @@ Generate the complete, natural response in language '{target_lang}':"""
                                 log_attempt(model=model_name, status=200, category="EVIDENCE_VALIDATION_FAILED",
                                             latency_ms=0, retry_count=attempts-1)
                                 allowed = [f"[[{section}.{field}]]" for section in ("weather", "ocean")
-                                           for field, value in evidence.marine_snapshot[section].items()
+                                           for field, value in (evidence.marine_snapshot.get(section) or {}).items()
                                            if isinstance(value, (int, float)) and not isinstance(value, bool)]
+                                if isinstance((evidence.marine_snapshot.get("boundary") or {}).get("nearest_boundary_distance"), (int, float)) and not isinstance((evidence.marine_snapshot.get("boundary") or {}).get("nearest_boundary_distance"), bool):
+                                    allowed.append("[[boundary.nearest_boundary_distance]]")
                                 correction = ("\nYour previous draft failed the application's evidence validator. Generate a new concise answer. "
                                     "Do not write ANY digits, dates, coordinates, source model identifiers, or numbered lists. "
                                     "For environmental measurements use ONLY these exact tokens: " + ", ".join(allowed) +
@@ -335,13 +337,15 @@ Generate the complete, natural response in language '{target_lang}':"""
                 if len(sections) != 1:
                     raise ProviderUnavailable("EVIDENCE_VALIDATION_FAILED")
                 section, field = sections[0], path
-            if section not in {"weather", "ocean"}:
+            if section not in {"weather", "ocean", "boundary"}:
+                raise ProviderUnavailable("EVIDENCE_VALIDATION_FAILED")
+            if section == "boundary" and field != "nearest_boundary_distance":
                 raise ProviderUnavailable("EVIDENCE_VALIDATION_FAILED")
             if section == "weather":
                 field = {"ocean_current_speed_kmh":"current_speed", "ocean_current_direction_deg":"current_direction",
                          "swell_wave_height_m":"swell_height_m", "swell_wave_direction_deg":"swell_direction_deg",
                          "swell_wave_period_s":"swell_period_s"}.get(field, field)
-            value = snapshot.get(section, {}).get(field)
+            value = (snapshot.get(section) or {}).get(field)
             if isinstance(value, bool) or not isinstance(value, (int, float)):
                 raise ProviderUnavailable("EVIDENCE_VALIDATION_FAILED")
             return str(value)

@@ -7,7 +7,9 @@ export const formatNumber = (
 ) => (typeof value === 'number' && Number.isFinite(value) ? value.toFixed(fractionDigits) : fallback);
 
 export const formatCoords = (lat?: number, lon?: number) => {
-  if (typeof lat !== 'number' || typeof lon !== 'number') return 'Location unavailable';
+  if (typeof lat !== 'number' || typeof lon !== 'number' || !Number.isFinite(lat) || !Number.isFinite(lon)) {
+    return 'Location unavailable';
+  }
   const ns = lat >= 0 ? 'N' : 'S';
   const ew = lon >= 0 ? 'E' : 'W';
   return `${Math.abs(lat).toFixed(4)}° ${ns}, ${Math.abs(lon).toFixed(4)}° ${ew}`;
@@ -25,7 +27,7 @@ export const formatUpdatedAt = (date: Date | null) => {
 
 export const normalizeSafetyLevel = (riskLevel?: string | null): SafetyLevel => {
   const normalized = String(riskLevel || '').toLowerCase();
-  if (normalized === 'safe') return 'safe';
+  if (normalized === 'safe' || normalized === 'low') return 'safe';
   if (normalized === 'caution' || normalized === 'moderate') return 'caution';
   if (normalized === 'unsafe' || normalized === 'danger' || normalized === 'dangerous' || normalized === 'high') {
     return 'dangerous';

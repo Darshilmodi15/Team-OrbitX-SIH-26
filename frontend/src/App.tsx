@@ -53,26 +53,27 @@ function RouteFallback() {
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
   const { user, ready, sessionExpired, sessionError, retrySession } = useSession();
+  if (sessionExpired) return <ServiceState kind="expired" />;
   if (sessionError) return <ServiceState retry={retrySession} />;
   if (!ready) return <RouteFallback />;
-  if (sessionExpired) return <ServiceState kind="expired" />;
   return user ? children : <Navigate to="/login" state={{ from: pathname }} replace />;
 }
 
 function RoleRoute({ roles, children }: { roles: Array<"user" | "government" | "admin">; children: React.ReactNode }) {
+  const { pathname } = useLocation();
   const { user, ready, sessionExpired, sessionError, retrySession } = useSession();
+  if (sessionExpired) return <ServiceState kind="expired" />;
   if (sessionError) return <ServiceState retry={retrySession} />;
   if (!ready) return <RouteFallback />;
-  if (sessionExpired) return <ServiceState kind="expired" />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" state={{ from: pathname }} replace />;
   return roles.includes(user.role) ? children : <Navigate to="/dashboard" replace />;
 }
 
 function DashboardRoute() {
   const { user, ready, sessionExpired, sessionError, retrySession } = useSession();
+  if (sessionExpired) return <ServiceState kind="expired" />;
   if (sessionError) return <ServiceState retry={retrySession} />;
   if (!ready) return <RouteFallback />;
-  if (sessionExpired) return <ServiceState kind="expired" />;
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === "admin") return <Navigate to="/admin" replace />;
   if (user.role === "government") return <Navigate to="/officer" replace />;

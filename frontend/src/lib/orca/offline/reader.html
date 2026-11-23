@@ -5,7 +5,7 @@
 body{font:18px/1.6 system-ui,sans-serif;max-width:760px;margin:24px auto;padding:0 18px;background:#f4f8fa;color:#142c3b}h1{line-height:1.2}button,input{font:inherit;padding:12px;border:1px solid #527384;border-radius:8px}button{cursor:pointer;background:#064c68;color:white}label{display:block}article,section{background:white;padding:18px;border-radius:12px;margin:16px 0;border:1px solid #bed1da}p,li{overflow-wrap:anywhere}.notice{border-left:5px solid #ba6510;padding:12px;background:#fff0da}li{margin-bottom:14px}[hidden]{display:none!important}input{max-width:100%;box-sizing:border-box}small{display:block}
 </style></head><body><h1>ORCA offline trip pack</h1>
 <p class="notice">Saved information only. This file cannot receive updates, contact emergency services or send SOS. Saved forecasts are not clearance to sail.</p>
-<section id="choose" hidden><label for="file">Open a downloaded ORCA trip HTML file</label><input id="file" type="file" accept=".html,text/html"><p>The file is read on this device and is never uploaded.</p></section>
+<section id="choose" hidden><label for="file">Open a downloaded ORCA trip pack (.txt or .html)</label><input id="file" type="file" accept=".txt,.html,text/plain,text/html"><p>The file is read on this device and is never uploaded.</p></section>
 <section id="unlock"><form id="form"><label for="password">Trip pack password</label><input id="password" type="password" autocomplete="off" required><button type="submit">Unlock pack</button></form>
 <p>Your password stays on this device. There is no password recovery.</p></section>
 <p id="status" role="status" aria-live="polite">Open this downloaded file in a browser, even without internet.</p>
@@ -28,11 +28,26 @@ document.getElementById('file').onchange=async event=>{
   if(file.size>2200000)throw Error('size');
   const text=await file.text();
   const match=text.match(/<script id="payload" type="application\/json">([^<]+)<\/script>/);
-  if(!match)throw Error('format');
-  const parsed=JSON.parse(match[1]);if(parsed.version!==1)throw Error('version');
-  if(attempt!==generation)return;
-  envelope=parsed;document.getElementById('unlock').hidden=false;statusNode.textContent='File selected. Enter its password to unlock.';
- }catch{statusNode.textContent='Cannot read this pack. Select an intact ORCA trip HTML file under 2 MB.';}
+  if(match){
+   const parsed=JSON.parse(match[1]);if(parsed.version!==1)throw Error('version');
+   if(attempt!==generation)return;
+   envelope=parsed;document.getElementById('unlock').hidden=false;statusNode.textContent='File selected. Enter its password to unlock.';
+   return;
+  }
+  if(file.name.toLowerCase().endsWith('.txt')||file.type==='text/plain'||!/^\s*</.test(text)){
+   if(attempt!==generation)return;
+   content.replaceChildren();
+   const sec=add(content,'section','');
+   add(sec,'h2',file.name||'Saved offline trip notes');
+   const pre=document.createElement('pre');
+   pre.style.whiteSpace='pre-wrap';pre.style.overflowWrap='anywhere';
+   pre.textContent=text;sec.append(pre);
+   content.hidden=false;document.getElementById('lock').hidden=false;
+   statusNode.textContent='Plain-text offline trip pack loaded (saved copy — no live updates).';
+   return;
+  }
+  throw Error('format');
+ }catch{statusNode.textContent='Cannot read this pack. Select an intact ORCA trip .txt or .html file under 2 MB.';}
 };
 const stamp=value=>new Date(value).toLocaleString(undefined,{timeZoneName:'short'});
 function add(parent,tag,text){const element=document.createElement(tag);element.textContent=text;parent.append(element);return element;}

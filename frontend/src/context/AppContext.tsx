@@ -20,13 +20,12 @@ import {
 } from '../services/api';
 import {
   INDIAN_PORTS,
-  MOCK_PFZ_ZONES,
   type Port,
   type WeatherMetrics,
 } from '../data/maritimeData';
 import type { NotificationItem } from '../components/NotificationCenterModal';
 import type { GisLayerState } from '../types';
-import { computeCoastDistance, type CoastDistanceResult } from '../utils/geospatial';
+import { calculateHaversineDistance, computeCoastDistance, type CoastDistanceResult } from '../utils/geospatial';
 
 export type { WeatherMetrics, GisLayerState };
 
@@ -83,7 +82,7 @@ export interface MessageItem {
   highlightTarget?: HighlightedMapTarget;
 }
 
-export type SafetyLevel = 'safe' | 'caution' | 'warning' | 'emergency';
+export type SafetyLevel = 'safe' | 'caution' | 'warning' | 'emergency' | 'unknown';
 
 export interface UserAccount {
   id: string;
@@ -265,16 +264,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     computeCoastDistance(INDIAN_PORTS[0].lat, INDIAN_PORTS[0].lon, 100.0)
   );
 
-  const [currentDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [currentDate] = useState<string>(new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }));
 
   // ── Telemetry Freshness & Last Updated ──
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(new Date());
-  const [dataFreshnessText, setDataFreshnessText] = useState<string>('LIVE DATA');
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [dataFreshnessText, setDataFreshnessText] = useState<string>('UNAVAILABLE');
 
   useEffect(() => {
     const updateFreshness = () => {
       if (!lastUpdated) {
-        setDataFreshnessText('LIVE DATA');
+        setDataFreshnessText('UNAVAILABLE');
         return;
       }
       const deltaMinutes = Math.floor((Date.now() - lastUpdated.getTime()) / 60000);
@@ -298,7 +297,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ── Weather & Safety ──
   const [weather, setWeather] = useState<WeatherMetrics>({ forecast: 'Unavailable' });
 
-  const [riskLevel, setRiskLevel] = useState<SafetyLevel>('safe');
+  const [riskLevel, setRiskLevel] = useState<SafetyLevel>('unknown');
 
   // ── Map & AI Interactive Integration ──
   const [highlightedMapTarget, setHighlightedMapTarget] = useState<HighlightedMapTarget | null>(null);
@@ -329,33 +328,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ── PFZ Intelligence ──
-  const [pfzZones, setPfzZones] = useState<PFZEvidenceItem[]>(
-    MOCK_PFZ_ZONES.map((z) => ({
-      id: z.id,
-      name: z.name,
-      latitude: z.lat,
-      longitude: z.lon,
-      distance_km: z.distance_km || 24.5,
-      depth_m: z.depth_m,
-      species: [z.dominant_species],
-      source: 'INCOIS_PFZ_ADVISORY',
-    }))
-  );
+  const [pfzZones, setPfzZones] = useState<PFZEvidenceItem[]>([]);
 
   // ── Notifications ──
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    {
-      id: 'notif-1',
-      title: 'Ocean State Forecast Active',
-      message: 'INCOIS wave model reporting favorable sea conditions along the coastal corridor.',
-      severity: 'INFO',
-      category: 'WEATHER',
-      source: 'INCOIS OSF',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      is_read: false,
-    },
-  ]);
-  const [unreadAlertsCount, setUnreadAlertsCount] = useState<number>(1);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadAlertsCount, setUnreadAlertsCount] = useState<number>(0);
   const [activeCriticalToast, setActiveCriticalToast] = useState<NotificationItem | null>(null);
 
   // ── Chat & Messages ──
@@ -397,9 +374,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Recompute dynamic PFZ distances to newly selected location
       setPfzZones((prev) =>
         prev.map((z) => {
-          const dist = computeCoastDistance(z.latitude, z.longitude);
           const directDist = Math.round(
-            Math.hypot(z.latitude - coords.lat, z.longitude - coords.lon) * 111.0 * 10
+            calculateHaversineDistance(coords.lat, coords.lon, z.latitude, z.longitude) * 10
           ) / 10;
           return {
             ...z,
@@ -416,7 +392,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setUserLocation(coords);
       setHasExplicitLocation(true);
       recalculateGeospatial(coords);
-      setLastUpdated(new Date());
 
       // Async check with backend validate endpoint if available
       validateLocation(coords.lat, coords.lon).catch(() => null);
@@ -431,10 +406,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setUserLocation(coords);
       setHasExplicitLocation(true);
       recalculateGeospatial(coords);
-      if (port.defaultWeather) {
-        setWeather(port.defaultWeather);
-      }
-      setLastUpdated(new Date());
     },
     [recalculateGeospatial]
   );
@@ -488,17 +459,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
             setLastUpdated(new Date());
           }
 
-          if (riskData?.risk_level) {
-            const raw = String(riskData.risk_level).toLowerCase();
+          const fetchedRisk = riskData?.level ?? riskData?.risk_level;
+          if (fetchedRisk) {
+            const raw = String(fetchedRisk).toLowerCase();
             if (raw.includes('emergency') || raw.includes('critical')) setRiskLevel('emergency');
-            else if (raw.includes('danger') || raw.includes('unsafe') || raw.includes('warning')) setRiskLevel('warning');
+            else if (raw.includes('danger') || raw.includes('unsafe') || raw.includes('warning') || raw === 'high') setRiskLevel('warning');
             else if (raw.includes('caution') || raw.includes('moderate')) setRiskLevel('caution');
-            else setRiskLevel('safe');
+            else if (raw.includes('safe') || raw === 'low') setRiskLevel('safe');
+            else setRiskLevel('unknown');
           }
 
           if (alertsData?.notifications && alertsData.notifications.length > 0) {
             setNotifications(alertsData.notifications);
-            setUnreadAlertsCount(alertsData.unread_count || alertsData.notifications.filter((n: any) => !n.is_read).length);
+            setUnreadAlertsCount(alertsData.unread_count ?? alertsData.notifications.filter((n: any) => !n.is_read).length);
             const criticalAlert = alertsData.notifications.find(
               (n: any) => (n.severity === 'CRITICAL' || n.severity === 'HIGH') && !n.is_read
             );
@@ -638,25 +611,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
             ...prev,
             wave_height_m: response.weather.wave_height_m ?? prev.wave_height_m,
             wind_speed_kmh: response.weather.wind_speed_kmh ?? prev.wind_speed_kmh,
-            wind_direction_deg: response.weather.wind_direction_deg || prev.wind_direction_deg,
-            wind_direction_cardinal: response.weather.wind_direction_cardinal || prev.wind_direction_cardinal,
-            forecast: response.weather.forecast || prev.forecast,
-            temperature_c: response.weather.temperature_c || prev.temperature_c,
-            sst_c: response.weather.sea_surface_temperature_c || prev.sst_c,
-            swell_period_s: response.weather.wave_period_s || prev.swell_period_s,
-            visibility_km: response.weather.visibility_km || prev.visibility_km,
-            source: response.weather.source || 'INCOIS_OSF_LIVE',
+            wind_direction_deg: response.weather.wind_direction_deg ?? prev.wind_direction_deg,
+            wind_direction_cardinal: response.weather.wind_direction_cardinal ?? prev.wind_direction_cardinal,
+            forecast: response.weather.forecast ?? prev.forecast,
+            temperature_c: response.weather.temperature_c ?? prev.temperature_c,
+            sst_c: response.weather.sea_surface_temperature_c ?? prev.sst_c,
+            swell_period_s: response.weather.wave_period_s ?? prev.swell_period_s,
+            visibility_km: response.weather.visibility_km ?? prev.visibility_km,
+            source: response.weather.source ?? 'unavailable',
           }));
           setLastUpdated(new Date());
         }
 
         // If backend returned risk level
-        if (response.risk_level) {
-          const raw = String(response.risk_level).toLowerCase();
+        const responseRisk = response.risk_level;
+        if (responseRisk) {
+          const raw = String(responseRisk).toLowerCase();
           if (raw.includes('emergency') || raw.includes('critical')) setRiskLevel('emergency');
-          else if (raw.includes('danger') || raw.includes('unsafe') || raw.includes('warning')) setRiskLevel('warning');
+          else if (raw.includes('danger') || raw.includes('unsafe') || raw.includes('warning') || raw === 'high') setRiskLevel('warning');
           else if (raw.includes('caution') || raw.includes('moderate')) setRiskLevel('caution');
-          else setRiskLevel('safe');
+          else if (raw.includes('safe') || raw === 'low') setRiskLevel('safe');
+          else setRiskLevel('unknown');
         }
 
         const assistantMsg: MessageItem = {

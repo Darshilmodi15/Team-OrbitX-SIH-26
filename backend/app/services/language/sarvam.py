@@ -83,10 +83,10 @@ def to_sarvam_code(lang: str) -> str:
     """Converts 2-letter or BCP-47 code to Sarvam standard (e.g. 'gu' -> 'gu-IN')."""
     if not lang:
         return "en-IN"
-    lang_clean = lang.strip().lower()
-    if "-in" in lang_clean:
-        return lang_clean
-    return SARVAM_LANG_MAP.get(lang_clean, f"{lang_clean}-IN")
+    prefix = lang.strip().lower().split("-")[0]
+    if prefix == "auto":
+        return "en-IN"
+    return SARVAM_LANG_MAP.get(prefix, f"{prefix}-IN")
 
 
 def to_iso_code(sarvam_lang: str) -> str:
@@ -112,12 +112,16 @@ class SarvamLanguageProvider(LanguageProvider):
     def __init__(
         self,
         api_key: Optional[str] = None,
-        base_url: str = "https://api.sarvam.ai",
+        base_url: Optional[str] = None,
         timeout_sec: float = 12.0,
     ):
-        self.api_key = api_key or os.getenv("SARVAM_API_KEY")
+        self.api_key = api_key if api_key is not None else os.getenv("SARVAM_API_KEY")
         self.base_url = (base_url or os.getenv("SARVAM_BASE_URL", "https://api.sarvam.ai")).rstrip("/")
-        self.timeout_sec = float(os.getenv("SARVAM_TIMEOUT_SEC", str(timeout_sec)))
+        try:
+            t_val = float(os.getenv("SARVAM_TIMEOUT_SEC", str(timeout_sec)))
+            self.timeout_sec = t_val if t_val > 0 else timeout_sec
+        except (TypeError, ValueError):
+            self.timeout_sec = timeout_sec
         self._is_configured = bool(self.api_key and len(self.api_key.strip()) > 5)
         
         if self._is_configured:
@@ -158,40 +162,60 @@ class SarvamLanguageProvider(LanguageProvider):
             record("sarvam_translation", success=False, reason="NOT_CONFIGURED")
             raise ProviderUnavailable("TRANSLATION_UNAVAILABLE")
 
-        # Handle chunking if text exceeds 750 characters (Sarvam Mayura v1 has 1000 char per-request limit)
+        # Handle chunking safely without unbounded recursion (Sarvam Mayura v1 has 1000 char per-request limit)
         if len(text) > 750:
-            paragraphs = text.split("\n\n")
-            translated_paragraphs = []
-            current_chunk = []
-            current_len = 0
+            chunks = self._split_chunks(text, max_chars=700)
+            return "\n\n".join(self._translate_chunk(chunk, src_sarvam, tgt_sarvam) for chunk in chunks)
 
-            for p in paragraphs:
-                if len(p) > 750:
-                    sub_lines = p.split("\n")
-                    for line in sub_lines:
-                        if current_len + len(line) > 650 and current_chunk:
-                            chunk_text = "\n".join(current_chunk)
-                            translated_paragraphs.append(self.translate(chunk_text, source_lang, target_lang))
-                            current_chunk = [line]
-                            current_len = len(line)
-                        else:
-                            current_chunk.append(line)
-                            current_len += len(line) + 1
-                elif current_len + len(p) > 650 and current_chunk:
-                    chunk_text = "\n\n".join(current_chunk)
-                    translated_paragraphs.append(self.translate(chunk_text, source_lang, target_lang))
-                    current_chunk = [p]
-                    current_len = len(p)
-                else:
-                    current_chunk.append(p)
-                    current_len += len(p) + 2
+        return self._translate_chunk(text, src_sarvam, tgt_sarvam)
 
-            if current_chunk:
-                chunk_text = "\n\n".join(current_chunk)
-                translated_paragraphs.append(self.translate(chunk_text, source_lang, target_lang))
+    @staticmethod
+    def _split_chunks(text: str, max_chars: int = 700) -> List[str]:
+        segments: List[str] = []
+        for para in text.split("\n\n"):
+            if len(para) <= max_chars:
+                segments.append(para)
+                continue
+            for line in para.split("\n"):
+                if len(line) <= max_chars:
+                    segments.append(line)
+                    continue
+                words = line.split(" ")
+                cur: List[str] = []
+                cur_len = 0
+                for word in words:
+                    if len(word) > max_chars:
+                        if cur:
+                            segments.append(" ".join(cur))
+                            cur = []
+                            cur_len = 0
+                        for i in range(0, len(word), max_chars):
+                            segments.append(word[i:i + max_chars])
+                    elif cur_len + len(word) + (1 if cur else 0) > max_chars:
+                        segments.append(" ".join(cur))
+                        cur = [word]
+                        cur_len = len(word)
+                    else:
+                        cur.append(word)
+                        cur_len += len(word) + (1 if len(cur) > 1 else 0)
+                if cur:
+                    segments.append(" ".join(cur))
+        chunks: List[str] = []
+        buf: List[str] = []
+        buf_len = 0
+        for seg in segments:
+            if buf and buf_len + len(seg) + 2 > max_chars:
+                chunks.append("\n\n".join(buf))
+                buf = [seg]
+                buf_len = len(seg)
+            else:
+                buf.append(seg)
+                buf_len += len(seg) + (2 if len(buf) > 1 else 0)
+        if buf:
+            chunks.append("\n\n".join(buf))
+        return chunks
 
-            return "\n\n".join(translated_paragraphs)
-
+    def _translate_chunk(self, text: str, src_sarvam: str, tgt_sarvam: str) -> str:
         url = f"{self.base_url}/translate"
         payload = {
             "input": text,
@@ -220,7 +244,7 @@ class SarvamLanguageProvider(LanguageProvider):
         """
         Identifies the Indian regional language of input text.
         
-        Endpoint: POST /language-identification
+        Endpoint: POST /text-lid
         """
         if not text or not text.strip():
             return "en"
@@ -233,7 +257,7 @@ class SarvamLanguageProvider(LanguageProvider):
         if not self.is_configured:
             return "en"
 
-        url = f"{self.base_url}/language-identification"
+        url = f"{self.base_url}/text-lid"
         payload = {"input": text}
 
         try:
@@ -261,12 +285,17 @@ class SarvamLanguageProvider(LanguageProvider):
         
         Endpoint: POST /speech-to-text (multipart/form-data)
         """
+        fallback_iso = (
+            "en"
+            if not language_code or str(language_code).strip().lower() == "auto"
+            else to_iso_code(language_code)
+        )
         if not self.is_configured:
             record("sarvam_stt", success=False, reason="NOT_CONFIGURED")
             return {
                 "transcript": "",
-                "language_code": to_sarvam_code(language_code or "en"),
-                "detected_iso": language_code or "en",
+                "language_code": to_sarvam_code(fallback_iso),
+                "detected_iso": fallback_iso,
                 "source": "sarvam_mock_stt",
                 "is_mock": True,
             }
@@ -294,9 +323,17 @@ class SarvamLanguageProvider(LanguageProvider):
                 resp = client.post(url, data=data, files=files, headers=headers)
                 if resp.status_code == 200:
                     res_data = resp.json()
-                    transcript = res_data.get("transcript", "")
-                    record("sarvam_stt", success=bool(transcript.strip()), http_status=200, reason="EMPTY_TRANSCRIPT")
-                    lang_detected = res_data.get("language_code", data.get("language_code", "en-IN"))
+                    raw_transcript = res_data.get("transcript")
+                    transcript = raw_transcript.strip() if isinstance(raw_transcript, str) else ""
+                    record(
+                        "sarvam_stt",
+                        success=bool(transcript),
+                        http_status=200,
+                        reason=None if transcript else "EMPTY_TRANSCRIPT",
+                    )
+                    lang_detected = res_data.get("language_code") or to_sarvam_code(fallback_iso)
+                    if not isinstance(lang_detected, str) or lang_detected.strip().lower() == "unknown":
+                        lang_detected = to_sarvam_code(fallback_iso)
                     return {
                         "transcript": transcript,
                         "language_code": lang_detected,
@@ -309,8 +346,8 @@ class SarvamLanguageProvider(LanguageProvider):
                     logger.warning("Sarvam STT HTTP %s", resp.status_code)
                     return {
                         "transcript": "",
-                        "language_code": to_sarvam_code(language_code or "en"),
-                        "detected_iso": language_code or "en",
+                        "language_code": to_sarvam_code(fallback_iso),
+                        "detected_iso": fallback_iso,
                         "source": "sarvam_fallback_stt",
                         "is_mock": True,
                         "upstream_status": resp.status_code,
@@ -320,21 +357,12 @@ class SarvamLanguageProvider(LanguageProvider):
             logger.warning("Sarvam STT failed: %s", type(err).__name__)
             return {
                 "transcript": "",
-                "language_code": to_sarvam_code(language_code or "en"),
-                "detected_iso": language_code or "en",
+                "language_code": to_sarvam_code(fallback_iso),
+                "detected_iso": fallback_iso,
                 "source": "sarvam_fallback_stt",
                 "is_mock": True,
                 "upstream_status": 503,
             }
-
-        return {
-            "transcript": "",
-            "language_code": to_sarvam_code(language_code or "en"),
-            "detected_iso": language_code or "en",
-            "source": "sarvam_fallback_stt",
-            "is_mock": True,
-            "upstream_status": 503,
-        }
 
     def text_to_speech(
         self,
@@ -348,7 +376,8 @@ class SarvamLanguageProvider(LanguageProvider):
         Endpoint: POST /text-to-speech
         """
         sarvam_lang = to_sarvam_code(language_code)
-        chosen_speaker = speaker or DEFAULT_SPEAKERS.get(sarvam_lang, "shubh")
+        speaker_clean = speaker.strip().lower() if isinstance(speaker, str) and speaker.strip() else None
+        chosen_speaker = speaker_clean or DEFAULT_SPEAKERS.get(sarvam_lang, "shubh")
 
         if not self.is_configured:
             record("sarvam_tts", success=False, reason="NOT_CONFIGURED")
@@ -363,8 +392,8 @@ class SarvamLanguageProvider(LanguageProvider):
             }
 
         url = f"{self.base_url}/text-to-speech"
-        # Truncate text to 400 characters for optimal single-chunk synthesis
-        clean_text = re.sub(r"[*#_`•-]", "", text).strip()[:400]
+        # Strip markdown tokens while preserving hyphens inside numbers/coordinates/compounds
+        clean_text = re.sub(r"[*#_`•]", "", re.sub(r"(?m)^\s*[-*•]\s+", "", text)).strip()[:400]
 
         payload = {
             "text": clean_text,
@@ -381,7 +410,7 @@ class SarvamLanguageProvider(LanguageProvider):
                 if resp.status_code == 200:
                     data = resp.json()
                     audios = data.get("audios", [])
-                    if audios and len(audios) > 0:
+                    if audios and isinstance(audios[0], str) and audios[0].strip():
                         record("sarvam_tts", success=True, http_status=200)
                         return {
                             "audio_base64": audios[0],
@@ -413,7 +442,7 @@ class SarvamLanguageProvider(LanguageProvider):
             if 0x0A80 <= code <= 0x0AFF:
                 return "gu"
             if 0x0900 <= code <= 0x097F:
-                if re.search(r"[ळ|ऱ|ऴ]", text):
+                if re.search(r"[ळऱऴ]", text):
                     return "mr"
                 return "hi"
             if 0x0B80 <= code <= 0x0BFF:

@@ -80,9 +80,20 @@ export default function SafetyStatusBanner() {
       accentColor: '#DC2626',
       bulletIcon: AlertCircle,
     },
+    unknown: {
+      title: t.unavailable || 'DATA UNAVAILABLE',
+      description: 'Live sea-state assessment is unavailable until ocean conditions finish synchronizing.',
+      icon: HelpCircle,
+      cardBg: 'bg-slate-50 border-slate-200',
+      badgeBg: 'bg-slate-600 text-white',
+      textColor: 'text-slate-900',
+      descColor: 'text-slate-700',
+      accentColor: '#64748B',
+      bulletIcon: AlertCircle,
+    },
   };
 
-  const currentLevel: SafetyLevel = statusConfigs[riskLevel] ? riskLevel : 'caution';
+  const currentLevel: SafetyLevel = statusConfigs[riskLevel] ? riskLevel : 'unknown';
   const statusConfig = statusConfigs[currentLevel];
   const StatusIcon = statusConfig.icon;
 

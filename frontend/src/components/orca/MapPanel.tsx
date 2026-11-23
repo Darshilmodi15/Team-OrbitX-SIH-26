@@ -1,3 +1,4 @@
+import { Link, useInRouterContext } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/services/api";
 import { lazy, Suspense, useEffect, useState } from "react";
@@ -46,6 +47,7 @@ export function MapPanel({
   hasSelection = true,
 }: Props) {
   const { t, lang } = useI18n();
+  const inRouter = useInRouterContext();
   const network = useConnectivity();
   const state = useMarineSnapshot();
   useEffect(() => {
@@ -174,7 +176,9 @@ export function MapPanel({
               </p>
               <p className="map-reading-source">
                 {t("state.updated")}:{" "}
-                {new Date(s.provenance.retrieved_at).toLocaleString(lang)}
+                {Number.isFinite(Date.parse(s.provenance.retrieved_at))
+                  ? new Date(s.provenance.retrieved_at).toLocaleString(lang)
+                  : t("chat.unavailable")}
               </p>
             </>
           )}
@@ -190,10 +194,17 @@ export function MapPanel({
           {t(state.isError ? "chat.unavailable" : "state.loading")}
         </p>
       )}
-      <a href={askHref} className="map-ask">
-        {copy.ask}
-        <ArrowUpRight size={17} />
-      </a>
+      {inRouter ? (
+        <Link to={askHref} className="map-ask">
+          {copy.ask}
+          <ArrowUpRight size={17} />
+        </Link>
+      ) : (
+        <a href={askHref} className="map-ask">
+          {copy.ask}
+          <ArrowUpRight size={17} />
+        </a>
+      )}
     </>
   );
   return (

@@ -7,10 +7,12 @@ Powered by Sarvam AI:
 """
 import base64
 import logging
+import os
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, File, Form, Header, HTTPException, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.routers.auth import get_optional_current_user
 from app.services.rate_limit import rate_limiter
@@ -31,6 +33,9 @@ MAX_TTS_CHARS = 1000
 MAX_RECORDING_SECONDS = 45.0  # Hard server limit 45s
 
 
+SUPPORTED_AUDIO_TYPES = {"audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg", "audio/wav", "audio/x-wav"}
+
+
 def _resolve_caller_rate_key(request: Request, authorization: Optional[str] = None) -> str:
     try:
         user = get_optional_current_user(authorization)
@@ -39,9 +44,10 @@ def _resolve_caller_rate_key(request: Request, authorization: Optional[str] = No
     except Exception:
         pass
     client_ip = request.client.host if request.client else "127.0.0.1"
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        client_ip = forwarded.split(",")[0].strip()
+    if os.getenv("TRUST_PROXY_HEADERS", "false").lower() == "true":
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            client_ip = forwarded.split(",")[0].strip()
     return f"ip:{client_ip}"
 
 
@@ -73,9 +79,16 @@ class TranscribeResponse(BaseModel):
 
 
 class SpeakRequest(BaseModel):
-    text: str = Field(..., description="Text to synthesize to speech")
+    text: str = Field(..., min_length=1, description="Text to synthesize to speech")
     language: Optional[str] = Field(default="en", description="Target ISO language code (e.g. 'gu', 'hi', 'en')")
     speaker: Optional[str] = Field(default=None, description="Bulbul v3 speaker persona (e.g. 'shubh', 'ratan', 'kavya')")
+
+    @field_validator("text")
+    @classmethod
+    def _non_blank_text(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Text for speech synthesis cannot be blank.")
+        return v
 
 
 class SpeakResponse(BaseModel):
@@ -123,7 +136,7 @@ async def transcribe_audio_file(
     if not file:
         raise HTTPException(status_code=400, detail="Missing required audio file in multipart form data.")
 
-    audio_bytes = await file.read()
+    audio_bytes = await file.read(MAX_AUDIO_BYTES + 1)
     if not audio_bytes or len(audio_bytes) < 10:
         raise HTTPException(status_code=400, detail="Uploaded audio file is empty or corrupted.")
     if len(audio_bytes) > MAX_AUDIO_BYTES:
@@ -133,12 +146,12 @@ async def transcribe_audio_file(
 
     content_type = file.content_type or "application/octet-stream"
     filename = file.filename or "recording.wav"
-    supported = {"audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg", "audio/wav", "audio/x-wav"}
-    normalized_type = content_type.split(";", 1)[0].lower()
-    if normalized_type not in supported:
+    normalized_type = content_type.split(";", 1)[0].strip().lower()
+    if normalized_type not in SUPPORTED_AUDIO_TYPES:
         raise HTTPException(status_code=415, detail=f"Unsupported audio type: {normalized_type}")
 
-    result = language_service.speech_to_text(
+    result = await run_in_threadpool(
+        language_service.speech_to_text,
         audio_bytes=audio_bytes,
         filename=filename,
         language_code=language,
@@ -175,7 +188,8 @@ async def transcribe_audio_file(
     stt_lang = stt_detected if (stt_detected and stt_detected != "auto") else (language if language and language != "auto" else None)
     provider_name = "bhashini" if "bhashini" in result.get("source", "") else ("sarvam" if "sarvam" in result.get("source", "") else "bhashini")
     from app.services.bhashini import bhashini_service
-    decision = bhashini_service.determine_query_language(
+    decision = await run_in_threadpool(
+        bhashini_service.determine_query_language,
         text=transcript,
         requested_lang=stt_lang or language,
         user_profile_lang=stt_lang,
@@ -189,7 +203,12 @@ async def transcribe_audio_file(
     lang_name = SUPPORTED_LANGUAGES.get(resp_lang, resp_lang.upper())
     eng_trans = decision.english_normalized_query
     if resp_lang != "en" and eng_trans == transcript:
-        eng_trans = language_service.translate(transcript, source_lang=resp_lang, target_lang="en")
+        eng_trans = await run_in_threadpool(
+            language_service.translate,
+            transcript,
+            source_lang=resp_lang,
+            target_lang="en",
+        )
 
     return TranscribeResponse(
         transcript=transcript,
@@ -238,6 +257,10 @@ def transcribe_base64_audio(
         raise HTTPException(status_code=413, detail="Decoded audio exceeds maximum size limit (5 MB).")
 
     _check_audio_limits(audio_bytes)
+
+    raw_type = (payload.content_type or "audio/wav").split(";", 1)[0].strip().lower()
+    if raw_type not in SUPPORTED_AUDIO_TYPES:
+        raise HTTPException(status_code=415, detail=f"Unsupported audio type: {raw_type}")
 
     result = language_service.speech_to_text(
         audio_bytes=audio_bytes,

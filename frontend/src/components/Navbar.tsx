@@ -115,9 +115,15 @@ export default function Navbar({
       dot: 'bg-red-500',
       icon: ShieldAlert,
     },
+    unknown: {
+      label: t.unavailable || 'UNAVAILABLE',
+      bg: 'bg-slate-100 text-slate-700 border-slate-200',
+      dot: 'bg-slate-400',
+      icon: AlertTriangle,
+    },
   };
 
-  const currentBadge = safetyBadges[riskLevel] || safetyBadges.safe;
+  const currentBadge = safetyBadges[riskLevel] || safetyBadges.unknown;
   const SafetyIcon = currentBadge.icon;
 
   return (

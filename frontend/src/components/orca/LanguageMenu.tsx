@@ -11,20 +11,27 @@ export function LanguageMenu() {
   const menuId = useId();
 
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
+    function handleClick(e: PointerEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    document.addEventListener("pointerdown", handleClick);
+    return () => document.removeEventListener("pointerdown", handleClick);
   }, []);
 
   return (
-    <div ref={ref} className="relative" onKeyDown={(event) => {
-      if (event.key === "Escape" && open) {
-        setOpen(false);
-        ref.current?.querySelector<HTMLButtonElement>("[data-language-trigger]")?.focus();
-      }
-    }}>
+    <div
+      ref={ref}
+      className="relative"
+      onBlur={(event) => {
+        if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && open) {
+          setOpen(false);
+          ref.current?.querySelector<HTMLButtonElement>("[data-language-trigger]")?.focus();
+        }
+      }}
+    >
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -48,6 +55,7 @@ export function LanguageMenu() {
               onClick={() => {
                 setLang(l.code);
                 setOpen(false);
+                ref.current?.querySelector<HTMLButtonElement>("[data-language-trigger]")?.focus();
               }}
               className="flex w-full cursor-pointer items-center justify-between px-3.5 py-2.5 text-sm text-foreground transition-colors hover:bg-muted"
             >

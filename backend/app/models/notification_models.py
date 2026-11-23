@@ -47,8 +47,8 @@ class NotificationsResponse(BaseModel):
 
 
 class LocationAlertCheckRequest(BaseModel):
-    lat: float = Field(..., description="Current vessel latitude")
-    lon: float = Field(..., description="Current vessel longitude")
-    previous_lat: Optional[float] = Field(default=None, description="Previous vessel latitude for anomaly tracking")
-    previous_lon: Optional[float] = Field(default=None, description="Previous vessel longitude for anomaly tracking")
+    lat: float = Field(..., ge=-90, le=90, allow_inf_nan=False, description="Current vessel latitude")
+    lon: float = Field(..., ge=-180, le=180, allow_inf_nan=False, description="Current vessel longitude")
+    previous_lat: Optional[float] = Field(default=None, ge=-90, le=90, allow_inf_nan=False, description="Previous vessel latitude for anomaly tracking")
+    previous_lon: Optional[float] = Field(default=None, ge=-180, le=180, allow_inf_nan=False, description="Previous vessel longitude for anomaly tracking")
     user_id: Optional[str] = Field(default="anonymous_session", description="User identifier")

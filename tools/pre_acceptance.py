@@ -5,6 +5,7 @@ Runs verifiable checks against the local codebase and build artifacts.
 Does not deploy, does not read .env, does not make external requests.
 Exit 0: all checks passed. Exit 1: some checks failed. Exit 2: script error.
 """
+from datetime import datetime, timezone
 import glob
 import json
 import os
@@ -87,13 +88,20 @@ def main():
         check("M11-a", "No API keys/secrets in JS/HTML bundle", not leaked,
               "; ".join(leaked[:5]) if leaked else "")
 
-        # Check VITE_API_BASE_URL is set to a real backend, not localhost in production build
+        # Check VITE_API_BASE_URL / production JS bundle for hardcoded localhost or 127.0.0.1 origins
         index_html = FRONTEND_DIST / "index.html"
-        if index_html.exists():
-            html = index_html.read_text(errors="ignore")
-            check("M11-b", "index.html exists in build", True)
-        else:
-            check("M11-b", "index.html exists in build", False)
+        localhost_leaks = []
+        for fp in list(FRONTEND_DIST.rglob("*.js")) + ([index_html] if index_html.exists() else []):
+            content = fp.read_text(errors="ignore")
+            hits = re.findall(r"https?://(?:localhost|127\.0\.0\.1)(?::\d+)?", content)
+            if hits:
+                localhost_leaks.append(f"{fp.name}: {hits[0]}")
+        check(
+            "M11-b",
+            "index.html exists and bundle has no localhost API origins",
+            index_html.exists() and not localhost_leaks,
+            "; ".join(localhost_leaks[:5]) if localhost_leaks else ("Missing index.html" if not index_html.exists() else ""),
+        )
     else:
         check("M11-a", "Frontend build exists", False, f"Missing: {FRONTEND_DIST}")
         check("M11-b", "index.html exists in build", False, "No build directory")
@@ -146,14 +154,27 @@ def main():
     else:
         check("M36-a", "PFZ service file exists", False)
 
-    # ---- M42 partial: MOSDAC returns NOT_IMPLEMENTED ----
+    # ---- M42: MOSDAC runtime unavailable state when unconfigured ----
     print("\n🛰️  M42 — MOSDAC Unavailable State")
-    mosdac_service = BACKEND_APP / "services" / "satellite" / "mosdac_service.py"
-    if mosdac_service.exists():
-        mosdac_src = mosdac_service.read_text()
-        check("M42-a", "MOSDAC is_configured returns False", "return False" in mosdac_src)
-        check("M42-b", "MOSDAC reports NOT_IMPLEMENTED", "NOT_IMPLEMENTED" in mosdac_src)
-        check("M42-c", "MOSDAC chlorophyll returns None", "\"chlorophyll_mg_m3\": None" in mosdac_src)
+    mosdac_service_path = BACKEND_APP / "services" / "satellite" / "mosdac_service.py"
+    if mosdac_service_path.exists():
+        backend_root = str(ROOT / "backend")
+        if backend_root not in sys.path:
+            sys.path.insert(0, backend_root)
+        saved_env = {k: os.environ.pop(k, None) for k in ("MOSDAC_ENABLE_RASTER_SAMPLING", "MOSDAC_DATA_DIR", "MOSDAC_USER")}
+        try:
+            from app.services.satellite.mosdac_service import MosdacSatelliteService
+            svc = MosdacSatelliteService()
+            obs = svc.get_satellite_observations(19.0, 72.8)
+            check("M42-a", "MOSDAC is_configured returns False when unconfigured", svc.is_configured is False)
+            check("M42-b", "MOSDAC reports NOT_IMPLEMENTED", obs.get("integration_status") == "NOT_IMPLEMENTED")
+            check("M42-c", "MOSDAC chlorophyll returns None", obs.get("chlorophyll_mg_m3") is None)
+        except Exception as exc:
+            check("M42-a", "MOSDAC runtime check succeeded", False, type(exc).__name__)
+        finally:
+            for k, v in saved_env.items():
+                if v is not None:
+                    os.environ[k] = v
     else:
         check("M42-a", "MOSDAC service file exists", False)
 
@@ -224,9 +245,7 @@ def main():
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w") as f:
         json.dump({
-            "timestamp": subprocess.check_output(
-                ["date", "-u", "+%Y-%m-%dT%H:%M:%SZ"], text=True
-            ).strip(),
+            "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "total": total, "passed": passed, "failed": failed,
             "checks": RESULTS,
         }, f, indent=2)

@@ -46,8 +46,8 @@ def _get_ssl_context() -> ssl.SSLContext:
         pass
     try:
         return ssl.create_default_context()
-    except Exception:
-        return ssl._create_unverified_context()
+    except Exception as exc:
+        raise RuntimeError("No verified CA certificate bundle available") from exc
 
 
 def _haversine_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -62,6 +62,7 @@ def _haversine_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -
         math.sin(delta_phi / 2.0) ** 2
         + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2.0) ** 2
     )
+    a = min(1.0, max(0.0, a))
     c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
     return r * c
 
@@ -98,14 +99,17 @@ def _point_in_ring(lat: float, lon: float, ring: List[List[float]]) -> bool:
     Ray casting point-in-polygon algorithm for a 2D ring of [lon, lat] coordinates.
     """
     n = len(ring)
+    if n < 3:
+        return False
     inside = False
     p1x, p1y = ring[0][0], ring[0][1]  # lon, lat
 
-    for i in range(n + 1):
+    for i in range(1, n + 1):
         p2x, p2y = ring[i % n][0], ring[i % n][1]
         if lat > min(p1y, p2y):
             if lat <= max(p1y, p2y):
                 if lon <= max(p1x, p2x):
+                    xinters = p1x
                     if p1y != p2y:
                         xinters = (lat - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
                     if p1x == p2x or lon <= xinters:
@@ -167,9 +171,9 @@ def _distance_to_geometry_boundary(lat: float, lon: float, geom: Dict[str, Any])
         n = len(ring)
         if n < 2:
             continue
-        for i in range(n - 1):
+        for i in range(n):
             p1 = ring[i]
-            p2 = ring[i + 1]
+            p2 = ring[(i + 1) % n]
             # Coordinates in GeoJSON are [lon, lat]
             dist = _point_to_segment_distance_km(lat, lon, p1[1], p1[0], p2[1], p2[0])
             if dist < min_dist:
@@ -236,6 +240,7 @@ class MarineBoundariesService:
 
         # 1. Check in-memory cache
         if not force_refresh and cache_key in self._memory_cache:
+            self._memory_cache.move_to_end(cache_key)
             return self._memory_cache[cache_key]
 
         # 2. Check local disk cache
@@ -284,27 +289,22 @@ class MarineBoundariesService:
                             json.dump(data, f, indent=2)
                         self._remember(cache_key, data)
                         return data
-        except Exception as exc:
-            # If live fetch fails, fallback to existing disk cache or fallback generator
+        except Exception:
+            # If live fetch fails, fallback to existing verified disk cache or built-in fallback
             if cache_file.is_file():
                 try:
                     with open(cache_file, "r", encoding="utf-8") as f:
                         data = json.load(f)
-                    data["metadata"]["retrieval_status"] = "cached_fallback"
-                    self._remember(cache_key, data)
-                    return data
+                    if data.get("features") and data.get("metadata", {}).get("retrieval_status") != "embedded_baseline":
+                        data.setdefault("metadata", {})
+                        data["metadata"]["retrieval_status"] = "cached_fallback"
+                        self._remember(cache_key, data)
+                        return data
                 except Exception:
                     pass
 
-        # 4. Built-in fallback polygon for India EEZ if WFS was unreachable and no cache exists
-        fallback_data = self._generate_fallback_india_eez()
-        self._remember(cache_key, fallback_data)
-        try:
-            with open(cache_file, "w", encoding="utf-8") as f:
-                json.dump(fallback_data, f, indent=2)
-        except Exception:
-            pass
-        return fallback_data
+        # 4. Built-in fallback if WFS was unreachable and no cache exists (never persist fallback)
+        return self._generate_fallback_india_eez()
 
     @_single_flight
     def fetch_boundaries_geojson(self, force_refresh: bool = False) -> Dict[str, Any]:
@@ -317,6 +317,7 @@ class MarineBoundariesService:
 
         # 1. Check in-memory cache
         if not force_refresh and cache_key in self._memory_cache:
+            self._memory_cache.move_to_end(cache_key)
             return self._memory_cache[cache_key]
 
         # 2. Check local disk cache
@@ -368,9 +369,11 @@ class MarineBoundariesService:
                 try:
                     with open(cache_file, "r", encoding="utf-8") as f:
                         data = json.load(f)
-                    data["metadata"]["retrieval_status"] = "cached_fallback"
-                    self._remember(cache_key, data)
-                    return data
+                    if data.get("features") and data.get("metadata", {}).get("retrieval_status") != "embedded_baseline":
+                        data.setdefault("metadata", {})
+                        data["metadata"]["retrieval_status"] = "cached_fallback"
+                        self._remember(cache_key, data)
+                        return data
                 except Exception:
                     pass
 
@@ -399,8 +402,8 @@ class MarineBoundariesService:
         if not features:
             return {
                 "inside_eez": False,
-                "distance_to_boundary_km": 0.0,
-                "geofence_status": "warning",
+                "distance_to_boundary_km": None,
+                "geofence_status": "unavailable",
                 "status_message": "Marine boundary data temporarily unavailable for evaluation.",
                 "country": "Unknown",
                 "zone_name": "Exclusive Economic Zone",

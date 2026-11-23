@@ -22,7 +22,7 @@ function Metric({
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [open,setOpen] = useState(false);
-  useEffect(()=>{if(open) dialog.current?.showModal();},[open]);
+  useEffect(()=>{if(open) { try { dialog.current?.showModal?.(); } catch { /* Dialog unsupported or already open. */ } }},[open]);
   const sources = (Array.isArray(provenance) ? provenance : [provenance]).filter((source): source is FieldSource => !!source);
   return <div className="min-w-0 rounded-md border border-border bg-card p-3 shadow-xs text-xs">
     <div className="flex items-center justify-between gap-2">
@@ -56,7 +56,8 @@ export function MarineConditions({ data, tide = null, snapshot }: { data: Marine
   const { lang, t } = useI18n();
   const copy = marineCopy[lang] ?? marineCopy.en;
   const stamp = (value?: string | null) => value && Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleString(lang, { timeZoneName: "short" }) : "—";
-  const mode = data.dataMode === "unavailable" ? "unavailable" : Date.now() - Date.parse(data.time) > 3 * 3600000 ? "stale" : data.dataMode;
+  const parsedDataTime = Date.parse(data.time);
+  const mode = data.dataMode === "unavailable" ? "unavailable" : Number.isFinite(parsedDataTime) && Date.now() - parsedDataTime > 3 * 3600000 ? "stale" : data.dataMode;
   const updatedAt = useMemo(
     () => data.fetchedAt != null && Number.isFinite(data.fetchedAt) ? new Date(data.fetchedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "—",
     [data.fetchedAt],
@@ -127,7 +128,7 @@ export function MarineConditions({ data, tide = null, snapshot }: { data: Marine
 }
 
 export function ForecastTimeline({ points }: { points: ForecastPoint[] }) {
-  const { t } = useI18n();
+  const { lang, t } = useI18n();
   if (!points.length) return null;
 
   return (
@@ -144,10 +145,12 @@ export function ForecastTimeline({ points }: { points: ForecastPoint[] }) {
             <p className="text-xs font-medium text-muted-foreground">
               {i === 0
                 ? t("forecast.now")
-                : new Date(p.time).toLocaleTimeString(undefined, {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                : Number.isFinite(Date.parse(p.time))
+                  ? new Date(p.time).toLocaleTimeString(lang, {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "—"}
             </p>
             <p className="mt-1 text-sm font-semibold text-foreground">
               {p.waveHeightM == null ? "\u2014" : `${p.waveHeightM.toFixed(1)} m`}

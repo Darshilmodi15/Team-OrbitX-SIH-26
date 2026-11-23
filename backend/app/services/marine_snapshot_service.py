@@ -209,7 +209,17 @@ class MarineSnapshotService:
         weather = SnapshotWeather(**{k:v for k,v in values.items() if k != "sst_c"})
         evidence_raw = {original: values[field] for field, original in mapping.items()}
         risk = assess_risk({**evidence_raw, "cache_status": mode, "is_mock": False})
-        evidence_weather = WeatherEvidence(**evidence_raw, forecast=raw.get("forecast") or "unavailable", source=raw.get("source") or "unavailable", cache_status=mode, is_mock=False)
+        evidence_weather = WeatherEvidence(
+            **evidence_raw,
+            forecast=raw.get("forecast") or "unavailable",
+            source=raw.get("source") or "unavailable",
+            cache_status=mode,
+            forecast_valid_at=raw.get("forecast_valid_at"),
+            forecast_time=raw.get("forecast_valid_at") or raw.get("forecast_time"),
+            retrieved_at=raw.get("retrieved_at"),
+            retrieval_time=raw.get("retrieved_at") or raw.get("retrieval_time"),
+            is_mock=False,
+        )
         hazards = [h.model_dump() for h in detect_proactive_hazards(lat=lat, lon=lon, weather=evidence_weather, include_geofences=False)]
         issued, valid_until = stamp(advisory.get("issued_at")), stamp(advisory.get("valid_until"))
         pfz_current = advisory.get("status") == "current" and issued and valid_until and issued <= target < valid_until

@@ -39,7 +39,10 @@ def parse_publication(html):
 def get_publication():
     global _cache
     with _guard:
-        if _cache and monotonic()-_cache[0]<900: return dict(_cache[1])
+        if _cache:
+            ttl = 900 if _cache[1].get("status") == "published" else 30
+            if monotonic() - _cache[0] < ttl:
+                return dict(_cache[1])
         result={"source":"INCOIS PFZ overview", "url":URL,"scope":"national_overview", "forecast_date":None,"valid_upto_date":None,"retrieved_at":None,"status":"unavailable"}
         try:
             with httpx.Client(timeout=8, follow_redirects=False) as client:

@@ -43,12 +43,12 @@ class GovernmentDocument(BaseModel):
 
 
 class CreateAnnouncementRequest(BaseModel):
-    title: str = Field(..., min_length=5)
-    issuing_authority: str = Field(default="State Directorate of Fisheries")
-    state_or_national: str = Field(default="National")
-    effective_dates: Optional[str] = Field(default="Immediate Effect")
-    summary: str = Field(..., min_length=10)
-    full_text: str = Field(..., min_length=20)
+    title: str = Field(..., min_length=5, max_length=255)
+    issuing_authority: str = Field(default="State Directorate of Fisheries", max_length=255)
+    state_or_national: str = Field(default="National", max_length=255)
+    effective_dates: Optional[str] = Field(default="Immediate Effect", max_length=255)
+    summary: str = Field(..., min_length=10, max_length=2000)
+    full_text: str = Field(..., min_length=20, max_length=20000)
     category: AnnouncementCategory = Field(default=AnnouncementCategory.GENERAL_NOTICE)
-    reference_number: str = Field(default="DOF/ORCA/2026/01")
+    reference_number: str = Field(default="DOF/ORCA/2026/01", max_length=100)
     is_urgent: bool = Field(default=False)

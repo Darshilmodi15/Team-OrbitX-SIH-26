@@ -2,15 +2,17 @@
 Notifications and Safety Alerts REST Router for ORCA Marine AI.
 """
 from typing import Optional
-from fastapi import APIRouter, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 
 from app.models.notification_models import (
     LocationAlertCheckRequest,
     NotificationsResponse,
     SafetyNotification,
 )
-from app.routers.auth import get_optional_current_user
+from app.models.user_models import UserProfile
+from app.routers.auth import get_current_user_from_header, get_optional_current_user
 from app.services.notifications import notification_service
+from app.services.rate_limit import rate_limiter
 
 router = APIRouter(prefix="/api/notifications", tags=["Safety Notifications & Alerts"])
 
@@ -31,11 +33,14 @@ def get_notifications(
 
 
 @router.patch("/{notification_id}/read", response_model=SafetyNotification)
-def mark_notification_read(notification_id: str):
+def mark_notification_read(
+    notification_id: str,
+    user: UserProfile = Depends(get_current_user_from_header),
+):
     """
-    Marks a specific notification as read.
+    Marks a specific notification as read for the authenticated user.
     """
-    notif = notification_service.mark_as_read(notification_id)
+    notif = notification_service.mark_as_read(notification_id, user_id=user.id)
     if not notif:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
     return notif
@@ -65,6 +70,7 @@ def mark_all_notifications_read(
 @router.post("/check", response_model=NotificationsResponse)
 def check_location_alerts(
     request: LocationAlertCheckRequest,
+    req: Request,
     authorization: Optional[str] = Header(None),
 ):
     """
@@ -73,12 +79,32 @@ def check_location_alerts(
     """
     user = get_optional_current_user(authorization)
     resolved_uid = user.id if user else None
+    rate_key = f"user:{resolved_uid}" if resolved_uid else f"ip:{req.client.host if req.client else 'unknown'}"
+    rate_limiter.check("notifications_check", rate_key, limit=60, window_seconds=60)
 
-    notification_service.evaluate_location_alerts(
+    if resolved_uid:
+        notification_service.evaluate_location_alerts(
+            lat=request.lat,
+            lon=request.lon,
+            previous_lat=request.previous_lat,
+            previous_lon=request.previous_lon,
+            user_id=resolved_uid,
+            persist=True,
+        )
+        return notification_service.get_notifications_for_user(resolved_uid)
+
+    ephemeral = notification_service.evaluate_location_alerts(
         lat=request.lat,
         lon=request.lon,
         previous_lat=request.previous_lat,
         previous_lon=request.previous_lon,
-        user_id=resolved_uid,
+        user_id=None,
+        persist=False,
     )
-    return notification_service.get_notifications_for_user(resolved_uid)
+    existing = notification_service.get_notifications_for_user(None)
+    combined = ephemeral + existing.notifications
+    combined.sort(key=lambda x: x.timestamp, reverse=True)
+    return NotificationsResponse(
+        unread_count=sum(1 for n in combined if not n.is_read),
+        notifications=combined,
+    )

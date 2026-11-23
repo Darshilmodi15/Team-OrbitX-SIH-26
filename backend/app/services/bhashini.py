@@ -1,8 +1,11 @@
 """Bhashini Multilingual Service for ORCA Marine AI."""
+from collections import OrderedDict
 import json
 import logging
 import os
 import re
+from threading import Lock
+from time import monotonic
 from typing import Any, Dict, List, Optional, Tuple
 from dotenv import load_dotenv
 import httpx
@@ -30,7 +33,7 @@ SUPPORTED_LANGUAGES: Dict[str, str] = {
     "te": "Telugu (తెలుగు)",
     "ml": "Malayalam (മലയാളം)",
     "kn": "Kannada (ಕನ್ನಡ)",
-    "or": "Odia (ଓଡ଼િଆ)",
+    "or": "Odia (\u0b13\u0b21\u0b3c\u0b3f\u0b06)",
     "pa": "Punjabi (ਪੰਜਾਬੀ)",
     "as": "Assamese (অসমীয়া)",
     "ur": "Urdu (اردو)",
@@ -363,10 +366,10 @@ MARITIME_TRANSLATIONS: Dict[str, Dict[str, str]] = {
 ROMANIZED_INDIC_LEXICONS: Dict[str, Dict[str, Any]] = {
     "hi": {
         "words": {
-            "kya", "main", "kal", "aaj", "aane", "jaana", "ja", "sakta", "sakti", "sakte", "hoon", "hun", "hai", "hain",
+            "kya", "kal", "aaj", "aane", "jaana", "ja", "sakta", "sakti", "sakte", "hoon", "hun", "hai", "hain",
             "kitna", "kitni", "kitne", "kaisa", "kaisi", "kaise", "rahega", "rahegi", "rahenge", "machhli", "machli",
             "pakadne", "samundar", "samandar", "hawa", "leher", "leherein", "lahar", "lahare", "toofan", "tufan", "bijli",
-            "barish", "surakshit", "kharab", "khatra", "paas", "door", "kahan", "kidhar", "bataye", "batao", "kaunsa",
+            "barish", "surakshit", "kharab", "khatra", "paas", "kahan", "kidhar", "bataye", "batao", "kaunsa",
             "kaunsi", "hoga", "hogi", "chalo", "bolo", "mujhe", "kripya", "jaldi", "meri", "mera", "hamaare", "karna",
             "karne", "jaau", "jaunga", "jaungi", "karega", "rakhna", "dekho", "bataiye", "pata", "nazar", "aage",
             "raat", "subah", "shaam", "dopahar", "hawaa", "paani", "kashti", "nauka", "machhuara", "machhuare", "machhuaron",
@@ -393,7 +396,7 @@ ROMANIZED_INDIC_LEXICONS: Dict[str, Dict[str, Any]] = {
             "kay", "mi", "udya", "aaj", "jau", "jaau", "shakto", "shakte", "shakto ka", "aahe", "aahet", "kiti",
             "kasa", "kasi", "kase", "mase", "masemari", "samudra", "samudrat", "samudrachi", "wara", "vara", "lata",
             "laata", "wadal", "vadal", "vij", "surakshit", "kuthe", "kontha", "sanga", "mahiti", "dya", "kadhi",
-            "asel", "hoti", "kara", "karaycha", "naka", "kinaryavar", "bhag", "sakal", "sandhyakal", "nauka", "boat",
+            "asel", "hoti", "kara", "karaycha", "naka", "kinaryavar", "bhag", "sakal", "sandhyakal", "nauka",
             "jata", "yeil", "kaay", "nahit", "aamhi", "madat"
         },
         "script": "Deva",
@@ -404,7 +407,7 @@ ROMANIZED_INDIC_LEXICONS: Dict[str, Dict[str, Any]] = {
             "enna", "naan", "naalai", "indru", "poga", "pogalama", "mudiyuma", "irukkum", "irukku", "evvalavu", "eppadi",
             "meen", "meenpidi", "meenpidikka", "kadal", "kaatru", "alai", "alaigal", "puyal", "paadhukaappu", "enga",
             "sollu", "sollunga", "epdi", "illai", "aabathu", "thooram", "edam", "kalai", "maala", "kadarkarai",
-            "pathukappu", "padagu", "kaalai", "mahabalipuram"
+            "pathukappu", "padagu", "kaalai"
         },
         "script": "Taml",
         "name": "Tamil (தமிழ்)",
@@ -457,9 +460,9 @@ ROMANIZED_INDIC_LEXICONS: Dict[str, Dict[str, Any]] = {
     },
     "pa": {
         "words": {
-            "ki", "main", "kal", "ajj", "jaa", "sakda", "sakde", "haan", "hai", "kinna", "kiven", "machhi",
+            "ki", "kal", "ajj", "jaa", "sakda", "sakde", "haan", "hai", "kinna", "kiven", "machhi",
             "fadna", "samundar", "hawa", "lehran", "toofan", "surakshit", "kithe", "dasso", "hovega", "naal",
-            "door", "thaan", "sawere", "shaam", "kisti", "bera"
+            "thaan", "sawere", "shaam", "kisti", "bera"
         },
         "script": "Guru",
         "name": "Punjabi (ਪੰਜਾਬੀ)",
@@ -618,11 +621,15 @@ class BhashiniService:
             "https://meity-auth.ulcacontrib.org/ulca/apis/v0/model/getModelsPipeline"
         )
         
-        # Pipeline response cache: (source_lang, target_lang) -> {callback_url, service_id, auth_header, auth_key}
-        self._pipeline_cache: Dict[Tuple[str, str], Dict[str, Any]] = {}
-        
-        # In-memory session language store for multi-turn conversations
-        self._session_languages: Dict[str, str] = {}
+        # Bounded pipeline response cache with TTL: (source_lang, target_lang) -> (stored_at, config)
+        self._pipeline_cache: OrderedDict = OrderedDict()
+        self._pipeline_cache_ttl = 3600.0
+        self._pipeline_cache_max = 128
+
+        # Bounded in-memory session language store for multi-turn conversations
+        self._session_languages: OrderedDict = OrderedDict()
+        self._max_sessions = 2000
+        self._lock = Lock()
 
     @property
     def is_configured(self) -> bool:
@@ -637,11 +644,16 @@ class BhashiniService:
     def set_session_language(self, session_id: str, language: str) -> None:
         """Stores the language preference for a multi-turn conversation session."""
         if session_id and language:
-            self._session_languages[session_id] = language
+            with self._lock:
+                self._session_languages[session_id] = language
+                self._session_languages.move_to_end(session_id)
+                while len(self._session_languages) > self._max_sessions:
+                    self._session_languages.popitem(last=False)
 
     def get_session_language(self, session_id: str) -> Optional[str]:
         """Retrieves stored language preference for a session."""
-        return self._session_languages.get(session_id)
+        with self._lock:
+            return self._session_languages.get(session_id)
 
     def identify_language(
         self,
@@ -682,6 +694,7 @@ class BhashiniService:
             "bn": len(re.findall(r"[\u0980-\u09FF]", cleaned_text)),  # Bengali / Assamese
             "or": len(re.findall(r"[\u0B00-\u0B7F]", cleaned_text)),  # Odia
             "pa": len(re.findall(r"[\u0A00-\u0A7F]", cleaned_text)),  # Punjabi
+            "ur": len(re.findall(r"[\u0600-\u06FF]", cleaned_text)),  # Urdu
         }
 
         max_script, count = max(script_counts.items(), key=lambda x: x[1])
@@ -705,6 +718,7 @@ class BhashiniService:
                     "bn": "Beng",
                     "or": "Orya",
                     "pa": "Guru",
+                    "ur": "Arab",
                 }
                 script_code = script_map.get(detected, "Deva")
 
@@ -762,8 +776,8 @@ class BhashiniService:
                 return sarvam_res
 
         # 4. Session Language Store (for Latin/ASCII queries in existing regional sessions)
-        if session_id and session_id in self._session_languages:
-            session_lang = self._session_languages[session_id]
+        session_lang = self.get_session_language(session_id) if session_id else None
+        if session_lang:
             full_code = SHORT_CODE_TO_SARVAM.get(session_lang, f"{session_lang}-IN")
             return LanguageIdentificationResult(
                 language_code=full_code,
@@ -830,10 +844,15 @@ class BhashiniService:
         if explicit_lang and explicit_lang in SUPPORTED_LANGUAGES:
             if session_id:
                 self.set_session_language(session_id, explicit_lang)
+            stripped_instr = EXPLICIT_INSTRUCTION_REGEX.sub("", cleaned_text)
+            for pat, _ in INDIC_EXPLICIT_PATTERNS:
+                stripped_instr = pat.sub("", stripped_instr)
+            body_lid = self.identify_language(stripped_instr.strip() or cleaned_text, session_id=None)
+            input_is_english = (body_lid.short_code == "en")
             eng_norm = (
-                self.translate(cleaned_text, source_lang=explicit_lang, target_lang="en")
-                if explicit_lang != "en"
-                else cleaned_text
+                cleaned_text
+                if explicit_lang == "en" or input_is_english
+                else self.translate(cleaned_text, source_lang=body_lid.short_code or explicit_lang, target_lang="en")
             )
             return QueryLanguageDecision(
                 original_transcript=cleaned_text,
@@ -846,8 +865,8 @@ class BhashiniService:
                 fallback_used=False,
             )
 
-        # 2. Sentence/Segment-Aware Determination
-        raw_segments = [s.strip() for s in re.split(r'[\n\r.!?।]+', cleaned_text) if s.strip()]
+        # 2. Sentence/Segment-Aware Determination (preserve decimal coordinates like 18.92)
+        raw_segments = [s.strip() for s in re.split(r'(?:[\n\r!?।]+|(?<!\d)\.(?!\d))', cleaned_text) if s.strip()]
         if not raw_segments:
             raw_segments = [cleaned_text]
 
@@ -876,6 +895,19 @@ class BhashiniService:
             chosen_lang = latest_lang
             dominant_lang = latest_lang
             confidence = 0.95
+        elif greeting_segments:
+            # Regional greeting present without substantive segments (e.g. "Kem cho?", "Namaste")
+            for _, g_lang in greeting_segments:
+                if g_lang != "en":
+                    chosen_lang = g_lang
+                    dominant_lang = g_lang
+                    if g_lang not in detected_languages:
+                        detected_languages.append(g_lang)
+                    break
+            if chosen_lang == "en":
+                chosen_lang = greeting_segments[-1][1]
+                dominant_lang = chosen_lang
+
         # Fallback hierarchy if substantive query is in English / Latin script without non-English markers:
         # Check: Saved profile preference -> requested_lang -> session language -> English
         emergency_number_markers = (
@@ -910,24 +942,13 @@ class BhashiniService:
                 dominant_lang = session_lang
                 fallback_used = True
                 confidence = 0.75
-        elif greeting_segments:
-            # Regional greeting present (e.g. "Kem cho?", "Namaste")
-            for _, g_lang in greeting_segments:
-                if g_lang != "en":
-                    chosen_lang = g_lang
-                    dominant_lang = g_lang
-                    if g_lang not in detected_languages:
-                        detected_languages.append(g_lang)
-                    break
-            if chosen_lang == "en" and greeting_segments:
-                chosen_lang = greeting_segments[-1][1]
-                dominant_lang = chosen_lang
 
         if session_id and chosen_lang in SUPPORTED_LANGUAGES:
             self.set_session_language(session_id, chosen_lang)
 
-        # Normalize query to English for downstream agent tools
-        if chosen_lang != "en":
+        # Normalize query to English only if the input actually contains non-English text
+        input_has_non_english = any(l != "en" for l in detected_languages) or (not substantive_segments and chosen_lang != "en" and bool(greeting_segments))
+        if chosen_lang != "en" and input_has_non_english:
             english_normalized = self.translate(cleaned_text, source_lang=dominant_lang, target_lang="en")
         else:
             english_normalized = cleaned_text
@@ -951,8 +972,13 @@ class BhashiniService:
         Retrieves and caches pipeline configuration from MeitY Bhashini API.
         """
         cache_key = (source_lang, target_lang)
-        if cache_key in self._pipeline_cache:
-            return self._pipeline_cache[cache_key]
+        with self._lock:
+            cached = self._pipeline_cache.get(cache_key)
+            if cached and (monotonic() - cached[0]) < self._pipeline_cache_ttl:
+                self._pipeline_cache.move_to_end(cache_key)
+                return cached[1]
+            if cached:
+                del self._pipeline_cache[cache_key]
 
         if not self.is_configured:
             return None
@@ -1006,10 +1032,14 @@ class BhashiniService:
                                 "auth_name": auth_name,
                                 "auth_value": auth_value,
                             }
-                            self._pipeline_cache[cache_key] = config_data
+                            with self._lock:
+                                self._pipeline_cache[cache_key] = (monotonic(), config_data)
+                                self._pipeline_cache.move_to_end(cache_key)
+                                while len(self._pipeline_cache) > self._pipeline_cache_max:
+                                    self._pipeline_cache.popitem(last=False)
                             return config_data
             except Exception as err:
-                logger.warning(f"Bhashini pipeline config call failed: {err}")
+                logger.warning(f"Bhashini pipeline config call failed: {type(err).__name__}")
 
         # Fallback to direct Dhruva pipeline inference endpoint when inference key is present
         if self.inference_api_key:
@@ -1020,7 +1050,11 @@ class BhashiniService:
                 "auth_name": "Authorization",
                 "auth_value": self.inference_api_key,
             }
-            self._pipeline_cache[cache_key] = config_data
+            with self._lock:
+                self._pipeline_cache[cache_key] = (monotonic(), config_data)
+                self._pipeline_cache.move_to_end(cache_key)
+                while len(self._pipeline_cache) > self._pipeline_cache_max:
+                    self._pipeline_cache.popitem(last=False)
             return config_data
 
         return None
@@ -1033,6 +1067,8 @@ class BhashiniService:
         config: Dict[str, Any],
     ) -> Optional[str]:
         """Executes compute request against Bhashini inference endpoint."""
+        from app.services.provider_health import record
+
         callback_url = config["callback_url"]
         service_id = config["service_id"]
         auth_name = config.get("auth_name", "Authorization")
@@ -1069,10 +1105,13 @@ class BhashiniService:
                     pipeline_res = data.get("pipelineResponse", [])
                     if pipeline_res and "output" in pipeline_res[0]:
                         outputs = pipeline_res[0]["output"]
-                        if outputs and "target" in outputs[0]:
+                        if outputs and isinstance(outputs[0], dict) and outputs[0].get("target"):
+                            record("bhashini_translation", success=True, http_status=200)
                             return outputs[0]["target"]
+                record("bhashini_translation", success=False, http_status=response.status_code, reason="UPSTREAM_HTTP_ERROR")
         except Exception as err:
-            logger.warning(f"Bhashini compute call failed: {err}")
+            record("bhashini_translation", success=False, reason=type(err).__name__)
+            logger.warning(f"Bhashini compute call failed: {type(err).__name__}")
 
         return None
 

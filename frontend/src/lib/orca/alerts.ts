@@ -9,6 +9,12 @@ import type { LangCode } from "./i18n";
 export function deriveAdvisories(bundle: MarineBundle | null, lang: LangCode = "en"): Alert[] {
   if (!bundle) return [];
   const c = bundle.current;
+  if (c.dataMode === "unavailable" || c.dataMode === "stale") return [];
+  const rawSource = c.primarySource || (c.sources && c.sources.length > 0 ? c.sources.join(", ") : "");
+  const isIllustrative = c.measurementKind === "illustrative" || /\[simulation\]|illustrative|demo/i.test(rawSource);
+  const advisorySource = rawSource
+    ? (isIllustrative ? `${rawSource} (Illustrative demo — not live)` : `${rawSource} (model forecast)`)
+    : "Marine forecast";
   const at = new Date(bundle.current.fetchedAt || Date.now()).toISOString();
   const out: Alert[] = [];
 
@@ -49,7 +55,7 @@ export function deriveAdvisories(bundle: MarineBundle | null, lang: LangCode = "
       body: (waveBodies[lang] ?? waveBodies.en)(hStr),
       issuedAt: at,
       official: false,
-      source: "Open-Meteo Marine (observed/forecast)",
+      source: advisorySource,
     });
   }
 
@@ -90,7 +96,7 @@ export function deriveAdvisories(bundle: MarineBundle | null, lang: LangCode = "
       body: (windBodies[lang] ?? windBodies.en)(wVal),
       issuedAt: at,
       official: false,
-      source: "Open-Meteo Weather (observed/forecast)",
+      source: advisorySource,
     });
   }
 
@@ -130,7 +136,7 @@ export function deriveAdvisories(bundle: MarineBundle | null, lang: LangCode = "
       body: (visBodies[lang] ?? visBodies.en)(c.visibilityKm),
       issuedAt: at,
       official: false,
-      source: "Open-Meteo Weather (observed/forecast)",
+      source: advisorySource,
     });
   }
 
@@ -152,7 +158,7 @@ export function deriveAdvisories(bundle: MarineBundle | null, lang: LangCode = "
 
     const worsensBodies: Record<LangCode, (timeStr: string) => string> = {
       en: (t) => `Forecast conditions become unsafe around ${t}. Plan your return before then.`,
-      hi: (t) => `पूर्वानુમાન के अनुसार स्थितियाँ लगभग ${t} असुरक्षित हो जाएँगी। उससे पहले वापसी की योजना बनाएँ।`,
+      hi: (t) => `पूर्वानुमान के अनुसार स्थितियाँ लगभग ${t} असुरक्षित हो जाएँगी। उससे पहले वापसी की योजना बनाएँ।`,
       gu: (t) => `આગાહી મુજબ આશરે ${t} વાગ્યે સ્થિતિ અસુરક્ષિત બનશે. તે પહેલાં પરત ફરવાનું આયોજન કરો.`,
       mr: (t) => `अंदाजानुसार परिस्थिती सुमारे ${t} वाजता असुरक्षित होईल. त्यापूर्वी परत येण्याचे नियोजन करा.`,
       ta: (t) => `வானிலை முன்னறிவிப்பின்படி நிலைமை ${t} மணியளவில் பாதுகாப்பற்றதாக மாறும். அதற்கு முன் திரும்ப திட்டமிடுங்கள்.`,
@@ -176,7 +182,7 @@ export function deriveAdvisories(bundle: MarineBundle | null, lang: LangCode = "
       body: (worsensBodies[lang] ?? worsensBodies.en)(timeFormatted),
       issuedAt: at,
       official: false,
-      source: "Open-Meteo forecast",
+      source: advisorySource,
     });
   }
 

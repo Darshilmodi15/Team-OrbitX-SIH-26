@@ -53,6 +53,9 @@ class AdminService:
                 ("sarvam_stt", "Sarvam speech-to-text", "Sarvam"),
                 ("sarvam_tts", "Sarvam text-to-speech", "Sarvam"),
                 ("sarvam_translation", "Sarvam translation", "Sarvam"),
+                ("bhashini_stt", "Bhashini speech-to-text", "Bhashini"),
+                ("bhashini_tts", "Bhashini text-to-speech", "Bhashini"),
+                ("bhashini_translation", "Bhashini translation", "Bhashini"),
                 ("gemini", "Gemini assistant", "Gemini"),
                 ("isro_mosdac", "ISRO MOSDAC Ocean Satellite", "ISRO/MOSDAC"),
             ]
@@ -104,7 +107,7 @@ class AdminService:
 
         if wave_delta > 0.4 or wind_delta > 8.0:
             trend = "DETERIORATING"
-            summary = f"Conditions have roughened over the past {period_hours} hours with wave heights rising by +{wave_delta}m and sustained winds increasing by +{wind_delta} km/h."
+            summary = f"Conditions have roughened over the past {period_hours} hours (Wave Δ: {wave_delta:+.2f}m, Wind Δ: {wind_delta:+.1f} km/h)."
         elif wave_delta < -0.3 and wind_delta < -5.0:
             trend = "IMPROVING"
             summary = f"Sea conditions have settled significantly compared to {period_hours} hours ago (-{abs(wave_delta)}m wave drop)."

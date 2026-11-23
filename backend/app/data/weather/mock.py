@@ -1,7 +1,7 @@
 """Mock marine weather data provider implementing the WeatherProvider interface."""
 import hashlib
 import random
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from app.data.weather.base import WeatherProvider
 
@@ -15,7 +15,15 @@ class MockWeatherProvider(WeatherProvider):
     future replacement by real marine meteorological services (e.g. INCOIS).
     """
 
-    def get_weather(self, lat: float, lon: float, date: str) -> Dict[str, Any]:
+    def get_weather(
+        self,
+        lat: float,
+        lon: float,
+        date: str,
+        time_hint: Optional[str] = None,
+        temporal_res: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
         """
         Returns realistic mock marine weather data for a given latitude, longitude, and date.
         """

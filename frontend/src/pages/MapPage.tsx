@@ -42,7 +42,7 @@ export default function MapPage() {
       />
       <header className="map-page-header">
         <Link
-          to={returnTo.startsWith("/") ? returnTo : "/assistant"}
+          to={returnTo.startsWith("/") && !returnTo.startsWith("//") && !returnTo.startsWith("/\\") ? returnTo : "/assistant"}
           className="workspace-icon"
           aria-label={t("nav.assistant")}
         >

@@ -20,9 +20,18 @@ function loadGoogle(): Promise<void> {
     const script = document.createElement("script");
     script.src = "https://accounts.google.com/gsi/client";
     script.async = true;
-    const timeout = window.setTimeout(() => reject(new Error("Google sign-in did not load. Check your connection and reload.")), 12000);
+    const timeout = window.setTimeout(() => {
+      googleScript = undefined;
+      script.remove();
+      reject(new Error("Google sign-in did not load. Check your connection and reload."));
+    }, 12000);
     script.onload = () => { clearTimeout(timeout); resolve(); };
-    script.onerror = () => { clearTimeout(timeout); reject(new Error("Google sign-in could not load. Use email or mobile, or reload to retry.")); };
+    script.onerror = () => {
+      clearTimeout(timeout);
+      googleScript = undefined;
+      script.remove();
+      reject(new Error("Google sign-in could not load. Use email or mobile, or reload to retry."));
+    };
     document.head.appendChild(script);
   });
   return googleScript;

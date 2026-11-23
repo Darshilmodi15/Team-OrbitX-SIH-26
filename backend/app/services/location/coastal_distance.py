@@ -29,6 +29,7 @@ def haversine_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) ->
         math.sin(delta_phi / 2.0) ** 2
         + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2.0) ** 2
     )
+    a = min(1.0, max(0.0, a))
     c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
     return EARTH_RADIUS_KM * c
 
@@ -42,7 +43,8 @@ class CoastalDistanceService:
             self.radius_km = intelligence_radius_km
         elif env_radius:
             try:
-                self.radius_km = float(env_radius)
+                parsed_r = float(env_radius)
+                self.radius_km = parsed_r if math.isfinite(parsed_r) and parsed_r > 0 else 100.0
             except ValueError:
                 self.radius_km = 100.0
         else:

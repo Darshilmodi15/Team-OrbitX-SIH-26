@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PhoneCall, Radio, Share2 } from "lucide-react";
 import { AppShell } from "@/components/orca/AppShell";
 import EmergencySOSModal from "@/components/EmergencySOSModal";
@@ -13,11 +13,13 @@ export default function ServicesPage() {
   const { lang, t } = useI18n();
   const { location } = useSession();
   const copy = incidentCopy(lang);
-  const [copied, setCopied] = useState(false);
+  const [shareState, setShareState] = useState<"idle" | "copied" | "shared">("idle");
   const [sosOpen, setSosOpen] = useState(false);
   const [emergencyCoords, setEmergencyCoords] = useState<{lat:number;lon:number;name?:string;source:"selected"|"gps"}|null>(null);
   const [gpsBusy, setGpsBusy] = useState(false);
   const [gpsError, setGpsError] = useState(false);
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
   function openEmergency() {
     if (location) {
       setEmergencyCoords({...location.coords, name:location.label, source:"selected"});
@@ -28,19 +30,35 @@ export default function ServicesPage() {
     if (gpsBusy) return;
     setGpsBusy(true); setGpsError(false);
     if (!navigator.geolocation) {setGpsError(true);setGpsBusy(false);return;}
-    navigator.geolocation.getCurrentPosition(position=>{setEmergencyCoords({lat:position.coords.latitude,lon:position.coords.longitude, source:"gps"});setSosOpen(true);setGpsBusy(false);},()=>{setGpsError(true);setGpsBusy(false);},{enableHighAccuracy:true,timeout:10000,maximumAge:0});
+    navigator.geolocation.getCurrentPosition(
+      position => { if (!mountedRef.current) return; setEmergencyCoords({lat:position.coords.latitude,lon:position.coords.longitude, source:"gps"});setSosOpen(true);setGpsBusy(false); },
+      () => { if (!mountedRef.current) return; setGpsError(true);setGpsBusy(false); },
+      {enableHighAccuracy:true,timeout:10000,maximumAge:0},
+    );
   }
   const services = getEmergencyServices(lang);
 
   async function shareLocation() {
     if (!location) return;
-    const text = `My location: ${formatCoords(location.coords)} (${location.label ?? ""})`;
+    const text = location.label
+      ? `My location: ${formatCoords(location.coords)} (${location.label})`
+      : `My location: ${formatCoords(location.coords)}`;
     try {
-      if (navigator.share) await navigator.share({ text });
-      else await navigator.clipboard.writeText(text);
-      setCopied(true);
-    } catch {
-      setCopied(false);
+      if (navigator.share) {
+        await navigator.share({ text });
+        if (mountedRef.current) setShareState("shared");
+      } else {
+        await navigator.clipboard.writeText(text);
+        if (mountedRef.current) setShareState("copied");
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      try {
+        await navigator.clipboard.writeText(text);
+        if (mountedRef.current) setShareState("copied");
+      } catch {
+        if (mountedRef.current) setShareState("idle");
+      }
     }
   }
 
@@ -80,8 +98,8 @@ export default function ServicesPage() {
             <span className="text-foreground">{t("svc.shareLocation")}</span>
           </button>
         </div>
-        {location && <p className="mt-3 text-sm">{copy.selected}: {location.label} · {formatCoords(location.coords)}. {copy.confirmLocation} <button className="min-h-11 underline" disabled={gpsBusy} onClick={openGpsEmergency}>{copy.useGps}</button></p>}
-        {copied && (
+        {location && <p className="mt-3 text-sm">{copy.selected}: {location.label || formatCoords(location.coords)} · {formatCoords(location.coords)}. {copy.confirmLocation} <button className="min-h-11 underline" disabled={gpsBusy} onClick={openGpsEmergency}>{copy.useGps}</button></p>}
+        {shareState === "copied" && (
           <p className="mt-2 text-xs text-muted-foreground" role="status">
             {t("svc.copied")}
           </p>

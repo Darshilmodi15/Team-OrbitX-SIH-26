@@ -4,7 +4,7 @@ User, Authentication, and Location validation data models for ORCA Marine AI.
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class UserRole(str, Enum):
@@ -29,16 +29,44 @@ class UserProfile(BaseModel):
 
 
 class RegisterRequest(BaseModel):
-    name: str = Field(..., min_length=2, description="Full user name")
-    email: Optional[str] = Field(default=None, description="Email address")
-    mobile_number: Optional[str] = Field(default=None, description="Mobile number (10 digits)")
-    password: str = Field(..., min_length=6, description="Account password")
-    preferred_language: str = Field(default="en", description="Default language code")
+    name: str = Field(..., min_length=2, max_length=255, description="Full user name")
+    email: Optional[str] = Field(default=None, max_length=255, description="Email address")
+    mobile_number: Optional[str] = Field(default=None, max_length=20, description="Mobile number (10 digits)")
+    password: str = Field(..., min_length=6, max_length=72, description="Account password")
+    preferred_language: str = Field(default="en", max_length=10, description="Default language code")
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def _strip_name(cls, v: Any) -> Any:
+        return v.strip() if isinstance(v, str) else v
+
+    @field_validator("email", "mobile_number", mode="before")
+    @classmethod
+    def _normalize_optional_contact(cls, v: Any) -> Optional[str]:
+        if v is None:
+            return None
+        if isinstance(v, str):
+            cleaned = v.strip()
+            return cleaned or None
+        return v
+
+    @field_validator("password")
+    @classmethod
+    def _check_password_bytes(cls, v: str) -> str:
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("Password must be at most 72 bytes.")
+        return v
+
+    @model_validator(mode="after")
+    def _require_contact_identifier(self) -> "RegisterRequest":
+        if not self.email and not self.mobile_number:
+            raise ValueError("Either email or mobile_number is required.")
+        return self
 
 
 class LoginRequest(BaseModel):
-    email_or_phone: str = Field(..., description="Email address or mobile phone number")
-    password: str = Field(..., description="Account password")
+    email_or_phone: str = Field(..., min_length=1, max_length=255, description="Email address or mobile phone number")
+    password: str = Field(..., min_length=1, max_length=72, description="Account password")
 
 
 class AuthResponse(BaseModel):
@@ -49,17 +77,22 @@ class AuthResponse(BaseModel):
 
 class UpdateProfileRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    name: Optional[str] = None
-    preferred_language: Optional[str] = None
-    location_permission_status: Optional[str] = None
+    name: Optional[str] = Field(default=None, min_length=2, max_length=255)
+    preferred_language: Optional[str] = Field(default=None, min_length=2, max_length=10)
+    location_permission_status: Optional[str] = Field(default=None, max_length=30)
     location_sharing_enabled: Optional[bool] = None
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def _strip_profile_name(cls, v: Any) -> Any:
+        return v.strip() if isinstance(v, str) else v
 
 
 class LocationValidationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    lat: float = Field(..., description="Latitude coordinate to validate")
-    lon: float = Field(..., description="Longitude coordinate to validate")
-    accuracy_m: Optional[float] = Field(default=None, description="GPS accuracy in meters")
+    lat: float = Field(..., ge=-90, le=90, allow_inf_nan=False, description="Latitude coordinate to validate")
+    lon: float = Field(..., ge=-180, le=180, allow_inf_nan=False, description="Longitude coordinate to validate")
+    accuracy_m: Optional[float] = Field(default=None, ge=0, allow_inf_nan=False, description="GPS accuracy in meters")
 
 
 class LocationValidationResponse(BaseModel):

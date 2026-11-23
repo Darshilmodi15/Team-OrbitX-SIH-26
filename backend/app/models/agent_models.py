@@ -60,16 +60,21 @@ class WeatherEvidence(BaseModel):
     @classmethod
     def _sync_timestamps(cls, data: Any) -> Any:
         if isinstance(data, dict):
+            data = dict(data)
             # Synchronize forecast_valid_at and forecast_time
             f_val = data.get("forecast_valid_at") or data.get("forecast_time")
             if f_val:
-                data.setdefault("forecast_valid_at", f_val)
-                data.setdefault("forecast_time", f_val)
+                if not data.get("forecast_valid_at"):
+                    data["forecast_valid_at"] = f_val
+                if not data.get("forecast_time"):
+                    data["forecast_time"] = f_val
             # Synchronize retrieved_at and retrieval_time
             r_val = data.get("retrieved_at") or data.get("retrieval_time")
             if r_val:
-                data.setdefault("retrieved_at", r_val)
-                data.setdefault("retrieval_time", r_val)
+                if not data.get("retrieved_at"):
+                    data["retrieved_at"] = r_val
+                if not data.get("retrieval_time"):
+                    data["retrieval_time"] = r_val
         return data
 
 
@@ -113,7 +118,7 @@ class MarineRiskProfile(BaseModel):
 
 class RiskEvidence(BaseModel):
     """Structured safety risk evaluation produced by the Risk Agent."""
-    available_evidence: Union[List[str], Dict[str, Any]] = Field(default_factory=dict)
+    available_evidence: Dict[str, Any] = Field(default_factory=dict)
     missing_evidence: List[str] = Field(default_factory=list)
     evidence_completeness: str = Field(default="unavailable")
     assessment_type: str = Field(default="ORCA_HEURISTIC")
@@ -293,7 +298,7 @@ class OperationalRecommendation(BaseModel):
     directive: str = Field(..., description="Imperative actionable instruction for mariner / operator")
     priority: str = Field(default="MEDIUM", description="Urgency priority tier ('CRITICAL', 'HIGH', 'MEDIUM', 'INFO')")
     confidence_score: Optional[float] = Field(default=None, description="Confidence / reliability score from 0.0 to 1.0")
-    reliability_tier: str = Field(default="AUTHORITATIVE_VERIFIED", description="Reliability grade ('AUTHORITATIVE_VERIFIED', 'MODEL_DERIVED', 'CACHED_ESTIMATE', 'ADVISORY')")
+    reliability_tier: str = Field(default="ORCA_HEURISTIC", description="Reliability grade ('AUTHORITATIVE_VERIFIED', 'MODEL_DERIVED', 'CACHED_ESTIMATE', 'ADVISORY', 'ORCA_HEURISTIC')")
     supporting_evidence: List[str] = Field(default_factory=list, description="Specific quantitative observations, thresholds, and data points supporting this recommendation")
     reasoning: str = Field(..., description="Deductive step-by-step physical, regulatory, or ecological reasoning used to derive this recommendation")
     source: str = Field(default="orca_recommendation_reasoning_engine", description="Generating agent or engine provenance")

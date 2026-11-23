@@ -45,10 +45,14 @@ class SOSBroadcastRequest(BaseModel):
     def normalize_emergency_nature(cls, v: Any) -> EmergencyNature:
         if isinstance(v, EmergencyNature):
             return v
-        val = str(v or "").lower()
+        if v is None:
+            return EmergencyNature.GENERAL
+        val = str(v).strip().lower()
+        if not val:
+            return EmergencyNature.GENERAL
         if "engine" in val or "adrift" in val:
             return EmergencyNature.ENGINE_FAILURE
-        if "capsize" in val or "taking water" in val or "sink" in val:
+        if "capsiz" in val or "taking water" in val or "sink" in val:
             return EmergencyNature.CAPSIZING_WATER
         if "med" in val or "health" in val or "injur" in val:
             return EmergencyNature.MEDICAL

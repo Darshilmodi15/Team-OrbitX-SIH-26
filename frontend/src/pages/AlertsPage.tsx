@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { AlertTriangle, Info, ShieldAlert } from "lucide-react";
 import { AppShell } from "@/components/orca/AppShell";
 import { EmptyState, ErrorState, LoadingState } from "@/components/orca/States";
@@ -18,7 +19,36 @@ export default function AlertsPage() {
   const { lang, t } = useI18n();
   const { location } = useSession();
   const marine = useMarine(location?.coords ?? null);
-  const alerts = marine.data?.alerts?.length ? marine.data.alerts : deriveAdvisories(marine.data ?? null, lang);
+
+  if (!location) {
+    return (
+      <AppShell>
+        <SEO
+          title="Marine Weather Advisories & Cyclone Alerts | ORCA Marine AI"
+          description="Official high swell warnings, cyclone alerts, tsunami advisories, and marine safety bulletins issued by INCOIS and IMD."
+        />
+        <div className="space-y-4">
+          <h1 className="text-xl font-semibold">{t("alerts.title")}</h1>
+          <EmptyState>{t("loc.title")}</EmptyState>
+          <Link
+            to="/location"
+            className="inline-flex min-h-12 items-center justify-center rounded-md bg-secondary px-6 text-sm font-semibold text-secondary-foreground transition hover:brightness-110"
+          >
+            {t("loc.title")}
+          </Link>
+        </div>
+      </AppShell>
+    );
+  }
+
+  const cacheStatus = marine.data?.snapshot?.provenance?.cache_status;
+  const staleOrUnavailable =
+    marine.offline || cacheStatus === "unavailable" || cacheStatus === "stale";
+  const alerts = staleOrUnavailable
+    ? []
+    : marine.data?.alerts?.length
+      ? marine.data.alerts
+      : deriveAdvisories(marine.data ?? null, lang);
 
   return (
     <AppShell>
@@ -38,6 +68,10 @@ export default function AlertsPage() {
         ) : (
           alerts.map((a) => {
             const Icon = ICONS[a.level];
+            const issuedTs = a.issuedAt ? Date.parse(a.issuedAt) : NaN;
+            const issuedLabel = Number.isFinite(issuedTs)
+              ? new Date(issuedTs).toLocaleString(lang)
+              : t("chat.unavailable");
             return (
               <article key={a.id} className={`rounded-md border p-4 ${TONE[a.level]}`}>
                 <div className="flex items-start gap-3">
@@ -46,7 +80,7 @@ export default function AlertsPage() {
                     <h2 className="text-sm font-semibold">{a.title}</h2>
                     <p className="mt-1 text-sm leading-relaxed">{a.body}</p>
                     <p className="mt-2 text-xs text-muted-foreground">
-                      {t("state.source")}: {a.source} · {new Date(a.issuedAt).toLocaleString()}
+                      {t("state.source")}: {a.source} · {issuedLabel}
                     </p>
                   </div>
                 </div>

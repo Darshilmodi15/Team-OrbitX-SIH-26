@@ -705,7 +705,7 @@ const mr: Dict = {
   "svc.title": "आणीबाणी आणि शासकीय सेवा",
   "svc.call": "कॉल करा",
   "svc.sos": "तातडीची मदत",
-  "svc.sosConfirm": "राष्ट्रीय आपत्कालीन क्रमांक 112 वर आता कॉल करायचा का?",
+  "svc.sosConfirm": "बचावासाठी 112 किंवा 1554 वर कॉल करा. तुम्ही पुष्टी केलेल्या स्थानासह ORCA SOS नोंदवते; ते इलेक्ट्रॉनिक पद्धतीने बचाव सेवा पाठवत नाही.",
   "svc.shareLocation": "माझे स्थान शेअर करा",
   "svc.copied": "स्थान कॉपी केले. संदेशात पेस्ट करा.",
   "glossary.title": "महत्त्वाच्या संज्ञा",
@@ -863,7 +863,7 @@ const ta: Dict = {
   "svc.title": "அவசர & அரசு சேவைகள்",
   "svc.call": "அழைக்க",
   "svc.sos": "அவசர உதவி",
-  "svc.sosConfirm": "தேசிய அவசர எண் 112-ஐ அழைக்கவா?",
+  "svc.sosConfirm": "மீட்புக்கு 112 அல்லது 1554 அழைக்கவும். நீங்கள் உறுதிப்படுத்திய இடத்துடன் ORCA SOS-ஐ பதிவு செய்கிறது; இது மின்னணு முறையில் மீட்புப் பணியை அனுப்பாது.",
   "svc.shareLocation": "இருப்பிடத்தை பகிர்க",
   "svc.copied": "இருப்பிடம் நகலெடுக்கப்பட்டது.",
   "glossary.title": "முக்கிய கலைச்சொற்கள்",
@@ -1021,7 +1021,7 @@ const te: Dict = {
   "svc.title": "అత్యవసర & ప్రభుత్వ సేవలు",
   "svc.call": "కాల్ చేయండి",
   "svc.sos": "అత్యవసర సహాయం",
-  "svc.sosConfirm": "జాతీయ అత్యవసర నంబర్ 112 కు కాల్ చేయాలా?",
+  "svc.sosConfirm": "రక్షణ కోసం 112 లేదా 1554కు కాల్ చేయండి. మీరు నిర్ధారించిన స్థానంతో ORCA SOS ను నమోదు చేస్తుంది; ఇది రక్షణ సేవలను ఎలక్ట్రానిక్‌గా పంపదు.",
   "svc.shareLocation": "నా స్థానాన్ని భాగస్వామ్యం చేయండి",
   "svc.copied": "స్థానం కాపీ చేయబడింది.",
   "glossary.title": "ముఖ్యమైన పదాలు",
@@ -1179,7 +1179,7 @@ const ml: Dict = {
   "svc.title": "അടിയന്തര & സർക്കാർ സേവനങ്ങൾ",
   "svc.call": "വിളിക്കുക",
   "svc.sos": "അടിയന്തര സഹായം",
-  "svc.sosConfirm": "112 ലേക്ക് വിളിക്കണോ?",
+  "svc.sosConfirm": "രക്ഷാപ്രവർത്തനത്തിനായി 112 അല്ലെങ്കിൽ 1554 വിളിക്കുക. നിങ്ങൾ സ്ഥിരീകരിച്ച സ്ഥലത്തിനൊപ്പം ORCA SOS രേഖപ്പെടുത്തുന്നു; ഇത് രക്ഷാസേവനങ്ങളെ ഇലക്ട്രോണിക് ആയി അയക്കില്ല.",
   "svc.shareLocation": "ലൊക്കേഷൻ പങ്കിടുക",
   "svc.copied": "ലൊക്കേഷൻ കോപ്പി ചെയ്തു.",
   "glossary.title": "പ്രധാന പദങ്ങൾ",
@@ -1337,7 +1337,7 @@ const bn: Dict = {
   "svc.title": "জরুরি ও সরকারি পরিষেবা",
   "svc.call": "কল করুন",
   "svc.sos": "জরুরি সাহায্য",
-  "svc.sosConfirm": "জাতীয় জরুরি নম্বর ১১২-এ কল করবেন?",
+  "svc.sosConfirm": "উদ্ধারের জন্য 112 বা 1554-এ কল করুন। আপনি নিশ্চিত করা অবস্থানসহ ORCA SOS নথিভুক্ত করে; এটি ইলেকট্রনিকভাবে উদ্ধার পরিষেবা পাঠায় না।",
   "svc.shareLocation": "আমার অবস্থান শেয়ার করুন",
   "svc.copied": "অবস্থান কপি হয়েছে।",
   "glossary.title": "গুরুত্বপূর্ণ পরিভাষা",
@@ -1495,7 +1495,7 @@ const kn: Dict = {
   "svc.title": "ತುರ್ತು ಮತ್ತು ಸರ್ಕಾರಿ ಸೇವೆಗಳು",
   "svc.call": "ಕರೆ ಮಾಡಿ",
   "svc.sos": "ತುರ್ತು ಸಹಾಯ",
-  "svc.sosConfirm": "ರಾಷ್ಟ್ರೀಯ ತುರ್ತು ಸಂಖ್ಯೆ 112 ಗೆ ಕರೆ ಮಾಡುವುದೇ?",
+  "svc.sosConfirm": "ರಕ್ಷಣೆಗಾಗಿ 112 ಅಥವಾ 1554ಕ್ಕೆ ಕರೆ ಮಾಡಿ. ನೀವು ದೃಢಪಡಿಸಿದ ಸ್ಥಳದೊಂದಿಗೆ ORCA SOS ದಾಖಲಿಸುತ್ತದೆ; ಇದು ರಕ್ಷಣಾ ಸೇವೆಗಳನ್ನು ವಿದ್ಯುನ್ಮಾನವಾಗಿ ಕಳುಹಿಸುವುದಿಲ್ಲ.",
   "svc.shareLocation": "ನನ್ನ ಸ್ಥಳವನ್ನು ಹಂಚಿಕೊಳ್ಳಿ",
   "svc.copied": "ಸ್ಥಳ ನಕಲಿಸಲಾಗಿದೆ.",
   "glossary.title": "ಪ್ರಮುಖ ಪದಗಳು",
@@ -1653,7 +1653,7 @@ const or: Dict = {
   "svc.title": "ଜରୁରୀକାଳୀନ ଓ ସରକାରୀ ସେବା",
   "svc.call": "କଲ୍ କରନ୍ତୁ",
   "svc.sos": "ଜରୁରୀ ସହାୟତା",
-  "svc.sosConfirm": "ଜାତୀୟ ଜରୁରୀ ନମ୍ବର 112 କୁ କଲ୍ କରିବେ କି?",
+  "svc.sosConfirm": "ଉଦ୍ଧାର ପାଇଁ 112 କିମ୍ବା 1554 କୁ କଲ୍ କରନ୍ତୁ। ଆପଣ ନିଶ୍ଚିତ କରିଥିବା ସ୍ଥାନ ସହିତ ORCA SOS ରେକର୍ଡ କରେ; ଏହା ଇଲେକ୍ଟ୍ରୋନିକ୍ ଭାବେ ଉଦ୍ଧାର ସେବା ପଠାଏ ନାହିଁ।",
   "svc.shareLocation": "ସ୍ଥାନ ସେୟାର କରନ୍ତୁ",
   "svc.copied": "ସ୍ଥାନ କପି ହୋଇଛି।",
   "glossary.title": "ମୁଖ୍ୟ ପରିଭାଷା",
@@ -1811,7 +1811,7 @@ const pa: Dict = {
   "svc.title": "ਐਮਰਜੈਂਸੀ ਅਤੇ ਸਰਕਾਰੀ ਸੇਵਾਵਾਂ",
   "svc.call": "ਕਾਲ ਕਰੋ",
   "svc.sos": "ਐਮਰਜੈਂਸੀ ਮਦਦ",
-  "svc.sosConfirm": "ਰਾਸ਼ਟਰੀ ਐਮਰਜੈਂਸੀ ਨੰਬਰ 112 'ਤੇ ਕਾਲ ਕਰਨੀ ਹੈ?",
+  "svc.sosConfirm": "ਬਚਾਅ ਲਈ 112 ਜਾਂ 1554 'ਤੇ ਕਾਲ ਕਰੋ। ਤੁਹਾਡੇ ਵੱਲੋਂ ਪੁਸ਼ਟੀ ਕੀਤੀ ਥਾਂ ਸਮੇਤ ORCA SOS ਦਰਜ ਕਰਦਾ ਹੈ; ਇਹ ਇਲੈਕਟ੍ਰਾਨਿਕ ਤੌਰ 'ਤੇ ਬਚਾਅ ਸੇਵਾਵਾਂ ਨਹੀਂ ਭੇਜਦਾ।",
   "svc.shareLocation": "ਮੇਰਾ ਸਥਾਨ ਸਾਂਝਾ ਕਰੋ",
   "svc.copied": "ਸਥਾਨ ਕਾਪੀ ਹੋ ਗਿਆ।",
   "glossary.title": "ਮੁੱਖ ਸ਼ਬਦਾਵਲੀ",
@@ -1886,7 +1886,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<LangCode>(() => {
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY) as LangCode | null;
-      if (stored && stored in DICTS) return stored;
+      if (stored && Object.prototype.hasOwnProperty.call(DICTS, stored)) return stored;
     } catch {
       /* ignore */
     }
@@ -1896,7 +1896,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY) as LangCode | null;
-      if (stored && stored in DICTS) setLangState(stored);
+      if (stored && Object.prototype.hasOwnProperty.call(DICTS, stored)) setLangState(stored);
     } catch {
       /* storage unavailable */
     }

@@ -7,7 +7,7 @@ from app.models.agent_models import EvidenceBundle
 from app.services.bhashini import bhashini_service, SUPPORTED_LANGUAGES
 from app.services.dialogue_synthesizer import DialogueSynthesizer
 from app.services.planner import ExecutionPlan, ExecutionTask
-from app.services.temporal import resolve_query_time
+from app.services.temporal import IST, resolve_query_time
 from app.services.marine_snapshot_service import marine_snapshot_service, request_time, stamp
 from app.agents.intent_agent import _fallback_intent
 
@@ -39,9 +39,10 @@ def process_snapshot_chat(request, user, db, provider, history):
     marine = not general and not definition and (intent != "general" or previous is not None or request.snapshot_id is not None)
     event("Intent routing", "ORCA intent rules", detail=intent)
     snap = None
-    evidence = EvidenceBundle(date=request.date, connectivity_mode="UNAVAILABLE")
+    effective_date = request.date or datetime.now(IST).date().isoformat()
+    evidence = EvidenceBundle(date=effective_date, connectivity_mode="UNAVAILABLE")
     if marine:
-        target = resolve_query_time(text=english, request_date=request.date)
+        target = resolve_query_time(text=english, request_date=effective_date)
         explicit = bool(target.time_hint) and target.time_hint != "today"
         try:
             if explicit:
@@ -97,4 +98,10 @@ def chat_snapshot_from_history(db, user_id, conversation_id):
     from app.db.models import ChatHistory
     import json
     row = db.query(ChatHistory).filter_by(user_id=user_id, conversation_id=conversation_id, role="assistant").order_by(ChatHistory.created_at.desc()).first()
-    return json.loads(row.sources_used_json or "{}").get("snapshot_id") if row else None
+    if not row:
+        return None
+    try:
+        parsed = json.loads(row.sources_used_json or "{}")
+    except (ValueError, TypeError):
+        return None
+    return parsed.get("snapshot_id") if isinstance(parsed, dict) else None

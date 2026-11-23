@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class StoredChatMessage(BaseModel):
@@ -27,3 +27,13 @@ class CreateConversationRequest(BaseModel):
 class UpdateConversationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     title: str = Field(..., min_length=1, max_length=255)
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def _strip_title(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            cleaned = v.strip()
+            if not cleaned:
+                raise ValueError("Conversation title cannot be empty.")
+            return cleaned
+        return v

@@ -30,62 +30,110 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [sessionExpired, setSessionExpired] = useState(false);
   const [sessionError, setSessionError] = useState(false);
   const [retryVersion, setRetryVersion] = useState(0);
-  const retrySession = useCallback(() => { setSessionError(false); setRetryVersion(v => v + 1); }, []);
+  const retrySession = useCallback(() => {
+    setSessionError(false);
+    if (readToken()) setReady(false);
+    setLocationReady(false);
+    setRetryVersion((v) => v + 1);
+  }, []);
   const [user, setUser] = useState<OrcaUser | null>(null); const [token, setToken] = useState<string | null>(null);
   const locationVersion = useRef(0);
   const authVersion = useRef(0);
   const [locationReady, setLocationReady] = useState(false);
   const [location, setLocationState] = useState<LocationInfo | null>(null); const [ready, setReady] = useState(false);
-  const clearSession = useCallback(() => {
+  const clearSession = useCallback((failedToken?: string) => {
     clearMarineCaches();
     authVersion.current++;
     locationVersion.current++;
+    setSessionError(false);
     setLocationReady(true);
     setUser(null);
     setToken(null);
     setLocationState(null);
     try {
       sessionStorage.removeItem(SESSION_TOKEN_KEY);
-      localStorage.removeItem(SESSION_TOKEN_KEY);
+      if (!failedToken || localStorage.getItem(SESSION_TOKEN_KEY) === failedToken) {
+        localStorage.removeItem(SESSION_TOKEN_KEY);
+      }
       localStorage.removeItem("orca.user");
       localStorage.removeItem("orca.auth.token");
       localStorage.removeItem("orca.location");
       localStorage.removeItem("orca.chat.threads.v2");
       localStorage.removeItem("orca_assistant_threads_v1");
+      localStorage.removeItem("orca_analytics_events");
+      localStorage.removeItem("orca_current_user");
+      localStorage.removeItem("orca_auth_token");
     } catch {
       /* ignore storage errors */
     }
   }, []);
   useEffect(() => {
-    setAuthFailureHandler(() => {setSessionExpired(true); clearSession();});
+    setAuthFailureHandler((failedToken) => {setSessionExpired(true); clearSession(failedToken);});
     const savedToken = readToken();
     let cancelled = false;
     const version = authVersion.current;
-    if (!savedToken) setReady(true);
-    else getUserProfile(savedToken).then(raw => {
+    if (!savedToken) { setReady(true); return () => { cancelled = true; setAuthFailureHandler(null); }; }
+    let didError = false;
+    getUserProfile(savedToken).then(raw => {
       if (cancelled || version !== authVersion.current) return;
       setLocationReady(false); setToken(savedToken); setUser(mapUser(raw));
-    }).catch((error) => { if (!cancelled && version === authVersion.current) { if (error?.status === 401) {setSessionExpired(true); clearSession();} else setSessionError(true); } })
-      .finally(() => { if (!cancelled) setReady(true); });
+    }).catch((error) => {
+      didError = true;
+      if (!cancelled && version === authVersion.current) {
+        if (error?.status === 401) { setSessionExpired(true); clearSession(savedToken); }
+        else setSessionError(true);
+      }
+    }).finally(() => {
+      if (!cancelled && !didError) setReady(true);
+      else if (!cancelled && didError && version === authVersion.current) setReady(true);
+    });
     return () => { cancelled = true; setAuthFailureHandler(null); };
   }, [clearSession, retryVersion]);
   useEffect(() => {
     if (!user || !token) return;
     const version = ++locationVersion.current;
     let cancelled = false;
+    let didError = false;
     setLocationReady(false);
     fetchSavedLocation().then(raw => {
       if (cancelled || version !== locationVersion.current) return;
       setLocationState(raw?.is_coastal_supported ? { coords: { lat: raw.lat, lon: raw.lon }, label: `${raw.lat}, ${raw.lon}`, admin: raw.coastal_region, distanceToCoastKm: raw.distance_to_coast_km, area: "coastal", source: "manual" } : null);
-    }).catch(() => { if (!cancelled && version === locationVersion.current) setSessionError(true); })
-      .finally(() => { if (!cancelled && version === locationVersion.current) setLocationReady(true); });
+    }).catch(() => {
+      didError = true;
+      if (!cancelled && version === locationVersion.current) setSessionError(true);
+    }).finally(() => {
+      if (!cancelled && !didError && version === locationVersion.current) setLocationReady(true);
+    });
     return () => { cancelled = true; };
   }, [user?.id, token, retryVersion]);
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== SESSION_TOKEN_KEY) return;
+      if (!event.newValue) {
+        setSessionExpired(false);
+        clearSession();
+      } else if (event.newValue !== token) {
+        try { sessionStorage.setItem(SESSION_TOKEN_KEY, event.newValue); } catch { /* ignore */ }
+        setSessionExpired(false);
+        setRetryVersion((v) => v + 1);
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [clearSession, token]);
   const signOut = useCallback(async (redirectUrl?: string) => {
     const savedToken = readToken();
+    authVersion.current++;
+    locationVersion.current++;
     setSessionExpired(false);
+    setSessionError(false);
+    if (savedToken && (typeof navigator === "undefined" || navigator.onLine !== false)) {
+      await Promise.race([
+        logoutSession(savedToken).catch(() => {}),
+        new Promise((resolve) => setTimeout(resolve, 1500)),
+      ]);
+    }
     clearSession();
-    if (savedToken) await logoutSession(savedToken).catch(() => {});
     if (typeof window !== "undefined" && redirectUrl && window.location.pathname !== redirectUrl) {
       window.location.assign(redirectUrl);
     }
@@ -103,6 +151,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("orca.user");
       localStorage.removeItem("orca.location");
       localStorage.removeItem("orca_assistant_threads_v1");
+      localStorage.removeItem("orca_analytics_events");
+      localStorage.removeItem("orca_current_user");
+      localStorage.removeItem("orca_auth_token");
       sessionStorage.setItem(SESSION_TOKEN_KEY, result.access_token);
       if (remember) {
         localStorage.setItem(SESSION_TOKEN_KEY, result.access_token);

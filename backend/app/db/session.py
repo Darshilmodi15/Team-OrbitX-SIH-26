@@ -38,6 +38,7 @@ def get_database_url() -> str:
     if url.startswith("postgresql://") and not url.startswith("postgresql+"):
         try:
             import psycopg  # noqa: F401 - psycopg 3
+            url = url.replace("postgresql://", "postgresql+psycopg://", 1)
         except ImportError:
             try:
                 import psycopg2  # noqa: F401 - fallback to psycopg2
@@ -50,7 +51,10 @@ def get_database_url() -> str:
         from sqlalchemy.engine import make_url
         make_url(url)
     except Exception as exc:
-        logger.warning("Malformed DATABASE_URL detected (%s). Falling back to local SQLite.", exc)
+        logger.warning("Malformed DATABASE_URL detected (%s).", type(exc).__name__)
+        env_name = (os.getenv("APP_ENV") or os.getenv("ENVIRONMENT", "")).lower()
+        if env_name in {"production", "prod"}:
+            raise RuntimeError("Malformed DATABASE_URL in production.") from exc
         db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "orca_dev.db")
         return f"sqlite:///{db_path}"
 

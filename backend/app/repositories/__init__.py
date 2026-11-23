@@ -410,13 +410,9 @@ class NotificationRepository:
     def mark_all_read(db: Session, user_id: Optional[str] = None) -> int:
         if not user_id:
             return 0
-        query = db.query(Notification).filter(Notification.is_read.is_(False))
-        query = query.filter(
-            or_(
-                Notification.user_id == user_id,
-                Notification.user_id.is_(None),
-                Notification.user_id == "global",
-            )
+        query = db.query(Notification).filter(
+            Notification.is_read.is_(False),
+            Notification.user_id == user_id,
         )
         count = query.update({Notification.is_read: True}, synchronize_session=False)
         db.flush()

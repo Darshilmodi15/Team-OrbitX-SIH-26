@@ -31,6 +31,10 @@ class TemporalResolution:
     description: str                 # e.g. "2026-09-10 06:00–12:00 IST (tomorrow morning)"
 
 
+def _has_any_term(q: str, terms: List[str]) -> bool:
+    return any(re.search(rf"(?<!\w){re.escape(term)}(?!\w)", q) for term in terms)
+
+
 def resolve_query_time(
     text: str = "",
     request_date: Optional[str] = None,
@@ -55,43 +59,43 @@ def resolve_query_time(
     is_explicit_future = False
 
     # Day after tomorrow
-    if any(k in q for k in ["day after tomorrow", "parso", "parva", "parnam"]):
+    if _has_any_term(q, ["day after tomorrow", "parso", "parva", "parnam"]):
         target_date = today_ist + timedelta(days=2)
         period = "morning"
         time_hint = "day after tomorrow"
         is_explicit_future = True
 
     # Tomorrow + sub-day periods
-    elif any(k in q for k in [
+    elif _has_any_term(q, [
         "tomorrow morning", "kale savare", "kal subah", "udya sakali", "naalai kaalai",
-        "repu podduna", "naale ravile", "kaal sokale", "sakal"
+        "repu podduna", "naale ravile", "kaal sokale"
     ]):
         target_date = today_ist + timedelta(days=1)
         period = "morning"
         time_hint = "tomorrow morning"
         is_explicit_future = True
-    elif any(k in q for k in [
+    elif _has_any_term(q, [
         "tomorrow afternoon", "kale bapore", "kal dopahar", "udya dupari", "naalai madhyanam"
     ]):
         target_date = today_ist + timedelta(days=1)
         period = "afternoon"
         time_hint = "tomorrow afternoon"
         is_explicit_future = True
-    elif any(k in q for k in [
+    elif _has_any_term(q, [
         "tomorrow evening", "kale saanje", "kal shaam", "udya sandhyakali", "naalai maalai"
     ]):
         target_date = today_ist + timedelta(days=1)
         period = "evening"
         time_hint = "tomorrow evening"
         is_explicit_future = True
-    elif any(k in q for k in [
+    elif _has_any_term(q, [
         "tomorrow night", "kale raatre", "kal raat", "udya ratri"
     ]):
         target_date = today_ist + timedelta(days=1)
         period = "night"
         time_hint = "tomorrow night"
         is_explicit_future = True
-    elif any(k in q for k in [
+    elif _has_any_term(q, [
         "tomorrow", "kale", "kal", "udya", "naalai", "repu", "naale", "kaale", "aavtikaale"
     ]):
         target_date = today_ist + timedelta(days=1)
@@ -101,19 +105,23 @@ def resolve_query_time(
         is_explicit_future = True
 
     # Today + sub-day periods
-    elif any(k in q for k in ["today morning", "aaje savare", "aaj subah", "aaj sakali"]):
+    elif _has_any_term(q, ["today morning", "this morning", "aaje savare", "aaj subah", "aaj sakali", "sakal", "sakali"]):
         target_date = today_ist
         period = "morning"
         time_hint = "today morning"
-    elif any(k in q for k in ["this afternoon", "afternoon", "bapore", "dopahar"]):
+    elif _has_any_term(q, ["this afternoon", "afternoon", "bapore", "dopahar"]):
         target_date = today_ist
         period = "afternoon"
         time_hint = "afternoon"
-    elif any(k in q for k in ["tonight", "aaje raatre", "aaj raat", "aaj ratri"]):
+    elif _has_any_term(q, ["today evening", "this evening", "aaje saanje", "aaj shaam"]):
+        target_date = today_ist
+        period = "evening"
+        time_hint = "evening"
+    elif _has_any_term(q, ["tonight", "aaje raatre", "aaj raat", "aaj ratri"]):
         target_date = today_ist
         period = "night"
         time_hint = "tonight"
-    elif any(k in q for k in ["today", "aaje", "aaj", "aaji", "innaiku", "ee roju", "innu"]):
+    elif _has_any_term(q, ["today", "aaje", "aaj", "aaji", "innaiku", "ee roju", "innu"]):
         target_date = today_ist
         period = "day"
         time_hint = "today"
@@ -161,8 +169,14 @@ def resolve_query_time(
         end_ist_t = (now_ist + timedelta(hours=3)).time()
         desc_period = f"{now_ist.strftime('%H:%M')} IST (current)"
 
-    start_ist = datetime.combine(target_date, start_ist_t, tzinfo=IST)
-    end_ist = datetime.combine(target_date, end_ist_t, tzinfo=IST)
+    if period == "current":
+        start_ist = now_ist
+        end_ist = now_ist + timedelta(hours=3)
+    else:
+        start_ist = datetime.combine(target_date, start_ist_t, tzinfo=IST)
+        end_ist = datetime.combine(target_date, end_ist_t, tzinfo=IST)
+        if end_ist <= start_ist:
+            end_ist += timedelta(days=1)
     start_utc = start_ist.astimezone(UTC)
     end_utc = end_ist.astimezone(UTC)
 
@@ -230,6 +244,19 @@ def verify_forecast_timestamp(
             return False, (
                 f"Forecast valid at {forecast_time_str} ({dt_ist.strftime('%H:%M')} IST) "
                 f"is outside the requested {temporal_res.period} window ({temporal_res.description})."
+            )
+    else:
+        # Guard current/today/historical queries against stale multi-day or future-date cache poisoning
+        delta_s = (dt_utc - temporal_res.target_utc).total_seconds()
+        if delta_s > 12 * 3600 or delta_s < -18 * 3600:
+            return False, (
+                f"Forecast valid at {forecast_time_str} ({dt_ist.strftime('%Y-%m-%d %H:%M')} IST) "
+                f"is outside the requested window ({temporal_res.description})."
+            )
+        if dt_utc > temporal_res.end_utc + timedelta(hours=3) and dt_ist.date() > temporal_res.end_ist.date():
+            return False, (
+                f"Future forecast valid at {forecast_time_str} (IST date: {dt_ist.date().isoformat()}) "
+                f"does not match requested timeframe ({temporal_res.description})."
             )
 
     return True, "OK"

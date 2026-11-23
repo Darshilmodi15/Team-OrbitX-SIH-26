@@ -38,11 +38,12 @@ class CombinedWeatherProvider(WeatherProvider):
                     time_hint=time_hint, temporal_res=temporal_res)
             except Exception:
                 return {}
-            with self._guard:
-                self._cache[key] = (monotonic(), deepcopy(result))
-                self._cache.move_to_end(key)
-                while len(self._cache) > 128:
-                    self._cache.popitem(last=False)
+            if result and result.get("cache_status") != "unavailable":
+                with self._guard:
+                    self._cache[key] = (monotonic(), deepcopy(result))
+                    self._cache.move_to_end(key)
+                    while len(self._cache) > 128:
+                        self._cache.popitem(last=False)
             return result
 
     def get_weather(self, lat, lon, date, time_hint=None, temporal_res=None, **kwargs):
@@ -53,7 +54,16 @@ class CombinedWeatherProvider(WeatherProvider):
         except Exception:
             primary = {}
         if primary.get("cache_status") == "unavailable" or not primary:
-            return self._supplement(lat, lon, date, time_hint, temporal_res)
+            supp = self._supplement(lat, lon, date, time_hint, temporal_res)
+            if supp:
+                return supp
+            return primary or {
+                "location": {"lat": lat, "lon": lon},
+                "date": date,
+                "cache_status": "unavailable",
+                "is_mock": False,
+                "source": "unavailable",
+            }
         if (primary.get("source") != "INCOIS_OSF_WW3" or primary.get("is_mock", True)
                 or primary.get("cache_status") not in {"live", "fresh", "cached", "hit", "stale"}):
             return primary

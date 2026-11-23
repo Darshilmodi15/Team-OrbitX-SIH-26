@@ -61,7 +61,21 @@ export default function AuthPage() {
         setFieldErrors((prev) => ({ ...prev, [k]: undefined }));
       }
       setLoginError(null);
+      setGoogleError(null);
     };
+
+  const resolvePostAuthTarget = (navState: unknown): string => {
+    const rawFrom =
+      navState && typeof navState === "object" && "from" in navState
+        ? (navState as { from?: unknown }).from
+        : null;
+    return typeof rawFrom === "string" &&
+      /^(?:\/(?:dashboard|map|assistant|location|alerts|services|settings|operations|admin|officer)|\/assistant\/c\/[0-9a-f-]{36})$/i.test(
+        rawFrom,
+      )
+      ? rawFrom
+      : "/location";
+  };
 
   const validate = (): boolean => {
     const errors: FieldErrors = {};
@@ -70,7 +84,8 @@ export default function AuthPage() {
     if (!contact) {
       errors.contact = "Please enter your mobile number or email address.";
     } else {
-      const validPhone = /^\+?\d{10,13}$/.test(contact);
+      const normalizedPhone = contact.includes("@") ? contact : contact.replace(/[\s()-]/g, "");
+      const validPhone = /^\+?\d{10,13}$/.test(normalizedPhone);
       const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact);
       if (!validPhone && !validEmail) {
         errors.contact = "Enter a valid mobile number or email address.";
@@ -102,16 +117,8 @@ export default function AuthPage() {
     setIsSubmitting(true);
     clearErrors();
     try {
-      const signedIn = await signInGoogle(credential, remember, lang);
-      const from =
-        typeof state?.from === "string" &&
-        (/^(?:\/(?:dashboard|map|assistant|location)|\/assistant\/c\/[0-9a-f-]{36})$/i.test(state.from))
-          ? state.from
-          : null;
-      navigate(
-        from || "/location",
-        { replace: true },
-      );
+      await signInGoogle(credential, remember, lang);
+      navigate(resolvePostAuthTarget(state), { replace: true });
     } catch (error) {
       setGoogleError(
         error instanceof Error
@@ -133,18 +140,18 @@ export default function AuthPage() {
     submittingRef.current = true;
     setIsSubmitting(true);
     try {
-      const contact = form.contact.trim();
-      let signedIn;
+      const rawContact = form.contact.trim();
+      const contact = rawContact.includes("@") ? rawContact : rawContact.replace(/[\s()-]/g, "");
       if (mode === "register") {
-        signedIn = await register({
+        await register({
           contact,
           password: form.password,
-          name: form.name || "Marine Fisher",
+          name: form.name.trim() || "Marine Fisher",
           preferredLanguage: lang || "en",
           remember,
         });
       } else {
-        signedIn = await signIn({
+        await signIn({
           contact,
           password: form.password,
           remember,
@@ -154,15 +161,7 @@ export default function AuthPage() {
         mode,
         contactType: contact.includes("@") ? "email" : "mobile_nmfd",
       });
-      const from =
-        typeof state?.from === "string" &&
-        (/^(?:\/(?:dashboard|map|assistant|location)|\/assistant\/c\/[0-9a-f-]{36})$/i.test(state.from))
-          ? state.from
-          : null;
-      navigate(
-        from || "/location",
-        { replace: true },
-      );
+      navigate(resolvePostAuthTarget(state), { replace: true });
     } catch (err: unknown) {
       const msg =
         err instanceof Error

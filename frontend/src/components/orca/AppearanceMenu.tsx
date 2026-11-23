@@ -20,8 +20,9 @@ const textCopy = {
 export function AppearanceControls() {
   const { t, lang } = useI18n();
   const { theme, setTheme, textSize, setTextSize } = useTheme();
-  const copy = textCopy[lang];
-  const index = TEXT_SIZES.findIndex(size => size === textSize);
+  const copy = textCopy[lang] ?? textCopy.en;
+  const rawIndex = TEXT_SIZES.findIndex(size => size === textSize);
+  const index = rawIndex >= 0 ? rawIndex : Math.max(0, TEXT_SIZES.indexOf(100));
   return <div className="space-y-4 text-foreground">
     <div role="group" aria-label={t("theme.title")} className="grid grid-cols-3 gap-2">
       {([ ["light", Sun], ["dark", Moon], ["system", Monitor] ] as const).map(([value, Icon]) => <button key={value} type="button" aria-pressed={theme === value} onClick={() => setTheme(value)} className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2 text-xs ${theme === value ? "border-secondary bg-secondary/15 font-bold" : "border-border bg-card hover:bg-muted"}`}>
@@ -31,9 +32,9 @@ export function AppearanceControls() {
     <div className="border-t border-border pt-3">
       <div className="flex items-center justify-between gap-2"><span className="text-sm font-semibold">{copy[0]}</span><output aria-live="polite" className="text-sm">{textSize}%</output></div>
       <div role="group" aria-label={copy[0]} className="mt-2 flex items-center gap-2">
-        <button type="button" aria-label={copy[1]} disabled={index === 0} onClick={() => setTextSize(TEXT_SIZES[index - 1]!)} className="min-h-11 flex-1 rounded-lg border border-border bg-card text-sm hover:bg-muted disabled:opacity-40">A−</button>
+        <button type="button" aria-label={copy[1]} disabled={index <= 0} onClick={() => setTextSize(TEXT_SIZES[Math.max(0, index - 1)]!)} className="min-h-11 flex-1 rounded-lg border border-border bg-card text-sm hover:bg-muted disabled:opacity-40">A−</button>
         <button type="button" onClick={() => setTextSize(100)} className="min-h-11 flex-1 rounded-lg border border-border bg-card px-2 text-xs hover:bg-muted">{copy[3]}</button>
-        <button type="button" aria-label={copy[2]} disabled={index === TEXT_SIZES.length - 1} onClick={() => setTextSize(TEXT_SIZES[index + 1]!)} className="min-h-11 flex-1 rounded-lg border border-border bg-card text-sm hover:bg-muted disabled:opacity-40">A+</button>
+        <button type="button" aria-label={copy[2]} disabled={index >= TEXT_SIZES.length - 1} onClick={() => setTextSize(TEXT_SIZES[Math.min(TEXT_SIZES.length - 1, index + 1)]!)} className="min-h-11 flex-1 rounded-lg border border-border bg-card text-sm hover:bg-muted disabled:opacity-40">A+</button>
       </div>
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{copy[4]}</p>
     </div>
@@ -51,7 +52,7 @@ export function AppearanceMenu() {
     document.addEventListener("pointerdown", outside);
     return () => document.removeEventListener("pointerdown", outside);
   }, []);
-  return <div ref={ref} className="relative shrink-0" onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }} onKeyDown={event => { if (event.key === "Escape") { setOpen(false); trigger.current?.focus(); } }}>
+  return <div ref={ref} className="relative shrink-0" onBlur={event => { if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) setOpen(false); }} onKeyDown={event => { if (event.key === "Escape") { setOpen(false); trigger.current?.focus(); } }}>
     <button ref={trigger} data-appearance-trigger type="button" className="inline-flex size-11 items-center justify-center rounded-md text-foreground hover:bg-muted" aria-label={t("theme.title")} title={t("theme.title")} aria-expanded={open} aria-controls={open ? id : undefined} onClick={() => setOpen(value => !value)}><Type className="size-5" aria-hidden /></button>
     {open && <section id={id} aria-label={t("theme.title")} className="appearance-panel absolute right-0 top-full z-50 mt-2 max-h-[70dvh] w-72 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-xl border border-border bg-card p-4 text-card-foreground shadow-xl">
       <h2 className="mb-3 text-sm font-semibold">{t("theme.title")}</h2><AppearanceControls />

@@ -1,6 +1,6 @@
 """Abstract base class for marine weather data providers."""
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 
 class WeatherProvider(ABC):
@@ -13,7 +13,15 @@ class WeatherProvider(ABC):
     """
 
     @abstractmethod
-    def get_weather(self, lat: float, lon: float, date: str) -> Dict[str, Any]:
+    def get_weather(
+        self,
+        lat: float,
+        lon: float,
+        date: str,
+        time_hint: Optional[str] = None,
+        temporal_res: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
         """
         Retrieves marine weather data for a specified geographic coordinate and date.
 

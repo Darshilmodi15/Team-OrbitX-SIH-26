@@ -70,8 +70,8 @@ function parseInline(text: string): React.ReactNode[] {
       const linkMatch = matchedStr.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
       if (linkMatch) {
         const [, linkText, href] = linkMatch;
-        // Verify href is safe (http, https, mailto, tel)
-        const isSafe = /^(https?:\/\/|mailto:|tel:|\/)/i.test(href);
+        // Verify href is safe (http, https, mailto, tel, or single-leading-slash relative path)
+        const isSafe = /^(https?:\/\/|mailto:|tel:|\/(?!\/|\\))/i.test(href);
         tokens.push(
           <a
             key={key++}

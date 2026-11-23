@@ -19,6 +19,7 @@ from app.models.user_models import (
 )
 from app.services.auth import auth_service, decode_token
 from app.services.auth.auth_service import session_is_active
+from app.services.rate_limit import rate_limiter
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication & User Management"])
 
@@ -29,14 +30,24 @@ class GoogleLoginRequest(BaseModel):
     preferred_language: Optional[str] = Field(default="en", max_length=10, description="Default language preference")
 
 
-def get_current_user_from_header(authorization: Optional[str] = Header(None)) -> UserProfile:
-    """Helper dependency extracting user profile from Bearer JWT header."""
+def _extract_bearer_token(authorization: Optional[str]) -> str:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing or invalid Bearer authorization header.",
         )
-    token = authorization.split("Bearer ")[1].strip()
+    token = authorization.removeprefix("Bearer ").strip()
+    if not token or any(ch.isspace() for ch in token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing or invalid Bearer authorization header.",
+        )
+    return token
+
+
+def get_current_user_from_header(authorization: Optional[str] = Header(None)) -> UserProfile:
+    """Helper dependency extracting user profile from Bearer JWT header."""
+    token = _extract_bearer_token(authorization)
     payload = decode_token(token)
     if not payload or "sub" not in payload or not session_is_active(payload):
         raise HTTPException(
@@ -69,24 +80,37 @@ def require_roles(*allowed_roles: UserRole):
 
 
 @router.post("/register", response_model=AuthResponse)
-def register_user(request: RegisterRequest):
+def register_user(request: RegisterRequest, req: Request):
     """
     Registers a new fisherman, coastal resident, government official, or administrator.
     """
+    client_ip = req.client.host if req.client else "unknown"
+    rate_limiter.check("auth_register", client_ip, limit=30, window_seconds=60)
     try:
-        profile, token = auth_service.register(request)
+        profile, token = auth_service.register(
+            request,
+            user_agent=req.headers.get("user-agent", "")[:512],
+            ip_address=client_ip,
+        )
         return AuthResponse(access_token=token, user=profile)
     except ValueError as err:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(err))
 
 
 @router.post("/login", response_model=AuthResponse)
-def login_user(request: LoginRequest):
+def login_user(request: LoginRequest, req: Request):
     """
     Authenticates user via email/mobile number and password.
     """
+    client_ip = req.client.host if req.client else "unknown"
+    rate_limiter.check("auth_login", client_ip, limit=30, window_seconds=60)
     try:
-        profile, token = auth_service.login(request.email_or_phone, request.password)
+        profile, token = auth_service.login(
+            request.email_or_phone,
+            request.password,
+            user_agent=req.headers.get("user-agent", "")[:512],
+            ip_address=client_ip,
+        )
         return AuthResponse(access_token=token, user=profile)
     except ValueError as err:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(err))
@@ -95,6 +119,8 @@ def login_user(request: LoginRequest):
 @router.post("/google", response_model=AuthResponse)
 def login_with_google(request: GoogleLoginRequest, req: Request):
     """Verify a Google ID token before creating an ordinary ORCA session."""
+    client_ip = req.client.host if req.client else "unknown"
+    rate_limiter.check("auth_google", client_ip, limit=30, window_seconds=60)
     google_client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip()
     if not google_client_id:
         raise HTTPException(status_code=503, detail="Google sign-in is not configured.")
@@ -169,7 +195,10 @@ def list_sessions(user: UserProfile = Depends(get_current_user_from_header), aut
     from datetime import datetime, timezone
     from app.db.models import DeviceSession
     from app.db.session import get_db_context
-    current = decode_token(authorization.removeprefix("Bearer ").strip())["jti"]
+    payload = decode_token(_extract_bearer_token(authorization))
+    if not payload or not payload.get("jti"):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired access token.")
+    current = payload["jti"]
     with get_db_context() as db:
         rows = db.query(DeviceSession).filter(DeviceSession.user_id == user.id,
             DeviceSession.revoked_at.is_(None), DeviceSession.expires_at > datetime.now(timezone.utc)).all()
@@ -194,7 +223,9 @@ def revoke_sessions(user_id: str, session_id: Optional[str] = None):
 
 @router.post("/logout")
 def logout(user: UserProfile = Depends(get_current_user_from_header), authorization: str = Header(...)):
-    payload = decode_token(authorization.removeprefix("Bearer ").strip())
+    payload = decode_token(_extract_bearer_token(authorization))
+    if not payload or not payload.get("jti"):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired access token.")
     return revoke_sessions(user.id, payload["jti"])
 
 

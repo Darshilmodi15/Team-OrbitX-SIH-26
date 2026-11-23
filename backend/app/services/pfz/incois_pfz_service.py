@@ -165,7 +165,11 @@ class IncoisPFZService:
     """
     def __init__(self, api_url=None, timeout_sec=5.0, verify_ssl=True):
         self.api_url = (os.getenv("INCOIS_PFZ_API_URL", "") if api_url is None else api_url).strip()
-        self.timeout_sec = float(os.getenv("INCOIS_PFZ_TIMEOUT_SEC", timeout_sec))
+        try:
+            raw_timeout = float(os.getenv("INCOIS_PFZ_TIMEOUT_SEC", timeout_sec))
+            self.timeout_sec = raw_timeout if math.isfinite(raw_timeout) and raw_timeout > 0 else float(timeout_sec)
+        except (TypeError, ValueError):
+            self.timeout_sec = float(timeout_sec)
         self.verify_ssl = verify_ssl
         self._cache = {}
         self._lock = threading.RLock()

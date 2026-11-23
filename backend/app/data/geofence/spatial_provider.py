@@ -21,6 +21,7 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         * math.cos(math.radians(lat2))
         * math.sin(dlon / 2.0) ** 2
     )
+    a = min(1.0, max(0.0, a))
     c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
     return R * c
 
@@ -36,6 +37,8 @@ def point_to_segment_distance_km(
     mid_lat_rad = math.radians((a_lat + b_lat) / 2.0)
     kx = 111.320 * math.cos(mid_lat_rad)
     ky = 110.574
+    if abs(kx) < 1e-9:
+        return haversine_km(p_lat, p_lon, a_lat, a_lon)
 
     px, py = p_lon * kx, p_lat * ky
     ax, ay = a_lon * kx, a_lat * ky
@@ -64,6 +67,8 @@ def point_in_polygon(lat: float, lon: float, poly_coords: List[List[float]]) -> 
     poly_coords is a list of [lon, lat] points.
     """
     n = len(poly_coords)
+    if n < 3:
+        return False
     inside = False
     p1_lon, p1_lat = poly_coords[0]
 
@@ -72,6 +77,7 @@ def point_in_polygon(lat: float, lon: float, poly_coords: List[List[float]]) -> 
         if lat > min(p1_lat, p2_lat):
             if lat <= max(p1_lat, p2_lat):
                 if lon <= max(p1_lon, p2_lon):
+                    xinters = p1_lon
                     if p1_lat != p2_lat:
                         xinters = (lat - p1_lat) * (p2_lon - p1_lon) / (p2_lat - p1_lat) + p1_lon
                     if p1_lon == p2_lon or lon <= xinters:
@@ -136,18 +142,23 @@ class SpatialGeofenceProvider(GeofenceProvider):
             min_dist_km = float("inf")
 
             if geom_type == "Polygon":
+                if len(coords) < 3:
+                    continue
                 is_inside = point_in_polygon(lat, lon, coords)
                 if is_inside:
                     min_dist_km = 0.0
                 else:
-                    # Minimum distance to any boundary edge
-                    for i in range(len(coords) - 1):
+                    # Minimum distance to any boundary edge (including closing edge)
+                    n_coords = len(coords)
+                    for i in range(n_coords):
                         p1 = coords[i]
-                        p2 = coords[i + 1]
+                        p2 = coords[(i + 1) % n_coords]
                         d = point_to_segment_distance_km(lat, lon, p1[1], p1[0], p2[1], p2[0])
                         if d < min_dist_km:
                             min_dist_km = d
             else:  # LineString
+                if len(coords) == 1:
+                    min_dist_km = haversine_km(lat, lon, coords[0][1], coords[0][0])
                 for i in range(len(coords) - 1):
                     p1 = coords[i]
                     p2 = coords[i + 1]

@@ -29,9 +29,12 @@ export function CookieBanner() {
         const timer = setTimeout(() => setIsOpen(true), 800);
         return () => clearTimeout(timer);
       } else {
-        const parsed = JSON.parse(stored) as CookieConsentPreferences;
-        setTelemetryAllowed(parsed.telemetry ?? false);
-        setAnalyticsAllowed(parsed.analytics ?? false);
+        const parsed = JSON.parse(stored) as unknown;
+        if (parsed && typeof parsed === "object") {
+          const prefs = parsed as Partial<CookieConsentPreferences>;
+          setTelemetryAllowed(Boolean(prefs.telemetry));
+          setAnalyticsAllowed(Boolean(prefs.analytics));
+        }
       }
     } catch {
       setIsOpen(true);

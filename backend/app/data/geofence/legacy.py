@@ -108,6 +108,7 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         * math.cos(math.radians(lat2))
         * math.sin(dlon / 2.0) ** 2
     )
+    a = min(1.0, max(0.0, a))
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
@@ -121,6 +122,7 @@ def point_in_polygon(lat: float, lon: float, polygon: List[List[float]]) -> bool
         p2_lat, p2_lon = polygon[i % n]
         if min(p1_lon, p2_lon) < lon <= max(p1_lon, p2_lon):
             if lat <= max(p1_lat, p2_lat):
+                xinters = p1_lat
                 if p1_lon != p2_lon:
                     xinters = (lon - p1_lon) * (p2_lat - p1_lat) / (p2_lon - p1_lon) + p1_lat
                 if p1_lat == p2_lat or lat <= xinters:
@@ -130,17 +132,21 @@ def point_in_polygon(lat: float, lon: float, polygon: List[List[float]]) -> bool
 
 
 def min_distance_to_boundary(lat: float, lon: float, coords: List[List[float]]) -> float:
+    from app.data.geofence.spatial_provider import point_to_segment_distance_km
+
+    if not coords:
+        return 0.0
+    if len(coords) == 1:
+        return round(haversine_km(lat, lon, coords[0][0], coords[0][1]), 1)
     min_d = float("inf")
-    for pt in coords:
-        d = haversine_km(lat, lon, pt[0], pt[1])
-        if d < min_d:
-            min_d = d
-    for i in range(len(coords) - 1):
-        mid_lat = (coords[i][0] + coords[i + 1][0]) / 2.0
-        mid_lon = (coords[i][1] + coords[i + 1][1]) / 2.0
-        d_mid = haversine_km(lat, lon, mid_lat, mid_lon)
-        if d_mid < min_d:
-            min_d = d_mid
+    is_closed = len(coords) >= 3 and coords[0] == coords[-1]
+    seg_count = len(coords) - 1 if is_closed else len(coords) - 1
+    for i in range(seg_count):
+        d_seg = point_to_segment_distance_km(
+            lat, lon, coords[i][0], coords[i][1], coords[i + 1][0], coords[i + 1][1]
+        )
+        if d_seg < min_d:
+            min_d = d_seg
     return round(min_d, 1)
 
 

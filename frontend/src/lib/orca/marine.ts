@@ -450,7 +450,8 @@ export const COMPASS_DIRS_LOCALIZED: Record<string, string[]> = {
 };
 
 export function compassDirection(deg: number | null, lang: string = "en"): string {
-  if (deg == null) return "\u2014";
+  if (deg == null || !Number.isFinite(deg)) return "\u2014";
   const dirs = COMPASS_DIRS_LOCALIZED[lang] || COMPASS_DIRS_LOCALIZED.en;
-  return dirs[Math.round(deg / 45) % 8] ?? "\u2014";
+  const normalized = ((deg % 360) + 360) % 360;
+  return dirs[Math.round(normalized / 45) % 8] ?? "\u2014";
 }

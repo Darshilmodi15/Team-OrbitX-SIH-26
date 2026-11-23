@@ -319,3 +319,16 @@ it("shows loading instead of an empty conversation while saved history is pendin
   resolve([]);
   expect(await screen.findByText("Persisted answer")).toBeInTheDocument();
 });
+
+it("sends IST date rather than UTC date in chat requests", async () => {
+  const expectedIstDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  mount();
+  const input = screen.getByPlaceholderText("Ask anything about your coastal safety…");
+  fireEvent.change(input, { target: { value: "Check sea state" } });
+  fireEvent.keyDown(input, { key: "Enter", shiftKey: false });
+  await waitFor(() =>
+    expect(sendChatMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ date: expectedIstDate }),
+    ),
+  );
+});

@@ -31,12 +31,19 @@ def assess_risk(weather_input: Union[WeatherEvidence, Dict[str, Any]]) -> RiskEv
     wind = component("wind_speed_kmh", 40, 50)
     swell = component("swell_wave_height_m", 1.5, 2.5)
     gust = component("wind_gust_kmh", 40, 60)
+    curr_risk = component("ocean_current_speed_kmh", 2.5, 5.0)
+    vis_val = available.get("visibility_km")
+    if vis_val is None or not usable:
+        vis_risk = RiskComponentItem(level="UNKNOWN", score=None, description="Visibility evidence unavailable")
+    else:
+        vis_tier = "HIGH" if vis_val < 2.0 else "MODERATE" if vis_val < 5.0 else "LOW"
+        vis_risk = RiskComponentItem(level=vis_tier, score=None, description=f"ORCA threshold assessment of visibility_km={vis_val}; not a safety clearance")
     code = available.get("weather_code")
     storm = RiskComponentItem(level="UNKNOWN", score=None, description="Storm evidence unavailable")
     if usable and code is not None:
         storm = RiskComponentItem(level="HIGH" if code >= 95 else "MODERATE" if code >= 50 else "LOW",
             score=None, description=f"ORCA interpretation of provider weather code {code}")
-    tiers = [wave.level, wind.level, gust.level, storm.level, swell.level]
+    tiers = [wave.level, wind.level, gust.level, storm.level, swell.level, vis_risk.level, curr_risk.level]
     # Wave + wind + period are the minimum for a low-risk assessment. Optional
     # missing dimensions remain explicit; any observed high risk still wins.
     enough = usable and all(key in available for key in ("wave_height_m", "wind_speed_kmh", "wave_period_s"))
@@ -46,10 +53,16 @@ def assess_risk(weather_input: Union[WeatherEvidence, Dict[str, Any]]) -> RiskEv
     if usable and "wave_height_m" in available and len(horizon) >= 2:
         waves = [step.get("wave_height_m") for step in horizon]
         if all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) and v >= 0 for v in waves):
-            trend = "deteriorating" if waves[-1] > available["wave_height_m"] + .5 or waves[-1] >= 2 else "improving" if waves[-1] < available["wave_height_m"] - .5 else "stable"
+            peak_wave = max(waves)
+            if peak_wave > available["wave_height_m"] + .5 or peak_wave >= 2:
+                trend = "deteriorating"
+            elif waves[-1] < available["wave_height_m"] - .5:
+                trend = "improving"
+            else:
+                trend = "stable"
             if trend == "deteriorating" and level != "unsafe":
                 level = "caution"
-    warnings = [item.description for item in (wave, wind, gust, storm, swell) if item.level in {"HIGH", "MODERATE"}]
+    warnings = [item.description for item in (wave, wind, gust, storm, swell, vis_risk, curr_risk) if item.level in {"HIGH", "MODERATE"}]
     if trend == "deteriorating":
         warnings.append("Measured forecast horizon is deteriorating")
     reason = "ORCA heuristic assessment of available evidence only; this is not navigational clearance."

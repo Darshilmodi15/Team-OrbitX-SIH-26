@@ -65,6 +65,7 @@ export default function CoastMap({
       const L = (await import("leaflet")).default;
       await import("leaflet/dist/leaflet.css");
       if (cancelled || !el.current) return;
+      if (!Number.isFinite(center.lat) || !Number.isFinite(center.lon)) return;
       leaflet.current = L;
       const map = L.map(el.current, {
         center: [center.lat, center.lon],
@@ -124,7 +125,7 @@ export default function CoastMap({
       node.textContent = value;
       return node;
     };
-    if (showLocation)
+    if (showLocation && Number.isFinite(center.lat) && Number.isFinite(center.lon))
       L.circleMarker([center.lat, center.lon], {
         radius: 9,
         color: "#fff",
@@ -156,8 +157,12 @@ export default function CoastMap({
     if (snapshot && showPFZ)
       for (const p of data.pfz) {
         const popup = document.createElement("section");
+        const bearingText =
+          typeof p.bearing === "number" && Number.isFinite(p.bearing)
+            ? `${p.bearing.toFixed(0)}°`
+            : "Unavailable";
         for (const line of ["Potential Fishing Zone", `Reference: ${p.landing_centre || p.id}`,
-          `Distance: ${p.distance_km ?? "Unavailable"} km · bearing ${p.bearing.toFixed(0)}°`,
+          `Distance: ${p.distance_km ?? "Unavailable"} km · bearing ${bearingText}`,
           `Issued: ${snapshot.pfz.issued_at || "Unavailable"}`, `Valid until: ${snapshot.pfz.valid_until || "Unavailable"}`,
           `Source: ${snapshot.pfz.source || "Unavailable"}`, `Geometry: ${p.geometry?.type || "Point"}`,
           `Data type: ${snapshot.provenance.demo_scenario ? "Demo Scenario / Illustrative Dataset — not live" : "Verified advisory"}`, p.radius ? `Advisory search radius: ${p.radius} m` : "Symbol halo only; no geographic range implied."])
@@ -185,9 +190,10 @@ export default function CoastMap({
       }
     if (showVectors) for (const vector of data.vectors) {
       const arrow = document.createElement("span");
+      const degrees = Number.isFinite(vector.degrees) ? vector.degrees : 0;
       arrow.textContent = "↑";
-      arrow.style.cssText = `display:block;font-size:28px;color:#0891b2;transform:rotate(${vector.degrees}deg);text-shadow:0 0 3px white`;
-      const description = `${vector.kind}: ${vector.degrees}° ${vector.convention} · ${vector.source} · valid ${vector.validAt || "Unavailable"}. Compass bearing at a model sample point, not a movement animation or spatial vector field.`;
+      arrow.style.cssText = `display:block;font-size:28px;color:#0891b2;transform:rotate(${degrees}deg);text-shadow:0 0 3px white`;
+      const description = `${vector.kind}: ${degrees}° ${vector.convention} · ${vector.source} · valid ${vector.validAt || "Unavailable"}. Compass bearing at a model sample point, not a movement animation or spatial vector field.`;
       const offset = vector.kind === "Wind" ? -18 : vector.kind === "Wave" ? 4 : 26;
       L.marker([vector.lat,vector.lon], {icon:L.divIcon({html:arrow,iconSize:[28,32],iconAnchor:[offset,16],className:"orca-vector"})}).bindPopup(text(description)).bindTooltip(text(`${vector.kind} (${vector.convention})`)).addTo(group);
     }
@@ -264,7 +270,7 @@ export default function CoastMap({
   ]);
   useEffect(() => {
     const map = mapRef.current;
-    if (!ready || !map) return;
+    if (!ready || !map || !Number.isFinite(center.lat) || !Number.isFinite(center.lon)) return;
     // Zoom in on the first explicit selection, then preserve user zoom
     // while they fine-tune their pin with subsequent map clicks.
     const nextZoom = previousZoom.current !== zoom ? zoom ?? map.getZoom() : map.getZoom();

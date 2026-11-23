@@ -119,6 +119,31 @@ class TestSarvamLanguageService(unittest.TestCase):
         self.assertEqual(res["language_code"], "gu-IN")
         self.assertIsNotNone(res["audio_base64"])
 
+    def test_odia_spelling_bcp47_casing_and_marathi_detection(self):
+        """Validates fixed Odia script typo, BCP-47 casing, chunk splitting, and Marathi script chars."""
+        self.assertEqual(SUPPORTED_LANGUAGES["or"], "Odia (ଓଡ଼ିଆ)")
+        self.assertEqual(to_sarvam_code("en-in"), "en-IN")
+        self.assertEqual(to_sarvam_code("auto"), "en-IN")
+        self.assertEqual(self.provider.detect_language("समुद्र प्रवाहाचा वेग व ळ"), "mr")
+
+        chunks = SarvamLanguageProvider._split_chunks("veraval " * 250, max_chars=700)
+        self.assertTrue(len(chunks) >= 2)
+        self.assertTrue(all(len(c) <= 700 for c in chunks))
+
+    @patch("app.services.language.sarvam.httpx.Client")
+    def test_tts_sanitization_preserves_hyphens(self, mock_client_cls):
+        """Ensures markdown bullets/markers are stripped without corrupting minus signs or hyphens."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"audios": [base64.b64encode(b"wav").decode("ascii")]}
+        mock_client = mock_client_cls.return_value.__enter__.return_value
+        mock_client.post.return_value = mock_resp
+
+        res = self.provider.text_to_speech("- **Alert**: wind-wave -2°C", language_code="en")
+        self.assertFalse(res["is_mock"])
+        sent_payload = mock_client.post.call_args.kwargs["json"]
+        self.assertEqual(sent_payload["text"], "Alert: wind-wave -2°C")
+
 
 class TestVoiceEndpoints(unittest.TestCase):
     """Integration tests for FastAPI /api/voice/* endpoints."""

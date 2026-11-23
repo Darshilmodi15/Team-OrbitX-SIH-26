@@ -76,39 +76,62 @@ class RecommendationReasoningEngine:
             ))
 
         # -------------------------------------------------------------
-        # 3. Safe Navigational Route Recommendation
+        # 3. Navigational Route Advisory
         # -------------------------------------------------------------
         if bundle.route:
             r = bundle.route
             rec_id = f"REC-NAV-{rec_index:02d}"
             rec_index += 1
-            avoided = ", ".join(r.avoided_zones) if r.avoided_zones else "None (Clear fairway)"
+            avoided = ", ".join(r.avoided_zones) if r.avoided_zones else "None identified in reference layers"
+            route_risk = (r.risk_assessment or "UNKNOWN").upper()
+            env_risk = bundle.risk.level.lower() if bundle.risk else None
+            is_unverified_or_hazardous = route_risk in {"HIGH RISK", "UNKNOWN"} or env_risk in {"unsafe", "unknown"}
 
             evidence = [
                 f"Departure: {r.origin_name} ({r.origin_lat:.4f}°N, {r.origin_lon:.4f}°E)",
                 f"Destination: {r.destination_name} ({r.destination_lat:.4f}°N, {r.destination_lon:.4f}°E)",
-                f"Total Route Distance: {r.distance_km:.1f} km ({r.distance_nm:.1f} Nautical Miles)",
-                f"Estimated Cruising Duration: ~{r.estimated_duration_hours:.1f} hours at nominal 8-knot speed",
-                f"Plotted Waypoints: {len(r.waypoints)} safe navigation corridor coordinates",
-                f"Avoided Restricted/Hazard Zones: {avoided}",
-                f"Route Safety Status: {r.risk_assessment}",
+                f"Estimated Straight/Waypoint Distance: {r.distance_km:.1f} km ({r.distance_nm:.1f} Nautical Miles)",
+                f"Estimated Transit Duration: ~{r.estimated_duration_hours:.1f} hours at nominal 8-knot speed",
+                f"Plotted Waypoints: {len(r.waypoints)} reference coordinates",
+                f"Geofence / Avoidance Reference: {avoided}",
+                f"Route Assessment Status: {route_risk}",
             ]
-            reasoning = (
-                f"1. Corridor synthesis: Geodesic route computed avoiding shallow sandbars, coral protection zones, and international boundary buffers.\n"
-                f"2. Fuel & transit calculation: Cruising distance of {r.distance_km:.1f} km requires ~{r.estimated_duration_hours:.1f}h of transit at standard cruising throttle (8 kts).\n"
-                f"3. Hazard isolation: The course successfully skirts {avoided}.\n"
-                f"4. Waypoint fidelity: {len(r.waypoints)} intermediate turn coordinates ensure adherence to certified nautical depth channels.\n"
-                f"5. Actionable directive: Follow charted corridor waypoints on Tactical Map and maintain visual lookout."
-            )
+            if is_unverified_or_hazardous:
+                title = (
+                    f"Route Caution — Avoid Transit to {r.destination_name}"
+                    if route_risk == "HIGH RISK" or env_risk == "unsafe"
+                    else f"Route Reference ({route_risk}) — {r.destination_name}"
+                )
+                directive = (
+                    "Do not treat this reference track as a cleared passage. Verify official marine warnings, "
+                    "restricted boundary zones, and local harbour advisories before sailing."
+                )
+                priority = "CRITICAL" if route_risk == "HIGH RISK" or env_risk == "unsafe" else "HIGH"
+                reasoning = (
+                    f"Reference track distance is {r.distance_km:.1f} km (~{r.estimated_duration_hours:.1f}h). "
+                    f"Current corridor risk is {route_risk} (avoidance: {avoided}); bathymetry and real-time sea hazards must be checked on official nautical charts."
+                )
+            else:
+                title = f"Safe Navigation Corridor: Route to {r.destination_name}"
+                directive = (
+                    f"Follow the designated {len(r.waypoints)}-waypoint corridor to {r.destination_name} ({r.distance_km:.1f} km, "
+                    f"~{r.estimated_duration_hours:.1f}h). Consult official nautical charts and harbour advisories before departure."
+                )
+                priority = "HIGH"
+                reasoning = (
+                    f"Geodesic route computed: {r.distance_km:.1f} km (~{r.estimated_duration_hours:.1f}h at 8 kts); "
+                    f"geofence check: {avoided}. ORCA does not provide nautical depth charts; verify depth clearance and weather advisories locally."
+                )
+
             recommendations.append(
                 OperationalRecommendation(
                     id=rec_id,
                     category="NAVIGATION",
-                    title=f"Safe Navigation Corridor: Route to {r.destination_name}",
-                    directive=f"Follow the designated {len(r.waypoints)}-waypoint navigation corridor to {r.destination_name} ({r.distance_km:.1f} km, ~{r.estimated_duration_hours:.1f}h). Maintain 8 knots cruising speed and adhere to safe fairway margins.",
-                    priority="HIGH",
-                    confidence_score=0.93,
-                    reliability_tier="MODEL_DERIVED",
+                    title=title,
+                    directive=directive,
+                    priority=priority,
+                    confidence_score=None,
+                    reliability_tier="ORCA_HEURISTIC",
                     supporting_evidence=evidence,
                     reasoning=reasoning,
                     source="orca_route_optimizer_agent",
@@ -264,28 +287,39 @@ class RecommendationReasoningEngine:
             rec_id = f"REC-TID-{rec_index:02d}"
             rec_index += 1
 
+            def _fmt_h(val: Optional[float]) -> str:
+                return f"{val:.2f}m" if val is not None else "unavailable"
+
+            hi_t = t.high_tide_time or "unavailable"
+            lo_t = t.low_tide_time or "unavailable"
+            sec_hi_t = t.secondary_high_tide_time or "unavailable"
+            hi_h = _fmt_h(t.high_tide_height_m)
+            lo_h = _fmt_h(t.low_tide_height_m)
+            sec_hi_h = _fmt_h(t.secondary_high_tide_height_m)
+            range_str = _fmt_h(t.tidal_range_m)
+
             evidence = [
-                f"Primary High Tide Window: {t.high_tide_time} (Height: {t.high_tide_height_m:.2f}m)",
-                f"Primary Low Tide Window: {t.low_tide_time} (Height: {t.low_tide_height_m:.2f}m)",
-                f"Secondary High Tide Window: {t.secondary_high_tide_time} (Height: {t.secondary_high_tide_height_m:.2f}m)",
-                f"Tidal Phase: {t.tidal_phase}",
-                f"Tidal Range: {t.tidal_range_m:.2f}m",
-                f"Provenance: {t.source}",
+                f"Primary High Tide Window: {hi_t} (Height: {hi_h})",
+                f"Primary Low Tide Window: {lo_t} (Height: {lo_h})",
+                f"Secondary High Tide Window: {sec_hi_t} (Height: {sec_hi_h})",
+                f"Tidal Phase: {t.tidal_phase or 'unavailable'}",
+                f"Tidal Range: {range_str}",
+                f"Provenance: {t.source or 'unavailable'}",
             ]
             reasoning = (
-                f"1. Harmonic tidal dynamics: Semi-diurnal tidal oscillations create a {t.tidal_range_m:.2f}m depth variation between high and low tide.\n"
-                f"2. Harbor draft clearance: Shallow estuary mouths and bar channels have restricted under-keel clearance during low tide ({t.low_tide_time} at {t.low_tide_height_m:.2f}m).\n"
-                f"3. Navigational planning: Departing or returning during the high tide window ({t.high_tide_time}) ensures safe passage over shallow sandbanks.\n"
-                f"4. Actionable directive: Schedule harbor bar crossings within +/- 2 hours of high tide."
+                f"1. Tidal reference: Reported tidal range is {range_str}.\n"
+                f"2. Low water window: Primary low tide reported at {lo_t} ({lo_h}); verify local harbour bar depth clearance on official tide tables.\n"
+                f"3. High water window: Primary high tide reported at {hi_t} ({hi_h}).\n"
+                f"4. Actionable directive: Confirm local port tide tables before crossing restricted harbour approaches."
             )
             recommendations.append(
                 OperationalRecommendation(
                     id=rec_id,
                     category="TIDAL",
                     title="Tidal Window Advisory: Harbor Channel Navigation",
-                    directive=f"Plan harbor entry and departure during High Tide window around {t.high_tide_time} ({t.high_tide_height_m:.2f}m). Exercise caution near shallow sandbars during Low Tide at {t.low_tide_time} ({t.low_tide_height_m:.2f}m).",
+                    directive=f"Consult local port tide tables around High Tide ({hi_t}, {hi_h}) and Low Tide ({lo_t}, {lo_h}) before entering shallow harbour channels.",
                     priority="INFO",
-                    confidence_score=0.85,
+                    confidence_score=None,
                     reliability_tier="REFERENCE_ESTIMATE",
                     supporting_evidence=evidence,
                     reasoning=reasoning,

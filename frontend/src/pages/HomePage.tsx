@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ShieldCheck, Waves, MessageSquare, Bell } from 'lucide-react';
 import { OceanWavesCanvas } from '@/components/orca/OceanWavesCanvas';
 
@@ -75,8 +75,8 @@ export default function HomePage() {
       <footer className="border-t border-slate-200 bg-white px-8 py-6 flex justify-between items-center text-sm text-slate-500 mt-auto">
         <div>ORCA Marine AI · For India's coastal communities.</div>
         <div className="flex gap-4">
-          <a href="#" className="hover:text-slate-800">Privacy Policy</a>
-          <a href="#" className="hover:text-slate-800">Terms & Conditions</a>
+          <Link to="/privacy" className="hover:text-slate-800">Privacy Policy</Link>
+          <Link to="/terms" className="hover:text-slate-800">Terms & Conditions</Link>
         </div>
       </footer>
     </div>

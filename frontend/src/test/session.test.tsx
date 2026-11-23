@@ -140,3 +140,14 @@ it('does not establish a session when Google verification fails', async () => {
   expect(result.current.user).toBeNull();
   expect(sessionStorage.getItem('orca.auth.session')).toBeNull();
 });
+
+it('keeps locationReady false when saved location lookup fails during restore', async () => {
+  sessionStorage.setItem('orca.auth.session', authResult.access_token);
+  vi.mocked(getUserProfile).mockResolvedValue(authResult.user);
+  vi.mocked(fetchSavedLocation).mockRejectedValueOnce(new Error('Network error'));
+  const { result } = renderHook(() => useSession(), { wrapper });
+  await waitFor(() => expect(result.current.ready).toBe(true));
+  expect(result.current.user?.id).toBe('u1');
+  expect(result.current.locationReady).toBe(false);
+  expect(result.current.location).toBeNull();
+});

@@ -1,7 +1,7 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { INDIAN_PORTS, type Port, type WeatherMetrics } from '../data/maritimeData';
-import { queryORCA } from '../services/api';
+import { API_BASE_URL, queryORCA } from '../services/api';
 
 import type { LocationCoords, PFZEvidenceItem, MessageItem, GisLayerState } from '../types';
 export type { LocationCoords, PFZEvidenceItem, MessageItem, GisLayerState };
@@ -16,7 +16,7 @@ interface GlobalContextProps {
   setCurrentLang: (lang: string) => void;
   weather: WeatherMetrics;
   setWeather: (weather: WeatherMetrics | ((prev: WeatherMetrics) => WeatherMetrics)) => void;
-  riskLevel: 'safe' | 'caution' | 'unsafe';
+  riskLevel: 'safe' | 'caution' | 'unsafe' | 'unknown';
   setRiskLevel: (level: 'safe' | 'caution' | 'unsafe') => void;
   gisLayers: GisLayerState;
   setGisLayers: (layers: GisLayerState | ((prev: GisLayerState) => GisLayerState)) => void;
@@ -52,7 +52,7 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
     lon: INDIAN_PORTS[0].lon,
   });
 
-  const [currentDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [currentDate] = useState<string>(new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }));
   const [currentLang, setCurrentLang] = useState<string>('en');
 
   const [weather, setWeather] = useState<WeatherMetrics>({
@@ -62,7 +62,7 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
     is_mock: false,
   });
 
-  const [riskLevel, setRiskLevel] = useState<'safe' | 'caution' | 'unsafe'>('caution');
+  const [riskLevel, setRiskLevel] = useState<'safe' | 'caution' | 'unsafe' | 'unknown'>('unknown');
 
   const [gisLayers, setGisLayers] = useState<GisLayerState>({
     pfz: true,
@@ -90,6 +90,7 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const requestSeqRef = useRef<number>(0);
 
   const handleSelectLang = (lang: string) => {
     setCurrentLang(lang);
@@ -98,7 +99,7 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
     const langGreetings: Record<string, string> = {
       gu: '🌐 **ભાષા બદલાઈ ગઈ છે**: ગુજરાતી (Gujarati). ઓર્કા મરીન એઆઇ હવે તમને ગુજરાતીમાં દરિયાઈ હવામાન, મોજાં, સુરક્ષા અને માછીમારી વિસ્તાર (PFZ) ની માહિતી આપશે.',
       hi: '🌐 **भाषा परिवर्तित**: हिन्दी (Hindi). ऑर्का समुद्री एआई अब आपको हिन्दी में समुद्री मौसम, लहरों, सुरक्षा और मत्स्य क्षेत्र (PFZ) की जानकारी प्रदान करेगा।',
-      mr: '🌐 **भाषा बदलली**: मराठी (Marathi). ऑर्का सागरी एઆઇ आता तुम्हाला मराठीमध्ये सागरी हवामान, लाटा, सुरक्षा आणि मासेमारी क्षेत्राची माहिती देईल.',
+      mr: '🌐 **भाषा बदलली**: मराठी (Marathi). ऑर्का सागरी एआय आता तुम्हाला मराठीमध्ये सागरी हवामान, लाटा, सुरक्षा आणि मासेमारी क्षेत्राची माहिती देईल.',
       ta: '🌐 **மொழி மாற்றப்பட்டது**: தமிழ் (Tamil). ஆர்கா கடல்சார் AI இப்போது உங்களுக்கு தமிழில் கடல் வானிலை, அலைகள் மற்றும் மீன்பிடி மண்டல தகவல்களை வழங்கும்.',
       te: '🌐 **భాష మార్చబడింది**: తెలుగు (Telugu). ఓర్కా మెరైన్ AI ఇప్పుడు మీకు తెలుగులో సముద్ర వాతావరణం, అలలు మరియు చేపల వేట ప్రాంతాల సమాచారం అందిస్తుంది.',
       ml: '🌐 **ഭാഷ മാറ്റി**: മലയാളം (Malayalam). ഓർക്ക മറൈൻ AI ഇപ്പോൾ നിങ്ങൾക്ക് മലയാളത്തിൽ സമുദ്ര കാലാവസ്ഥ, തിരമാലകൾ, സുരക്ഷ വിവരങ്ങൾ നൽകും.',
@@ -153,6 +154,8 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const handleSendMessage = async (question: string) => {
+    if (!question.trim()) return;
+    const seq = ++requestSeqRef.current;
     const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
     const userMsg: MessageItem = {
@@ -203,6 +206,7 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
       };
 
       const response = (await queryORCA(payload)) as any;
+      if (seq !== requestSeqRef.current) return;
 
       if (response.nearest_pfz && Array.isArray(response.nearest_pfz) && response.nearest_pfz.length > 0) {
         setPfzZones(response.nearest_pfz);
@@ -222,8 +226,15 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
         }));
       }
 
-      if (response.risk_level === 'unsafe' || response.risk_level === 'caution' || response.risk_level === 'safe') {
-        setRiskLevel(response.risk_level);
+      const rawRisk = String(response.risk_level || '').toLowerCase();
+      if (rawRisk === 'unsafe' || rawRisk === 'high' || rawRisk === 'danger' || rawRisk === 'dangerous' || rawRisk === 'critical' || rawRisk === 'emergency') {
+        setRiskLevel('unsafe');
+      } else if (rawRisk === 'caution' || rawRisk === 'moderate') {
+        setRiskLevel('caution');
+      } else if (rawRisk === 'safe' || rawRisk === 'low') {
+        setRiskLevel('safe');
+      } else if (rawRisk === 'unknown') {
+        setRiskLevel('unknown');
       }
 
       const assistantMsg: MessageItem = {
@@ -240,19 +251,22 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
 
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err: any) {
+      if (seq !== requestSeqRef.current) return;
       const errorMessage = err?.message || 'Unable to reach ORCA backend. Please try again.';
       setError(errorMessage);
 
       const errorAssistantMsg: MessageItem = {
         id: `err-${Date.now()}`,
         sender: 'assistant',
-        text: `⚠️ **Connection Note**: ${errorMessage}\n\nPlease ensure the FastAPI backend is running at \`http://localhost:8000\`.`,
+        text: `⚠️ **Connection Note**: ${errorMessage}\n\nPlease ensure the FastAPI backend is running at \`${API_BASE_URL}\`.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
       setMessages((prev) => [...prev, errorAssistantMsg]);
     } finally {
-      setIsLoading(false);
+      if (seq === requestSeqRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 

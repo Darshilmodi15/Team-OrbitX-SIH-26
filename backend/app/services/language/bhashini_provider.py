@@ -8,16 +8,19 @@ Integrates Government of India Bhashini APIs for:
 - Neural Text-to-Speech / TTS (IITM / AI4Bharat Indic-TTS)
 """
 import base64
+from collections import OrderedDict
 import logging
 import os
 import io
+from threading import Lock
+from time import monotonic
 import wave
 from typing import Any, Dict, Optional
 import httpx
 from dotenv import load_dotenv
 
 from app.services.language.base import LanguageProvider
-from app.services.provider_health import record
+from app.services.provider_health import ProviderUnavailable, record
 
 load_dotenv()
 
@@ -94,7 +97,10 @@ class BhashiniLanguageProvider(LanguageProvider):
         self.pipeline_id = pipeline_id or os.getenv("BHASHINI_PIPELINE_ID", "64392f96daac500b55c543d6").strip()
         self.timeout_sec = float(os.getenv("BHASHINI_TIMEOUT_SEC", str(timeout_sec)))
         self.pipeline_config_url = "https://meity-auth.ulcacontrib.org/ulca/apis/v0/model/getModelsPipeline"
-        self._pipeline_cache: Dict[tuple[str, str, str], Dict[str, Any]] = {}
+        self._pipeline_cache: OrderedDict = OrderedDict()
+        self._pipeline_cache_lock = Lock()
+        self._pipeline_cache_ttl = 3600.0
+        self._pipeline_cache_max = 64
 
         if self.is_configured:
             logger.info("BhashiniLanguageProvider initialized with active MeitY Bhashini credentials.")
@@ -107,10 +113,15 @@ class BhashiniLanguageProvider(LanguageProvider):
         return bool((self.user_id and self.api_key) or self.inference_api_key)
 
     def _get_pipeline_config(self, task_type: str, source_lang: str, target_lang: Optional[str] = None) -> Optional[Dict[str, Any]]:
-        """Retrieves and caches pipeline configuration from MeitY Bhashini API."""
+        """Retrieves and caches pipeline configuration from MeitY Bhashini API with TTL."""
         cache_key = (task_type, source_lang, target_lang or "")
-        if cache_key in self._pipeline_cache:
-            return self._pipeline_cache[cache_key]
+        with self._pipeline_cache_lock:
+            cached = self._pipeline_cache.get(cache_key)
+            if cached and (monotonic() - cached[0]) < self._pipeline_cache_ttl:
+                self._pipeline_cache.move_to_end(cache_key)
+                return cached[1]
+            if cached:
+                del self._pipeline_cache[cache_key]
 
         if not self.is_configured:
             return None
@@ -162,10 +173,14 @@ class BhashiniLanguageProvider(LanguageProvider):
                                 "auth_name": auth_name,
                                 "auth_value": auth_value,
                             }
-                            self._pipeline_cache[cache_key] = config_data
+                            with self._pipeline_cache_lock:
+                                self._pipeline_cache[cache_key] = (monotonic(), config_data)
+                                self._pipeline_cache.move_to_end(cache_key)
+                                while len(self._pipeline_cache) > self._pipeline_cache_max:
+                                    self._pipeline_cache.popitem(last=False)
                             return config_data
             except Exception as err:
-                logger.warning(f"Bhashini pipeline config call failed for task {task_type}: {err}")
+                logger.warning(f"Bhashini pipeline config call failed for task {task_type}: {type(err).__name__}")
 
         # Fallback to direct Dhruva pipeline inference endpoint
         if self.inference_api_key:
@@ -180,15 +195,68 @@ class BhashiniLanguageProvider(LanguageProvider):
                 "auth_name": "Authorization",
                 "auth_value": self.inference_api_key,
             }
-            self._pipeline_cache[cache_key] = config_data
+            with self._pipeline_cache_lock:
+                self._pipeline_cache[cache_key] = (monotonic(), config_data)
+                self._pipeline_cache.move_to_end(cache_key)
+                while len(self._pipeline_cache) > self._pipeline_cache_max:
+                    self._pipeline_cache.popitem(last=False)
             return config_data
 
         return None
 
     def translate(self, text: str, source_lang: str, target_lang: str) -> str:
-        """Translates text from source_lang to target_lang via Bhashini NMT."""
+        """Translates text using this provider instance's Bhashini NMT credentials, with Gemini fallback."""
+        if not text or not text.strip():
+            return text
+        src = (source_lang or "en").strip().lower().split("-")[0]
+        tgt = (target_lang or "en").strip().lower().split("-")[0]
+        if src == "od":
+            src = "or"
+        if tgt == "od":
+            tgt = "or"
+        if src == tgt:
+            return text
+
+        if self.is_configured:
+            config = self._get_pipeline_config("translation", src, tgt)
+            if config:
+                headers = {
+                    config.get("auth_name", "Authorization"): config.get("auth_value", ""),
+                    "Content-Type": "application/json",
+                }
+                payload = {
+                    "pipelineTasks": [
+                        {
+                            "taskType": "translation",
+                            "config": {
+                                "language": {"sourceLanguage": src, "targetLanguage": tgt},
+                                "serviceId": config["service_id"],
+                            },
+                        }
+                    ],
+                    "inputData": {"input": [{"source": text}]},
+                }
+                try:
+                    with httpx.Client(timeout=self.timeout_sec) as client:
+                        resp = client.post(config["callback_url"], headers=headers, json=payload)
+                        if resp.status_code == 200:
+                            pipeline_res = resp.json().get("pipelineResponse", [])
+                            if pipeline_res and isinstance(pipeline_res[0], dict):
+                                outputs = pipeline_res[0].get("output") or []
+                                if outputs and isinstance(outputs[0], dict):
+                                    translated = outputs[0].get("target")
+                                    if isinstance(translated, str) and translated.strip():
+                                        record("bhashini_translation", success=True, http_status=200)
+                                        return translated.strip()
+                        record("bhashini_translation", success=False, http_status=resp.status_code, reason="UPSTREAM_HTTP_ERROR")
+                except Exception as err:
+                    record("bhashini_translation", success=False, reason=type(err).__name__)
+
         from app.services.bhashini import bhashini_service
-        return bhashini_service.translate(text, source_lang=source_lang, target_lang=target_lang)
+        gemini_result = bhashini_service._translate_with_gemini(text, src, tgt)
+        if gemini_result:
+            return gemini_result
+        raise ProviderUnavailable("TRANSLATION_UNAVAILABLE")
 
     def detect_language(self, text: str) -> str:
         """Detects Indian regional language or English from text using script analysis."""
@@ -209,6 +277,8 @@ class BhashiniLanguageProvider(LanguageProvider):
         lang = (language_code or "en").lower().split("-")[0]
         if lang == "auto":
             lang = "hi"  # Default Indic speech recognition anchor for auto-detect
+        elif lang == "od":
+            lang = "or"
 
         if not self.is_configured:
             record("bhashini_stt", success=False, reason="NOT_CONFIGURED")
@@ -287,8 +357,11 @@ class BhashiniLanguageProvider(LanguageProvider):
                     pipeline_res = data.get("pipelineResponse", [])
                     if pipeline_res and "output" in pipeline_res[0]:
                         outputs = pipeline_res[0]["output"]
-                        if outputs:
-                            transcript = outputs[0].get("source", outputs[0].get("text", "")).strip()
+                        if outputs and isinstance(outputs[0], dict):
+                            raw_txt = outputs[0].get("source")
+                            if raw_txt is None:
+                                raw_txt = outputs[0].get("text")
+                            transcript = raw_txt.strip() if isinstance(raw_txt, str) else ""
                             record("bhashini_stt", success=bool(transcript), http_status=200)
                             return {
                                 "transcript": transcript,
@@ -328,7 +401,10 @@ class BhashiniLanguageProvider(LanguageProvider):
         Synthesizes Indian regional voice audio using Bhashini TTS.
         """
         lang = (language_code or "en").lower().split("-")[0]
-        gender = speaker.lower() if speaker in ("male", "female") else DEFAULT_TTS_VOICES.get(lang, "female")
+        if lang == "od":
+            lang = "or"
+        speaker_norm = speaker.strip().lower() if isinstance(speaker, str) else ""
+        gender = speaker_norm if speaker_norm in ("male", "female") else DEFAULT_TTS_VOICES.get(lang, "female")
 
         if not self.is_configured:
             record("bhashini_tts", success=False, reason="NOT_CONFIGURED")
@@ -396,18 +472,19 @@ class BhashiniLanguageProvider(LanguageProvider):
                     pipeline_res = data.get("pipelineResponse", [])
                     if pipeline_res and "audio" in pipeline_res[0]:
                         audio_list = pipeline_res[0]["audio"]
-                        if audio_list and "audioContent" in audio_list[0]:
-                            audio_b64 = audio_list[0]["audioContent"]
-                            record("bhashini_tts", success=True, http_status=200)
-                            return {
-                                "audio_base64": audio_b64,
-                                "audio_format": "wav",
-                                "sample_rate": 8000,
-                                "speaker": gender,
-                                "language_code": f"{lang}-IN",
-                                "source": "bhashini_tts",
-                                "is_mock": False,
-                            }
+                        if audio_list and isinstance(audio_list[0], dict):
+                            audio_b64 = audio_list[0].get("audioContent")
+                            if isinstance(audio_b64, str) and audio_b64.strip():
+                                record("bhashini_tts", success=True, http_status=200)
+                                return {
+                                    "audio_base64": audio_b64,
+                                    "audio_format": "wav",
+                                    "sample_rate": 8000,
+                                    "speaker": gender,
+                                    "language_code": f"{lang}-IN",
+                                    "source": "bhashini_tts",
+                                    "is_mock": False,
+                                }
                 record("bhashini_tts", success=False, http_status=resp.status_code)
                 return {
                     "audio_base64": None,

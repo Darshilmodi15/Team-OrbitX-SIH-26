@@ -70,8 +70,14 @@ const COASTLINE: Coords[] = [
   { lat: 19.3, lon: 85.0 }, { lat: 19.8, lon: 85.83 },
   { lat: 20.3, lon: 86.6 }, { lat: 21.0, lon: 86.9 },
   { lat: 21.6, lon: 87.5 }, { lat: 21.8, lon: 88.3 },
-  { lat: 21.6, lon: 89.0 }, { lat: 11.66, lon: 92.75 },
-  { lat: 10.57, lon: 72.64 },
+  { lat: 21.6, lon: 89.0 },
+  // Andaman & Nicobar Islands
+  { lat: 13.25, lon: 93.00 }, { lat: 12.92, lon: 92.90 }, { lat: 12.00, lon: 92.95 },
+  { lat: 11.66, lon: 92.75 }, { lat: 10.60, lon: 92.54 }, { lat: 9.15, lon: 92.78 },
+  { lat: 8.03, lon: 93.53 }, { lat: 7.00, lon: 93.85 },
+  // Lakshadweep Islands
+  { lat: 10.85, lon: 72.18 }, { lat: 10.80, lon: 73.68 }, { lat: 10.57, lon: 72.64 },
+  { lat: 8.29, lon: 73.04 },
 ];
 
 export function haversineKm(a: Coords, b: Coords): number {
@@ -80,8 +86,10 @@ export function haversineKm(a: Coords, b: Coords): number {
   const dLon = ((b.lon - a.lon) * Math.PI) / 180;
   const la1 = (a.lat * Math.PI) / 180;
   const la2 = (b.lat * Math.PI) / 180;
-  const h =
-    Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLon / 2) ** 2;
+  const h = Math.min(
+    1,
+    Math.max(0, Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLon / 2) ** 2),
+  );
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
@@ -139,6 +147,7 @@ export function nearestCoastPoint(c: Coords): Coords {
 }
 
 export function formatCoords(c: Coords): string {
+  if (!Number.isFinite(c.lat) || !Number.isFinite(c.lon)) return "Location unavailable";
   const ns = c.lat >= 0 ? "N" : "S";
   const ew = c.lon >= 0 ? "E" : "W";
   return `${Math.abs(c.lat).toFixed(4)}\u00b0 ${ns}, ${Math.abs(c.lon).toFixed(4)}\u00b0 ${ew}`;

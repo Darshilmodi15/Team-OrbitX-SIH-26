@@ -14,7 +14,10 @@ const DEFAULT_TITLE = "ORCA Marine AI — Autonomous Ocean Intelligence & Decisi
 const DEFAULT_DESCRIPTION =
   "Agentic AI-powered conversational marine platform integrating satellite Earth Observation, PFZ discovery, safe route navigation, and IMBL geofencing for SIH 2026.";
 const DEFAULT_IMAGE = "/og-image.png";
-const BASE_URL = import.meta.env.VITE_PUBLIC_SITE_URL || window.location.origin;
+const RAW_BASE_URL =
+  import.meta.env.VITE_PUBLIC_SITE_URL ||
+  (typeof window !== "undefined" ? window.location.origin : "");
+const BASE_URL = RAW_BASE_URL.replace(/\/+$/, "");
 
 export function SEO({
   title,
@@ -33,7 +36,9 @@ export function SEO({
         : `${title} | ORCA Marine AI`
       : DEFAULT_TITLE;
     const finalDesc = description || DEFAULT_DESCRIPTION;
-    const finalImage = image || DEFAULT_IMAGE;
+    const rawImage = image || DEFAULT_IMAGE;
+    const finalImage =
+      rawImage.startsWith("/") && BASE_URL ? `${BASE_URL}${rawImage}` : rawImage;
     const finalCanonical = canonical || `${BASE_URL}${location.pathname}`;
 
     // Update document title

@@ -39,6 +39,7 @@ export default function LocationPage() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PlaceResult[]>([]);
   const abort = useRef<AbortController | null>(null);
+  const manualLabelRef = useRef(false);
   const [searchState, setSearchState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeResult, setActiveResult] = useState(-1);
@@ -55,6 +56,7 @@ export default function LocationPage() {
   function choose(next: Coords) {
     if (busy) return;
     closeSearch();
+    manualLabelRef.current = false;
     setSelected(true); setSource("manual"); setAccuracy(undefined); setLabel(null); setCoords(next); setNotice(null);
   }
   function enterCoordinates(event: React.FormEvent) {
@@ -65,10 +67,10 @@ export default function LocationPage() {
   }
 
   useEffect(() => {
-    if (!selected) return;
+    if (!selected || manualLabelRef.current) return;
     let cancelled = false;
     reverseLabel({ lat: coords.lat, lon: coords.lon }).then((l) => {
-      if (!cancelled && l) setLabel(l);
+      if (!cancelled && !manualLabelRef.current && l) setLabel(l);
     });
     return () => {
       cancelled = true;
@@ -84,6 +86,7 @@ export default function LocationPage() {
       (pos) => {
         setBusy(false);
         setNotice(null);
+        manualLabelRef.current = false;
         setSelected(true); setSource("gps"); setAccuracy(pos.coords.accuracy);
         setLabel(null); setCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
       },
@@ -116,7 +119,8 @@ export default function LocationPage() {
   function selectResult(result: PlaceResult) {
     choose(result.coords);
     const name = [result.name, result.admin].filter(Boolean).join(", ");
-    setLabel(name);
+    manualLabelRef.current = true;
+    setLabel(name || formatCoords(result.coords));
     setQuery(name);
     setResults([]);
   }
@@ -127,7 +131,7 @@ export default function LocationPage() {
     setBusy(true);
     try {
       const validated = await saveSelectedLocation(coords.lat, coords.lon, source === "gps" ? accuracy : undefined);
-      if (!validated.is_coastal_supported) { setNotice(t("loc.inland")); return; }
+      if (!validated.is_coastal_supported) { setNotice(check.area === "outside-india" ? t("loc.outsideIndia") : t("loc.inland")); return; }
     setLocation({
       coords,
       label: label ?? formatCoords(coords),
@@ -137,7 +141,7 @@ export default function LocationPage() {
       source,
     });
     const from = route.state?.from;
-    navigate((["/dashboard", "/map", "/assistant", "/alerts", "/services"].includes(from) || /^\/assistant\/c\/[0-9a-f-]{36}$/i.test(from)) ? from : "/dashboard", { replace: true });
+    navigate((["/dashboard", "/map", "/assistant", "/alerts", "/services", "/operations", "/settings"].includes(from) || /^\/assistant\/c\/[0-9a-f-]{36}$/i.test(from)) ? from : "/dashboard", { replace: true });
     } catch { setNotice(t("state.error")); } finally { setBusy(false); }
   }
 
@@ -155,7 +159,7 @@ export default function LocationPage() {
           </div>
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/dashboard", { replace: true }))}
             className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted cursor-pointer shadow-xs"
           >
             <ArrowLeft className="size-3.5" />
@@ -181,7 +185,7 @@ export default function LocationPage() {
         <form onSubmit={(event) => { event.preventDefault(); if (query.trim().length >= 3) { abort.current?.abort(); setResults([]); setActiveResult(-1); setSearchState("loading"); setSearchOpen(true); setSearchAttempt(n => n + 1); } }} className="flex gap-2">
           <input
             id="place-search" value={query} disabled={busy} autoComplete="off"
-            onChange={(event) => { abort.current?.abort(); setQuery(event.target.value); setResults([]); setActiveResult(-1); setSearchState(event.target.value.trim().length >= 3 ? "loading" : "idle"); setSearchOpen(true); }}
+            onChange={(event) => { abort.current?.abort(); const val = event.target.value; setQuery(val); setResults([]); setActiveResult(-1); const longEnough = val.trim().length >= 3; setSearchState(longEnough ? "loading" : "idle"); setSearchOpen(longEnough); }}
             onFocus={() => { if (query.trim().length >= 3) { setSearchOpen(true); setSearchState("loading"); } }}
             onKeyDown={(event) => {
               if (event.key === "Escape") { event.preventDefault(); closeSearch(); }

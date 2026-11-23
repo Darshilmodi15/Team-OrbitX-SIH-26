@@ -40,6 +40,8 @@ Respond ONLY with valid JSON in the form:
 {"intent": "<type>", "location_hint": "<location or null>", "time_hint": "<time or null>", "simulation_delta_wave": null, "simulation_delta_wind": null}"""
 
 VALID_INTENTS = {
+    "emergency_sos",
+    "government_schemes",
     "combined_pfz_safety",
     "safe_route",
     "what_if_simulation",
@@ -116,8 +118,22 @@ COASTAL_PORT_COORDS: Dict[str, Dict[str, Any]] = {
 }
 
 
+def _has_any_term(text: str, terms: List[str]) -> bool:
+    return any(re.search(rf"(?<!\w){re.escape(term)}(?!\w)", text) for term in terms)
+
+
+def _resolve_location_coords(location_hint: Optional[str]) -> Optional[Dict[str, float]]:
+    if not location_hint:
+        return None
+    low = location_hint.lower()
+    for port_key, info in COASTAL_PORT_COORDS.items():
+        if re.search(rf"\b{re.escape(port_key)}\b", low):
+            return {"lat": info["lat"], "lon": info["lon"]}
+    return None
+
+
 def _extract_entities_heuristically(question: str) -> Dict[str, Any]:
-    """Extracts location hints, coordinates, simulation deltas, and time hints."""
+    """Extracts location hints, coordinates, simulation deltas/targets, and time hints."""
     q_lower = question.lower()
     location_hint = None
     resolved_coords = None
@@ -128,39 +144,63 @@ def _extract_entities_heuristically(question: str) -> Dict[str, Any]:
             resolved_coords = {"lat": info["lat"], "lon": info["lon"]}
             break
 
-    # Time hint
+    # Time hint (word-boundary aware so 'kal' never matches 'sakal' or 'kerala')
     time_hint = None
-    if "tomorrow morning" in q_lower or "kale savare" in q_lower or "kal subah" in q_lower or "sakal" in q_lower:
+    if _has_any_term(q_lower, ["tomorrow morning", "kale savare", "kal subah", "udya sakali"]):
         time_hint = "tomorrow morning"
-    elif "tomorrow evening" in q_lower or "kale saanje" in q_lower or "kal shaam" in q_lower:
+    elif _has_any_term(q_lower, ["tomorrow evening", "kale saanje", "kal shaam", "udya sandhyakali"]):
         time_hint = "tomorrow evening"
-    elif any(k in q_lower for k in ["tomorrow", "kale", "kal", "udya", "naalai", "repu", "naale", "kali", "kaale", "aavtikaale"]):
+    elif _has_any_term(q_lower, ["tomorrow", "kale", "kal", "udya", "naalai", "repu", "naale", "kali", "kaale", "aavtikaale"]):
         time_hint = "tomorrow"
-    elif "this afternoon" in q_lower or "afternoon" in q_lower or "bapore" in q_lower or "dopahar" in q_lower:
+    elif _has_any_term(q_lower, ["today morning", "this morning", "aaje savare", "aaj subah", "aaj sakali", "sakal", "sakali"]):
+        time_hint = "today morning"
+    elif _has_any_term(q_lower, ["this afternoon", "afternoon", "bapore", "dopahar"]):
         time_hint = "afternoon"
-    elif "tonight" in q_lower or "aaje raatre" in q_lower or "aaj raat" in q_lower:
+    elif _has_any_term(q_lower, ["tonight", "aaje raatre", "aaj raat"]):
         time_hint = "tonight"
-    elif any(k in q_lower for k in ["today", "aaje", "aaj", "aaji", "innaiku", "ee roju", "innu"]):
+    elif _has_any_term(q_lower, ["today", "aaje", "aaj", "aaji", "innaiku", "ee roju", "innu"]):
         time_hint = "today"
 
-    # Simulation delta extraction
+    # Simulation target & delta extraction (with unit conversion to km/h for wind)
     sim_delta_wave = None
+    sim_target_wave = None
     sim_delta_wind = None
+    sim_target_wind = None
 
-    wave_match = re.search(r"(?:wave|swell).*?(?:increase|higher|rise|by|to)\s*([0-9]+(?:\.[0-9]+)?)\s*(?:m|meter|metre)", q_lower)
+    wave_match = re.search(
+        r"(?:wave|swell).*?\b(to|becomes?|reach(?:es)?|at|by|increase[sd]?|rise[sn]?|higher)\s*(?:by\s*)?([0-9]+(?:\.[0-9]+)?)\s*(?:m|meter|metre)s?",
+        q_lower,
+    )
     if wave_match:
-        sim_delta_wave = float(wave_match.group(1))
+        prep, val = wave_match.group(1), float(wave_match.group(2))
+        if prep in {"to", "become", "becomes", "reach", "reaches", "at"}:
+            sim_target_wave = val
+        else:
+            sim_delta_wave = val
 
-    wind_match = re.search(r"(?:wind).*?(?:increase|higher|become|by|to)\s*([0-9]+(?:\.[0-9]+)?)\s*(?:km/h|kmh|knots|m/s)?", q_lower)
+    wind_match = re.search(
+        r"(?:wind).*?\b(to|becomes?|reach(?:es)?|at|by|increase[sd]?|rise[sn]?|higher)\s*(?:by\s*)?([0-9]+(?:\.[0-9]+)?)\s*(km/h|kmh|knots?|kts?|m/s)?",
+        q_lower,
+    )
     if wind_match:
-        sim_delta_wind = float(wind_match.group(1))
+        prep, val, unit = wind_match.group(1), float(wind_match.group(2)), (wind_match.group(3) or "km/h")
+        if unit.startswith("knot") or unit.startswith("kt"):
+            val = round(val * 1.852, 1)
+        elif unit == "m/s":
+            val = round(val * 3.6, 1)
+        if prep in {"to", "become", "becomes", "reach", "reaches", "at"}:
+            sim_target_wind = val
+        else:
+            sim_delta_wind = val
 
     return {
         "location_hint": location_hint,
         "resolved_coords": resolved_coords,
         "time_hint": time_hint,
         "simulation_delta_wave": sim_delta_wave,
+        "simulation_target_wave": sim_target_wave,
         "simulation_delta_wind": sim_delta_wind,
+        "simulation_target_wind": sim_target_wind,
     }
 
 
@@ -235,7 +275,7 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
     # 7. Combined PFZ + Safety / Killer demo intent
     # Do not treat the generic word "fish" as a PFZ request; it appears in ordinary safety questions.
     has_pfz = any(k in q_lower for k in ["pfz", "fishing zone", "fish zone", "fishing spot", "fishing spots", "nearest fish", "machhimari zone", "machhli zone", "meen zone", "chepalu zone", "matsyam zone", "machha zone"])
-    has_safety_or_route = any(k in q_lower for k in ["safe", "safety", "route", "tomorrow", "weather", "suitable", "kale", "kal", "udya", "naalai", "repu"])
+    has_safety_or_route = _has_any_term(q_lower, ["safe", "safety", "route", "tomorrow", "weather", "suitable", "kale", "kal", "udya", "naalai", "repu"])
     has_explicit_route = any(k in q_lower for k in ["route", "safest route", "navigation corridor", "how to reach", "path", "rasto"])
 
     if has_pfz and has_safety_or_route and has_explicit_route:
@@ -243,7 +283,7 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
             "intent": "combined_pfz_safety",
             **entities,
         }
-    if has_pfz and ("safe" in q_lower or "safety" in q_lower or "tomorrow" in q_lower or "suitable" in q_lower or "kale" in q_lower or "kal" in q_lower or "aaje" in q_lower):
+    if has_pfz and _has_any_term(q_lower, ["safe", "safety", "tomorrow", "suitable", "kale", "kal", "aaje"]):
         return {
             "intent": "combined_pfz_safety",
             **entities,
@@ -310,12 +350,12 @@ def _fallback_intent(question: str) -> Dict[str, Any]:
         }
 
     # 14. Weather & Tide Conditions
-    if any(k in q_lower for k in [
+    if _has_any_term(q_lower, [
         "weather", "wind", "winds", "wave", "waves", "wave height", "wind speed", "wind direction",
         "forecast", "temp", "temperature", "rain", "storm", "sea condition", "swell", "sea state",
         "tide", "tides", "high tide", "low tide", "tidal", "what are the waves",
         "havaman", "mausam", "hawaaman", "panipaga", "abohawa", "pavan", "hawa", "vara", "kaatru",
-        "gali", "kaattu", "moja", "moju", "lat", "lata", "alai", "alalu", "thiramala", "dheu"
+        "gali", "kaattu", "moja", "moju", "lata", "alai", "alalu", "thiramala", "dheu"
     ]):
         return {
             "intent": "weather_conditions",
@@ -380,6 +420,7 @@ def parse_intent(question: str, history: Optional[List[Dict[str, str]]] = None) 
     # 1. Fast, reliable heuristic intent classification (0.001s response time)
     heuristic_res = _fallback_intent(question)
     if heuristic_res["intent"] != "general":
+        heuristic_res.update({k: v for k, v in entities.items() if v is not None})
         return heuristic_res
 
     # 2. Ambiguous query: consult Gemini with fast timeout
@@ -405,13 +446,17 @@ def parse_intent(question: str, history: Optional[List[Dict[str, str]]] = None) 
                     intent = data.get("intent", "general")
                     if intent not in VALID_INTENTS:
                         intent = "general"
+                    loc_hint = data.get("location_hint") or entities["location_hint"]
+                    coords = entities["resolved_coords"] or _resolve_location_coords(loc_hint)
                     return {
                         "intent": intent,
-                        "location_hint": data.get("location_hint") or entities["location_hint"],
-                        "resolved_coords": entities["resolved_coords"],
+                        "location_hint": loc_hint,
+                        "resolved_coords": coords,
                         "time_hint": data.get("time_hint") or entities["time_hint"],
                         "simulation_delta_wave": data.get("simulation_delta_wave") or entities["simulation_delta_wave"],
+                        "simulation_target_wave": entities.get("simulation_target_wave"),
                         "simulation_delta_wind": data.get("simulation_delta_wind") or entities["simulation_delta_wind"],
+                        "simulation_target_wind": entities.get("simulation_target_wind"),
                     }
                 except Exception as exc:
                     if getattr(exc, "code", None) in (401, 403, 429):
@@ -420,4 +465,5 @@ def parse_intent(question: str, history: Optional[List[Dict[str, str]]] = None) 
         except Exception:
             pass
 
+    heuristic_res.update({k: v for k, v in entities.items() if v is not None})
     return heuristic_res

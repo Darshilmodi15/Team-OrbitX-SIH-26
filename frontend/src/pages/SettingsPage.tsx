@@ -19,7 +19,9 @@ function DeviceIcon({ name }: { name: string }) {
 
 function timeAgo(iso: string | null): string {
   if (!iso) return "—";
-  const diff = Date.now() - new Date(iso).getTime();
+  const ts = Date.parse(iso);
+  if (!Number.isFinite(ts)) return "—";
+  const diff = Math.max(0, Date.now() - ts);
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return "Just now";
   if (mins < 60) return `${mins}m ago`;
@@ -34,22 +36,31 @@ export default function SettingsPage() {
 
   const [sessions, setSessions] = useState<DeviceSessionInfo[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [sessionsError, setSessionsError] = useState(false);
+  const [revokeError, setRevokeError] = useState<string | null>(null);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
+  const [revision, setRevision] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
+    setSessionsLoading(true);
+    setSessionsError(false);
     fetchActiveSessions()
-      .then(setSessions)
-      .catch(() => setSessions([]))
-      .finally(() => setSessionsLoading(false));
-  }, []);
+      .then((rows) => { if (!cancelled) setSessions(rows); })
+      .catch(() => { if (!cancelled) { setSessions([]); setSessionsError(true); } })
+      .finally(() => { if (!cancelled) setSessionsLoading(false); });
+    return () => { cancelled = true; };
+  }, [revision]);
 
   async function handleRevoke(id: string) {
     setRevokingId(id);
+    setRevokeError(null);
     try {
       await revokeSessionById(id);
       setSessions((prev) => prev.filter((s) => s.id !== id));
     } catch {
-      /* silently fail */
+      setRevokeError(t("state.error"));
     } finally {
       setRevokingId(null);
     }
@@ -103,10 +114,18 @@ export default function SettingsPage() {
           Devices currently signed into your account. You can revoke access to any session.
         </p>
 
+        {revokeError && <p role="alert" className="mt-3 text-xs text-rose-400">{revokeError}</p>}
         {sessionsLoading ? (
           <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
             <Loader2 className="size-3.5 animate-spin" />
-            <span>Loading sessions...</span>
+            <span>{t("state.loading")}</span>
+          </div>
+        ) : sessionsError ? (
+          <div className="mt-3 flex items-center gap-3 text-xs">
+            <span role="alert" className="text-rose-400">{t("state.error")}</span>
+            <button type="button" onClick={() => setRevision((r) => r + 1)} className="rounded border border-border px-2 py-1 hover:bg-muted">
+              {t("cta.retry")}
+            </button>
           </div>
         ) : sessions.length === 0 ? (
           <p className="mt-3 text-xs text-muted-foreground italic">No active sessions found.</p>
@@ -167,9 +186,11 @@ export default function SettingsPage() {
         <h2 className="text-sm font-semibold text-foreground">{user?.name || user?.contact || t("auth.title")}</h2>
 
         <button
-          className="mt-3 inline-flex min-h-11 cursor-pointer items-center justify-center rounded-md border border-border bg-card px-4 text-sm font-semibold text-foreground transition hover:bg-muted shadow-xs"
+          className="mt-3 inline-flex min-h-11 cursor-pointer items-center justify-center rounded-md border border-border bg-card px-4 text-sm font-semibold text-foreground transition hover:bg-muted shadow-xs disabled:opacity-50"
+          disabled={signingOut}
           onClick={() => {
-            void signOut("/");
+            setSigningOut(true);
+            void signOut("/").finally(() => setSigningOut(false));
           }}
         >
           {t("cta.signOut")}

@@ -286,6 +286,7 @@ def evaluate_zone_avoidance(
 
     # 3. Categorize Candidate PFZs
     if candidate_pfz:
+        from app.data.geofence import evaluate_vessel_geofences
         for p in candidate_pfz:
             is_avoided = False
             avoid_reason = ""
@@ -293,15 +294,25 @@ def evaluate_zone_avoidance(
             if wave_h is not None and wave_h > 2.5:
                 is_avoided = True
                 avoid_reason = f"Wave height ({wave_h:.2f}m) exceeds safe limit for transit to {p.name}."
-            
-            # Check distance to restricted geofences if in Palk Bay or Kutch
-            if geofences:
-                for g in geofences:
-                    if g.category == "IMBL" and g.distance_to_vessel_km is not None and g.distance_to_vessel_km < 12.0:
-                        if "palk" in g.name.lower() or "sri lanka" in g.name.lower() or "pakistan" in g.name.lower():
-                            is_avoided = True
-                            avoid_reason = f"Zone lies in close proximity to {g.name}. Restricted boundary risk."
-                            break
+            elif wind_spd is not None and wind_spd > 45.0:
+                is_avoided = True
+                avoid_reason = f"Gale wind speed ({wind_spd:.1f} km/h) exceeds safe limit for transit to {p.name}."
+
+            # Evaluate geofences directly at candidate PFZ coordinates across IMBL/MPA/SECURITY
+            pfz_geofences = geofences or []
+            try:
+                if isinstance(p.latitude, (int, float)) and isinstance(p.longitude, (int, float)):
+                    pfz_geofences = evaluate_vessel_geofences(p.latitude, p.longitude)
+            except Exception:
+                pass
+            if not is_avoided and pfz_geofences:
+                for g in pfz_geofences:
+                    if g.category in {"IMBL", "MPA", "SECURITY"} and (
+                        g.is_inside or (g.distance_to_vessel_km is not None and g.distance_to_vessel_km < 12.0)
+                    ):
+                        is_avoided = True
+                        avoid_reason = f"Zone lies inside or within 12 km of {g.name} ({g.category}). Restricted boundary risk."
+                        break
 
             if is_avoided:
                 avoid_items.append(

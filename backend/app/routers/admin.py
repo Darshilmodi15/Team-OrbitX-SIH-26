@@ -53,9 +53,9 @@ def update_user_role(user_id: str, request: UpdateRoleRequest, _user: UserProfil
 
 @router.get("/api/marine/historical-comparison", response_model=HistoricalMarineComparison)
 def get_historical_marine_comparison(
-    lat: float = Query(18.9220, description="Latitude"),
-    lon: float = Query(72.8347, description="Longitude"),
-    period_hours: int = Query(24, description="Comparison window in hours (24 or 168)"),
+    lat: float = Query(18.9220, ge=-90, le=90, allow_inf_nan=False, description="Latitude"),
+    lon: float = Query(72.8347, ge=-180, le=180, allow_inf_nan=False, description="Longitude"),
+    period_hours: int = Query(24, ge=1, le=720, description="Comparison window in hours (1 to 720)"),
 ):
     """
     Returns Before-vs-After oceanographic comparison metrics and trend diagnosis.

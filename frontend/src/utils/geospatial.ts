@@ -112,8 +112,18 @@ export const INDIA_COASTLINE_POINTS: CoastalPoint[] = [
   { lat: 21.7500, lon: 88.8500, name: 'Sundarbans Marine Sector', region: 'West Bengal' },
 
   // ISLANDS
+  { lat: 13.2500, lon: 93.0000, name: 'Diglipur Coast', region: 'Andaman & Nicobar Islands' },
+  { lat: 12.9200, lon: 92.9000, name: 'Mayabunder Harbor', region: 'Andaman & Nicobar Islands' },
+  { lat: 12.0000, lon: 92.9500, name: 'Havelock (Swaraj Dweep)', region: 'Andaman & Nicobar Islands' },
   { lat: 11.6234, lon: 92.7265, name: 'Port Blair Harbor', region: 'Andaman & Nicobar Islands' },
+  { lat: 10.6000, lon: 92.5400, name: 'Little Andaman / Hut Bay', region: 'Andaman & Nicobar Islands' },
+  { lat: 9.1500, lon: 92.7800, name: 'Car Nicobar Coast', region: 'Andaman & Nicobar Islands' },
+  { lat: 8.0300, lon: 93.5300, name: 'Nancowry / Kamorta Harbor', region: 'Andaman & Nicobar Islands' },
+  { lat: 7.0000, lon: 93.8500, name: 'Campbell Bay / Great Nicobar', region: 'Andaman & Nicobar Islands' },
+  { lat: 10.8500, lon: 72.1800, name: 'Agatti Island', region: 'Lakshadweep' },
+  { lat: 10.8000, lon: 73.6800, name: 'Andrott Island', region: 'Lakshadweep' },
   { lat: 10.5667, lon: 72.6417, name: 'Kavaratti Island', region: 'Lakshadweep' },
+  { lat: 8.2900, lon: 73.0400, name: 'Minicoy Island', region: 'Lakshadweep' },
 ];
 
 /**
@@ -130,9 +140,10 @@ export function calculateHaversineDistance(
   const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
   const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
 
-  const a =
+  const rawA =
     Math.sin(deltaPhi / 2.0) ** 2 +
     Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2.0) ** 2;
+  const a = Math.min(1.0, Math.max(0.0, rawA));
   const c = 2.0 * Math.atan2(Math.sqrt(a), Math.sqrt(1.0 - a));
   return EARTH_RADIUS_KM * c;
 }
@@ -156,6 +167,15 @@ export function computeCoastDistance(
   lon: number,
   thresholdKm = 100.0
 ): CoastDistanceResult {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    return {
+      distanceKm: Infinity,
+      nearestPoint: INDIA_COASTLINE_POINTS[0],
+      isCoastalSupported: false,
+      isFarFromCoast: true,
+      coastalRegion: INDIA_COASTLINE_POINTS[0].region,
+    };
+  }
   let minDistance = Infinity;
   let nearest = INDIA_COASTLINE_POINTS[0];
 

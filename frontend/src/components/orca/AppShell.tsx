@@ -72,7 +72,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="flex shrink-0 items-center gap-1.5">
-            {user?.role !== "user" && <span className="hidden rounded-full border border-teal-500/30 bg-teal-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-teal-300 sm:inline">
+            {user && user.role !== "user" && <span className="hidden rounded-full border border-teal-500/30 bg-teal-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-teal-300 sm:inline">
               {t(user?.role === "government" ? "ops.officer" : user?.role === "admin" ? "ops.admin" : "nav.dashboard")}
             </span>}
             <LanguageMenu />

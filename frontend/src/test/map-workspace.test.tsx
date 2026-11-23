@@ -123,3 +123,18 @@ it("unmounts tiles when switching to text and keeps just one disclosure in compa
     0,
   );
 });
+
+it("avoids Invalid Date when retrieved_at is malformed and renders Ask ORCA link outside router", () => {
+  localStorage.setItem("orca.map.mode", "text");
+  const badStampSnapshot = {
+    ...snapshot,
+    provenance: { ...snapshot.provenance, retrieved_at: "not-a-timestamp" },
+  };
+  render(
+    <I18nProvider>
+      <MapPanel center={snapshot.location} snapshot={badStampSnapshot} full />
+    </I18nProvider>,
+  );
+  expect(screen.queryByText(/Invalid Date/)).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /Ask ORCA/i })).toHaveAttribute("href", expect.stringContaining("/assistant"));
+});

@@ -90,7 +90,11 @@ export function VoiceControls(props: Props) {
     generation.current++;
     if (recorder.current) {
       recorder.current.onstop = null;
-      if (recorder.current.state !== "inactive") recorder.current.stop();
+      try {
+        if (recorder.current.state !== "inactive") recorder.current.stop();
+      } catch {
+        /* Recorder may already have stopped. */
+      }
     }
     recorder.current = null;
     releaseCapture();
@@ -155,10 +159,13 @@ export function VoiceControls(props: Props) {
     };
   }, [mode, phase === "idle"]);
   async function speak(text: string, language: string, version: number) {
-    const chunks =
+    const chunks = (
       text
-        .replace(/[*#_`]/g, "")
-        .match(/[\s\S]{1,850}(?:\s|$)|[\s\S]{1,850}/g) || [];
+        .replace(/[*#_`]/g, " ")
+        .match(/[\s\S]{1,850}(?:\s|$)|[\s\S]{1,850}/g) || []
+    )
+      .map((chunk) => chunk.trim())
+      .filter(Boolean);
     for (const chunk of chunks) {
       if (version !== generation.current) return;
       const result = await synthesizeVoiceAudio(chunk, language);
@@ -221,8 +228,11 @@ export function VoiceControls(props: Props) {
         setPhase("transcribing");
         setLevel(0);
         try {
+          if (!chunks.length) throw new Error("EMPTY_RECORDING");
           const wav = await speechWav(
-            new Blob(chunks, { type: capture.mimeType }),
+            new Blob(chunks, {
+              type: capture.mimeType || mimeType || "audio/webm",
+            }),
           );
           if (version !== generation.current) return;
           const result = await transcribeVoiceAudio(wav, current.current.lang);

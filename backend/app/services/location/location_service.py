@@ -4,7 +4,10 @@ Unified Location Service for ORCA Marine AI.
 Coordinates GPS validation, India territorial compliance, coastal proximity,
 and rejects unsupported inland or international locations with actionable guidance.
 """
+from collections import OrderedDict
 import logging
+import math
+import threading
 from typing import Any, Dict, Optional
 
 from fastapi import HTTPException
@@ -17,8 +20,10 @@ logger = logging.getLogger(__name__)
 class LocationService:
     """Core Location & Boundary Validation Service."""
 
-    def __init__(self):
-        self._current_locations: Dict[str, Dict[str, Any]] = {}
+    def __init__(self, max_cached_users: int = 2000):
+        self._current_locations: OrderedDict = OrderedDict()
+        self._max_cached_users = max_cached_users
+        self._lock = threading.Lock()
 
     def validate_location(
         self,
@@ -30,6 +35,17 @@ class LocationService:
         """
         Validates user coordinates against India sovereign limits and coastal intelligence belt.
         """
+        if (
+            not isinstance(lat, (int, float))
+            or isinstance(lat, bool)
+            or not isinstance(lon, (int, float))
+            or isinstance(lon, bool)
+            or not math.isfinite(lat)
+            or not math.isfinite(lon)
+            or not (-90.0 <= lat <= 90.0)
+            or not (-180.0 <= lon <= 180.0)
+        ):
+            raise HTTPException(status_code=422, detail="INVALID_COORDINATES")
         inside_india = coastal_distance_service.is_inside_india_envelope(lat, lon)
         coastal_info = coastal_distance_service.calculate_coastal_distance(lat, lon)
         distance_km = coastal_info["distance_to_coast_km"]
@@ -89,12 +105,17 @@ class LocationService:
             except Exception as exc:
                 logger.warning("Location persistence failed: %s", type(exc).__name__)
                 raise HTTPException(status_code=503, detail="LOCATION_SAVE_FAILED") from exc
-            self._current_locations[user_id] = result.model_dump()
+            with self._lock:
+                self._current_locations[user_id] = result.model_dump()
+                self._current_locations.move_to_end(user_id)
+                while len(self._current_locations) > self._max_cached_users:
+                    self._current_locations.popitem(last=False)
 
         return result
 
     def get_user_location(self, user_id: str) -> Optional[Dict[str, Any]]:
-        return self._current_locations.get(user_id)
+        with self._lock:
+            return self._current_locations.get(user_id)
 
 
 location_service = LocationService()

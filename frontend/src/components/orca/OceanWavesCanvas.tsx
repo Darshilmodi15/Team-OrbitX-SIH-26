@@ -61,6 +61,8 @@ export const OceanWavesCanvas: React.FC<OceanWavesCanvasProps> = ({
     const particleCount = 45;
     const particles: WaveCurrentParticle[] = [];
 
+    const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
+
     function resize() {
       if (!canvas || !containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
@@ -73,10 +75,10 @@ export const OceanWavesCanvas: React.FC<OceanWavesCanvasProps> = ({
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
 
-      ctx?.scale(dpr, dpr);
+      ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      // Re-initialize particles across width
-      if (particles.length === 0) {
+      // Initialize particles only after container has non-zero dimensions
+      if (particles.length === 0 && width > 0 && height > 0) {
         for (let i = 0; i < particleCount; i++) {
           particles.push({
             x: Math.random() * width,
@@ -173,7 +175,11 @@ export const OceanWavesCanvas: React.FC<OceanWavesCanvasProps> = ({
     }
 
     function render() {
-      if (!ctx || width <= 0 || height <= 0) return;
+      if (!ctx) return;
+      if (width <= 0 || height <= 0) {
+        if (!reducedMotion) animationFrameId = requestAnimationFrame(render);
+        return;
+      }
 
       time += 1;
 
@@ -295,7 +301,9 @@ export const OceanWavesCanvas: React.FC<OceanWavesCanvasProps> = ({
       });
       ctx.restore();
 
-      animationFrameId = requestAnimationFrame(render);
+      if (!reducedMotion) {
+        animationFrameId = requestAnimationFrame(render);
+      }
     }
 
     render();

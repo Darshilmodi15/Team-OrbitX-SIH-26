@@ -6,7 +6,7 @@ import { reviewCopy } from "@/lib/orca/review-copy";
 import { marineCopy } from "@/lib/orca/marine-copy";
 
 export function TripPack({ location, bundle }: { location: LocationInfo; bundle: MarineBundle }) {
-  const { lang, t } = useI18n(); const copy = reviewCopy(lang); const marine = marineCopy[lang];
+  const { lang, t } = useI18n(); const copy = reviewCopy(lang); const marine = marineCopy[lang] ?? marineCopy.en;
   const pfz = { advisory: snapshotPFZ(bundle.snapshot), isPending: false };
   const [busy, setBusy] = useState(false); const [status, setStatus] = useState("");
   async function download() {
@@ -14,7 +14,7 @@ export function TripPack({ location, bundle }: { location: LocationInfo; bundle:
     try {
       const { prepareTripPack } = await import("@/lib/orca/offline/trip-pack");
       const pack = prepareTripPack(location, bundle, pfz.advisory);
-      const time = (stamp: number) => new Date(stamp).toLocaleString(lang, {timeZoneName: "short"});
+      const time = (stamp: number) => Number.isFinite(stamp) ? new Date(stamp).toLocaleString(lang, {timeZoneName: "short"}) : "—";
       const labels: Record<string,string> = {
         "Wave height": t("marine.wave"), "Wave period": t("marine.period"), "Wave direction (from)": marine.waveDirection,
         "Wind speed": t("marine.wind"), "Wind direction (from)": t("marine.windDir"), "Sea surface temperature": t("marine.sst"),
@@ -28,7 +28,10 @@ export function TripPack({ location, bundle }: { location: LocationInfo; bundle:
       lines.push("PFZ", pack.pfz.status === "current" ? `${copy.source}: ${pack.pfz.source} / ${copy.expiresAt}: ${pack.pfz.validUntil}` : t("state.liveUnavailable"));
       for (const p of pack.pfz.points) lines.push(`${p.name}: ${p.lat}, ${p.lon}`);
       const url = URL.createObjectURL(new Blob(["\uFEFF" + lines.join("\n")], {type:"text/plain;charset=utf-8"}));
-      const link = document.createElement("a"); link.href = url; link.download = `orca-trip-${lang}-${new Date(pack.savedAt).toISOString().slice(0,10)}.txt`;
+      const fileDate = Number.isFinite(pack.savedAt)
+        ? new Date(pack.savedAt).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })
+        : new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+      const link = document.createElement("a"); link.href = url; link.download = `orca-trip-${lang}-${fileDate}.txt`;
       document.body.append(link); link.click(); link.remove(); window.setTimeout(()=>URL.revokeObjectURL(url),60000); setStatus(copy.saved);
     } catch { setStatus(copy.failed); } finally {setBusy(false);}
   }

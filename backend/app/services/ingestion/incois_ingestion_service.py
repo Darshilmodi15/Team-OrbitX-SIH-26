@@ -6,7 +6,7 @@ for major coastal fishing hubs, keeps the low-bandwidth geospatial cache warm,
 and persists verified observations into the PostgreSQL marine_observations table.
 """
 import asyncio
-from datetime import date as dt_date, datetime, timezone
+from datetime import datetime, timedelta, timezone
 import logging
 import os
 from typing import Any, Dict, List, Optional
@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 from app.data.weather.base import WeatherProvider
 
 logger = logging.getLogger("orca_ingestion")
+IST = timezone(timedelta(hours=5, minutes=30))
 
 COASTAL_INGESTION_HUBS: List[Dict[str, Any]] = [
     {"name": "Mumbai Port & Sassoon Dock", "lat": 18.9220, "lon": 72.8347, "state": "Maharashtra"},
@@ -35,7 +36,7 @@ async def run_single_ingestion_cycle(provider: WeatherProvider) -> Dict[str, Any
     Executes a single pass of INCOIS data retrieval across all coastal hubs.
     Updates cache and persists observations.
     """
-    today_str = dt_date.today().isoformat()
+    today_str = datetime.now(IST).date().isoformat()
     successful = 0
     failed = 0
     results: List[Dict[str, Any]] = []
@@ -51,7 +52,11 @@ async def run_single_ingestion_cycle(provider: WeatherProvider) -> Dict[str, Any
                 lon=hub["lon"],
                 date=today_str,
             )
-            successful += 1
+            cache_status = (data or {}).get("cache_status")
+            if not data or cache_status == "unavailable" or data.get("error"):
+                failed += 1
+            else:
+                successful += 1
             results.append({
                 "hub": hub["name"],
                 "lat": hub["lat"],

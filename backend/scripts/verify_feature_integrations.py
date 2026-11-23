@@ -4,13 +4,13 @@ Run from backend with --output and optionally --voice. Synthetic TTS->ASR fixtur
 verify transport only, not human speech recognition quality or language acceptance.
 """
 import argparse
-import audioop
 import base64
 import io
 import json
 import logging
 import os
 from pathlib import Path
+import struct
 import sys
 import time
 import wave
@@ -27,16 +27,44 @@ def timed(fn):
     try: return fn(), round((time.monotonic()-start)*1000)
     except Exception as exc: return {"error_type":type(exc).__name__}, round((time.monotonic()-start)*1000)
 
+def _decode_samples(raw: bytes, sampwidth: int, channels: int) -> list:
+    if sampwidth == 1:
+        vals = [(b - 128) << 8 for b in raw]
+    elif sampwidth == 2:
+        vals = list(struct.unpack(f"<{len(raw) // 2}h", raw))
+    elif sampwidth == 3:
+        vals = [int.from_bytes(raw[i:i + 3], "little", signed=True) >> 8 for i in range(0, len(raw) - 2, 3)]
+    elif sampwidth == 4:
+        vals = [v >> 16 for v in struct.unpack(f"<{len(raw) // 4}i", raw)]
+    else:
+        raise ValueError(f"Unsupported sample width: {sampwidth}")
+    if channels == 1:
+        return vals
+    if channels == 2:
+        return [(vals[i] + vals[i + 1]) // 2 for i in range(0, len(vals) - 1, 2)]
+    raise ValueError("Unsupported channels")
+
+
 def pcm16(audio):
     with wave.open(io.BytesIO(audio)) as source:
         data=source.readframes(source.getnframes());rate=source.getframerate()
-        if source.getsampwidth()!=2: data=audioop.lin2lin(data,source.getsampwidth(),2)
-        if source.getnchannels()==2:data=audioop.tomono(data,2,.5,.5)
-        elif source.getnchannels()!=1:raise ValueError("Unsupported channels")
-        if rate!=16000:data,_=audioop.ratecv(data,2,1,rate,16000,None)
+        samples = _decode_samples(data, source.getsampwidth(), source.getnchannels())
+        if rate != 16000 and samples:
+            out_len = max(1, int(round(len(samples) * 16000 / rate)))
+            resampled = []
+            max_idx = len(samples) - 1
+            for i in range(out_len):
+                pos = i * rate / 16000.0
+                idx = min(int(pos), max_idx)
+                nxt = min(idx + 1, max_idx)
+                frac = pos - idx
+                val = int(round(samples[idx] * (1.0 - frac) + samples[nxt] * frac))
+                resampled.append(max(-32768, min(32767, val)))
+            samples = resampled
+        pcm_bytes = struct.pack(f"<{len(samples)}h", *samples) if samples else b""
     output=io.BytesIO()
     with wave.open(output,"wb") as target:
-        target.setnchannels(1);target.setsampwidth(2);target.setframerate(16000);target.writeframes(data)
+        target.setnchannels(1);target.setsampwidth(2);target.setframerate(16000);target.writeframes(pcm_bytes)
     return output.getvalue()
 
 def run():
@@ -65,7 +93,8 @@ def run():
                     result={"http_status":response.status_code,"provider":"bhashini","service_id":config["service_id"]}
                     if response.status_code==200:
                         outputs=response.json().get("pipelineResponse",[])
-                        result["has_translation"]=bool(outputs and outputs[0].get("output",[{}])[0].get("target"))
+                        first_out = outputs[0].get("output") if outputs and isinstance(outputs[0], dict) else None
+                        result["has_translation"]=bool(first_out and isinstance(first_out[0], dict) and first_out[0].get("target"))
                     return result
                 row["translation"],row["translation_ms"]=timed(translation)
             voice,row["tts_ms"]=timed(lambda:provider.text_to_speech(text,lang))

@@ -298,3 +298,49 @@ def test_api_conditions_future_date_endpoint():
     assert data["retrieved_at"] == "2026-09-09T18:00:00Z"
     assert "morning" in data["target_period"]
 
+
+def test_resolve_query_time_sakal_today_and_night_rollover():
+    """Bare 'sakal' stays on today while 'udya sakali' targets tomorrow, and late-night windows roll past midnight IST."""
+    morning_base = datetime(2026, 9, 9, 8, 0, 0, tzinfo=IST)
+    res_today = resolve_query_time("aaj sakal Veraval", base_time=morning_base)
+    assert res_today.target_date == "2026-09-09"
+    assert res_today.period == "morning"
+    assert res_today.is_explicit_future is False
+
+    res_tmrw = resolve_query_time("udya sakali Veraval", base_time=morning_base)
+    assert res_tmrw.target_date == "2026-09-10"
+    assert res_tmrw.period == "morning"
+    assert res_tmrw.is_explicit_future is True
+
+    late_base = datetime(2026, 9, 9, 22, 30, 0, tzinfo=IST)
+    res_night = resolve_query_time("tonight wave height", base_time=late_base)
+    assert res_night.end_utc > res_night.start_utc
+
+
+def test_verify_forecast_timestamp_rejects_stale_and_future_for_current_query():
+    """Current queries reject >18h stale or cross-day future timestamps."""
+    base = datetime(2026, 9, 9, 12, 0, 0, tzinfo=IST)
+    current = resolve_query_time("wave height today", base_time=base)
+    stale_ts = (base - timedelta(hours=20)).astimezone(UTC).isoformat()
+    future_ts = (base + timedelta(hours=30)).astimezone(UTC).isoformat()
+    fresh_ts = base.astimezone(UTC).isoformat()
+
+    assert verify_forecast_timestamp(stale_ts, current)[0] is False
+    assert verify_forecast_timestamp(future_ts, current)[0] is False
+    assert verify_forecast_timestamp(fresh_ts, current)[0] is True
+
+
+def test_cache_scoped_key_does_not_overwrite_base_key():
+    """Scoped/period cache entries must not clobber the undated base lookup."""
+    now_dt = datetime.now(IST)
+    today_str = now_dt.date().isoformat()
+    now_iso = now_dt.astimezone(UTC).isoformat()
+    cache = MarineWeatherCache(redis_url=None)
+    cache.set(20.9, 70.36, {"wave_height_m": 1.1, "marker": "base"}, forecast_time=now_iso, target_date=today_str)
+    cache.set(20.9, 70.36, {"wave_height_m": 2.4, "marker": "evening"}, forecast_time=now_iso, target_date=f"{today_str}:evening")
+    base_hit, status = cache.get(20.9, 70.36)
+    assert base_hit is not None
+    assert status == "fresh"
+    assert base_hit["marker"] == "base"
+
+

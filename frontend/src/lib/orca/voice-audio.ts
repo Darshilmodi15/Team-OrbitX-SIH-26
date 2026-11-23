@@ -3,8 +3,12 @@ export async function speechWav(recording: Blob): Promise<Blob> {
   const context = new AudioContext();
   try {
     const decoded = await context.decodeAudioData(await recording.arrayBuffer());
+    if (!Number.isFinite(decoded.duration) || decoded.duration <= 0) {
+      throw new Error("EMPTY_RECORDING");
+    }
     // MediaRecorder stop events can arrive late; cap actual PCM, not just the UI timer.
-    const offline = new OfflineAudioContext(1, Math.min(45 * 16000, Math.ceil(decoded.duration * 16000)), 16000);
+    const frames = Math.max(1, Math.min(45 * 16000, Math.ceil(decoded.duration * 16000)));
+    const offline = new OfflineAudioContext(1, frames, 16000);
     const source = offline.createBufferSource(); source.buffer = decoded; source.connect(offline.destination); source.start();
     const pcm = (await offline.startRendering()).getChannelData(0);
     const bytes = new ArrayBuffer(44 + pcm.length * 2); const view = new DataView(bytes);

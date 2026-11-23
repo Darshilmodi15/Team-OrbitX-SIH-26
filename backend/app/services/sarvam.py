@@ -65,7 +65,7 @@ LANGUAGE_NAMES: Dict[str, str] = {
     "te": "Telugu (తెలుగు)",
     "ml": "Malayalam (മലയാളം)",
     "kn": "Kannada (ಕನ್ನಡ)",
-    "or": "Odia (ଓଡ଼િଆ)",
+    "or": "Odia (\u0b13\u0b21\u0b3c\u0b3f\u0b06)",
     "pa": "Punjabi (ਪੰਜਾਬੀ)",
     "as": "Assamese (অসমীয়া)",
     "ur": "Urdu (اردو)",

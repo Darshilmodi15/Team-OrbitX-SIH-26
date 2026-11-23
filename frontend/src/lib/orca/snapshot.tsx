@@ -54,7 +54,7 @@ export function snapshotPFZ(s?: MarineSnapshot): PFZAdvisory {
 export function snapshotBundle(s: MarineSnapshot, offline = false): MarineBundle {
   const w=s.weather, p=s.provenance;
   const n=(key: string) => typeof w[key] === "number" ? w[key] as number : null;
-  const mode = offline || snapshotExpired(s) || p.cache_status === "stale" ? "stale" : p.cache_status === "unavailable" ? "unavailable" : "cached";
+  const mode = p.cache_status === "unavailable" ? "unavailable" : (offline || snapshotExpired(s) || p.cache_status === "stale") ? "stale" : "cached";
   const current: Readings = { time:p.forecast_valid_at || "", waveHeightM:n("wave_height_m"), wavePeriodS:n("wave_period_s"), waveDirectionDeg:n("wave_direction_deg"),
     windSpeedKmh:n("wind_speed_kmh"), windDirectionDeg:n("wind_direction_deg"), visibilityKm:n("visibility_km"), seaTemperatureC:s.ocean.sst_c,
     airTemperatureC:n("air_temperature_c"), weatherCode:n("weather_code"), windWaveHeightM:n("wind_wave_height_m"), windWavePeriodS:n("wind_wave_period_s"), windWaveDirectionDeg:n("wind_wave_direction_deg"),
@@ -63,7 +63,7 @@ export function snapshotBundle(s: MarineSnapshot, offline = false): MarineBundle
     measurementKind:p.demo_scenario ? "illustrative" : "model_forecast", marineForecastValidAt:p.fields["weather.wave_height_m"]?.forecast_valid_at, weatherForecastValidAt:p.fields["weather.wind_speed_kmh"]?.forecast_valid_at,
     sampledMarineCoords:p.grid_lat != null && p.grid_lon != null ? {lat:p.grid_lat,lon:p.grid_lon}:null };
   return { current, forecast:[], past:[], tide:null, connectivityMode:"backend", snapshot:s,
-    alerts:s.hazards.map(h=>({id:h.id,level:h.severity === "critical" ? "danger" : "warning",title:h.title,body:h.message,issuedAt:h.timestamp || "",official:false,source:h.source})) };
+    alerts:s.hazards.map(h=>({id:h.id,level:h.severity === "critical" ? "danger" : "warning",title:h.title,body:h.message,issuedAt:h.timestamp || p.forecast_valid_at || p.retrieved_at || "",official:false,source:h.source})) };
 }
 
 type ContextValue = { demoScenario: string; setDemoScenario: (value: string) => void; snapshot?: MarineSnapshot; isPending: boolean; isError: boolean; isFetching: boolean; offline: boolean; activate: () => void; refetch: () => Promise<unknown>; adopt: (snapshot: MarineSnapshot) => void; requestedTime?: string; setRequestedTime: (value?: string) => void };
@@ -75,8 +75,8 @@ export function MarineSnapshotProvider({children}: {children:ReactNode}) {
   const [active,setActive]=useState("");
   const [demoScenario,setDemoScenario]=useState("");
   const [requestedTime,setRequestedTime]=useState<string>();
-  const [offline,setOffline]=useState(!navigator.onLine);
-  const [clock,setClock]=useState(Date.now());
+  const [offline,setOffline]=useState(()=>typeof navigator !== "undefined" ? !navigator.onLine : false);
+  const [, setExpiryTick] = useState(0);
   const owner=user?.id || "none", lat=location?.coords.lat, lon=location?.coords.lon;
   const key=useMemo(()=>["canonical-snapshot",owner,lat,lon,requestedTime || "current",demoScenario],[owner,lat,lon,requestedTime,demoScenario]);
   const saved=useMemo(()=>readSaved(owner,lat,lon),[owner,lat,lon]);
@@ -94,18 +94,49 @@ export function MarineSnapshotProvider({children}: {children:ReactNode}) {
     placeholderData:saved && (saved.provenance.demo_scenario || "") === demoScenario && (!requestedTime || saved.request.requested_time === requestedTime) ? saved : undefined});
   useEffect(()=>{setRequestedTime(undefined);},[owner,lat,lon]);
   useEffect(()=>{setDemoScenario("");},[owner]);
-  useEffect(()=>{const update=()=>setOffline(!navigator.onLine);window.addEventListener("online",update);window.addEventListener("offline",update);const timer=window.setInterval(()=>setClock(Date.now()),1000);return()=>{window.removeEventListener("online",update);window.removeEventListener("offline",update);clearInterval(timer);};},[]);
-  const activate=useCallback(()=>setActive(`${owner}:${lat}:${lon}`),[owner,lat,lon]);
+  const snapshot=query.data;
+  const expired = !!snapshot && snapshotExpired(snapshot);
+  useEffect(()=>{
+    const update=()=>setOffline(!navigator.onLine);
+    window.addEventListener("online",update);
+    window.addEventListener("offline",update);
+    return()=>{window.removeEventListener("online",update);window.removeEventListener("offline",update);};
+  },[]);
+  useEffect(()=>{
+    if(!snapshot) return;
+    const now = Date.now();
+    const candidates = [Date.parse(snapshot.expires_at), Date.parse(snapshot.pfz?.valid_until || "")]
+      .filter((t) => Number.isFinite(t) && t > now);
+    if(!candidates.length) return;
+    const delay = Math.min(2_147_483_646, Math.max(0, Math.min(...candidates) - now) + 1);
+    const timer = window.setTimeout(()=>setExpiryTick((t)=>t+1), delay);
+    return ()=>clearTimeout(timer);
+  },[snapshot, expired]);
+  const activate=useCallback(()=>{
+    setRequestedTime((prev)=>{
+      if(!prev) return undefined;
+      const ms = Date.parse(prev);
+      return Number.isFinite(ms) && ms < Date.now() - 22 * 3600000 ? undefined : prev;
+    });
+    setActive(`${owner}:${lat}:${lon}`);
+  },[owner,lat,lon]);
   const adopt=useCallback((s:MarineSnapshot)=>{
     if(s.location.lat !== lat || s.location.lon !== lon) return;
-    const nextKey=["canonical-snapshot",owner,lat,lon,s.request.requested_time,s.provenance.demo_scenario || ""];
-    setDemoScenario(s.provenance.demo_scenario || "");
-    client.setQueryData(nextKey,s);setRequestedTime(s.request.requested_time);
-    try { sessionStorage.setItem(PREFIX+owner,JSON.stringify(s)); } catch { /* Optional storage. */ }
-  },[client,owner,lat,lon]);
-  const snapshot=query.data;
+    const reqMs = Date.parse(s.request.requested_time);
+    const isNearCurrent = Number.isFinite(reqMs) && Math.abs(reqMs - Date.now()) < 3600000;
+    const scenario = s.provenance.demo_scenario || "";
+    const nextKey=["canonical-snapshot",owner,lat,lon,isNearCurrent ? "current" : s.request.requested_time,scenario];
+    setDemoScenario(scenario);
+    client.setQueryData(nextKey,s);
+    setRequestedTime(isNearCurrent ? undefined : s.request.requested_time);
+    try {
+      if (sessionStorage.getItem("orca.auth.session") === token) {
+        sessionStorage.setItem(PREFIX+owner,JSON.stringify(s));
+      }
+    } catch { /* Optional storage. */ }
+  },[client,owner,lat,lon,token]);
   const value=useMemo(()=>({demoScenario,setDemoScenario,snapshot,isPending:query.isPending,isError:query.isError,isFetching:query.isFetching,
-    offline:offline || query.isError || !!snapshot && snapshotExpired(snapshot,clock),activate,refetch:query.refetch,adopt,requestedTime,setRequestedTime}),[demoScenario,snapshot,query.isPending,query.isError,query.isFetching,query.refetch,offline,clock,activate,adopt,requestedTime]);
+    offline:offline || query.isError || expired,activate,refetch:query.refetch,adopt,requestedTime,setRequestedTime}),[demoScenario,snapshot,query.isPending,query.isError,query.isFetching,query.refetch,offline,expired,activate,adopt,requestedTime]);
   return <SnapshotContext.Provider value={value}>{children}</SnapshotContext.Provider>;
 }
 export function useMarineSnapshot(){const value=useContext(SnapshotContext);if(!value)throw new Error("MarineSnapshotProvider required");return value;}

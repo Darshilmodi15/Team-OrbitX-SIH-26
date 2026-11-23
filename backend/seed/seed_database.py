@@ -18,6 +18,8 @@ import uuid
 # Ensure backend root is on sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
+from sqlalchemy.exc import IntegrityError
+
 from app.db.base import Base
 from app.db.session import engine, get_db_context, init_db
 from app.db.models import (
@@ -61,115 +63,124 @@ def seed_database():
             ("weather.fallback_source", "Open-Meteo", "Secondary meteorological fallback model"),
         ]
         for key, val, desc in settings:
-            existing = db.query(SystemSetting).filter(SystemSetting.key == key).first()
-            if not existing:
-                db.add(SystemSetting(
-                    id=str(uuid.uuid4()),
-                    key=key,
-                    value=val,
-                    description=desc,
-                    updated_at=datetime.now(timezone.utc),
-                ))
+            try:
+                with db.begin_nested():
+                    existing = db.query(SystemSetting).filter(SystemSetting.key == key).first()
+                    if not existing:
+                        db.add(SystemSetting(
+                            id=str(uuid.uuid4()),
+                            key=key,
+                            value=val,
+                            description=desc,
+                            updated_at=datetime.now(timezone.utc),
+                        ))
+            except IntegrityError:
+                pass
 
         # -------------------------------------------------------------
-        # 2. Demo User Accounts
+        # 2. Demo User Accounts (non-production only)
         # -------------------------------------------------------------
         app_env = (os.getenv("APP_ENV") or os.getenv("ENVIRONMENT", "development")).lower()
-        logger.info("Seeding demo user accounts for %s environment...", app_env)
-        demo_accounts = [
-            {
-                "id": "USR-DEMO-01",
-                "name": "Captain Ramesh Koli",
-                "email": "fisherman@orca.marine",
-                "phone": "9876543210",
-                "password": "password123",
-                "role": "USER",
-                "preferred_language": "gu",
-            },
-            {
-                "id": "USR-DEMO-02",
-                "name": "Officer Priya Sharma",
-                "email": "officer@fisheries.gov.in",
-                "phone": "9123456780",
-                "password": "govpassword123",
-                "role": "GOVERNMENT",
-                "preferred_language": "hi",
-                "dept": "Directorate of Fisheries, Ministry of Fisheries",
-                "designation": "Assistant Director (Marine Enforcement)",
-                "region": "Gujarat & Maharashtra",
-            },
-            {
-                "id": "USR-DEMO-03",
-                "name": "Super Admin OrbitX",
-                "email": "admin@orca.marine",
-                "phone": "9999999999",
-                "password": "adminpassword123",
-                "role": "SUPER_ADMIN",
-                "preferred_language": "en",
-            },
-        ]
-        # Demo accounts are always seeded (including production) for SIH demonstration.
-        # To disable in a real deployment, gate on APP_ENV here.
+        if app_env in {"production", "prod"}:
+            logger.info("Skipping demo user account seeding in %s environment.", app_env)
+        else:
+            logger.info("Seeding demo user accounts for %s environment...", app_env)
+            demo_accounts = [
+                {
+                    "id": "USR-DEMO-01",
+                    "name": "Captain Ramesh Koli",
+                    "email": "fisherman@orca.marine",
+                    "phone": "9876543210",
+                    "password": "password123",
+                    "role": "USER",
+                    "preferred_language": "gu",
+                },
+                {
+                    "id": "USR-DEMO-02",
+                    "name": "Officer Priya Sharma",
+                    "email": "officer@fisheries.gov.in",
+                    "phone": "9123456780",
+                    "password": "govpassword123",
+                    "role": "GOVERNMENT",
+                    "preferred_language": "hi",
+                    "dept": "Directorate of Fisheries, Ministry of Fisheries",
+                    "designation": "Assistant Director (Marine Enforcement)",
+                    "region": "Gujarat & Maharashtra",
+                },
+                {
+                    "id": "USR-DEMO-03",
+                    "name": "Super Admin OrbitX",
+                    "email": "admin@orca.marine",
+                    "phone": "9999999999",
+                    "password": "adminpassword123",
+                    "role": "SUPER_ADMIN",
+                    "preferred_language": "en",
+                },
+            ]
 
-        for acc in demo_accounts:
-            existing = db.query(User).filter(User.email == acc["email"]).first()
-            if not existing:
-                pwd_hash, salt = hash_password(acc["password"])
-                now = datetime.now(timezone.utc)
-                user = User(
-                    id=acc["id"],
-                    name=acc["name"],
-                    email=acc["email"],
-                    mobile_number=acc["phone"],
-                    password_hash=pwd_hash,
-                    password_salt=salt,
-                    preferred_language=acc["preferred_language"],
-                    role=acc["role"],
-                    location_permission_status="granted",
-                    location_sharing_enabled=True,
-                    created_at=now,
-                    updated_at=now,
-                    last_login=now,
-                )
-                db.add(user)
+            for acc in demo_accounts:
+                try:
+                    with db.begin_nested():
+                        existing = db.query(User).filter(User.email == acc["email"]).first()
+                        if not existing:
+                            pwd_hash, salt = hash_password(acc["password"])
+                            now = datetime.now(timezone.utc)
+                            user = User(
+                                id=acc["id"],
+                                name=acc["name"],
+                                email=acc["email"],
+                                mobile_number=acc["phone"],
+                                password_hash=pwd_hash,
+                                password_salt=salt,
+                                preferred_language=acc["preferred_language"],
+                                role=acc["role"],
+                                location_permission_status="granted",
+                                location_sharing_enabled=True,
+                                created_at=now,
+                                updated_at=now,
+                                last_login=now,
+                            )
+                            db.add(user)
 
-                pref = UserPreference(
-                    id=str(uuid.uuid4()),
-                    user_id=acc["id"],
-                    preferred_language=acc["preferred_language"],
-                    voice_enabled=True,
-                    notifications_enabled=True,
-                    location_tracking_enabled=True,
-                    created_at=now,
-                    updated_at=now,
-                )
-                db.add(pref)
+                            pref = UserPreference(
+                                id=str(uuid.uuid4()),
+                                user_id=acc["id"],
+                                preferred_language=acc["preferred_language"],
+                                voice_enabled=True,
+                                notifications_enabled=True,
+                                location_tracking_enabled=True,
+                                created_at=now,
+                                updated_at=now,
+                            )
+                            db.add(pref)
 
-                notif_pref = NotificationPreference(
-                    id=str(uuid.uuid4()),
-                    user_id=acc["id"],
-                    sms_enabled=True,
-                    push_enabled=True,
-                    whatsapp_enabled=False,
-                    alert_level_threshold="MODERATE",
-                    created_at=now,
-                    updated_at=now,
-                )
-                db.add(notif_pref)
+                            notif_pref = NotificationPreference(
+                                id=str(uuid.uuid4()),
+                                user_id=acc["id"],
+                                sms_enabled=True,
+                                push_enabled=True,
+                                whatsapp_enabled=False,
+                                alert_level_threshold="MODERATE",
+                                created_at=now,
+                                updated_at=now,
+                            )
+                            db.add(notif_pref)
 
-                if acc["role"] == "GOVERNMENT":
-                    gov_user = GovernmentUser(
-                        id=str(uuid.uuid4()),
-                        user_id=acc["id"],
-                        department=acc["dept"],
-                        designation=acc["designation"],
-                        jurisdiction_region=acc["region"],
-                        badge_number="IND-DOF-8821",
-                        is_verified=True,
-                        created_at=now,
-                        updated_at=now,
-                    )
-                    db.add(gov_user)
+                            if acc["role"] == "GOVERNMENT":
+                                gov_user = GovernmentUser(
+                                    id=str(uuid.uuid4()),
+                                    user_id=acc["id"],
+                                    department=acc["dept"],
+                                    designation=acc["designation"],
+                                    jurisdiction_region=acc["region"],
+                                    badge_number="IND-DOF-8821",
+                                    is_verified=True,
+                                    created_at=now,
+                                    updated_at=now,
+                                )
+                                db.add(gov_user)
+                except IntegrityError:
+                    pass
 
         # -------------------------------------------------------------
         # 3. Emergency Contacts
@@ -194,21 +205,25 @@ def seed_database():
         ]
 
         for name, help_no, alt_no, radio, reg, state, desc in contacts_data:
-            existing = db.query(EmergencyContact).filter(EmergencyContact.agency_name == name).first()
-            if not existing:
-                db.add(EmergencyContact(
-                    id=str(uuid.uuid4()),
-                    agency_name=name,
-                    helpline=help_no,
-                    alternate_phone=alt_no,
-                    radio_channel=radio,
-                    region=reg,
-                    state=state,
-                    category="Maritime SAR",
-                    description=desc,
-                    is_active=True,
-                    created_at=datetime.now(timezone.utc),
-                ))
+            try:
+                with db.begin_nested():
+                    existing = db.query(EmergencyContact).filter(EmergencyContact.agency_name == name).first()
+                    if not existing:
+                        db.add(EmergencyContact(
+                            id=str(uuid.uuid4()),
+                            agency_name=name,
+                            helpline=help_no,
+                            alternate_phone=alt_no,
+                            radio_channel=radio,
+                            region=reg,
+                            state=state,
+                            category="Maritime SAR",
+                            description=desc,
+                            is_active=True,
+                            created_at=datetime.now(timezone.utc),
+                        ))
+            except IntegrityError:
+                pass
 
         # -------------------------------------------------------------
         # 4. Government Alerts & Circulars
@@ -276,19 +291,23 @@ def seed_database():
         ]
 
         for g_id, name, f_type, sev, thresh, desc, coords in geofences_data:
-            existing = db.query(Geofence).filter(Geofence.id == g_id).first()
-            if not existing:
-                db.add(Geofence(
-                    id=g_id,
-                    name=name,
-                    fence_type=f_type,
-                    severity=sev,
-                    threshold_nm=thresh,
-                    description=desc,
-                    coordinates_json=json.dumps(coords),
-                    is_active=True,
-                    created_at=datetime.now(timezone.utc),
-                ))
+            try:
+                with db.begin_nested():
+                    existing = db.query(Geofence).filter(Geofence.id == g_id).first()
+                    if not existing:
+                        db.add(Geofence(
+                            id=g_id,
+                            name=name,
+                            fence_type=f_type,
+                            severity=sev,
+                            threshold_nm=thresh,
+                            description=desc,
+                            coordinates_json=json.dumps(coords),
+                            is_active=True,
+                            created_at=datetime.now(timezone.utc),
+                        ))
+            except IntegrityError:
+                pass
 
         # -------------------------------------------------------------
         # 8. Initial Historical Marine Observation Baseline
@@ -296,18 +315,6 @@ def seed_database():
         # Observations are created only by actual provider responses.
 
         logger.info("Database seeding complete!")
-
-    # Stamp Alembic version table if alembic is available
-    try:
-        from alembic.config import Config
-        from alembic import command
-        alembic_ini_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic.ini")
-        if os.path.exists(alembic_ini_path):
-            alembic_cfg = Config(alembic_ini_path)
-            command.stamp(alembic_cfg, "head")
-            logger.info("Stamped alembic revision to head.")
-    except Exception as e:
-        logger.warning(f"Alembic stamp notice (non-fatal): {e}")
 
 
 if __name__ == "__main__":

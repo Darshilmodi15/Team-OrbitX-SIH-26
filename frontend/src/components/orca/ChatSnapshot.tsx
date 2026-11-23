@@ -1,3 +1,4 @@
+import { Link, useInRouterContext } from "react-router-dom";
 import { MapPin, ArrowUpRight } from "lucide-react";
 import { useState } from "react";
 import { useI18n } from "@/lib/orca/i18n";
@@ -7,7 +8,9 @@ import { MapPanel } from "./MapPanel";
 
 export function ChatSnapshot({ snapshot }: { snapshot: MarineSnapshot }) {
   const { t } = useI18n();
+  const inRouter = useInRouterContext();
   const [open, setOpen] = useState(false);
+  const mapUrl = `/map?snapshot=${encodeURIComponent(snapshot.snapshot_id)}`;
   return (
     <div className="chat-snapshot mt-4 space-y-2">
       <SnapshotDetails snapshot={snapshot} />
@@ -29,13 +32,17 @@ export function ChatSnapshot({ snapshot }: { snapshot: MarineSnapshot }) {
             interactive
             compact
           />
-          <a
-            href={`/map?snapshot=${encodeURIComponent(snapshot.snapshot_id)}`}
-            className="chat-map-expand"
-          >
-            {t("nav.map")}
-            <ArrowUpRight size={16} />
-          </a>
+          {inRouter ? (
+            <Link to={mapUrl} className="chat-map-expand">
+              {t("nav.map")}
+              <ArrowUpRight size={16} />
+            </Link>
+          ) : (
+            <a href={mapUrl} className="chat-map-expand">
+              {t("nav.map")}
+              <ArrowUpRight size={16} />
+            </a>
+          )}
         </div>
       )}
     </div>

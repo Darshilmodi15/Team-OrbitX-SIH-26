@@ -10,7 +10,7 @@ Authoritative Variables:
 - Wind Speed (UWND / VWND vector magnitude) in m/s and km/h
 - Wind Direction in meteorological degrees and 16-point compass cardinal
 """
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import math
 import os
 import re
@@ -23,7 +23,7 @@ from app.services.provider_health import record
 
 from app.data.weather.base import WeatherProvider
 from app.data.weather.cache import MarineWeatherCache
-from app.services.temporal import TemporalResolution, resolve_query_time, verify_forecast_timestamp
+from app.services.temporal import IST, TemporalResolution, resolve_query_time, verify_forecast_timestamp
 
 logger = logging.getLogger(__name__)
 
@@ -180,18 +180,17 @@ class IncoisWeatherProvider(WeatherProvider):
                     hs_val = float(hs_raw)
                     u_val = float(uwnd_raw)
                     v_val = float(vwnd_raw)
+                    res_lat = float(row.get("latitude", lat))
+                    res_lon = float(row.get("longitude", lon))
                 except (ValueError, TypeError):
                     continue
 
-                if not all(math.isfinite(x) for x in (hs_val, u_val, v_val)) or hs_val < 0:
+                if not all(math.isfinite(x) for x in (hs_val, u_val, v_val, res_lat, res_lon)) or hs_val < 0:
                     continue
 
                 time_val = row.get("time")
                 if not time_val:
                     continue
-
-                res_lat = float(row.get("latitude", lat))
-                res_lon = float(row.get("longitude", lon))
 
                 valid_rows.append({
                     "time": time_val.strip(),
@@ -308,11 +307,19 @@ class IncoisWeatherProvider(WeatherProvider):
                 return point_data, "unverified_temporal_mismatch"
             return point_data, "exact"
 
-        # 2. Search radial offsets concurrently for closest ocean cell
-        offsets = [
-            (-0.15, -0.15), (-0.05, -0.05), (0.0, -0.05), (-0.05, 0.0), (0.0, -0.10),
-            (-0.10, -0.10), (-0.05, 0.05), (0.05, -0.05), (0.0, 0.10), (0.10, 0.0),
-            (-0.10, 0.0), (-0.15, 0.15), (0.15, -0.15), (0.0, -0.20), (0.0, 0.20), (-0.20, 0.0)
+        # 2. Search radial offsets concurrently in nearest-first distance rings
+        offsets = sorted(
+            [
+                (-0.15, -0.15), (-0.05, -0.05), (0.0, -0.05), (-0.05, 0.0), (0.0, -0.10),
+                (-0.10, -0.10), (-0.05, 0.05), (0.05, -0.05), (0.0, 0.10), (0.10, 0.0),
+                (-0.10, 0.0), (-0.15, 0.15), (0.15, -0.15), (0.0, -0.20), (0.0, 0.20), (-0.20, 0.0)
+            ],
+            key=lambda off: (off[0] * off[0] + off[1] * off[1], abs(off[0]), abs(off[1])),
+        )
+        rings = [
+            [off for off in offsets if (off[0] * off[0] + off[1] * off[1]) <= 0.0055],
+            [off for off in offsets if 0.0055 < (off[0] * off[0] + off[1] * off[1]) <= 0.021],
+            [off for off in offsets if (off[0] * off[0] + off[1] * off[1]) > 0.021],
         ]
 
         def _check_offset(off: Tuple[float, float]) -> Tuple[Optional[Dict[str, Any]], str]:
@@ -327,14 +334,27 @@ class IncoisWeatherProvider(WeatherProvider):
                 pass
             return None, "none"
 
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-        with ThreadPoolExecutor(max_workers=6) as executor:
-            future_to_offset = {executor.submit(_check_offset, off): off for off in offsets}
-            for fut in as_completed(future_to_offset):
-                cand, meth = fut.result()
-                if cand:
+        from concurrent.futures import ThreadPoolExecutor
+        for ring in rings:
+            if not ring:
+                continue
+            executor = ThreadPoolExecutor(max_workers=min(6, len(ring)))
+            unverified_fallback: Optional[Tuple[Dict[str, Any], str]] = None
+            try:
+                ordered_futs = [(off, executor.submit(_check_offset, off)) for off in ring]
+                for _, fut in ordered_futs:
+                    cand, meth = fut.result()
+                    if cand:
+                        if meth != "unverified_temporal_mismatch":
+                            executor.shutdown(wait=False, cancel_futures=True)
+                            return cand, meth
+                        if unverified_fallback is None:
+                            unverified_fallback = (cand, meth)
+                if unverified_fallback is not None:
                     executor.shutdown(wait=False, cancel_futures=True)
-                    return cand, meth
+                    return unverified_fallback
+            finally:
+                executor.shutdown(wait=False, cancel_futures=True)
 
         # If coastal dataset missed, try combined Indian Ocean dataset
         combined_path = dataset_path.replace("rsmc_coast_ww3", "rsmc_combined_ww3")
@@ -367,11 +387,16 @@ class IncoisWeatherProvider(WeatherProvider):
             temporal_res = resolve_query_time(text=time_hint or "", request_date=date)
 
         target_date = temporal_res.target_date
-        cache_date = f"{target_date}@{temporal_res.target_utc.isoformat()}@{lat},{lon}" if temporal_res.period == "instant" else target_date
+        if temporal_res.period == "instant":
+            cache_date = f"{target_date}@{temporal_res.target_utc.isoformat()}@{lat},{lon}"
+        elif temporal_res.period != "current":
+            cache_date = f"{target_date}:{temporal_res.period}"
+        else:
+            cache_date = target_date
 
         # Step 1: Check cache
         cached_data, cache_state = self.cache.get(lat, lon, allow_stale=True, target_date=cache_date)
-        if not cached_data and not temporal_res.is_explicit_future:
+        if not cached_data and not temporal_res.is_explicit_future and temporal_res.period == "current":
             cached_data, cache_state = self.cache.get(lat, lon, allow_stale=True)
         if cached_data and cache_state == "fresh":
             f_val = cached_data.get("forecast_valid_at") or cached_data.get("forecast_time")
@@ -466,10 +491,28 @@ class IncoisWeatherProvider(WeatherProvider):
         record("incois", success=False, http_status=getattr(getattr(fetch_error, "response", None), "status_code", None), reason=type(fetch_error).__name__ if fetch_error else ("TEMPORAL_MISMATCH" if (live_raw and not live_raw.get("verified")) else "NO_VALID_MARINE_DATA"))
 
         # Step 4: Live fetch failed or unverified; check stale cache
-        if cached_data is None and not temporal_res.is_explicit_future:
+        if cached_data is None and not temporal_res.is_explicit_future and temporal_res.period == "current":
             cached_data, _ = self.cache.get(lat, lon, allow_stale=True)
 
-        if cached_data is not None and (cached_data.get("date") == target_date or not temporal_res.is_explicit_future):
+        f_val_stale = (cached_data or {}).get("forecast_valid_at") or (cached_data or {}).get("forecast_time")
+        stale_valid = False
+        if cached_data is not None and f_val_stale:
+            if temporal_res.is_explicit_future:
+                stale_valid = verify_forecast_timestamp(f_val_stale, temporal_res)[0]
+            else:
+                try:
+                    dt_stale = datetime.fromisoformat(str(f_val_stale).replace("Z", "+00:00"))
+                    if dt_stale.tzinfo is None:
+                        dt_stale = dt_stale.replace(tzinfo=timezone.utc)
+                    is_cross_day_future = (
+                        dt_stale > temporal_res.end_utc + timedelta(hours=3)
+                        and dt_stale.astimezone(IST).date() > temporal_res.end_ist.date()
+                    )
+                    stale_valid = not is_cross_day_future
+                except (ValueError, TypeError):
+                    stale_valid = False
+
+        if stale_valid:
             stale_copy = dict(cached_data)
             stale_copy["cache_status"] = "stale"
             stale_copy["is_stale"] = True

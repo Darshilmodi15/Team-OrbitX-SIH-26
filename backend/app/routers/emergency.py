@@ -14,6 +14,7 @@ from app.models.emergency_models import (
 from app.services.emergency import emergency_service
 from app.models.user_models import UserProfile, UserRole
 from app.routers.auth import get_current_user_from_header, require_roles
+from app.services.rate_limit import rate_limiter
 
 router = APIRouter(prefix="/api/emergency", tags=["Maritime Emergency Services & SOS"])
 
@@ -35,6 +36,7 @@ def trigger_sos_broadcast(request: SOSBroadcastRequest, user: UserProfile = Depe
     Triggers an instant SOS distress broadcast. Routes coordinates to MRCC Mumbai, Chennai, or Port Blair,
     logs beacon telemetry, and returns IMO-standard MAYDAY VHF Channel 16 transcript and hotlines.
     """
+    rate_limiter.check("sos_broadcast", user.id, limit=5, window_seconds=60)
     if request.location_source == "selected":
         # A saved selection is owner-scoped. Do not accept an old tab's coordinates
         # after this account changes its location on another device.

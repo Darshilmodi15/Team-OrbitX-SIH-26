@@ -95,7 +95,8 @@ function logEvent(event: AnalyticsEvent) {
 
   // Store in local ring buffer for audit / telemetry export
   try {
-    const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    const existing = Array.isArray(raw) ? raw : [];
     const updated = [event, ...existing].slice(0, MAX_STORED_EVENTS);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   } catch {
@@ -115,8 +116,8 @@ export function RouteAnalyticsListener() {
   const location = useLocation();
 
   useEffect(() => {
-    trackPageView(location.pathname + location.search);
-  }, [location.pathname, location.search]);
+    trackPageView(location.pathname);
+  }, [location.pathname]);
 
   return null;
 }

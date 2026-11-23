@@ -41,11 +41,21 @@ class ChatStorageService:
         row.title = title.strip(); row.updated_at = datetime.now(timezone.utc); db.flush()
         return self.serialize(row)
 
-    def context(self, db: Session, user_id: str, conversation_id: str, limit: int = 12) -> Optional[List[Dict[str, str]]]:
+    def context(self, db: Session, user_id: str, conversation_id: str, limit: int = 12, exclude_request_id: Optional[str] = None) -> Optional[List[Dict[str, str]]]:
         row = self._owned(db, user_id, conversation_id)
         if not row: return None
-        messages = db.query(ChatHistory).filter(ChatHistory.conversation_id == row.id).order_by(ChatHistory.created_at.desc()).limit(limit).all()
-        return [{"role": m.role, "text": m.message} for m in reversed(messages)]
+        messages = db.query(ChatHistory).filter(ChatHistory.conversation_id == row.id).order_by(ChatHistory.created_at.desc()).limit(limit + (2 if exclude_request_id else 0)).all()
+        items = []
+        for m in reversed(messages):
+            if exclude_request_id and m.sources_used_json:
+                try:
+                    meta = json.loads(m.sources_used_json)
+                    if isinstance(meta, dict) and meta.get("request_id") == exclude_request_id:
+                        continue
+                except (ValueError, TypeError):
+                    pass
+            items.append({"role": m.role, "text": m.message})
+        return items[-limit:]
 
     def append(self, db: Session, user_id: str, conversation_id: str, role: str, content: str, language: str = "en", metadata: Optional[Dict[str, Any]] = None):
         row = self._owned(db, user_id, conversation_id)
@@ -55,14 +65,22 @@ class ChatStorageService:
 
     def serialize(self, row: Conversation, messages=None) -> ConversationSummary:
         def metadata(message):
-            data = json.loads(message.sources_used_json) if message.sources_used_json else None
+            if not message.sources_used_json:
+                return None
+            try:
+                data = json.loads(message.sources_used_json)
+            except (ValueError, TypeError):
+                return None
+            if not isinstance(data, dict):
+                return {"sources": data} if isinstance(data, list) else None
             # Older messages embedded EEZ polygons. Preserve facts and identity,
             # but fetch reference display geometry only when opening the map.
-            boundary = (data or {}).get("marine_snapshot", {}) or {}
-            boundary = boundary.get("boundary", {})
-            if boundary.get("geometry"):
-                boundary["geometry"] = None
-                boundary["geometry_ref"] = "/api/marine-boundaries/eez/display"
+            snap = data.get("marine_snapshot")
+            if isinstance(snap, dict):
+                boundary = snap.get("boundary")
+                if isinstance(boundary, dict) and boundary.get("geometry"):
+                    boundary["geometry"] = None
+                    boundary["geometry_ref"] = "/api/marine-boundaries/eez/display"
             return data
         return ConversationSummary(id=row.id, title=row.title, created_at=row.created_at, updated_at=row.updated_at,
             messages=[StoredChatMessage(id=m.id, role=m.role, content=m.message, created_at=m.created_at,

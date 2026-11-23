@@ -15,18 +15,22 @@ export function classifyConnectivity(online: boolean, samples: Sample[], hint?: 
 }
 const listeners = new Set<() => void>();
 let samples: Sample[] = [];
-let mode: Connectivity = "GOOD";
-const hint = () => (navigator as Navigator & { connection?: Hint }).connection;
+const hint = () => (typeof navigator !== "undefined" ? (navigator as Navigator & { connection?: Hint }).connection : undefined);
+let mode: Connectivity = typeof navigator !== "undefined" ? classifyConnectivity(navigator.onLine, samples, hint()) : "GOOD";
 function refresh() {
   const next = classifyConnectivity(navigator.onLine, samples, hint());
   if (next !== mode) { mode = next; listeners.forEach(fn => fn()); }
+}
+function handleOnline() {
+  samples = [];
+  refresh();
 }
 export function recordNetworkSample(latency: number, failed: boolean) {
   samples = [...samples.slice(-7), { latency, failed }]; refresh();
 }
 function subscribe(fn: () => void) {
   listeners.add(fn);
-  if (listeners.size === 1) { window.addEventListener("online", refresh); window.addEventListener("offline", refresh); hint()?.addEventListener?.("change", refresh); refresh(); }
-  return () => { listeners.delete(fn); if (!listeners.size) { window.removeEventListener("online", refresh); window.removeEventListener("offline", refresh); hint()?.removeEventListener?.("change", refresh); } };
+  if (listeners.size === 1) { window.addEventListener("online", handleOnline); window.addEventListener("offline", refresh); hint()?.addEventListener?.("change", refresh); refresh(); }
+  return () => { listeners.delete(fn); if (!listeners.size) { window.removeEventListener("online", handleOnline); window.removeEventListener("offline", refresh); hint()?.removeEventListener?.("change", refresh); } };
 }
 export function useConnectivity() { return useSyncExternalStore(subscribe, () => mode, () => "GOOD" as Connectivity); }

@@ -298,6 +298,7 @@ export default function AssistantPage() {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState<boolean>(false);
   const [input, setInput] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   const [chatError, setChatError] = useState<
     | "chat.startFailed"
@@ -314,6 +315,7 @@ export default function AssistantPage() {
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
   const [isLoadingAudioId, setIsLoadingAudioId] = useState<string | null>(null);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const audioSeqRef = useRef(0);
 
   const copy =
     lang === "gu"
@@ -440,6 +442,8 @@ export default function AssistantPage() {
 
   useEffect(() => {
     return () => {
+      audioSeqRef.current++;
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
       if (currentAudioRef.current) {
         currentAudioRef.current.pause();
         currentAudioRef.current = null;
@@ -544,9 +548,14 @@ export default function AssistantPage() {
       setChatError("chat.requestFailed");
       return;
     }
+    if (retryRequest.current?.thread === id) {
+      retryRequest.current = null;
+      setChatError(null);
+    }
     const filtered = threads.filter((th) => th.id !== id);
     setThreads(filtered);
     if (activeThreadId === id) {
+      setChatError(null);
       if (filtered.length > 0) {
         setActiveThreadId(filtered[0].id);
         navigate(`/assistant/c/${filtered[0].id}`, { replace: true });
@@ -559,6 +568,7 @@ export default function AssistantPage() {
   }
 
   function stopAudio() {
+    audioSeqRef.current++;
     if (currentAudioRef.current) {
       currentAudioRef.current.pause();
       currentAudioRef.current = null;
@@ -578,35 +588,48 @@ export default function AssistantPage() {
     }
 
     stopAudio();
+    const seq = ++audioSeqRef.current;
     setIsLoadingAudioId(msgId);
 
     try {
       const cleanSnippet = text
-        .replace(/[*#_`•-]/g, " ")
+        .replace(/[*#_`•]/g, " ")
         .trim()
         .slice(0, 450);
+      if (!cleanSnippet) return;
       const targetVoiceLang = msgLang || lang || "en";
       const res = await synthesizeVoiceAudio(cleanSnippet, targetVoiceLang);
-      if (res && res.audio_base64) {
+      if (seq !== audioSeqRef.current) return;
+      if (res && !res.is_mock && res.audio_base64) {
         const audio = new Audio(
           `data:audio/${res.audio_format || "wav"};base64,${res.audio_base64}`,
         );
         currentAudioRef.current = audio;
         audio.onended = () => {
-          setPlayingMessageId(null);
-          currentAudioRef.current = null;
+          if (seq === audioSeqRef.current) {
+            setPlayingMessageId(null);
+            currentAudioRef.current = null;
+          }
         };
         audio.onerror = () => {
-          setPlayingMessageId(null);
-          currentAudioRef.current = null;
+          if (seq === audioSeqRef.current) {
+            setPlayingMessageId(null);
+            currentAudioRef.current = null;
+          }
         };
         await audio.play();
+        if (seq !== audioSeqRef.current) {
+          audio.pause();
+          return;
+        }
         setPlayingMessageId(msgId);
       }
     } catch (err) {
       console.warn("TTS Playback unavailable:", err);
     } finally {
-      setIsLoadingAudioId(null);
+      if (seq === audioSeqRef.current) {
+        setIsLoadingAudioId(null);
+      }
     }
   }
 
@@ -712,7 +735,7 @@ export default function AssistantPage() {
         ...(location
           ? { location: { lat: location.coords.lat, lon: location.coords.lon } }
           : {}),
-        date: new Date().toISOString().split("T")[0],
+        date: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }),
         language: retryRequest.current?.language || lang || "auto",
         session_id: targetThreadId,
         request_id: requestId,
@@ -801,7 +824,8 @@ export default function AssistantPage() {
       return;
     }
     setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = setTimeout(() => setCopiedId(null), 2000);
   }
 
   // 4 Intelligent Prompt Shortcuts (Natural Marine Queries)

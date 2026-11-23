@@ -192,7 +192,19 @@ class OpenMeteoWeatherProvider(WeatherProvider):
         selected_stamp = None
         issued_at = None  # Forecast valid time is not model-run issuance.
 
-        if temporal_res.is_explicit_future and all_stamps:
+        should_select_hourly = (
+            temporal_res.is_explicit_future
+            or (temporal_res.period in {"morning", "afternoon", "evening", "night"} and temporal_res.is_future)
+        )
+        require_future_hour = (
+            temporal_res.is_explicit_future
+            or (
+                temporal_res.period in {"morning", "afternoon", "evening", "night"}
+                and temporal_res.start_utc > datetime.now(timezone.utc)
+            )
+        )
+
+        if should_select_hourly and all_stamps:
             # Find hourly timesteps on the requested target date
             candidates = []
             from datetime import timedelta
@@ -255,6 +267,11 @@ class OpenMeteoWeatherProvider(WeatherProvider):
             precip = value(weather_curr, "precipitation")
             temp = value(weather_curr, "temperature_2m", nonnegative=False)
 
+        if direction is not None and direction > 360:
+            direction = None
+        if wave_direction is not None and wave_direction > 360:
+            wave_direction = None
+
         selected_marine = mr.get(selected_stamp, {}) if selected_stamp else marine_curr
         selected_weather = wr.get(selected_stamp, {}) if selected_stamp else weather_curr
         marine_time = selected_stamp if selected_stamp and selected_marine else utc_stamp(marine_curr.get("time")) if not selected_stamp else None
@@ -266,7 +283,7 @@ class OpenMeteoWeatherProvider(WeatherProvider):
                 reading = None
             marine_values[field] = reading if marine_time else None
         # A failed future selection must never return today's measurements with a future date.
-        if temporal_res.is_explicit_future and not selected_stamp:
+        if require_future_hour and not selected_stamp:
             marine_values = dict.fromkeys(MARINE_FIELDS.values())
             wave = wave_period = wave_direction = wind = direction = visibility = cloud = code = gust = precip = temp = None
             marine_time = weather_time = current_time = None
@@ -275,10 +292,12 @@ class OpenMeteoWeatherProvider(WeatherProvider):
             code = None
 
         now_iso = datetime.now(timezone.utc).isoformat()
+        resolved_wave_dir = marine_values.get("wave_direction_deg")
         result = {
             "location": {"lat": lat, "lon": lon}, "date": target_date,
             "wave_height_m": wave, "wave_period_s": wave_period,
             "wave_direction_deg": wave_direction,
+            "wave_direction_cardinal": _deg_to_cardinal(resolved_wave_dir),
             "wind_speed_kmh": wind, "wind_speed_ms": round(wind / 3.6, 2) if wind is not None else None,
             "wind_gust_kmh": gust,
             "wind_direction_deg": direction, "wind_direction_cardinal": _deg_to_cardinal(direction),
@@ -318,7 +337,7 @@ class OpenMeteoWeatherProvider(WeatherProvider):
 
         if (
             all(result.get(k) is None for k in (*MARINE_FIELDS.values(), "wind_speed_kmh", "temperature_c", "visibility_km", "weather_code"))
-            or (temporal_res.is_explicit_future and not selected_stamp)
+            or (require_future_hour and not selected_stamp)
         ):
             result.update(cache_status="unavailable", forecast="data_unavailable", forecast_valid_at=None, forecast_time=None)
         result["supplemental_fields"] = {}

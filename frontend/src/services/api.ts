@@ -21,13 +21,22 @@ function getApiBaseUrl(): string {
   if (!url || isPlaceholder) {
     url = import.meta.env.PROD ? PRODUCTION_API_BASE_URL : 'http://localhost:8000';
   }
-  if (url && !url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('/')) {
+  if (url.startsWith('/')) {
+    return url.replace(/\/+$/, '') || '/';
+  }
+  if (!/^https?:\/\//i.test(url)) {
     url = `https://${url}`;
   }
-  // Auto-resolve Render service slugs that lack .onrender.com (e.g. https://orca-backend-ycue -> https://orca-backend-ycue.onrender.com)
+  // Auto-resolve bare Render service slugs that lack .onrender.com (HTTPS hostname only)
   try {
-    const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
-    if (parsed.hostname && !parsed.hostname.includes('.') && parsed.hostname !== 'localhost') {
+    const parsed = new URL(url);
+    if (
+      parsed.protocol === 'https:' &&
+      parsed.hostname &&
+      !parsed.hostname.includes('.') &&
+      !parsed.port &&
+      parsed.hostname !== 'localhost'
+    ) {
       parsed.hostname = `${parsed.hostname}.onrender.com`;
       url = parsed.origin;
     }
@@ -37,9 +46,28 @@ function getApiBaseUrl(): string {
   return url.replace(/\/+$/, '');
 }
 
+function istTodayIso(): string {
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+  } catch {
+    return new Date().toISOString().split('T')[0];
+  }
+}
+
+function formatApiDetail(detail: unknown, fallback: string): string {
+  if (typeof detail === 'string' && detail.trim()) return detail;
+  if (Array.isArray(detail)) {
+    const msgs = detail
+      .map((item: any) => (typeof item === 'string' ? item : item?.msg))
+      .filter((msg: any): msg is string => typeof msg === 'string' && msg.trim().length > 0);
+    if (msgs.length > 0) return msgs.join('; ');
+  }
+  return fallback;
+}
+
 export const API_BASE_URL = getApiBaseUrl();
-let authFailureHandler: (() => void) | null = null;
-export function setAuthFailureHandler(handler: (() => void) | null) { authFailureHandler = handler; }
+let authFailureHandler: ((failedToken?: string) => void) | null = null;
+export function setAuthFailureHandler(handler: ((failedToken?: string) => void) | null) { authFailureHandler = handler; }
 
 function authToken(): string | null {
   try {
@@ -96,7 +124,7 @@ export async function apiFetch(path: string, init: RequestInit = {}) {
     // Only invoke auth failure if the token is truly invalid on verified profile check
     verifyTokenStillValid(token).then((stillValid) => {
       if (!stillValid && token === authToken()) {
-        authFailureHandler?.();
+        authFailureHandler?.(token);
       }
     });
   }
@@ -134,7 +162,7 @@ export async function sendChatMessage(payload: ChatMessagePayload) {
       location: payload.location,
       snapshot_id: payload.snapshot_id,
       requested_time: payload.requested_time,
-      date: payload.date || new Date().toISOString().split('T')[0],
+      date: payload.date || istTodayIso(),
       language: payload.language || 'auto',
       session_id: payload.session_id,
       history: payload.history,
@@ -153,7 +181,7 @@ export async function sendChatMessage(payload: ChatMessagePayload) {
           signal: AbortSignal.timeout(30000),
         });
       } catch (error) {
-        if (attempt === 0 && error instanceof Error && !/AbortError|timeout/i.test(error.name + error.message)) {
+        if (attempt === 0 && error instanceof Error && !/AbortError|TimeoutError|time(?:d\s*)?out/i.test(error.name + ' ' + error.message)) {
           await new Promise((resolve) => setTimeout(resolve, 150));
           continue;
         }
@@ -187,7 +215,7 @@ export async function sendChatMessage(payload: ChatMessagePayload) {
       }
 
       console.error(`[ORCA API Error] POST ${endpoint} failed (${response.status}) in ${elapsedMs}ms:`, errorDetail);
-      if (response.status === 503 && errorDetail === 'AI_PROVIDER_UNAVAILABLE') {
+      if ([502, 503, 504].includes(response.status) && errorDetail === 'AI_PROVIDER_UNAVAILABLE') {
         throw Object.assign(new Error('ORCA’s AI provider is temporarily unavailable. Please try again later.'), { code: 'AI_PROVIDER_UNAVAILABLE' });
       }
       throw new Error(`API route failed: ${errorDetail} (Endpoint: ${endpoint})`);
@@ -201,7 +229,7 @@ export async function sendChatMessage(payload: ChatMessagePayload) {
     if (error.name === 'TypeError' && error.message?.includes('fetch')) {
       console.error(`[ORCA Network Failure] Unable to reach backend at ${endpoint} (${elapsedMs}ms). Possible causes: backend offline, CORS blocked, or mixed-content (HTTPS/HTTP).`);
       throw new Error(`Unable to reach ORCA backend at ${API_BASE_URL}. Ensure the backend is active and CORS is allowed.`);
-    } else if (error.name === 'AbortError' || error.message?.includes('timeout')) {
+    } else if (error.name === 'AbortError' || error.name === 'TimeoutError' || /time(?:d\s*)?out/i.test(error.message || '')) {
       console.error(`[ORCA Timeout] Request to ${endpoint} timed out after ${elapsedMs}ms.`);
       throw new Error(`Request to ORCA conversation API timed out after ${elapsedMs}ms.`);
     }
@@ -284,7 +312,7 @@ export async function registerUser(payload: {
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
-    throw new Error(err.detail || 'Registration failed');
+    throw new Error(formatApiDetail(err.detail, 'Registration failed'));
   }
   return await response.json();
 }
@@ -298,7 +326,7 @@ export async function loginUser(email_or_phone: string, password: string) {
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
-    throw new Error(err.detail || 'Login failed');
+    throw new Error(formatApiDetail(err.detail, 'Login failed'));
   }
   return await response.json();
 }
@@ -361,7 +389,7 @@ export async function validateLocation(lat: number, lon: number, accuracy_m?: nu
 export async function updateUserLocation(lat: number, lon: number, accuracy_m?: number, token?: string) {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = 'Bearer ' + token;
-  const response = await fetch(`${API_BASE_URL}/api/location/update`, {
+  const response = await apiFetch('/api/location/update', {
     method: 'POST',
     headers,
     body: JSON.stringify({ lat, lon, accuracy_m }),
@@ -536,17 +564,34 @@ export async function transcribeVoiceAudio(
   let ext = 'webm';
   if (audioBlob.type.includes('ogg')) ext = 'ogg';
   else if (audioBlob.type.includes('mp4')) ext = 'mp4';
+  else if (audioBlob.type.includes('mpeg') || audioBlob.type.includes('mp3')) ext = 'mp3';
   else if (audioBlob.type.includes('wav')) ext = 'wav';
   else if (audioBlob.type.includes('webm')) ext = 'webm';
+  else if (filename) {
+    const lowerName = filename.toLowerCase();
+    if (lowerName.endsWith('.wav')) ext = 'wav';
+    else if (lowerName.endsWith('.mp3')) ext = 'mp3';
+    else if (lowerName.endsWith('.mp4')) ext = 'mp4';
+    else if (lowerName.endsWith('.ogg')) ext = 'ogg';
+  }
 
+  const fallbackMime: Record<string, string> = {
+    wav: 'audio/wav',
+    mp3: 'audio/mpeg',
+    mp4: 'audio/mp4',
+    ogg: 'audio/ogg',
+    webm: 'audio/webm',
+  };
+  const uploadBlob = audioBlob.type ? audioBlob : new Blob([audioBlob], { type: fallbackMime[ext] || 'audio/webm' });
   const finalFilename = filename || `recording.${ext}`;
   const formData = new FormData();
-  formData.append('file', audioBlob, finalFilename);
+  formData.append('file', uploadBlob, finalFilename);
   formData.append('language', language);
 
-  const response = await fetch(`${API_BASE_URL}/api/voice/transcribe`, {
+  const response = await apiFetch('/api/voice/transcribe', {
     method: 'POST',
     body: formData,
+    signal: AbortSignal.timeout(30000),
   });
 
   if (!response.ok) {
@@ -567,11 +612,12 @@ export async function synthesizeVoiceAudio(
   speaker: string;
   source: string;
 }> {
-  const response = await fetch(`${API_BASE_URL}/api/voice/speak`, {
+  const response = await apiFetch('/api/voice/speak', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
+    signal: AbortSignal.timeout(30000),
     body: JSON.stringify({
       text,
       language,
@@ -593,8 +639,8 @@ export async function synthesizeVoiceAudio(
 export async function fetchNotifications(userId?: string, token?: string) {
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = 'Bearer ' + token;
-  const query = userId ? `?user_id=${userId}` : '';
-  const response = await fetch(`${API_BASE_URL}/api/notifications${query}`, { headers });
+  const query = userId ? `?user_id=${encodeURIComponent(userId)}` : '';
+  const response = await apiFetch(`/api/notifications${query}`, { headers });
   if (!response.ok) {
     throw new Error('Failed to fetch notifications');
   }
@@ -602,7 +648,7 @@ export async function fetchNotifications(userId?: string, token?: string) {
 }
 
 export async function markNotificationAsRead(notificationId: string) {
-  const response = await fetch(`${API_BASE_URL}/api/notifications/${notificationId}/read`, {
+  const response = await apiFetch(`/api/notifications/${encodeURIComponent(notificationId)}/read`, {
     method: 'PATCH',
   });
   if (!response.ok) {
@@ -614,8 +660,8 @@ export async function markNotificationAsRead(notificationId: string) {
 export async function markAllNotificationsAsRead(userId?: string, token?: string) {
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = 'Bearer ' + token;
-  const query = userId ? `?user_id=${userId}` : '';
-  const response = await fetch(`${API_BASE_URL}/api/notifications/read-all${query}`, {
+  const query = userId ? `?user_id=${encodeURIComponent(userId)}` : '';
+  const response = await apiFetch(`/api/notifications/read-all${query}`, {
     method: 'POST',
     headers,
   });
@@ -632,7 +678,7 @@ export async function checkLocationSafetyAlerts(
   previousLon?: number,
   userId?: string
 ) {
-  const response = await fetch(`${API_BASE_URL}/api/notifications/check`, {
+  const response = await apiFetch('/api/notifications/check', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

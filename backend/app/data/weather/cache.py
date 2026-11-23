@@ -8,7 +8,7 @@ Architecture:
 - Resilient fallback mechanism: returns stale cached data with clear warnings if external providers are unavailable.
 """
 from dataclasses import dataclass, asdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 from collections import OrderedDict
 from threading import RLock
@@ -143,17 +143,19 @@ class MarineWeatherCache:
                 record = fallback_rec
 
         if not record:
-            self.misses_count += 1
+            with self._lock:
+                self.misses_count += 1
             return None, "miss"
 
         now = time.time()
         age = max(0, now - record.retrieval_timestamp)
         source_age = self._source_age(record.data.get("forecast_valid_at") or record.data.get("forecast_time"), now)
         age = max(age, source_age) if source_age is not None else self.max_stale + 1
-        record.access_count += 1
 
         if age <= self.fresh_ttl:
-            self.hits_count += 1
+            with self._lock:
+                record.access_count += 1
+                self.hits_count += 1
             result = dict(record.data)
             result["cache_status"] = "cached"
             result["freshness"] = "GOOD"
@@ -162,7 +164,9 @@ class MarineWeatherCache:
             result["region_cell"] = record.region_cell
             return result, "fresh"
         elif allow_stale and age <= self.max_stale:
-            self.stale_hits_count += 1
+            with self._lock:
+                record.access_count += 1
+                self.stale_hits_count += 1
             result = dict(record.data)
             result["cache_status"] = "stale"
             result["freshness"] = "ACCEPTABLE_STALE"
@@ -172,7 +176,9 @@ class MarineWeatherCache:
             result["warning"] = f"Showing cached forecast from {int(age // 60)} minutes ago. Live provider may be unreachable."
             return result, "stale"
         else:
-            self.misses_count += 1
+            with self._lock:
+                record.access_count += 1
+                self.misses_count += 1
             # Expired beyond max stale allowance
             return None, "miss"
 
@@ -232,9 +238,22 @@ class MarineWeatherCache:
         )
         if status != "unavailable":
             self._store_record(key, record)
-            # Also store under base coordinate key for fallback
+            # Store under base coordinate key only for plain current-window entries
+            # (never let sub-period, instant, or future forecasts overwrite the undated base key)
             base_key = self.get_grid_key(lat, lon)
-            if base_key != key:
+            is_scoped_key = bool(eff_target_date and ("@" in str(eff_target_date) or ":" in str(eff_target_date)))
+            today_ist_str = datetime.now(timezone(timedelta(hours=5, minutes=30))).date().isoformat()
+            is_future_date = bool(eff_target_date and str(eff_target_date)[:10] > today_ist_str)
+            is_future_valid = False
+            if f_valid:
+                try:
+                    parsed_f = datetime.fromisoformat(str(f_valid).replace("Z", "+00:00"))
+                    if parsed_f.tzinfo is None:
+                        parsed_f = parsed_f.replace(tzinfo=timezone.utc)
+                    is_future_valid = parsed_f.timestamp() - now_ts > 6 * 3600
+                except (ValueError, TypeError):
+                    is_future_valid = False
+            if base_key != key and not is_scoped_key and not is_future_date and not is_future_valid:
                 self._store_record(base_key, record)
         return stored_data
 
@@ -327,11 +346,13 @@ class MarineWeatherCache:
                 return len(keys)
             except Exception:
                 pass
-        return len(self._memory_cache)
+        with self._lock:
+            return len(self._memory_cache)
 
     def get_hit_rate_pct(self) -> float:
         """Returns percentage of cache requests satisfied by cache."""
-        total = self.hits_count + self.stale_hits_count + self.misses_count
-        if total == 0:
-            return 100.0
-        return round(((self.hits_count + self.stale_hits_count) / total) * 100, 1)
+        with self._lock:
+            total = self.hits_count + self.stale_hits_count + self.misses_count
+            if total == 0:
+                return 100.0
+            return round(((self.hits_count + self.stale_hits_count) / total) * 100, 1)

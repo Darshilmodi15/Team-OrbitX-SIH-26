@@ -151,8 +151,7 @@ def decode_token(token: str) -> Optional[Dict[str, Any]]:
 def session_is_active(payload: Dict[str, Any]) -> bool:
     jti = payload.get("jti")
     if not jti:
-        # Legacy or existing token without jti; valid as long as exp signature holds
-        return True
+        return False
     try:
         from app.db.models import DeviceSession
         from app.db.session import get_db_context
@@ -244,27 +243,34 @@ class AuthService:
             self._lookup[acc["email"].lower()] = user_id
             self._lookup[acc["phone"]] = user_id
 
-    def register(self, req: RegisterRequest) -> Tuple[UserProfile, str]:
+    def register(self, req: RegisterRequest, user_agent: str = "", ip_address: str = "") -> Tuple[UserProfile, str]:
         """Registers a new user and issues access token."""
-        # Check uniqueness in-memory
-        if req.email and req.email.lower() in self._lookup:
-            raise ValueError(f"Email '{req.email}' is already registered.")
-        if req.mobile_number and req.mobile_number in self._lookup:
-            raise ValueError(f"Mobile number '{req.mobile_number}' is already registered.")
+        from fastapi import HTTPException
+        from sqlalchemy.exc import IntegrityError
+        email_norm = req.email.strip().lower() if req.email else None
+        phone_norm = req.mobile_number.strip() if req.mobile_number else None
 
-        # Check DB uniqueness if available
+        # Check uniqueness in-memory for non-production demo accounts
+        if self._runtime_environment() not in {"production", "prod"}:
+            if email_norm and email_norm in self._lookup:
+                raise ValueError(f"Email '{email_norm}' is already registered.")
+            if phone_norm and phone_norm in self._lookup:
+                raise ValueError(f"Mobile number '{phone_norm}' is already registered.")
+
+        # Check DB uniqueness
         try:
             from app.db.session import get_db_context
             from app.repositories import UserRepository
             with get_db_context() as db:
-                if req.email and UserRepository.get_by_email(db, req.email):
-                    raise ValueError(f"Email '{req.email}' is already registered.")
-                if req.mobile_number and UserRepository.get_by_phone(db, req.mobile_number):
-                    raise ValueError(f"Mobile number '{req.mobile_number}' is already registered.")
+                if email_norm and UserRepository.get_by_email(db, email_norm):
+                    raise ValueError(f"Email '{email_norm}' is already registered.")
+                if phone_norm and UserRepository.get_by_phone(db, phone_norm):
+                    raise ValueError(f"Mobile number '{phone_norm}' is already registered.")
         except ValueError:
             raise
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Account uniqueness check failed: %s", type(e).__name__)
+            raise HTTPException(status_code=503, detail="ACCOUNT_STORAGE_UNAVAILABLE")
 
         user_id = str(uuid.uuid4())
         pwd_hash, salt = hash_password(req.password)
@@ -274,9 +280,9 @@ class AuthService:
 
         user_data = {
             "id": user_id,
-            "name": req.name,
-            "email": req.email.lower() if req.email else None,
-            "mobile_number": req.mobile_number,
+            "name": req.name.strip(),
+            "email": email_norm,
+            "mobile_number": phone_norm,
             "password_hash": pwd_hash,
             "password_salt": salt,
             "preferred_language": req.preferred_language or "en",
@@ -287,88 +293,110 @@ class AuthService:
             "last_login": now_iso,
         }
 
-        # Persist to database if available
+        # Persist to database
         try:
             from app.db.session import get_db_context
             from app.repositories import UserRepository
             with get_db_context() as db:
                 db_user = UserRepository.create_user(
                     db=db,
-                    name=req.name,
+                    name=user_data["name"],
                     password_hash=pwd_hash,
                     password_salt=salt,
-                    email=req.email,
-                    mobile_number=req.mobile_number,
+                    email=email_norm,
+                    mobile_number=phone_norm,
                     preferred_language=req.preferred_language or "en",
                     role=role_val.value,
                 )
                 user_id = db_user.id
                 user_data["id"] = user_id
+        except IntegrityError as e:
+            logger.info("Duplicate registration rejected by DB constraint: %s", type(e).__name__)
+            raise ValueError("An account with this email or mobile number is already registered.")
         except Exception as e:
-            from fastapi import HTTPException
             logger.warning("Account persistence failed: %s", type(e).__name__)
             raise HTTPException(status_code=503, detail="ACCOUNT_STORAGE_UNAVAILABLE")
 
         self._users[user_id] = user_data
-        if req.email:
-            self._lookup[req.email.lower()] = user_id
-        if req.mobile_number:
-            self._lookup[req.mobile_number] = user_id
+        if email_norm:
+            self._lookup[email_norm] = user_id
+        if phone_norm:
+            self._lookup[phone_norm] = user_id
 
-        identity = req.email or req.mobile_number or user_id
-        token = create_token(user_id, user_data["role"].value, identity)
+        identity = email_norm or phone_norm or user_id
+        token = create_token(user_id, user_data["role"].value, identity, user_agent=user_agent, ip_address=ip_address)
         profile = self._to_profile(user_data)
         return profile, token
 
-    def login(self, email_or_phone: str, password: str) -> Tuple[UserProfile, str]:
+    def login(self, email_or_phone: str, password: str, user_agent: str = "", ip_address: str = "") -> Tuple[UserProfile, str]:
         """Authenticates user credentials and issues token."""
-        key = email_or_phone.strip().lower()
-        user_id = self._lookup.get(key)
-        if not user_id:
-            user_id = self._lookup.get(email_or_phone.strip())
+        from fastapi import HTTPException
+        ident = email_or_phone.strip()
+        key = ident.lower()
+        db_user = None
+        user_data: Optional[Dict[str, Any]] = None
 
-        # Database identity is authoritative when present; this also prevents a
-        # development demo cache ID from diverging from the persisted user ID.
-        if email_or_phone:
-            try:
-                from app.db.session import get_db_context
-                from app.repositories import UserRepository
-                with get_db_context() as db:
-                    db_user = UserRepository.get_by_identifier(db, email_or_phone)
-                    if db_user:
-                        user_id = db_user.id
-                        user_data = {
-                            "id": db_user.id,
-                            "name": db_user.name,
-                            "email": db_user.email,
-                            "mobile_number": db_user.mobile_number,
-                            "password_hash": db_user.password_hash,
-                            "password_salt": db_user.password_salt,
-                            "preferred_language": db_user.preferred_language,
-                            "role": UserRole(db_user.role),
-                            "operational_region": db_user.government_profile.jurisdiction_region if db_user.government_profile else None,
-                            "location_permission_status": db_user.location_permission_status,
-                            "location_sharing_enabled": db_user.location_sharing_enabled,
-                            "created_at": db_user.created_at.isoformat() if db_user.created_at else datetime.now(timezone.utc).isoformat(),
-                            "last_login": datetime.now(timezone.utc).isoformat(),
-                        }
-                        self._users[user_id] = user_data
-                        if db_user.email:
-                            self._lookup[db_user.email.lower()] = user_id
-                        if db_user.mobile_number:
-                            self._lookup[db_user.mobile_number] = user_id
-            except Exception as e:
-                logger.debug(f"DB lookup during login: {e}")
+        try:
+            from app.db.session import get_db_context
+            from app.repositories import UserRepository
+            with get_db_context() as db:
+                db_user = UserRepository.get_by_identifier(db, ident)
+                if db_user:
+                    if not db_user.is_active:
+                        raise HTTPException(status_code=403, detail="This account is disabled.")
+                    if not verify_password(password, db_user.password_hash, db_user.password_salt):
+                        raise ValueError("Invalid email/phone or password.")
+                    now_utc = datetime.now(timezone.utc)
+                    db_user.last_login = now_utc
+                    user_data = {
+                        "id": db_user.id,
+                        "name": db_user.name,
+                        "email": db_user.email,
+                        "mobile_number": db_user.mobile_number,
+                        "password_hash": db_user.password_hash,
+                        "password_salt": db_user.password_salt,
+                        "preferred_language": db_user.preferred_language,
+                        "role": UserRole(db_user.role),
+                        "operational_region": db_user.government_profile.jurisdiction_region if db_user.government_profile else None,
+                        "location_permission_status": db_user.location_permission_status,
+                        "location_sharing_enabled": db_user.location_sharing_enabled,
+                        "created_at": db_user.created_at.isoformat() if db_user.created_at else now_utc.isoformat(),
+                        "last_login": now_utc.isoformat(),
+                    }
+        except (HTTPException, ValueError):
+            raise
+        except Exception as e:
+            logger.warning("DB lookup during login failed: %s", type(e).__name__)
+            raise HTTPException(status_code=503, detail="AUTH_STORAGE_UNAVAILABLE") from e
 
-        if not user_id or user_id not in self._users:
-            raise ValueError("Invalid credentials: No account found with provided email or mobile number.")
+        if user_data is None:
+            # Development/test demo accounts may exist only in memory.
+            if self._runtime_environment() not in {"production", "prod"}:
+                demo_uid = self._lookup.get(key) or self._lookup.get(ident)
+                if demo_uid and demo_uid.startswith("USR-DEMO-") and demo_uid in self._users:
+                    demo_data = dict(self._users[demo_uid])
+                    if not verify_password(password, demo_data["password_hash"], demo_data["password_salt"]):
+                        raise ValueError("Invalid email/phone or password.")
+                    demo_data["last_login"] = datetime.now(timezone.utc).isoformat()
+                    self._users[demo_uid] = demo_data
+                    user_data = demo_data
+            if user_data is None:
+                raise ValueError("Invalid email/phone or password.")
+        else:
+            uid = user_data["id"]
+            self._users[uid] = user_data
+            if user_data.get("email"):
+                self._lookup[user_data["email"].lower()] = uid
+            if user_data.get("mobile_number"):
+                self._lookup[user_data["mobile_number"]] = uid
 
-        user_data = self._users[user_id]
-        if not verify_password(password, user_data["password_hash"], user_data["password_salt"]):
-            raise ValueError("Invalid password.")
-
-        user_data["last_login"] = datetime.now(timezone.utc).isoformat()
-        token = create_token(user_id, user_data["role"].value, email_or_phone)
+        token = create_token(
+            user_data["id"],
+            user_data["role"].value,
+            ident,
+            user_agent=user_agent,
+            ip_address=ip_address,
+        )
         profile = self._to_profile(user_data)
         return profile, token
 
@@ -465,16 +493,36 @@ class AuthService:
     def list_all_users(self) -> List[UserProfile]:
         """Returns all registered users as public profiles."""
         try:
+            from sqlalchemy.orm import joinedload
             from app.db.session import get_db_context
             from app.db.models import User
             with get_db_context() as db:
-                ids = [row[0] for row in db.query(User.id).all()]
-            return [profile for user_id in ids if (profile := self.get_user_by_id(user_id)) is not None]
+                rows = (
+                    db.query(User)
+                    .options(joinedload(User.government_profile))
+                    .filter(User.is_active.is_(True))
+                    .all()
+                )
+                return [
+                    UserProfile(
+                        id=u.id,
+                        name=u.name,
+                        email=u.email,
+                        mobile_number=u.mobile_number,
+                        preferred_language=u.preferred_language,
+                        role=UserRole(u.role),
+                        operational_region=u.government_profile.jurisdiction_region if u.government_profile else None,
+                        location_permission_status=u.location_permission_status,
+                        location_sharing_enabled=u.location_sharing_enabled,
+                        created_at=u.created_at.isoformat() if u.created_at else datetime.now(timezone.utc).isoformat(),
+                        last_login=u.last_login.isoformat() if u.last_login else None,
+                    )
+                    for u in rows
+                ]
         except Exception as exc:
             from fastapi import HTTPException
             logger.warning("Account listing failed: %s", type(exc).__name__)
             raise HTTPException(status_code=503, detail="ACCOUNT_STORAGE_UNAVAILABLE") from exc
-
 
     def update_profile(
         self,
@@ -486,54 +534,87 @@ class AuthService:
         role: Optional[UserRole] = None,
     ) -> Optional[UserProfile]:
         """Updates user profile properties."""
-        user_data = dict(self._users.get(user_id) or {})
-        if not user_data:
-            return None
-
-        if name is not None:
-            user_data["name"] = name
-        if preferred_language is not None:
-            user_data["preferred_language"] = preferred_language
-        if location_permission_status is not None:
-            user_data["location_permission_status"] = location_permission_status
-        if location_sharing_enabled is not None:
-            user_data["location_sharing_enabled"] = location_sharing_enabled
-        if role is not None:
-            user_data["role"] = role
-
         try:
+            from sqlalchemy.orm import joinedload
             from app.db.session import get_db_context
-            from app.db.models import User
+            from app.db.models import User, UserPreference
             with get_db_context() as db:
-                db_user = db.query(User).filter(User.id == user_id).first()
-                if not db_user:
+                db_user = (
+                    db.query(User)
+                    .options(joinedload(User.government_profile))
+                    .filter(User.id == user_id)
+                    .first()
+                )
+                if not db_user or not db_user.is_active:
                     return None
-                if db_user:
-                    if name is not None: db_user.name = name
-                    if preferred_language is not None: db_user.preferred_language = preferred_language
-                    if location_permission_status is not None: db_user.location_permission_status = location_permission_status
-                    if location_sharing_enabled is not None: db_user.location_sharing_enabled = location_sharing_enabled
-                    if role is not None: db_user.role = role.value
+                if name is not None:
+                    db_user.name = name
+                if preferred_language is not None:
+                    db_user.preferred_language = preferred_language
+                    pref = db.query(UserPreference).filter(UserPreference.user_id == user_id).first()
+                    if pref:
+                        pref.preferred_language = preferred_language
+                if location_permission_status is not None:
+                    db_user.location_permission_status = location_permission_status
+                if location_sharing_enabled is not None:
+                    db_user.location_sharing_enabled = location_sharing_enabled
+                if role is not None:
+                    db_user.role = role.value
+                db.flush()
+                profile = UserProfile(
+                    id=db_user.id,
+                    name=db_user.name,
+                    email=db_user.email,
+                    mobile_number=db_user.mobile_number,
+                    preferred_language=db_user.preferred_language,
+                    role=UserRole(db_user.role),
+                    operational_region=db_user.government_profile.jurisdiction_region if db_user.government_profile else None,
+                    location_permission_status=db_user.location_permission_status,
+                    location_sharing_enabled=db_user.location_sharing_enabled,
+                    created_at=db_user.created_at.isoformat() if db_user.created_at else datetime.now(timezone.utc).isoformat(),
+                    last_login=db_user.last_login.isoformat() if db_user.last_login else None,
+                )
         except Exception as exc:
             logger.warning("DB profile update failed: %s", type(exc).__name__)
             from fastapi import HTTPException
             raise HTTPException(status_code=503, detail="PROFILE_SAVE_FAILED") from exc
 
-        self._users[user_id] = user_data
+        if user_id in self._users:
+            cached = self._users[user_id]
+            cached["name"] = profile.name
+            cached["preferred_language"] = profile.preferred_language
+            cached["location_permission_status"] = profile.location_permission_status
+            cached["location_sharing_enabled"] = profile.location_sharing_enabled
+            cached["role"] = profile.role
 
-        return self._to_profile(user_data)
+        return profile
 
     def update_role_safely(self, user_id: str, role: UserRole) -> Optional[UserProfile]:
         """Atomically changes a role while preserving at least one administrator."""
+        from sqlalchemy import and_, or_
         from app.db.session import get_db_context
         from app.db.models import User
         with get_db_context() as db:
-            target = db.query(User).filter(User.id == user_id).with_for_update().first()
+            locked_rows = (
+                db.query(User)
+                .filter(
+                    or_(
+                        User.id == user_id,
+                        and_(User.role == UserRole.SUPER_ADMIN.value, User.is_active.is_(True)),
+                    )
+                )
+                .order_by(User.id)
+                .with_for_update()
+                .all()
+            )
+            target = next((u for u in locked_rows if u.id == user_id), None)
             if not target:
                 return None
-            if target.role == UserRole.SUPER_ADMIN.value and role != UserRole.SUPER_ADMIN:
-                admins = db.query(User).filter(User.role == UserRole.SUPER_ADMIN.value, User.is_active.is_(True)).with_for_update().count()
-                if admins <= 1:
+            if target.is_active and target.role == UserRole.SUPER_ADMIN.value and role != UserRole.SUPER_ADMIN:
+                active_admins = sum(
+                    1 for u in locked_rows if u.role == UserRole.SUPER_ADMIN.value and u.is_active
+                )
+                if active_admins <= 1:
                     raise ValueError("Cannot remove the last administrator")
             target.role = role.value
         if user_id in self._users:

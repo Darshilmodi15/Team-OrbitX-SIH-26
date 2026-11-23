@@ -13,7 +13,7 @@ if _env_file.exists():
     load_dotenv(dotenv_path=_env_file)
 else:
     load_dotenv()
-from fastapi import FastAPI, Query, Depends, HTTPException
+from fastapi import FastAPI, Query, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -43,7 +43,7 @@ from app.data.pfz.base import PFZProvider
 from app.data.pfz.mock import IncoisPFZProvider
 from app.data.weather.base import WeatherProvider
 from app.data.weather.incois import IncoisWeatherProvider
-from app.services.temporal import resolve_query_time, TemporalResolution
+from app.services.temporal import IST, resolve_query_time, TemporalResolution
 from app.models.agent_models import (
     AgentResult,
     BoundaryEvidence,
@@ -71,10 +71,10 @@ from app.routers.notifications import router as notifications_router
 from app.routers.pfz import router as pfz_router
 from app.routers.voice import router as voice_router
 from app.routers.chat import router as chat_router
-from app.routers.auth import get_current_user_from_header
+from app.routers.auth import get_current_user_from_header, require_roles
 from app.db.session import get_db
 from app.db.models import Conversation, ChatRequestRecord
-from app.models.user_models import UserProfile
+from app.models.user_models import UserProfile, UserRole
 from app.services.chat_service import chat_storage_service
 from app.services.marine_snapshot_service import marine_snapshot_service
 from app.models.marine_snapshot import MarineSnapshot
@@ -165,30 +165,46 @@ async def unhandled_exception_handler(request, exc):
     logging.getLogger("orca").error("Unhandled exception on %s %s: %s", request.method, request.url.path, exc, exc_info=True)
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
+def _today_ist_iso() -> str:
+    return datetime.now(IST).date().isoformat()
+
+
+def _as_utc(dt: datetime) -> datetime:
+    return dt.astimezone(timezone.utc) if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+
+
+_runtime_env = (os.getenv("APP_ENV") or os.getenv("ENVIRONMENT", "development")).lower()
 frontend_origins = {
     origin.strip()
     for origin in os.getenv(
         "FRONTEND_ORIGIN",
-        "https://team-orbit-x-sih-26.vercel.app,http://localhost:5173,http://localhost:3000",
+        "https://team-orbit-x-sih-26.vercel.app",
     ).split(",")
     if origin.strip()
 }
 frontend_origins.update([
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "http://localhost:5175",
-    "http://localhost:3000",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:5174",
-    "http://127.0.0.1:5175",
-    "http://127.0.0.1:3000",
     "https://team-orbit-x-sih-26.vercel.app",
     "https://team-orbitx-sih-26.vercel.app",
 ])
+if _runtime_env not in {"production", "prod"}:
+    frontend_origins.update([
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:5175",
+        "http://127.0.0.1:3000",
+    ])
+    _cors_origin_regex = r"^https://team-orbit-?x-sih-26(-[a-z0-9-]+)?\.vercel\.app$|^http://(localhost|127\.0\.0\.1)(:\d+)?$"
+else:
+    _cors_origin_regex = r"^https://team-orbit-?x-sih-26(-[a-z0-9-]+)?\.vercel\.app$"
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(frontend_origins),
-    allow_origin_regex=r"https://.*\.vercel\.app|http://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_origin_regex=_cors_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -220,7 +236,19 @@ def health_check():
 @app.get("/api/health/providers")
 def get_providers_health():
     """Returns non-secret public health and data provenance for all marine providers."""
-    providers = ["incois", "incois_pfz", "open_meteo", "gemini", "isro_mosdac", "sarvam_stt", "sarvam_tts", "sarvam_translation"]
+    providers = [
+        "incois",
+        "incois_pfz",
+        "open_meteo",
+        "gemini",
+        "isro_mosdac",
+        "sarvam_stt",
+        "sarvam_tts",
+        "sarvam_translation",
+        "bhashini_stt",
+        "bhashini_tts",
+        "bhashini_translation",
+    ]
     return {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "providers": {p: snapshot(p) for p in providers},
@@ -228,7 +256,14 @@ def get_providers_health():
 
 
 @app.get("/api/marine/snapshot", response_model=MarineSnapshot)
-def get_snapshot(demo_scenario: Optional[str] = None, requested_time: Optional[str] = None, lat: Optional[float] = Query(None, ge=-90, le=90), lon: Optional[float] = Query(None, ge=-180, le=180), user: UserProfile = Depends(get_current_user_from_header), db: Session = Depends(get_db)):
+def get_snapshot(
+    demo_scenario: Optional[str] = None,
+    requested_time: Optional[str] = None,
+    lat: Optional[float] = Query(None, ge=-90, le=90, allow_inf_nan=False),
+    lon: Optional[float] = Query(None, ge=-180, le=180, allow_inf_nan=False),
+    user: UserProfile = Depends(get_current_user_from_header),
+    db: Session = Depends(get_db),
+):
     return marine_snapshot_service.resolve(db, user.id, weather_provider, requested_time, lat, lon, demo_scenario)
 
 
@@ -245,8 +280,8 @@ def get_snapshot_by_id(snapshot_id: str, user: UserProfile = Depends(get_current
 
 @app.get("/api/marine/conditions")
 def get_marine_conditions_endpoint(
-    lat: float = Query(18.9220),
-    lon: float = Query(72.8347),
+    lat: float = Query(18.9220, ge=-90, le=90, allow_inf_nan=False),
+    lon: float = Query(72.8347, ge=-180, le=180, allow_inf_nan=False),
     date: Optional[str] = Query(None),
     time_hint: Optional[str] = Query(None),
 ):
@@ -264,8 +299,8 @@ def get_marine_conditions_endpoint(
 
 @app.get("/api/marine/risk")
 def get_marine_risk_endpoint(
-    lat: float = Query(18.9220),
-    lon: float = Query(72.8347),
+    lat: float = Query(18.9220, ge=-90, le=90, allow_inf_nan=False),
+    lon: float = Query(72.8347, ge=-180, le=180, allow_inf_nan=False),
     date: Optional[str] = Query(None),
     time_hint: Optional[str] = Query(None),
 ):
@@ -288,8 +323,8 @@ def get_marine_risk_endpoint(
 
 @app.get("/api/marine/forecast")
 def get_marine_forecast_endpoint(
-    lat: float = Query(18.9220),
-    lon: float = Query(72.8347),
+    lat: float = Query(18.9220, ge=-90, le=90, allow_inf_nan=False),
+    lon: float = Query(72.8347, ge=-180, le=180, allow_inf_nan=False),
     date: Optional[str] = Query(None),
     time_hint: Optional[str] = Query(None),
 ):
@@ -315,19 +350,19 @@ def get_marine_forecast_endpoint(
 
 
 class Location(BaseModel):
-    lat: float = Field(..., description="Latitude coordinate")
-    lon: float = Field(..., description="Longitude coordinate")
+    lat: float = Field(..., ge=-90, le=90, allow_inf_nan=False, description="Latitude coordinate")
+    lon: float = Field(..., ge=-180, le=180, allow_inf_nan=False, description="Longitude coordinate")
 
 
 class QueryRequest(BaseModel):
     location: Location
     date: Optional[str] = Field(
-        default_factory=lambda: dt_date.today().isoformat(),
+        default_factory=_today_ist_iso,
         description="Date of forecast / inquiry (e.g. 'YYYY-MM-DD')",
     )
-    question: str = Field(..., description="User question or operational query")
-    language: Optional[str] = Field(default="auto", description="Source language ('auto', 'gu', 'hi', 'en', etc.)")
-    session_id: Optional[str] = Field(default=None, description="Optional session ID for multi-turn state")
+    question: str = Field(..., min_length=1, max_length=8000, description="User question or operational query")
+    language: Optional[str] = Field(default="auto", max_length=16, description="Source language ('auto', 'gu', 'hi', 'en', etc.)")
+    session_id: Optional[str] = Field(default=None, max_length=128, description="Optional session ID for multi-turn state")
 
 
 class QueryResponse(BaseModel):
@@ -371,7 +406,7 @@ class ChatRequest(BaseModel):
         description="Vessel GPS location",
     )
     date: Optional[str] = Field(
-        default_factory=lambda: dt_date.today().isoformat(),
+        default_factory=_today_ist_iso,
         description="Forecast date ('YYYY-MM-DD')",
     )
     language: Optional[str] = Field(
@@ -438,22 +473,22 @@ class ChatResponse(BaseModel):
 
 class SimulateRequest(BaseModel):
     location: Optional[Location] = Field(default_factory=lambda: Location(lat=18.9220, lon=72.8347))
-    delta_wave_m: Optional[float] = Field(default=None, description="Increase/decrease in wave height in metres")
-    target_wave_m: Optional[float] = Field(default=None, description="Absolute simulated wave height in metres")
-    delta_wind_kmh: Optional[float] = Field(default=None, description="Increase/decrease in wind speed in km/h")
-    target_wind_kmh: Optional[float] = Field(default=None, description="Absolute simulated wind speed in km/h")
-    date: Optional[str] = Field(default_factory=lambda: dt_date.today().isoformat())
+    delta_wave_m: Optional[float] = Field(default=None, allow_inf_nan=False, description="Increase/decrease in wave height in metres")
+    target_wave_m: Optional[float] = Field(default=None, allow_inf_nan=False, description="Absolute simulated wave height in metres")
+    delta_wind_kmh: Optional[float] = Field(default=None, allow_inf_nan=False, description="Increase/decrease in wind speed in km/h")
+    target_wind_kmh: Optional[float] = Field(default=None, allow_inf_nan=False, description="Absolute simulated wind speed in km/h")
+    date: Optional[str] = Field(default_factory=_today_ist_iso)
 
 
 
 class TranslateRequest(BaseModel):
-    text: str = Field(..., description="Text to translate")
-    source_language: str = Field(..., description="Source ISO language code (e.g. 'gu', 'hi', 'en')")
-    target_language: str = Field(..., description="Target ISO language code (e.g. 'en', 'gu', 'hi')")
+    text: str = Field(..., min_length=1, max_length=8000, description="Text to translate")
+    source_language: str = Field(..., min_length=2, max_length=16, description="Source ISO language code (e.g. 'gu', 'hi', 'en')")
+    target_language: str = Field(..., min_length=2, max_length=16, description="Target ISO language code (e.g. 'en', 'gu', 'hi')")
 
 
 class DetectLanguageRequest(BaseModel):
-    text: str = Field(..., description="Text to identify language for")
+    text: str = Field(..., min_length=1, max_length=8000, description="Text to identify language for")
 
 
 @app.get("/")
@@ -515,8 +550,9 @@ def get_supported_languages():
 
 
 @app.post("/api/detect-language")
-def detect_language_endpoint(request: DetectLanguageRequest):
+def detect_language_endpoint(request: DetectLanguageRequest, req: Request):
     """Detects the Indian regional language and script of input text via Sarvam LID with deterministic fallback."""
+    rate_limiter.check("detect_language", f"ip:{req.client.host if req.client else 'unknown'}", limit=60, window_seconds=60)
     lid_res = bhashini_service.identify_language(request.text)
     return {
         "language": lid_res.short_code,
@@ -530,8 +566,9 @@ def detect_language_endpoint(request: DetectLanguageRequest):
 
 
 @app.post("/api/translate")
-def translate_endpoint(request: TranslateRequest):
+def translate_endpoint(request: TranslateRequest, req: Request):
     """Translates text between Indian languages and English using Bhashini NMT."""
+    rate_limiter.check("translate", f"ip:{req.client.host if req.client else 'unknown'}", limit=60, window_seconds=60)
     translated = bhashini_service.translate(
         text=request.text,
         source_lang=request.source_language,
@@ -546,19 +583,18 @@ def translate_endpoint(request: TranslateRequest):
 
 
 class BhashiniTranslateRequest(BaseModel):
-    text: str = Field(..., description="Text to translate via Bhashini")
-    source_language: str = Field(default="en", description="Source ISO language code (e.g. 'en', 'gu', 'hi')")
-    target_language: str = Field(default="gu", description="Target ISO language code (e.g. 'gu', 'hi', 'en')")
-    service_id: Optional[str] = Field(default=None, description="Optional custom Bhashini Service ID")
+    text: str = Field(..., min_length=1, max_length=8000, description="Text to translate via Bhashini")
+    source_language: str = Field(default="en", max_length=16, description="Source ISO language code (e.g. 'en', 'gu', 'hi')")
+    target_language: str = Field(default="gu", max_length=16, description="Target ISO language code (e.g. 'gu', 'hi', 'en')")
+    service_id: Optional[str] = Field(default=None, max_length=128, description="Optional custom Bhashini Service ID")
 
 
 @app.get("/api/bhashini/status")
-def bhashini_status_endpoint():
+def bhashini_status_endpoint(_user: UserProfile = Depends(require_roles(UserRole.SUPER_ADMIN))):
     """Returns configuration status, credential checks, and supported Service IDs for Bhashini."""
     return {
         "is_configured": bhashini_service.is_configured,
         "has_user_id": bool(bhashini_service.user_id),
-        "user_id_preview": (bhashini_service.user_id[:6] + "..." + bhashini_service.user_id[-4:]) if bhashini_service.user_id else None,
         "has_api_key": bool(bhashini_service.api_key),
         "has_inference_key": bool(bhashini_service.inference_api_key),
         "pipeline_id": bhashini_service.pipeline_id,
@@ -567,7 +603,10 @@ def bhashini_status_endpoint():
 
 
 @app.post("/api/bhashini/translate")
-def bhashini_translate_endpoint(request: BhashiniTranslateRequest):
+def bhashini_translate_endpoint(
+    request: BhashiniTranslateRequest,
+    _user: UserProfile = Depends(require_roles(UserRole.SUPER_ADMIN)),
+):
     """
     Directly tests Bhashini translation (MeitY ULCA / Dhruva inference).
     Use this endpoint to verify live credentials and model responses.
@@ -600,7 +639,10 @@ def bhashini_translate_endpoint(request: BhashiniTranslateRequest):
 
 
 @app.get("/api/geofences")
-def get_geofences_endpoint(lat: float = 18.9220, lon: float = 72.8347):
+def get_geofences_endpoint(
+    lat: float = Query(18.9220, ge=-90, le=90, allow_inf_nan=False),
+    lon: float = Query(72.8347, ge=-180, le=180, allow_inf_nan=False),
+):
     """Returns all registered maritime geofences and proximity alerts for coordinates."""
     geofences = evaluate_vessel_geofences(lat, lon)
     active_alerts = [g.model_dump() for g in geofences if g.is_proximity_warning or g.is_inside]
@@ -617,9 +659,13 @@ def get_geofences_endpoint(lat: float = 18.9220, lon: float = 72.8347):
 
 
 @app.get("/api/alerts")
-def get_hazard_alerts_endpoint(lat: float = 18.9220, lon: float = 72.8347, date: Optional[str] = None):
+def get_hazard_alerts_endpoint(
+    lat: float = Query(18.9220, ge=-90, le=90, allow_inf_nan=False),
+    lon: float = Query(72.8347, ge=-180, le=180, allow_inf_nan=False),
+    date: Optional[str] = None,
+):
     """Returns active proactive hazard alerts for given coordinates."""
-    q_date = date or dt_date.today().isoformat()
+    q_date = date or _today_ist_iso()
     weather = get_marine_weather(provider=weather_provider, lat=lat, lon=lon, date=q_date)
     alerts = detect_proactive_hazards(lat=lat, lon=lon, weather=weather)
     return {
@@ -640,7 +686,7 @@ def simulate_endpoint(request: SimulateRequest):
         )
     lat = request.location.lat
     lon = request.location.lon
-    q_date = request.date or dt_date.today().isoformat()
+    q_date = request.date or _today_ist_iso()
 
     weather = get_marine_weather(provider=weather_provider, lat=lat, lon=lon, date=q_date)
     risk = assess_risk(weather)
@@ -663,18 +709,19 @@ def simulate_endpoint(request: SimulateRequest):
 
 
 @app.post("/api/demo/dahanu")
-def run_dahanu_killer_demo(language: str = "en"):
+def run_dahanu_killer_demo(req: Request, language: str = "en"):
     """
     SIH Guided Demo Endpoint:
     'Fisherman near Dahanu wants to find the nearest PFZ, determine whether tomorrow morning
     is safe for fishing, and receive a safe navigational route.'
     """
+    rate_limiter.check("demo_dahanu", f"ip:{req.client.host if req.client else 'unknown'}", limit=30, window_seconds=60)
     question = "I am near Dahanu. Find the nearest PFZ, tell me whether it is safe to go tomorrow morning, and suggest the safest route."
     res = _process_orca_query(
         question_raw=question,
         lat=19.9700,
         lon=72.7300,
-        query_date=dt_date.today().isoformat(),
+        query_date=_today_ist_iso(),
         requested_lang=language,
     )
     return res
@@ -740,6 +787,8 @@ def _process_orca_query(
     active_date = temporal_res.target_date
     sim_delta_wave = intent_res.get("simulation_delta_wave")
     sim_delta_wind = intent_res.get("simulation_delta_wind")
+    sim_target_wave = intent_res.get("simulation_target_wave")
+    sim_target_wind = intent_res.get("simulation_target_wind")
 
     active_lat = lat
     active_lon = lon
@@ -994,11 +1043,16 @@ def _process_orca_query(
 
     # 5f. Simulation Agent
     if needs_sim and weather_evidence and risk_evidence and weather_evidence.wave_height_m is not None and weather_evidence.wind_speed_kmh is not None and weather_evidence.cache_status in {"fresh", "live", "cached"}:
+        has_sim_param = any(
+            v is not None for v in (sim_delta_wave, sim_target_wave, sim_delta_wind, sim_target_wind)
+        )
         simulation_evidence = run_what_if_simulation(
             baseline_weather=weather_evidence,
             baseline_risk=risk_evidence,
-            delta_wave_m=sim_delta_wave if sim_delta_wave is not None else 1.0,
+            delta_wave_m=sim_delta_wave if has_sim_param else 1.0,
+            target_wave_m=sim_target_wave,
             delta_wind_kmh=sim_delta_wind,
+            target_wind_kmh=sim_target_wind,
         )
         sources_used.append("what_if_simulation_agent")
         executed_tasks.append("simulation_agent:run_simulation")
@@ -1063,6 +1117,7 @@ def _process_orca_query(
     )
 
     # Construct EvidenceBundle
+    safe_date = query_date or active_date or _today_ist_iso()
     evidence_bundle = EvidenceBundle(
         weather=weather_evidence,
         pfz_zones=pfz_evidence_list,
@@ -1078,7 +1133,7 @@ def _process_orca_query(
         tide=tide_evidence,
         location_lat=active_lat,
         location_lon=active_lon,
-        date=query_date,
+        date=safe_date,
         connectivity_mode=connectivity_mode,
     )
 
@@ -1140,7 +1195,7 @@ def _process_orca_query(
         "intent": detected_intent,
         "agents_used": list(dict.fromkeys(task.split(":", 1)[0] for task in executed_tasks)),
         "data_timestamp": (weather_evidence.retrieval_time if weather_evidence and weather_evidence.retrieval_time else datetime.now(timezone.utc).isoformat()),
-        "fallback_used": connectivity_mode != "LIVE",
+        "fallback_used": connectivity_mode != "FRESH",
         "original_transcript": decision.original_transcript,
         "detected_languages": decision.detected_languages,
         "dominant_language": decision.dominant_language,
@@ -1152,13 +1207,14 @@ def _process_orca_query(
 
 
 @app.post("/query", response_model=QueryResponse)
-def handle_query(request: QueryRequest) -> QueryResponse:
+def handle_query(request: QueryRequest, req: Request) -> QueryResponse:
     """Multilingual query endpoint for ORCA Marine AI."""
+    rate_limiter.check("query", f"ip:{req.client.host if req.client else 'unknown'}", limit=30, window_seconds=60)
     result = _process_orca_query(
         question_raw=request.question,
         lat=request.location.lat,
         lon=request.location.lon,
-        query_date=request.date,
+        query_date=request.date or _today_ist_iso(),
         requested_lang=request.language or "auto",
         session_id=request.session_id,
     )
@@ -1197,21 +1253,38 @@ def generate_operational_fallback(question: str, lang: str, loc_title: str) -> s
 def handle_chat(request: ChatRequest, user: UserProfile = Depends(get_current_user_from_header), db: Session = Depends(get_db)) -> ChatResponse:
     """Dedicated conversational endpoint with Bhashini multilingual orchestration."""
     rate_limiter.check("chat", user.id, limit=30)
+    from app.services.snapshot_chat import process_snapshot_chat
+    # Client coordinates do not override the authenticated saved location.
+    from app.services.marine_snapshot_service import digest
+    from sqlalchemy.exc import IntegrityError
+
+    effective_date = request.date or _today_ist_iso()
+    record_id = (
+        digest([user.id, request.session_id, request.request_id])
+        if request.request_id and request.session_id
+        else digest([user.id, request.request_id])
+        if request.request_id
+        else None
+    )
+    payload_hash = digest([request.message, request.language, request.requested_time, request.snapshot_id, effective_date])
+    request_record = db.get(ChatRequestRecord, record_id) if record_id else None
+    if request_record and not request.session_id:
+        request.session_id = request_record.conversation_id
+
     if not request.session_id:
         conversation = chat_storage_service.create(db, user.id, request.message[:80])
         db.commit()
         request.session_id = conversation.id
-    history_dicts = chat_storage_service.context(db, user.id, request.session_id)
+
+    history_dicts = chat_storage_service.context(
+        db,
+        user.id,
+        request.session_id,
+        exclude_request_id=request.request_id if request_record is not None else None,
+    )
     if history_dicts is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    from app.services.snapshot_chat import process_snapshot_chat
-    # Client coordinates do not override the authenticated saved location.
-    from app.services.marine_snapshot_service import digest
-    import json
-    from sqlalchemy.exc import IntegrityError
-    record_id = digest([user.id, request.session_id, request.request_id]) if request.request_id else None
-    payload_hash = digest([request.message, request.language, request.requested_time])
-    request_record = db.get(ChatRequestRecord, record_id) if record_id else None
+
     append_user = request_record is None
     claim_time = datetime.now(timezone.utc)
     if request_record:
@@ -1220,7 +1293,7 @@ def handle_chat(request: ChatRequest, user: UserProfile = Depends(get_current_us
         if request_record.status == "completed":
             return ChatResponse.model_validate_json(request_record.response_json)
         previous_claim = request_record.updated_at
-        if request_record.status == "processing" and previous_claim.replace(tzinfo=timezone.utc) > claim_time - timedelta(minutes=10):
+        if request_record.status == "processing" and _as_utc(previous_claim) > claim_time - timedelta(minutes=10):
             raise HTTPException(status_code=409, detail="CHAT_REQUEST_IN_PROGRESS")
         # Expired worker leases and failed attempts reuse the persisted user turn.
         changed = db.query(ChatRequestRecord).filter_by(id=record_id, status=request_record.status, updated_at=previous_claim).update({"status":"processing", "updated_at":claim_time})
@@ -1321,13 +1394,15 @@ def handle_chat(request: ChatRequest, user: UserProfile = Depends(get_current_us
 
 @app.get("/api/recommendations")
 def get_recommendations_endpoint(
-    lat: float = Query(18.9220),
-    lon: float = Query(72.8347),
+    req: Request,
+    lat: float = Query(18.9220, ge=-90, le=90, allow_inf_nan=False),
+    lon: float = Query(72.8347, ge=-180, le=180, allow_inf_nan=False),
     date: Optional[str] = Query(None),
-    question: Optional[str] = Query(None),
+    question: Optional[str] = Query(None, max_length=8000),
 ):
     """Delivers reliable operational recommendations together with the supporting evidence and reasoning used to derive each response."""
-    q_date = date or dt_date.today().isoformat()
+    rate_limiter.check("recommendations", f"ip:{req.client.host if req.client else 'unknown'}", limit=30, window_seconds=60)
+    q_date = date or _today_ist_iso()
     q_text = question or "Provide comprehensive marine safety, fishing, and navigational recommendations."
     res = _process_orca_query(
         question_raw=q_text,
@@ -1359,7 +1434,11 @@ def get_recommendations_endpoint(
 
 
 @app.get("/api/analytics/ocean")
-def get_ocean_analytics_endpoint(lat: float = Query(18.9220), lon: float = Query(72.8347), region: Optional[str] = Query(None)):
+def get_ocean_analytics_endpoint(
+    lat: float = Query(18.9220, ge=-90, le=90, allow_inf_nan=False),
+    lon: float = Query(72.8347, ge=-180, le=180, allow_inf_nan=False),
+    region: Optional[str] = Query(None),
+):
     """Returns satellite ocean color, chlorophyll-a concentration, and thermal front analytics."""
     from app.services.satellite.mosdac_service import mosdac_service
     if mosdac_service.is_configured:
@@ -1378,17 +1457,23 @@ def get_satellite_status():
 
 
 @app.get("/api/analytics/productivity")
-def get_productivity_decline_endpoint(region: str = Query("Maharashtra Coast"), lat: float = Query(18.9220), lon: float = Query(72.8347)):
+def get_productivity_decline_endpoint(
+    region: str = Query("Maharashtra Coast"),
+    lat: float = Query(18.9220, ge=-90, le=90, allow_inf_nan=False),
+    lon: float = Query(72.8347, ge=-180, le=180, allow_inf_nan=False),
+):
     """Returns marine ecological root-cause analysis for fish productivity and catch decline."""
-    weather = get_marine_weather(provider=weather_provider, lat=lat, lon=lon, date=dt_date.today().isoformat())
     raise HTTPException(status_code=503, detail="HISTORICAL_CATCH_OBSERVATIONS_UNAVAILABLE")
 
 
 
 @app.get("/api/analytics/zone-avoidance")
-def get_zone_avoidance_endpoint(lat: float = Query(18.9220), lon: float = Query(72.8347)):
+def get_zone_avoidance_endpoint(
+    lat: float = Query(18.9220, ge=-90, le=90, allow_inf_nan=False),
+    lon: float = Query(72.8347, ge=-180, le=180, allow_inf_nan=False),
+):
     """Returns evaluated zones to avoid due to hazardous marine conditions or geofencing restrictions."""
-    weather = get_marine_weather(provider=weather_provider, lat=lat, lon=lon, date=dt_date.today().isoformat())
+    weather = get_marine_weather(provider=weather_provider, lat=lat, lon=lon, date=_today_ist_iso())
     geofences = evaluate_vessel_geofences(lat, lon)
     pfz_zones = get_pfz_zones_evidence(provider=pfz_provider, lat=lat, lon=lon, wave_height_m=weather.wave_height_m)
     evidence = evaluate_zone_avoidance(lat=lat, lon=lon, weather=weather, geofences=geofences, candidate_pfz=pfz_zones)
@@ -1396,6 +1481,9 @@ def get_zone_avoidance_endpoint(lat: float = Query(18.9220), lon: float = Query(
 
 
 @app.get("/api/marine/tide")
-def get_marine_tide_endpoint(lat: float = Query(18.9220), lon: float = Query(72.8347)):
+def get_marine_tide_endpoint(
+    lat: float = Query(18.9220, ge=-90, le=90, allow_inf_nan=False),
+    lon: float = Query(72.8347, ge=-180, le=180, allow_inf_nan=False),
+):
     """Returns tidal predictions, high/low tide timings, and tidal ranges."""
     raise HTTPException(status_code=503, detail="TIDE_FEED_UNAVAILABLE")

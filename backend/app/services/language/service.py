@@ -4,8 +4,10 @@ Unified Language & Speech Service for ORCA Marine AI.
 Supports interchangeable language providers (Sarvam AI, Bhashini, Mock/Gemini)
 with multi-turn session persistence, instant script classification, and caching.
 """
+from collections import OrderedDict
 import os
 import logging
+from threading import Lock
 from typing import Any, Dict, Optional
 from app.services.language.base import LanguageProvider
 from app.services.language.bhashini_provider import BhashiniLanguageProvider
@@ -23,7 +25,7 @@ SUPPORTED_LANGUAGES: Dict[str, str] = {
     "te": "Telugu (తెలుగు)",
     "ml": "Malayalam (മലയാളം)",
     "kn": "Kannada (ಕನ್ನಡ)",
-    "or": "Odia (ଓડ଼ିଆ)",
+    "or": "Odia (\u0b13\u0b21\u0b3c\u0b3f\u0b06)",
     "pa": "Punjabi (ਪੰਜਾਬੀ)",
     "as": "Assamese (অসমীয়া)",
     "ur": "Urdu (اردو)",
@@ -45,12 +47,17 @@ class LanguageService:
                 self.provider = SarvamLanguageProvider()
             else:
                 self.provider = BhashiniLanguageProvider()
-        self._session_languages: Dict[str, str] = {}
-        self._translation_cache: Dict[tuple[str, str, str], str] = {}
+        self._lock = Lock()
+        self._session_languages: OrderedDict = OrderedDict()
+        self._translation_cache: OrderedDict = OrderedDict()
+        self._max_sessions = 2000
+        self._max_translations = 4096
 
     def set_provider(self, provider: LanguageProvider) -> None:
         """Switch the underlying language provider dynamically."""
-        self.provider = provider
+        with self._lock:
+            self.provider = provider
+            self._translation_cache.clear()
         logger.info(f"LanguageService provider switched to {type(provider).__name__}.")
 
     @property
@@ -60,23 +67,30 @@ class LanguageService:
         return True
 
     def get_session_language(self, session_id: str) -> Optional[str]:
-        return self._session_languages.get(session_id)
+        with self._lock:
+            return self._session_languages.get(session_id)
 
     def set_session_language(self, session_id: str, lang_code: str) -> None:
-        self._session_languages[session_id] = lang_code.lower()
+        with self._lock:
+            self._session_languages[session_id] = lang_code.lower()
+            self._session_languages.move_to_end(session_id)
+            while len(self._session_languages) > self._max_sessions:
+                self._session_languages.popitem(last=False)
 
     def detect_language(self, text: str, session_id: Optional[str] = None) -> str:
         """
         Detects language of input text or returns active session language.
         """
         if not text or not text.strip():
-            if session_id and session_id in self._session_languages:
-                return self._session_languages[session_id]
+            if session_id:
+                with self._lock:
+                    if session_id in self._session_languages:
+                        return self._session_languages[session_id]
             return "en"
 
         detected = self.provider.detect_language(text)
         if session_id:
-            self._session_languages[session_id] = detected
+            self.set_session_language(session_id, detected)
         return detected
 
     def translate(self, text: str, source_lang: str, target_lang: str) -> str:
@@ -93,11 +107,17 @@ class LanguageService:
             return text
 
         cache_key = (text.strip(), src, tgt)
-        if cache_key in self._translation_cache:
-            return self._translation_cache[cache_key]
+        with self._lock:
+            if cache_key in self._translation_cache:
+                self._translation_cache.move_to_end(cache_key)
+                return self._translation_cache[cache_key]
 
         translated = self.provider.translate(text, source_lang=src, target_lang=tgt)
-        self._translation_cache[cache_key] = translated
+        with self._lock:
+            self._translation_cache[cache_key] = translated
+            self._translation_cache.move_to_end(cache_key)
+            while len(self._translation_cache) > self._max_translations:
+                self._translation_cache.popitem(last=False)
         return translated
 
     def speech_to_text(

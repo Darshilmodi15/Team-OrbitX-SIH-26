@@ -9,11 +9,20 @@ import { formatCoords } from "@/lib/orca/geo";
 
 export function PFZAdvisory({ showPoints = false, selectedSector: controlledSector, onSectorChange, coords }: { showPoints?: boolean; selectedSector?: string; onSectorChange?: (sector: string) => void; coords?: { lat: number; lon: number } }) {
   const { lang, t } = useI18n();
-  const copy = mapCopy[lang];
+  const copy = mapCopy[lang] ?? mapCopy.en;
   const publication = useQuery({queryKey:["pfz-publication"], staleTime:900000, refetchInterval:900000, retry:false, queryFn:async ({signal})=>{
-    const response=await fetch(`${API_BASE_URL}/api/pfz/publication`,{signal:AbortSignal.any([signal,AbortSignal.timeout(10000)])});
-    if(!response.ok)throw new Error("PUBLICATION_UNAVAILABLE");
-    return response.json() as Promise<{forecast_date:string|null;valid_upto_date:string|null;status:string}>;
+    const controller = new AbortController();
+    const onAbort = () => controller.abort();
+    signal.addEventListener("abort", onAbort, { once: true });
+    const timer = window.setTimeout(() => controller.abort(), 10000);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/pfz/publication`, { signal: controller.signal });
+      if (!response.ok) throw new Error("PUBLICATION_UNAVAILABLE");
+      return response.json() as Promise<{forecast_date:string|null;valid_upto_date:string|null;status:string}>;
+    } finally {
+      window.clearTimeout(timer);
+      signal.removeEventListener("abort", onAbort);
+    }
   }});
 
   const [localSector, setLocalSector] = useState("");
@@ -48,7 +57,12 @@ export function PFZAdvisory({ showPoints = false, selectedSector: controlledSect
     { id: "nicobar", label: "Nicobar Islands" },
   ];
 
-  const date = (value: string | null) => value ? new Intl.DateTimeFormat(lang, { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }).format(new Date(value)) + " IST" : "—";
+  const date = (value: string | null) => {
+    if (!value) return "—";
+    const parsed = Date.parse(value);
+    if (!Number.isFinite(parsed)) return "—";
+    return new Intl.DateTimeFormat(lang, { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }).format(new Date(parsed)) + " IST";
+  };
 
   return <section className="rounded-md border border-border bg-card p-4 text-sm space-y-3" aria-label={t("glossary.pfz.full")}>
     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -57,7 +71,7 @@ export function PFZAdvisory({ showPoints = false, selectedSector: controlledSect
     </div>
 
     <div className="rounded-md border border-border p-3">
-      <a className="underline" href="https://incois.gov.in/MarineFisheries/TextDataHome?mfid=1&request_locale=en" target="_blank" rel="noopener noreferrer">INCOIS · {nationalOverview[lang]} ↗</a>
+      <a className="underline" href="https://incois.gov.in/MarineFisheries/TextDataHome?mfid=1&request_locale=en" target="_blank" rel="noopener noreferrer">INCOIS · {nationalOverview[lang] ?? nationalOverview.en} ↗</a>
       {publication.data?.status === "published" && <p className="mt-2 text-xs">{copy.issued}: {publication.data.forecast_date} · {copy.valid}: {publication.data.valid_upto_date}</p>}
     </div>
     {/* Sector Selector */}

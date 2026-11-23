@@ -70,4 +70,15 @@ describe('authenticated API contracts', () => {
     vi.mocked(fetch).mockResolvedValue(jsonResponse({ success: false, error_code: 'STT_UPSTREAM_UNAVAILABLE' }, 503));
     await expect(transcribeVoiceAudio(new Blob(['audio'], { type: 'audio/webm' }))).rejects.toThrow('503');
   });
+
+  it('maps audio/mpeg to mp3 and empty MIME type to webm cleanly', async () => {
+    vi.mocked(fetch).mockImplementation(async () => jsonResponse({ success: true, transcript: 'ok' }));
+    await transcribeVoiceAudio(new Blob(['audio'], { type: 'audio/mpeg' }), 'hi');
+    const mp3Form = vi.mocked(fetch).mock.calls[0][1]?.body as FormData;
+    expect((mp3Form.get('file') as File).name).toBe('recording.mp3');
+
+    await transcribeVoiceAudio(new Blob(['audio'], { type: '' }), 'hi');
+    const fallbackForm = vi.mocked(fetch).mock.calls[1][1]?.body as FormData;
+    expect((fallbackForm.get('file') as File).name).toBe('recording.webm');
+  });
 });

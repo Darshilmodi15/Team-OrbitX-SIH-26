@@ -44,7 +44,7 @@ def publish_government_announcement(request: CreateAnnouncementRequest, _user: U
     """
     Publishes a new official government circular (Available to Government Officers & Administrators).
     """
-    return government_service.create_announcement(request)
+    return government_service.create_announcement(request, published_by=_user.id)
 
 
 @router.get("/documents", response_model=List[GovernmentDocument])

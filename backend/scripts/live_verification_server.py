@@ -12,6 +12,8 @@ def create_app():
     os.environ["REDIS_URL"] = ""
     os.environ["KEY_VALUE_URL"] = ""
     os.environ["APP_ENV"] = "development"
+    if os.environ.get("SARVAM_API_KEY", "").strip():
+        os.environ["LANGUAGE_PROVIDER"] = "sarvam"
     from app.db.session import init_db
     init_db()
     from app import main
