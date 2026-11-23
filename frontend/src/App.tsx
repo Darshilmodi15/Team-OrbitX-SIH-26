@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { I18nProvider } from "@/lib/orca/i18n";
 import { SessionProvider, useSession } from "@/lib/orca/session";
 import { MarineSnapshotProvider } from "@/lib/orca/snapshot";
@@ -83,7 +84,7 @@ function ConsentedAnalytics() {
   const read = () => { try { return JSON.parse(localStorage.getItem("orca_cookie_consent") || "null")?.analytics === true; } catch { return false; } };
   const [allowed, setAllowed] = useState(read);
   useEffect(() => { const update = () => setAllowed(read()); window.addEventListener("orca:consent-changed", update); window.addEventListener("storage", update); return () => { window.removeEventListener("orca:consent-changed", update); window.removeEventListener("storage", update); }; }, []);
-  return allowed ? <Analytics /> : null;
+  return allowed ? <><Analytics /><SpeedInsights /></> : null;
 }
 export default function App() {
   return (
