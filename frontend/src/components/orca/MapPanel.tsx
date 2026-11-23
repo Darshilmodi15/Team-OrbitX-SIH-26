@@ -19,6 +19,7 @@ import {
   playMaritimeAlarmTone,
 } from "@/lib/orca/proximity-alarm";
 import { askAssistantLabel } from "@/lib/brand";
+import { mapPanelCopy, safetyCopy } from "@/lib/orca/ui-copy";
 import { useI18n } from "@/lib/orca/i18n";
 import type { Coords } from "@/lib/orca/geo";
 import { mapCopy } from "@/lib/orca/map-copy";
@@ -116,37 +117,8 @@ export function MapPanel({
     [recenter, setRecenter] = useState(0);
   const advisory = snapshotPFZ(s);
   const askLabel = askAssistantLabel(lang);
-  const copy =
-    lang === "gu"
-      ? {
-          grid: "મોડેલના નમૂના બિંદુઓ",
-          details: "સ્થાનની વિગતો",
-          ask: askLabel,
-          reference: "ઉપગ્રહ આધાર નકશો · જીવંત માપન નથી",
-          noTiles: "ઓછા ડેટા માટે લખાણ દૃશ્ય",
-          advanced: "અદ્યતન",
-          recenter: "પસંદ કરેલું સ્થાન બતાવો",
-        }
-      : lang === "hi"
-        ? {
-            grid: "मॉडल नमूना बिंदु",
-            details: "स्थान का विवरण",
-            ask: askLabel,
-            reference: "उपग्रह आधार मानचित्र · लाइव माप नहीं",
-            noTiles: "कम डेटा के लिए पाठ दृश्य",
-            advanced: "उन्नत",
-            recenter: "चुना हुआ स्थान दिखाएँ",
-          }
-        : {
-            grid: "Model sample points",
-            details: "Location details",
-            ask: askLabel,
-            reference:
-              "Satellite basemap · reference imagery, not live measurements",
-            noTiles: "A lighter view. No map tiles are loaded.",
-            advanced: "Advanced",
-            recenter: "Recenter on selected location",
-          };
+  const copy = { ...(mapPanelCopy[lang] ?? mapPanelCopy.en), ask: askLabel };
+  const safety = safetyCopy[lang] ?? safetyCopy.en;
   const askHref = `/assistant?${s ? `snapshot=${encodeURIComponent(s.snapshot_id)}&` : ""}prompt=${encodeURIComponent(`${t("chat.s2")} (${center.lat}, ${center.lon})`)}`;
   const unavailable =
     lang === "en"
@@ -177,7 +149,7 @@ export function MapPanel({
         <>
           <div className="map-risk">
             <span>{t("marine.title")}</span>
-            <strong>{s.risk.level === "low" ? (lang === "gu" ? "સલામત · ઉપલબ્ધ માપન મુજબ" : "SAFE · assessed dimensions") : s.risk.level === "caution" ? t("status.caution") : s.risk.level === "unsafe" ? t("status.dangerous") : (lang === "gu" ? "જીવંત માહિતી અપૂરતી છે" : "Insufficient live data")}</strong>
+            <strong>{s.risk.level === "low" ? safety.safeAssessed : s.risk.level === "caution" ? t("status.caution") : s.risk.level === "unsafe" ? t("status.dangerous") : safety.insufficientLive}</strong>
           </div>
           {mode === "text" ? (
             <MarineConditions data={snapshotBundle(s, state.offline).current} snapshot={s} />

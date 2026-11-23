@@ -11,8 +11,20 @@ import {
   DEFAULT_PUBLIC_BASE_URL,
   POWERED_BY,
   getAssistantPersona,
+  getLocalizedAppName,
   askAssistantLabel,
 } from "@/lib/brand";
+import {
+  chatCopy,
+  landingCopy,
+  authOceanCopy,
+  voiceCopy,
+  safetyCopy,
+  mapPanelCopy,
+  snapshotStaleCopy,
+  serviceStateCopy,
+} from "@/lib/orca/ui-copy";
+import type { LangCode } from "@/lib/orca/i18n";
 
 describe("Matsya rebrand, loader, and localized personas", () => {
   beforeEach(() => {
@@ -117,5 +129,22 @@ describe("Matsya rebrand, loader, and localized personas", () => {
     );
     const supportLink = screen.getByRole("link", { name: /support@matsya\.app/i });
     expect(supportLink).toHaveAttribute("href", "mailto:support@matsya.app");
+  });
+
+  it("translates Matsya brand name and chat/landing/map/voice UI copy across all 11 languages", () => {
+    const nonEnglish: LangCode[] = ["hi", "gu", "mr", "ta", "te", "ml", "bn", "kn", "or", "pa"];
+    expect(getLocalizedAppName("en")).toBe("Matsya");
+    for (const code of nonEnglish) {
+      expect(getLocalizedAppName(code)).not.toBe("Matsya");
+      expect(chatCopy[code].welcome).not.toBe(chatCopy.en.welcome);
+      expect(chatCopy[code].history).not.toBe(chatCopy.en.history);
+      expect(landingCopy[code].title).not.toBe(landingCopy.en.title);
+      expect(authOceanCopy[code].headline).not.toBe(authOceanCopy.en.headline);
+      expect(voiceCopy[code].conversation).not.toBe(voiceCopy.en.conversation);
+      expect(safetyCopy[code].insufficientLive).not.toBe(safetyCopy.en.insufficientLive);
+      expect(mapPanelCopy[code].details).not.toBe(mapPanelCopy.en.details);
+      expect(snapshotStaleCopy[code]).not.toBe(snapshotStaleCopy.en);
+      expect(serviceStateCopy[code].expired).not.toBe(serviceStateCopy.en.expired);
+    }
   });
 });

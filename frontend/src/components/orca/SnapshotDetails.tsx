@@ -1,4 +1,5 @@
 import { useI18n } from "@/lib/orca/i18n";
+import { snapshotStaleCopy } from "@/lib/orca/ui-copy";
 import { snapshotExpired, type MarineSnapshot } from "@/lib/orca/snapshot";
 export function SnapshotDetails({
   snapshot,
@@ -56,13 +57,7 @@ export function SnapshotDetails({
           ))}
         </div>
         {old && (
-          <p>
-            {lang === "gu"
-              ? "છેલ્લે ડાઉનલોડ કરેલી માહિતી — જીવંત નથી."
-              : lang === "hi"
-                ? "अंतिम डाउनलोड की गई जानकारी — लाइव नहीं।"
-                : "Last downloaded marine snapshot — not live."}
-          </p>
+          <p>{snapshotStaleCopy[lang] ?? snapshotStaleCopy.en}</p>
         )}
         <p>
           {t("loc.current")}: {snapshot.location.lat}, {snapshot.location.lon}

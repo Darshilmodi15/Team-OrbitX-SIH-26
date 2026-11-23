@@ -1,5 +1,6 @@
 import { AlertOctagon, AlertTriangle, CheckCircle2, ShieldAlert } from "lucide-react";
 import { useI18n } from "@/lib/orca/i18n";
+import { safetyCopy } from "@/lib/orca/ui-copy";
 import type { SafetyLevel } from "@/lib/orca/types";
 import { cn } from "@/lib/utils";
 
@@ -28,9 +29,9 @@ export function SafetyStatusCard({ level, note, reasons, vesselClass }: { level:
       <div className="mt-2 flex items-start gap-3">
         <Icon className="mt-0.5 size-7 shrink-0" aria-hidden />
         <div className="min-w-0">
-          <h2 className="text-xl font-bold leading-tight text-foreground">{level === "unknown" ? (lang === "gu" ? "જીવંત માહિતી અપૂરતી છે" : lang === "hi" ? "पर्याप्त लाइव डेटा नहीं" : "Insufficient live data") : level === "safe" ? (lang === "gu" ? "સલામત · ઉપલબ્ધ માપન મુજબ" : lang === "hi" ? "सुरक्षित · उपलब्ध माप के अनुसार" : "SAFE · assessed dimensions") : t(label)}</h2>
+          <h2 className="text-xl font-bold leading-tight text-foreground">{level === "unknown" ? (safetyCopy[lang] ?? safetyCopy.en).insufficientLive : level === "safe" ? (safetyCopy[lang] ?? safetyCopy.en).safeAssessed : t(label)}</h2>
           {level !== "unknown" && <p className="mt-1 text-sm font-medium text-foreground/90">{t(desc)}</p>}
-          {reasons?.length ? <details className="mt-3 text-xs"><summary className="cursor-pointer">{lang === "gu" ? "શા માટે?" : lang === "hi" ? "क्यों?" : "Why?"}</summary><ul className="mt-2 space-y-1">{reasons.map((reason,index)=><li key={index}>{reason}</li>)}</ul></details> : null}
+          {reasons?.length ? <details className="mt-3 text-xs"><summary className="cursor-pointer">{(safetyCopy[lang] ?? safetyCopy.en).why}</summary><ul className="mt-2 space-y-1">{reasons.map((reason,index)=><li key={index}>{reason}</li>)}</ul></details> : null}
           {note && <p className="mt-1 text-xs text-foreground/80">{note}</p>}
         </div>
       </div>

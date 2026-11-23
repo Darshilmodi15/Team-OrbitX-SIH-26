@@ -7,50 +7,20 @@ import {
   AudioLines,
   ShieldCheck,
 } from "lucide-react";
-import { APP_NAME, POWERED_BY } from "@/lib/brand";
+import { APP_NAME, POWERED_BY, getLocalizedAppName } from "@/lib/brand";
 import { MatsyaLogo } from "@/components/orca/Logo";
 import { LanguageMenu } from "@/components/orca/LanguageMenu";
 import { AppearanceMenu } from "@/components/orca/AppearanceMenu";
 import { useI18n } from "@/lib/orca/i18n";
+import { landingCopy } from "@/lib/orca/ui-copy";
 import { SEO } from "@/components/SEO";
 import { openCookieSettings } from "@/lib/orca/cookies";
 import "@/components/orca/public-pages.css";
 export default function LandingPage() {
   const { lang, t } = useI18n();
   const navigate = useNavigate();
-  const copy =
-    lang === "gu"
-      ? {
-          eyebrow: "દરિયાકાંઠા માટે બુદ્ધિમત્તા",
-          title: "દરિયો સમજવા માટે\nએક નવી દિશા.",
-          description:
-            "દરિયાની સ્થિતિ સમજો, નકશા પર તપાસો અને તમારી ભાષામાં પૂછો. દરેક સલાહ સાથે ઉપલબ્ધ માહિતીના સ્ત્રોત.",
-          explore: "પ્લેટફોર્મ જુઓ",
-          heading: "એક વાતચીત. વધુ સ્પષ્ટતા.",
-          note: "ઉપલબ્ધ માહિતી, તેના સમય અને મર્યાદાઓ સાથે.",
-          closing: "તમારી આગલી સફર અહીંથી શરૂ થાય છે.",
-        }
-      : lang === "hi"
-        ? {
-            eyebrow: "तटीय जीवन के लिए समुद्री जानकारी",
-            title: "समुद्र को समझने का\nएक नया नज़रिया।",
-            description:
-              "समुद्र की स्थिति समझें, नक्शे पर देखें और अपनी भाषा में पूछें। उपलब्ध जानकारी के स्रोत हर सलाह के साथ।",
-            explore: "प्लेटफ़ॉर्म देखें",
-            heading: "एक बातचीत। अधिक स्पष्टता।",
-            note: "उपलब्ध जानकारी, उसके समय और सीमाओं के साथ।",
-            closing: "आपकी अगली यात्रा यहाँ से शुरू होती है।",
-          }
-        : {
-            eyebrow: "MARINE INTELLIGENCE FOR COASTAL LIFE",
-            title: "A clearer view\nof the sea.",
-            description:
-              "Understand sea conditions, explore the coast, and ask in your own language. Available evidence stays connected to every marine answer.",
-            explore: "Explore the platform",
-            heading: "One conversation. A clearer picture.",
-            note: "Available readings, their sources, and their limits. In one place.",
-            closing: "Your next journey starts with a question.",
-          };
+  const appName = getLocalizedAppName(lang);
+  const copy = landingCopy[lang] ?? landingCopy.en;
   return (
     <div className="public-page">
       <SEO
@@ -69,7 +39,7 @@ export default function LandingPage() {
         <nav className="public-nav" aria-label="Primary">
           <Link to="/" className="public-brand">
             <MatsyaLogo className="size-8" />
-            <strong>{APP_NAME}</strong>
+            <strong>{appName}</strong>
           </Link>
           <a href="#platform" className="public-overview">
             {copy.explore}
@@ -82,7 +52,7 @@ export default function LandingPage() {
           </Link>
         </nav>
         <div className="public-hero-word" aria-hidden="true">
-          {APP_NAME}
+          {appName}
         </div>
         <div className="public-hero-bottom">
           <div>
@@ -91,7 +61,7 @@ export default function LandingPage() {
             <p className="public-description">{copy.description}</p>
             <button
               className="public-primary"
-              onClick={() => navigate("/assistant")}
+              onClick={() => navigate("/dashboard")}
             >
               {t("cta.getStarted")}
               <ArrowRight size={19} />
@@ -105,7 +75,7 @@ export default function LandingPage() {
       </section>
       <section id="platform" className="public-platform">
         <div className="public-section-title">
-          <p className="public-eyebrow">{APP_NAME} · {POWERED_BY} / {t("land.capabilities")}</p>
+          <p className="public-eyebrow">{appName} · {POWERED_BY} / {t("land.capabilities")}</p>
           <h2>{copy.heading}</h2>
           <p>{copy.note}</p>
         </div>
@@ -128,7 +98,7 @@ export default function LandingPage() {
               <h3>{t(key as Parameters<typeof t>[0])}</h3>
               <p>{i === 3 ? copy.note : t(desc as Parameters<typeof t>[0])}</p>
               <Link
-                to={i === 1 ? "/map" : "/assistant"}
+                to={i === 1 ? "/map" : i === 2 ? "/assistant" : "/dashboard"}
                 aria-label={t(key as Parameters<typeof t>[0])}
               >
                 <ArrowUpRight size={20} />
@@ -148,7 +118,7 @@ export default function LandingPage() {
       <footer className="public-footer">
         <Link to="/" className="public-brand">
           <MatsyaLogo className="size-7" />
-          {APP_NAME}
+          {appName}
         </Link>
         <p>{t("footer.prototype")}</p>
         <div>

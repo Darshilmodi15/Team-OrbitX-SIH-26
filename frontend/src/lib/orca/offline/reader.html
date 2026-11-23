@@ -2,63 +2,101 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none'">
 <title>Matsya offline trip pack</title><style>
-:root{--bg:#F2FAF8;--card:#FFFFFF;--text:#12232B;--muted:#4A6470;--border:#C7E2DC;--accent:#2FB5A3;--accent-deep:#0F5E56;--notice-bg:#FFF4E0;--notice-border:#BA6510;--input-bg:#FFFFFF}
-html.dark{--bg:#0A181E;--card:#10252D;--text:#DDF7F2;--muted:#98BEB7;--border:#1F444E;--accent:#2FB5A3;--accent-deep:#2FB5A3;--notice-bg:#291D0D;--notice-border:#E09132;--input-bg:#0D1E25}
-body{font:17px/1.6 system-ui,-apple-system,sans-serif;max-width:760px;margin:20px auto;padding:0 18px 32px;background:var(--bg);color:var(--text)}
-header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
-.brand{display:flex;align-items:center;gap:10px}
-.brand h1{font-size:1.35rem;line-height:1.2;margin:0}
-.lang-wrap{display:flex;align-items:center;gap:8px;font-size:.9rem;color:var(--muted)}
-select,button,input{font:inherit;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg);color:var(--text)}
+:root{--bg:#F2FAF8;--card:#FFFFFF;--surface:#E8F6F3;--text:#12232B;--muted:#4A6470;--border:#C7E2DC;--accent:#2FB5A3;--accent-deep:#0F5E56;--notice-bg:#FFF4E0;--notice-border:#BA6510;--input-bg:#FFFFFF}
+html.dark{--bg:#0A181E;--card:#10252D;--surface:#0D1E25;--text:#DDF7F2;--muted:#98BEB7;--border:#1F444E;--accent:#2FB5A3;--accent-deep:#2FB5A3;--notice-bg:#291D0D;--notice-border:#E09132;--input-bg:#0D1E25}
+*{box-sizing:border-box}
+body{font:16px/1.6 system-ui,-apple-system,sans-serif;margin:0;min-height:100vh;display:flex;flex-direction:column;background:var(--bg);color:var(--text)}
+.shell-header{position:sticky;top:0;z-index:20;background:var(--card);border-bottom:1px solid var(--border)}
+.shell-container{width:100%;max-width:1120px;margin:0 auto;padding:0 18px}
+.header-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;min-height:56px;padding:8px 0}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand-text{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+.brand h1{font-size:1.05rem;font-weight:700;margin:0;letter-spacing:-.01em}
+.brand-sub{font-size:.72rem;color:var(--muted)}
+.header-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lang-wrap{display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--muted)}
+.sub-bar{background:var(--surface);border-top:1px solid var(--border);font-size:.82rem;padding:8px 0}
+.sub-bar-inner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.shell-main{flex:1;width:100%;max-width:1120px;margin:0 auto;padding:20px 18px 36px}
+.shell-footer{background:var(--card);border-top:1px solid var(--border);padding:12px 0;font-size:.78rem;color:var(--muted)}
+.footer-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+select,button,input{font:inherit;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg);color:var(--text)}
 button{cursor:pointer;background:var(--accent-deep);color:#FFFFFF;border-color:transparent;font-weight:600}
 html.dark button{color:#0A181E}
-a{color:var(--accent-deep);font-weight:600}
+.theme-btn{background:var(--input-bg);color:var(--text);border:1px solid var(--border);font-size:.82rem;padding:7px 10px}
+html.dark .theme-btn{color:var(--text)}
+a{color:var(--accent-deep);font-weight:600;text-decoration:none}
+a:hover{text-decoration:underline}
 html.dark a{color:#6BE2D2}
-label{display:block;font-weight:600;margin-bottom:6px}
-article,section{background:var(--card);padding:18px;border-radius:12px;margin:16px 0;border:1px solid var(--border)}
+label{display:block;font-weight:600;margin-bottom:6px;font-size:.9rem}
+article,section.card{background:var(--card);padding:18px;border-radius:12px;margin:16px 0;border:1px solid var(--border)}
 p,li{overflow-wrap:anywhere}
-.notice{border-left:5px solid var(--notice-border);padding:12px 14px;background:var(--notice-bg);border-radius:8px}
-li{margin-bottom:12px}
+.notice{border-left:4px solid var(--notice-border);padding:12px 14px;background:var(--notice-bg);border-radius:8px;margin:0 0 16px;font-size:.92rem}
+li{margin-bottom:10px}
 [hidden]{display:none!important}
-input{max-width:100%;box-sizing:border-box;margin:6px 8px 6px 0}
-.muted{color:var(--muted);font-size:.92rem}
+input{max-width:100%;margin:6px 8px 6px 0}
+.muted{color:var(--muted);font-size:.86rem}
 </style></head><body>
-<header>
- <div class="brand">
-  <svg width="36" height="36" viewBox="0 0 120 120" aria-hidden="true">
-   <circle cx="60" cy="60" r="54" fill="#BDEFE6" stroke="#2FB5A3" stroke-width="5"/>
-   <path d="M22 72 Q32 62 42 72 T62 72 T82 72 T102 72" fill="none" stroke="#12232B" stroke-width="6" stroke-linecap="round"/>
-   <path d="M40 52 C48 36 74 36 86 52 C74 64 48 64 40 52 Z" fill="#2FB5A3"/>
-   <path d="M40 52 L28 43 L28 61 Z" fill="#2FB5A3"/>
-   <circle cx="72" cy="49" r="3.5" fill="#12232B"/>
-  </svg>
-  <h1 id="heading">Matsya offline trip pack</h1>
+<header class="shell-header">
+ <div class="shell-container">
+  <div class="header-row">
+   <div class="brand">
+    <svg width="32" height="32" viewBox="0 0 120 120" aria-hidden="true">
+     <circle cx="60" cy="60" r="52" fill="#BDEFE6" stroke="#2FB5A3" stroke-width="4"/>
+     <path d="M26 52C38 32 66 32 78 52C66 72 38 72 26 52Z" fill="#2FB5A3"/>
+     <path d="M76 52L96 38Q91 52 96 66Z" fill="#2FB5A3"/>
+     <circle cx="40" cy="49" r="3.4" fill="#12232B"/>
+     <path d="M18 86q10-8 20 0t20 0t20 0t20 0" fill="none" stroke="#12232B" stroke-width="4.5" stroke-linecap="round"/>
+    </svg>
+    <div class="brand-text">
+     <h1 id="heading">Matsya offline trip pack</h1>
+     <span class="brand-sub" id="brandSub">Offline safety reader</span>
+    </div>
+   </div>
+   <div class="header-controls">
+    <div class="lang-wrap">
+     <label for="lang" id="langLabel" style="margin:0;font-weight:500">Language</label>
+     <select id="lang" aria-label="Language">
+      <option value="en">English</option>
+      <option value="hi">हिन्दी</option>
+      <option value="gu">ગુજરાતી</option>
+      <option value="mr">मराठी</option>
+      <option value="ta">தமிழ்</option>
+      <option value="te">తెలుగు</option>
+      <option value="ml">മലയാളം</option>
+      <option value="bn">বাংলা</option>
+      <option value="kn">ಕನ್ನಡ</option>
+      <option value="or">ଓଡ଼ିଆ</option>
+      <option value="pa">ਪੰਜਾਬੀ</option>
+     </select>
+    </div>
+    <button type="button" id="themeBtn" class="theme-btn" aria-label="Toggle theme">◐</button>
+   </div>
+  </div>
  </div>
- <div class="lang-wrap">
-  <label for="lang" id="langLabel" style="margin:0;font-weight:500">Language</label>
-  <select id="lang" aria-label="Language">
-   <option value="en">English</option>
-   <option value="hi">हिन्दी</option>
-   <option value="gu">ગુજરાતી</option>
-   <option value="mr">मराठी</option>
-   <option value="ta">தமிழ்</option>
-   <option value="te">తెలుగు</option>
-   <option value="ml">മലയാളം</option>
-   <option value="bn">বাংলা</option>
-   <option value="kn">ಕನ್ನಡ</option>
-   <option value="or">ଓଡ଼ିଆ</option>
-   <option value="pa">ਪੰਜਾਬੀ</option>
-  </select>
+ <div class="sub-bar" id="emergencySec" aria-label="Direct cellular emergency contacts">
+  <div class="shell-container sub-bar-inner">
+   <strong id="emergencyTitle">Direct cellular emergency (no internet required):</strong>
+   <span><a id="call112" href="tel:112">Call 112</a> · <a id="call1554" href="tel:1554">Coast Guard 1554</a> · <a id="call1093" href="tel:1093">Coastal Police 1093</a> · <a id="sms112" href="sms:112?body=Matsya%20SOS%20distress%20request">SMS 112</a></span>
+  </div>
  </div>
 </header>
-<p class="notice" id="notice">Saved information only. This file cannot receive updates, contact emergency services or send SOS. Saved forecasts are not clearance to sail.</p>
-<section id="emergencySec" aria-label="Direct cellular emergency contacts"><strong id="emergencyTitle">Direct cellular emergency (no internet required):</strong> <a id="call112" href="tel:112">Call 112</a> · <a id="call1554" href="tel:1554">Coast Guard 1554</a> · <a id="call1093" href="tel:1093">Coastal Police 1093</a> · <a id="sms112" href="sms:112?body=Matsya%20SOS%20distress%20request">SMS 112</a></section>
-<section id="choose" hidden><label id="fileLabel" for="file">Open a downloaded Matsya trip pack (.txt or .html)</label><input id="file" type="file" accept=".txt,.html,text/plain,text/html"><p class="muted" id="fileHint">The file is read on this device and is never uploaded.</p></section>
-<section id="unlock"><form id="form"><label id="pwLabel" for="password">Trip pack password</label><input id="password" type="password" autocomplete="off" required><button id="unlockBtn" type="submit">Unlock pack</button></form>
-<p class="muted" id="pwHint">Your password stays on this device. There is no password recovery.</p></section>
-<p id="status" role="status" aria-live="polite">Open this downloaded file in a browser, even without internet.</p>
-<button id="lock" hidden>Lock pack</button><main id="content" hidden></main>
-<p class="muted" id="deleteHint">To delete this pack, remove this file and its copies from Downloads / Files and empty the trash. Signing out of Matsya does not delete a downloaded file. Keep your device clock correct; expiry is checked against it.</p>
+<div class="shell-main">
+ <p class="notice" id="notice">Saved information only. This file cannot receive updates, contact emergency services or send SOS. Saved forecasts are not clearance to sail.</p>
+ <section id="choose" class="card" hidden><label id="fileLabel" for="file">Open a downloaded Matsya trip pack (.txt or .html)</label><input id="file" type="file" accept=".txt,.html,text/plain,text/html"><p class="muted" id="fileHint">The file is read on this device and is never uploaded.</p></section>
+ <section id="unlock" class="card"><form id="form"><label id="pwLabel" for="password">Trip pack password</label><input id="password" type="password" autocomplete="off" required><button id="unlockBtn" type="submit">Unlock pack</button></form>
+ <p class="muted" id="pwHint">Your password stays on this device. There is no password recovery.</p></section>
+ <p id="status" role="status" aria-live="polite">Open this downloaded file in a browser, even without internet.</p>
+ <button id="lock" hidden>Lock pack</button><main id="content" hidden></main>
+ <p class="muted" id="deleteHint">To delete this pack, remove this file and its copies from Downloads / Files and empty the trash. Signing out of Matsya does not delete a downloaded file. Keep your device clock correct; expiry is checked against it.</p>
+</div>
+<footer class="shell-footer">
+ <div class="shell-container footer-row">
+  <span id="footerBrand" style="font-weight:700;color:var(--text)">Matsya</span>
+  <a href="mailto:support@matsya.app">support@matsya.app</a>
+  <span><a href="tel:112">112</a> · <a href="tel:1554">1554</a></span>
+ </div>
+</footer>
 <script id="payload" type="application/json">__ORCA_ENCRYPTED_PAYLOAD__</script>
 <script>
 'use strict';
@@ -380,12 +418,14 @@ let statusState={key:'statusInitial',extra:''};
 let generation=0;
 let envelope=null;
 function setStatus(key,extra){statusState={key,extra:extra||''};statusNode.textContent=extra?t(key)+' '+extra:t(key);}
+const APP_NAMES={en:'Matsya',hi:'मत्स्य',gu:'મત્સ્ય',mr:'मत्स्य',ta:'மத்ஸ்யா',te:'మత్స్య',ml:'മത്സ്യ',bn:'মৎস্য',kn:'ಮತ್ಸ್ಯ',or:'ମତ୍ସ୍ୟ',pa:'ਮਤਸਿਆ'};
 function applyLanguage(code){
  currentLang=Object.prototype.hasOwnProperty.call(I18N,code)?code:'en';
  document.documentElement.lang=currentLang;
  document.title=t('title');
  if(langSelect)langSelect.value=currentLang;
  document.getElementById('heading').textContent=t('title');
+ const fb=document.getElementById('footerBrand');if(fb)fb.textContent=APP_NAMES[currentLang]||'Matsya';
  document.getElementById('langLabel').textContent=t('lang');
  document.getElementById('notice').textContent=t('notice');
  document.getElementById('emergencyTitle').textContent=t('emergencyTitle');
@@ -409,6 +449,14 @@ if(langSelect){
   const next=langSelect.value;
   try{localStorage.setItem('orca.lang',next);localStorage.setItem('orca-lang',next);}catch{}
   applyLanguage(next);
+ };
+}
+const themeBtn=document.getElementById('themeBtn');
+if(themeBtn){
+ themeBtn.onclick=()=>{
+  const nextDark=!document.documentElement.classList.contains('dark');
+  document.documentElement.classList.toggle('dark',nextDark);
+  try{localStorage.setItem('orca_theme',nextDark?'dark':'light');}catch{}
  };
 }
 try{envelope=JSON.parse(document.getElementById('payload').textContent);}catch{}
@@ -447,7 +495,7 @@ document.getElementById('file').onchange=async event=>{
  }catch{setStatus('statusReadErr');}
 };
 const stamp=value=>new Date(value).toLocaleString(currentLang==='en'?undefined:currentLang,{timeZoneName:'short'});
-function add(parent,tag,text){const element=document.createElement(tag);element.textContent=text;parent.append(element);return element;}
+function add(parent,tag,text){const element=document.createElement(tag);if(tag==='section')element.className='card';element.textContent=text;parent.append(element);return element;}
 function render(){
  if(!pack)return;
  content.replaceChildren();const now=Date.now();

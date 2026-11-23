@@ -14,7 +14,9 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { OrcaLogo } from "@/components/orca/Logo";
+import { getLocalizedAppName } from "@/lib/brand";
 import { useI18n } from "@/lib/orca/i18n";
+import { authOceanCopy } from "@/lib/orca/ui-copy";
 import { useSession } from "@/lib/orca/session";
 import { LanguageMenu } from "@/components/orca/LanguageMenu";
 import { AppearanceMenu } from "@/components/orca/AppearanceMenu";
@@ -75,12 +77,15 @@ export default function AuthPage() {
       navState && typeof navState === "object" && "from" in navState
         ? (navState as { from?: unknown }).from
         : null;
-    return typeof rawFrom === "string" &&
-      /^(?:\/(?:dashboard|map|assistant|location|alerts|services|settings|operations|admin|officer)|\/assistant\/c\/[0-9a-f-]{36})$/i.test(
+    if (
+      typeof rawFrom === "string" &&
+      /^(?:\/(?:dashboard|map|location|alerts|services|settings|operations|admin|officer)|\/assistant\/c\/[0-9a-f-]{36})$/i.test(
         rawFrom,
       )
-      ? rawFrom
-      : "/location";
+    ) {
+      return rawFrom;
+    }
+    return "/dashboard";
   };
 
   const validate = (): boolean => {
@@ -274,7 +279,7 @@ export default function AuthPage() {
                 powered by ORCA
               </span>
               <span className="text-base font-bold text-foreground group-hover:text-teal-400 transition-colors">
-                Matsya
+                {getLocalizedAppName(lang)}
               </span>
             </Link>
           </div>
@@ -684,17 +689,11 @@ export default function AuthPage() {
         <img src="/hero-ocean-surface.webp" alt="" width={1920} height={1080} />
         <div className="auth-ocean-top">
           <OrcaLogo className="size-9" />
-          <span>Matsya</span>
+          <span>{getLocalizedAppName(lang)}</span>
         </div>
         <div className="auth-ocean-copy">
-          <span>OCEAN INTELLIGENCE, WITH CONTEXT</span>
-          <h2>
-            {lang === "gu"
-              ? "દરિયો સમજો.\nવિચારીને આગળ વધો."
-              : lang === "hi"
-                ? "समुद्र को समझें।\nसोचकर आगे बढ़ें।"
-                : "Know the sea.\nPlan with clarity."}
-          </h2>
+          <span>{(authOceanCopy[lang] ?? authOceanCopy.en).eyebrow}</span>
+          <h2>{(authOceanCopy[lang] ?? authOceanCopy.en).headline}</h2>
           <p>{t("land.f4d")}</p>
           <div className="auth-ocean-tags">
             <span>{t("nav.assistant")}</span>

@@ -1,24 +1,24 @@
-/* Focused workspace styling; product data and service contracts stay shared. */
+/* Focused workspace styling aligned with Matsya AppShell theme tokens. */
 .orca-workspace {
-  --ws-bg: #fff;
-  --ws-side: #f7f7f8;
-  --ws-ink: #202123;
-  --ws-muted: #6b6d72;
-  --ws-line: #e8e8e8;
-  --ws-hover: #ececee;
-  --ws-accent: #137c76;
+  --ws-bg: var(--card, #ffffff);
+  --ws-side: var(--muted, #f2faf8);
+  --ws-ink: var(--foreground, #12232b);
+  --ws-muted: var(--muted-foreground, #4a6470);
+  --ws-line: var(--border, #d5ece6);
+  --ws-hover: color-mix(in srgb, var(--foreground, #12232b) 7%, transparent);
+  --ws-accent: #2fb5a3;
   color: var(--ws-ink);
-  background: var(--ws-bg);
+  background: transparent;
   font-family: Inter, "Segoe UI", system-ui, sans-serif;
 }
 .dark .orca-workspace {
-  --ws-bg: #212121;
-  --ws-side: #171717;
-  --ws-ink: #ececec;
-  --ws-muted: #a8a8ad;
-  --ws-line: #3a3a3a;
-  --ws-hover: #303030;
-  --ws-accent: #72c9bd;
+  --ws-bg: var(--card, #10252d);
+  --ws-side: var(--surface, #0d1f26);
+  --ws-ink: var(--foreground, #ddf7f2);
+  --ws-muted: var(--muted-foreground, #98beb7);
+  --ws-line: var(--border, #1f444e);
+  --ws-hover: color-mix(in srgb, var(--foreground, #ddf7f2) 9%, transparent);
+  --ws-accent: #2fb5a3;
 }
 .orca-workspace button,
 .orca-workspace a {
@@ -39,12 +39,21 @@
   display: flex;
   height: 100dvh;
   overflow: hidden;
+  background: var(--ws-bg);
+}
+.chat-workspace-embedded {
+  height: calc(100dvh - 13.5rem);
+  min-height: 540px;
+  border: 1px solid var(--ws-line);
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 .chat-sidebar {
   width: 260px;
   flex-shrink: 0;
   background: var(--ws-side);
-  padding: 16px 12px 12px;
+  border-right: 1px solid var(--ws-line);
+  padding: 14px 12px 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;

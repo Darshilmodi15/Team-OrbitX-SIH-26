@@ -4,6 +4,7 @@ import { AudioLines, Check, Loader2, Mic, X } from "lucide-react";
 import { transcribeVoiceAudio, synthesizeVoiceAudio } from "@/services/api";
 import { speechWav } from "@/lib/orca/voice-audio";
 import { getAssistantPersona } from "@/lib/brand";
+import { voiceCopy } from "@/lib/orca/ui-copy";
 import { useI18n } from "@/lib/orca/i18n";
 
 type Phase =
@@ -48,40 +49,12 @@ export function VoiceControls(props: Props) {
     phaseState.current = { mode, phase };
   });
   const persona = getAssistantPersona(lang);
-  const labels =
-    lang === "gu"
-      ? {
-          conversation: "અવાજમાં વાતચીત",
-          listening: "સાંભળી રહ્યું છે",
-          processing: "લખાણમાં ફેરવી રહ્યું છે",
-          speaking: persona.speakingLabel,
-          ready: "લખાણ તૈયાર — સુધારો અને મોકલો.",
-          end: "વાતચીત બંધ કરો",
-          hint: persona.voiceHint,
-          failed: "અવાજ સેવા ઉપલબ્ધ નથી. ફરી પ્રયાસ કરો અથવા પ્રશ્ન લખો.",
-        }
-      : lang === "hi"
-        ? {
-            conversation: "आवाज़ में बातचीत",
-            listening: "सुन रहा है",
-            processing: "लिखित रूप में बदल रहा है",
-            speaking: persona.speakingLabel,
-            ready: "लिखित रूप तैयार — संपादित करके भेजें।",
-            end: "बातचीत समाप्त करें",
-            hint: persona.voiceHint,
-            failed:
-              "आवाज़ सेवा उपलब्ध नहीं है। फिर कोशिश करें या प्रश्न लिखें।",
-          }
-        : {
-            conversation: "Voice conversation",
-            listening: "Listening",
-            processing: "Transcribing",
-            speaking: persona.speakingLabel,
-            ready: "Transcript ready — edit it below, then send.",
-            end: "End conversation",
-            hint: persona.voiceHint,
-            failed: "Voice is unavailable. Try again or type your question.",
-          };
+  const voiceStrings = voiceCopy[lang] ?? voiceCopy.en;
+  const labels = {
+    ...voiceStrings,
+    speaking: persona.speakingLabel,
+    hint: persona.voiceHint,
+  };
   function releaseCapture() {
     if (timer.current) clearInterval(timer.current);
     timer.current = null;

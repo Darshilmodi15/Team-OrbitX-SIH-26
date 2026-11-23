@@ -20,14 +20,10 @@ import {
   Plus,
   Search,
   Map as MapIcon,
-  LayoutDashboard,
-  LifeBuoy,
-  Settings,
   ShieldCheck,
   Sparkles,
   Thermometer,
   Trash2,
-  User,
   Volume2,
   VolumeX,
   Waves,
@@ -40,16 +36,16 @@ import {
   useMarineSnapshot,
   snapshotExpired,
 } from "@/lib/orca/snapshot";
+import { AppShell } from "@/components/orca/AppShell";
 import { VoiceControls } from "@/components/orca/VoiceControls";
 import { ChatSnapshot } from "@/components/orca/ChatSnapshot";
-import { LanguageMenu } from "@/components/orca/LanguageMenu";
-import { AppearanceMenu } from "@/components/orca/AppearanceMenu";
 import "@/components/orca/workspace.css";
-import { APP_NAME, getAssistantPersona } from "@/lib/brand";
+import { APP_NAME, getAssistantPersona, getLocalizedAppName } from "@/lib/brand";
 import { MatsyaLogo } from "@/components/orca/Logo";
 import { MatsyaLoader } from "@/components/orca/MatsyaLoader";
 import { SEO } from "@/components/SEO";
 import { useI18n } from "@/lib/orca/i18n";
+import { chatCopy } from "@/lib/orca/ui-copy";
 import { useSession } from "@/lib/orca/session";
 import {
   sendChatMessage,
@@ -320,39 +316,8 @@ export default function AssistantPage() {
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioSeqRef = useRef(0);
 
-  const copy =
-    lang === "gu"
-      ? {
-          welcome: "દરિયામાં આજે શું જાણવું છે?",
-          history: "તમારી વાતચીત",
-          search: "વાતચીત શોધો",
-          empty: "હજી કોઈ વાતચીત નથી",
-          attachments: "જોડાણો",
-          soon: "ઇમેજ અને દસ્તાવેજ — ટૂંક સમયમાં",
-          review: "પ્રશ્ન તપાસો અને મોકલો",
-          copyFailed: "કૉપિ થઈ શક્યું નથી",
-        }
-      : lang === "hi"
-        ? {
-            welcome: "आज समुद्र के बारे में क्या जानना है?",
-            history: "आपकी बातचीत",
-            search: "बातचीत खोजें",
-            empty: "अभी कोई बातचीत नहीं",
-            attachments: "अटैचमेंट",
-            soon: "चित्र और दस्तावेज़ — जल्द आ रहा है",
-            review: "प्रश्न जाँचें और भेजें",
-            copyFailed: "कॉपी नहीं हो सका",
-          }
-        : {
-            welcome: "How can I help at sea today?",
-            history: "Your conversations",
-            search: "Search conversations",
-            empty: "No conversations yet",
-            attachments: "Attachments",
-            soon: "Images and documents — coming soon",
-            review: "Review the question, then send",
-            copyFailed: "Could not copy this response",
-          };
+  const appName = getLocalizedAppName(lang);
+  const copy = chatCopy[lang] ?? chatCopy.en;
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -875,11 +840,12 @@ export default function AssistantPage() {
   ];
 
   return (
-    <div className="orca-workspace chat-workspace">
+    <AppShell>
       <SEO
         title={`${persona.display} | ${APP_NAME}`}
         description={`Ask ${persona.display} on ${APP_NAME} about coastal conditions with source-backed marine snapshots.`}
       />
+      <div className="orca-workspace chat-workspace chat-workspace-embedded">
       <a className="sr-only focus:not-sr-only" href="#chat-composer">
         {persona.placeholder}
       </a>
@@ -901,8 +867,8 @@ export default function AssistantPage() {
       >
         <div className="chat-brand">
           <Link to="/assistant">
-            <MatsyaLogo className="size-8" />
-            <strong>{APP_NAME}</strong>
+            <MatsyaLogo className="size-7" />
+            <strong>{appName}</strong>
           </Link>
           <button
             className="workspace-icon mobile-only"
@@ -920,20 +886,6 @@ export default function AssistantPage() {
           <MessageSquarePlus size={19} />
           {t("chat.new")}
         </button>
-        <nav className="workspace-nav" aria-label="Primary">
-          <Link to="/dashboard">
-            <LayoutDashboard size={18} />
-            {t("nav.dashboard")}
-          </Link>
-          <Link to={mapHref}>
-            <MapIcon size={18} />
-            {t("nav.map")}
-          </Link>
-          <Link to="/services">
-            <LifeBuoy size={18} />
-            {t("nav.services")}
-          </Link>
-        </nav>
         <label className="history-search">
           <Search size={16} />
           <input
@@ -991,16 +943,9 @@ export default function AssistantPage() {
                   : t("loc.title"))}
             </span>
           </Link>
-          <Link to="/settings" className="sidebar-profile">
-            <span className="profile-avatar">
-              <User size={18} />
-            </span>
-            <span>{t("nav.settings")}</span>
-            <Settings size={17} />
-          </Link>
         </div>
       </aside>
-      <main className="chat-main" inert={mobileDrawerOpen || undefined}>
+      <div className="chat-main" inert={mobileDrawerOpen || undefined}>
         <header className="chat-header">
           <button
             className="workspace-icon desktop-only"
@@ -1025,8 +970,6 @@ export default function AssistantPage() {
           <h1>
             {currentThread.messages.length ? currentThread.title : persona.display}
           </h1>
-          <LanguageMenu />
-          <AppearanceMenu />
           <Link
             className="workspace-icon"
             to={mapHref}
@@ -1261,7 +1204,8 @@ export default function AssistantPage() {
           </form>
           <p className="composer-footnote">{t("chat.subtitle")}</p>
         </div>
-      </main>
-    </div>
+      </div>
+      </div>
+    </AppShell>
   );
 }
