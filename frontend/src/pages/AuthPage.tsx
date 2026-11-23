@@ -184,23 +184,23 @@ export default function AuthPage() {
     e.preventDefault();
     if (submittingRef.current) return;
     clearErrors();
-    const rawContact = form.contact.trim();
-    const contact = rawContact.includes("@") ? rawContact : rawContact.replace(/[\s()-]/g, "");
+    const contact = form.contact.trim();
     if (resetStep === "request") {
-      if (!contact) {
-        setFieldErrors({ contact: "Enter your registered email or mobile number." });
+      const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact);
+      if (!validEmail) {
+        setFieldErrors({ contact: "Password reset works by email. Enter the email on your account." });
         return;
       }
       submittingRef.current = true;
       setIsSubmitting(true);
       try {
         const res = await requestPasswordReset(contact);
-        setResetStatus(res?.message || "Reset instructions sent if account exists.");
+        setResetStatus(res?.message || "If a matching account exists, password reset instructions have been sent to your email.");
         setResetStep("confirm");
       } catch (err: unknown) {
         const msg =
           err instanceof Error && (err as { code?: string }).code === "PASSWORD_RESET_DELIVERY_UNCONFIGURED"
-            ? "Password reset delivery (SMTP / SMS) is not configured on this server yet."
+            ? "Password reset email delivery is not configured on this server yet."
             : err instanceof Error
               ? err.message
               : "Could not start password reset.";
@@ -213,7 +213,7 @@ export default function AuthPage() {
     }
 
     if (!form.resetToken.trim()) {
-      setLoginError("Enter the reset code sent to your email or phone.");
+      setLoginError("Enter the reset code sent to your email.");
       return;
     }
     if (!form.password || form.password.length < 6) {
@@ -296,16 +296,27 @@ export default function AuthPage() {
             <form onSubmit={submitReset} className="mt-6 space-y-4" noValidate>
               {resetStep === "request" ? (
                 <div className="space-y-1.5">
+                  <p className="text-xs text-muted-foreground">
+                    Password reset works by email. Enter the email on your account.
+                  </p>
                   <label htmlFor="reset-contact" className="text-xs font-semibold text-foreground">
-                    {t("auth.mobile")} / {t("auth.email")}
+                    {t("auth.email")}
                   </label>
                   <input
                     id="reset-contact"
+                    type="email"
+                    autoComplete="email"
                     value={form.contact}
                     onChange={set("contact")}
-                    placeholder="e.g. 9876543210 or fisher@example.com"
+                    placeholder="e.g. fisher@example.com"
+                    aria-invalid={!!fieldErrors.contact}
                     className="flex h-11 w-full rounded-lg border border-input bg-background px-3.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
                   />
+                  {fieldErrors.contact && (
+                    <p role="alert" className="text-xs text-rose-400">
+                      {fieldErrors.contact}
+                    </p>
+                  )}
                 </div>
               ) : (
                 <>
@@ -331,8 +342,14 @@ export default function AuthPage() {
                       value={form.password}
                       onChange={set("password")}
                       placeholder="At least 6 characters"
+                      aria-invalid={!!fieldErrors.password}
                       className="flex h-11 w-full rounded-lg border border-input bg-background px-3.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
                     />
+                    {fieldErrors.password && (
+                      <p role="alert" className="text-xs text-rose-400">
+                        {fieldErrors.password}
+                      </p>
+                    )}
                   </div>
                 </>
               )}
