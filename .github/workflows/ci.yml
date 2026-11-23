@@ -38,7 +38,7 @@ jobs:
       - name: Test release record validation
         run: python -m unittest discover -s ../tools -p 'test_*.py' -v
       - name: Syntax-check acceptance & verification tooling
-        run: python -m py_compile ../tools/pre_acceptance.py ../tools/verify_feature_integrations.py ../tools/release_check.py
+        run: python -m py_compile ../tools/pre_acceptance.py scripts/verify_feature_integrations.py ../tools/release_check.py
       - name: Run deterministic backend suite
         run: python -m pytest -q --junitxml=test-results/backend.xml
       - uses: actions/upload-artifact@v4
