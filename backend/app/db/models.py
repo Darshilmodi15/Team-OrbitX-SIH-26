@@ -1,5 +1,5 @@
 """
-Comprehensive Normalized SQLAlchemy Models for ORCA Marine AI (SIH 2026).
+Comprehensive Normalized SQLAlchemy Models for Matsya (powered by ORCA) (SIH 2026).
 Defines 16 relational tables covering identity, location, preferences, government alerts,
 documents, emergency SAR, marine telemetry observations, PFZ, geofences, notifications,
 chat history, SOS distress logs, audit trails, and system settings.

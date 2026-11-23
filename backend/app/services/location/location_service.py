@@ -1,5 +1,5 @@
 """
-Unified Location Service for ORCA Marine AI.
+Unified Location Service for Matsya (powered by ORCA).
 
 Coordinates GPS validation, India territorial compliance, coastal proximity,
 and rejects unsupported inland or international locations with actionable guidance.
@@ -57,14 +57,14 @@ class LocationService:
         if not inside_india:
             message = (
                 f"Coordinates ({lat:.4f}°N, {lon:.4f}°E) are outside the sovereign territory and "
-                f"Exclusive Economic Zone (EEZ) of India. ORCA currently operates for Indian coastal safety only."
+                f"Exclusive Economic Zone (EEZ) of India. Matsya currently operates for Indian coastal safety only."
             )
             is_supported = False
         elif not is_coastal_supported:
             message = (
                 f"Location is {distance_km:.1f} km inland from the nearest coast ({nearest_pt['name']}, {region}), "
-                f"which exceeds ORCA's marine intelligence radius of {radius_km:.0f} km. "
-                f"ORCA provides live marine weather, wave analytics, and fishing zones for coastal communities."
+                f"which exceeds Matsya's marine intelligence radius of {radius_km:.0f} km. "
+                f"Matsya provides live marine weather, wave analytics, and fishing zones for coastal communities."
             )
             is_supported = False
         else:

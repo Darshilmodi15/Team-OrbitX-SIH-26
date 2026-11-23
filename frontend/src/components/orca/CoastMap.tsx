@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Map as LeafletMap, LayerGroup } from "leaflet";
+import { askAssistantLabel } from "@/lib/brand";
 import { useI18n } from "@/lib/orca/i18n";
 import type { Coords } from "@/lib/orca/geo";
 import { type MarineSnapshot } from "@/lib/orca/snapshot";
@@ -172,7 +173,7 @@ export default function CoastMap({
           `Data type: ${snapshot.provenance.demo_scenario ? "Demo Scenario / Illustrative Dataset — not live" : "Verified advisory"}`, p.radius ? `Advisory search radius: ${p.radius} m` : "Symbol halo only; no geographic range implied."])
           popup.appendChild(text(line));
         const link = document.createElement("a");
-        link.textContent = "Ask ORCA";
+        link.textContent = askAssistantLabel(typeof document !== "undefined" ? document.documentElement.lang : "en");
         link.href = `/assistant?snapshot=${encodeURIComponent(snapshot.snapshot_id)}&prompt=${encodeURIComponent(`Explain the available advisory for PFZ ${p.id} (${p.latitude}, ${p.longitude}).`)}`;
         link.style.display = "block";
         link.style.marginTop = "12px";

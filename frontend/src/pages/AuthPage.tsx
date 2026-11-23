@@ -243,10 +243,10 @@ export default function AuthPage() {
           <SEO
             title={
               mode === "signin"
-                ? "Fisher & Vessel Login | ORCA Marine AI"
-                : "Register Vessel & Fisher Profile | ORCA Marine AI"
+                ? "Fisher & Vessel Login | Matsya"
+                : "Register Vessel & Fisher Profile | Matsya"
             }
-            description="Sign in to your ORCA account using your email or mobile number and password."
+            description="Sign in to your Matsya account using your email or mobile number and password."
           />
 
           {/* Back to Home Navigation */}
@@ -264,23 +264,23 @@ export default function AuthPage() {
           <div className="flex items-center gap-3">
             <Link
               to="/"
-              aria-label="ORCA Home"
+              aria-label="Matsya Home"
               className="transition-transform hover:scale-105"
             >
               <OrcaLogo className="size-10" />
             </Link>
             <Link to="/" className="group block">
               <span className="text-xs font-mono uppercase tracking-widest text-teal-700 dark:text-teal-300 font-semibold block">
-                ORCA · Marine intelligence
+                powered by ORCA
               </span>
               <span className="text-base font-bold text-foreground group-hover:text-teal-400 transition-colors">
-                ORCA Marine AI
+                Matsya
               </span>
             </Link>
           </div>
 
           <h1 className="mt-6 text-2xl font-bold tracking-tight text-foreground">
-            {mode === "signin" ? t("auth.title") : mode === "register" ? t("auth.registerTitle") : "Reset your ORCA password"}
+            {mode === "signin" ? t("auth.title") : mode === "register" ? t("auth.registerTitle") : "Reset your Matsya password"}
           </h1>
           <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
             {t("auth.subtitle")}
@@ -667,7 +667,7 @@ export default function AuthPage() {
         <img src="/hero-ocean-surface.webp" alt="" width={1920} height={1080} />
         <div className="auth-ocean-top">
           <OrcaLogo className="size-9" />
-          <span>ORCA</span>
+          <span>Matsya</span>
         </div>
         <div className="auth-ocean-copy">
           <span>OCEAN INTELLIGENCE, WITH CONTEXT</span>

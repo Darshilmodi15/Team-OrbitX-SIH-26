@@ -1,28 +1,31 @@
-# ORCA Marine AI
+# Matsya
 
-ORCA Marine AI is a decision-support platform for coastal mariners and fisheries
-operations. It combines marine conditions, fishing-zone intelligence, boundary
-awareness, multilingual assistance, and emergency guidance in one responsive
-web application.
+**Matsya, powered by ORCA**, is a coastal safety and marine decision-support platform for fishing communities, vessel operators, and maritime agencies across India's 7,516 km coastline. It combines marine conditions, fishing-zone intelligence, boundary awareness, localized multilingual assistance, and emergency guidance in one responsive web application.
 
-The project is designed for the Smart India Hackathon (SIH) prototype and final
-demonstration. It is not a replacement for official navigation, weather,
-maritime safety, or search-and-rescue services.
+The project is built for the Smart India Hackathon (SIH) prototype and final demonstration. It is not a replacement for official navigation, weather, maritime safety, or search-and-rescue services.
 
 ## Product overview
 
-ORCA helps a user answer practical questions such as:
+Matsya helps coastal fishers across all Indian coastal states and union territories answer practical questions such as:
 
 - Is it operationally safe to go to sea from my selected location?
 - What marine conditions and forecast trends should I consider?
 - Where are nearby Potential Fishing Zones (PFZs)?
 - Am I approaching an EEZ, IMBL, or protected-area boundary?
-- Can I receive the advisory in a regional Indian language?
+- Can I receive the advisory in my regional Indian language?
 - What information should be included in an emergency MAYDAY message?
 
-The interface includes a dashboard, tactical map, conversational assistant,
-alerts, marine services, location selection, settings, and role-aware
-administration views.
+The interface includes a dashboard, tactical map, conversational assistant (with localized coastal persona names keyed by the user's preferred language — such as *Sagar Mitra*, *Nakhuda*, *Daryasarang*, *Ambiga*, *Kappithan*, *Kadal Thunai*, and *Majhi*), alerts, marine services, location selection, settings, and role-aware administration views.
+
+## How it works — ORCA architecture
+
+Under the hood, **Matsya** is powered by **ORCA — Marine EcOsystem Reasoning with Collaborative Agents**:
+
+- **Deterministic Planner & Multi-Agent Evidence Pipeline:** Specialized Python agents evaluate marine weather (INCOIS / Open-Meteo), 4-vector vessel-class risk heuristics, EEZ/IMBL/MPA geospatial boundaries, PFZ advisories, tidal estimates, and trip fuel economics into a canonical `MarineSnapshot` evidence bundle.
+- **Grounded Multilingual Synthesis:** The conversational layer injects the verified `MarineSnapshot` and localized assistant persona into Gemini / Sarvam / Bhashini pipelines so numeric sea-state values are never invented or upgraded into departure clearance.
+- **Resilient Low-Bandwidth & Offline Design:** Regional geospatial caching (Redis with in-memory fallback), installable PWA assets, and encrypted offline trip packs keep critical marine data accessible even with patchy offshore connectivity.
+
+> **Demo accounts (non-production environments only):** `fisherman@matsya.app` (`password123`), `officer@fisheries.gov.in` (`govpassword123`), and `admin@matsya.app` (`adminpassword123`). Configure `PUBLIC_BASE_URL` (backend) and `VITE_PUBLIC_SITE_URL` (frontend) when deploying to a custom domain.
 
 ## Current status
 

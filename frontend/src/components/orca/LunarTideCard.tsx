@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Moon } from "lucide-react";
 import { fetchLunarTideEstimate, type LunarTideEstimate } from "@/services/api";
+import { MatsyaLoader } from "./MatsyaLoader";
 import { useI18n } from "@/lib/orca/i18n";
 
 export function LunarTideCard({ lat, lon }: { lat: number; lon: number }) {
@@ -45,7 +46,7 @@ export function LunarTideCard({ lat, lon }: { lat: number; lon: number }) {
       {error ? (
         <p className="text-xs text-muted-foreground">{t("chat.unavailable")}</p>
       ) : !estimate ? (
-        <p className="text-xs text-muted-foreground">{t("state.loading")}</p>
+        <MatsyaLoader variant="compact" message={t("state.loading")} />
       ) : (
         <div className="space-y-2 text-xs">
           <dl className="grid gap-2 sm:grid-cols-3">

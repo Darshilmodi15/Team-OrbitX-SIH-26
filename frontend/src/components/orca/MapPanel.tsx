@@ -18,6 +18,7 @@ import {
   evaluateProximityAlert,
   playMaritimeAlarmTone,
 } from "@/lib/orca/proximity-alarm";
+import { askAssistantLabel } from "@/lib/brand";
 import { useI18n } from "@/lib/orca/i18n";
 import type { Coords } from "@/lib/orca/geo";
 import { mapCopy } from "@/lib/orca/map-copy";
@@ -114,12 +115,13 @@ export function MapPanel({
     [infoOpen, setInfoOpen] = useState(false),
     [recenter, setRecenter] = useState(0);
   const advisory = snapshotPFZ(s);
+  const askLabel = askAssistantLabel(lang);
   const copy =
     lang === "gu"
       ? {
           grid: "મોડેલના નમૂના બિંદુઓ",
           details: "સ્થાનની વિગતો",
-          ask: "ORCA ને પૂછો",
+          ask: askLabel,
           reference: "ઉપગ્રહ આધાર નકશો · જીવંત માપન નથી",
           noTiles: "ઓછા ડેટા માટે લખાણ દૃશ્ય",
           advanced: "અદ્યતન",
@@ -129,7 +131,7 @@ export function MapPanel({
         ? {
             grid: "मॉडल नमूना बिंदु",
             details: "स्थान का विवरण",
-            ask: "ORCA से पूछें",
+            ask: askLabel,
             reference: "उपग्रह आधार मानचित्र · लाइव माप नहीं",
             noTiles: "कम डेटा के लिए पाठ दृश्य",
             advanced: "उन्नत",
@@ -138,7 +140,7 @@ export function MapPanel({
         : {
             grid: "Model sample points",
             details: "Location details",
-            ask: "Ask ORCA",
+            ask: askLabel,
             reference:
               "Satellite basemap · reference imagery, not live measurements",
             noTiles: "A lighter view. No map tiles are loaded.",

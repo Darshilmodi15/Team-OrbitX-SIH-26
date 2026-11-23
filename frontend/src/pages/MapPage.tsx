@@ -5,7 +5,8 @@ import { ArrowLeft, MapPin } from "lucide-react";
 import { MapPanel } from "@/components/orca/MapPanel";
 import { LanguageMenu } from "@/components/orca/LanguageMenu";
 import { AppearanceMenu } from "@/components/orca/AppearanceMenu";
-import { OrcaLogo } from "@/components/orca/Logo";
+import { APP_NAME } from "@/lib/brand";
+import { MatsyaLogo } from "@/components/orca/Logo";
 import { SEO } from "@/components/SEO";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
@@ -40,7 +41,7 @@ export default function MapPage() {
   return (
     <div className="orca-workspace map-workspace">
       <SEO
-        title="Marine Map | ORCA"
+        title={`Marine Map | ${APP_NAME}`}
         description="Explore source-backed marine conditions, available PFZ advisories and EEZ reference geometry."
       />
       <header className="map-page-header">
@@ -51,11 +52,11 @@ export default function MapPage() {
         >
           <ArrowLeft size={20} />
         </Link>
-        <OrcaLogo className="size-8" />
+        <MatsyaLogo className="size-8" />
         <div>
           <h1>{t("map.title")}</h1>
           <p>
-            ORCA ·{" "}
+            {APP_NAME} ·{" "}
             {historical?.location.name || location?.label || t("loc.current")}
           </p>
         </div>

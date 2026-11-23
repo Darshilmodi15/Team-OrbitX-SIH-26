@@ -1,8 +1,9 @@
 """
-Authentication and User Profile Router for ORCA Marine AI.
+Authentication and User Profile Router for Matsya (powered by ORCA).
 """
 from typing import Optional
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+import hashlib
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field, ConfigDict
 import os
 import logging
@@ -21,7 +22,7 @@ from app.models.user_models import (
 )
 from app.services.auth import auth_service, decode_token
 from app.services.auth.auth_service import session_is_active
-from app.services.rate_limit import rate_limiter
+from app.services.rate_limit import get_client_ip, rate_limiter
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication & User Management"])
 
@@ -86,7 +87,7 @@ def register_user(request: RegisterRequest, req: Request):
     """
     Registers a new fisherman, coastal resident, government official, or administrator.
     """
-    client_ip = req.client.host if req.client else "unknown"
+    client_ip = get_client_ip(req)
     rate_limiter.check("auth_register", client_ip, limit=30, window_seconds=60)
     try:
         profile, token = auth_service.register(
@@ -104,7 +105,7 @@ def login_user(request: LoginRequest, req: Request):
     """
     Authenticates user via email/mobile number and password.
     """
-    client_ip = req.client.host if req.client else "unknown"
+    client_ip = get_client_ip(req)
     rate_limiter.check("auth_login", client_ip, limit=30, window_seconds=60)
     try:
         profile, token = auth_service.login(
@@ -121,7 +122,7 @@ def login_user(request: LoginRequest, req: Request):
 @router.post("/google", response_model=AuthResponse)
 def login_with_google(request: GoogleLoginRequest, req: Request):
     """Verify a Google ID token before creating an ordinary ORCA session."""
-    client_ip = req.client.host if req.client else "unknown"
+    client_ip = get_client_ip(req)
     rate_limiter.check("auth_google", client_ip, limit=30, window_seconds=60)
     google_client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip()
     if not google_client_id:
@@ -154,7 +155,7 @@ def login_with_google(request: GoogleLoginRequest, req: Request):
         authoritative_email=authoritative_email,
         preferred_language=request.preferred_language or "en",
         user_agent=req.headers.get("user-agent", "")[:512],
-        ip_address=req.client.host if req.client else "",
+        ip_address=client_ip,
     )
     return AuthResponse(access_token=token, user=profile)
 
@@ -194,11 +195,15 @@ def update_user_profile(
 
 
 @router.post("/forgot-password")
-def forgot_password(request: ForgotPasswordRequest, req: Request):
-    """Initiates password reset using configured email (SMTP) or SMS transport."""
-    client_ip = req.client.host if req.client else "unknown"
+def forgot_password(request: ForgotPasswordRequest, req: Request, background_tasks: BackgroundTasks):
+    """Initiates password reset using configured email (Resend/SMTP) or SMS transport."""
+    client_ip = get_client_ip(req)
     rate_limiter.check("auth_forgot_password", client_ip, limit=5, window_seconds=300)
-    auth_service.request_password_reset(request.email_or_phone)
+    normalized_ident = request.email_or_phone.strip().lower()
+    if "@" in normalized_ident:
+        recipient_key = hashlib.sha256(normalized_ident.encode("utf-8")).hexdigest()
+        rate_limiter.check("auth_forgot_password_recipient", recipient_key, limit=3, window_seconds=900)
+    auth_service.request_password_reset(request.email_or_phone, background_tasks=background_tasks)
     return {
         "status": "ok",
         "message": "If a matching account exists, password reset instructions have been sent.",
@@ -208,7 +213,7 @@ def forgot_password(request: ForgotPasswordRequest, req: Request):
 @router.post("/reset-password")
 def reset_password(request: ResetPasswordRequest, req: Request):
     """Completes password reset with a valid single-use reset code and revokes prior sessions."""
-    client_ip = req.client.host if req.client else "unknown"
+    client_ip = get_client_ip(req)
     rate_limiter.check("auth_reset_password", client_ip, limit=10, window_seconds=300)
     try:
         auth_service.confirm_password_reset(request.token, request.new_password)

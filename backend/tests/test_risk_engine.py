@@ -125,7 +125,7 @@ class TestRiskEngine(unittest.TestCase):
         )
         risk = assess_risk(weather)
         self.assertTrue(len(risk.disclaimer) > 10)
-        self.assertIn("ORCA Risk Assessment", risk.disclaimer)
+        self.assertIn("Matsya (powered by ORCA)", risk.disclaimer)
 
 
 if __name__ == "__main__":

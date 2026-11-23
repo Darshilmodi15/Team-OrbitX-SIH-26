@@ -24,7 +24,7 @@ export default function AlertsPage() {
     return (
       <AppShell>
         <SEO
-          title="Marine Weather Advisories & Cyclone Alerts | ORCA Marine AI"
+          title="Marine Weather Advisories & Cyclone Alerts | Matsya"
           description="Official high swell warnings, cyclone alerts, tsunami advisories, and marine safety bulletins issued by INCOIS and IMD."
         />
         <div className="space-y-4">
@@ -53,7 +53,7 @@ export default function AlertsPage() {
   return (
     <AppShell>
       <SEO
-        title="Marine Weather Advisories & Cyclone Alerts | ORCA Marine AI"
+        title="Marine Weather Advisories & Cyclone Alerts | Matsya"
         description="Official high swell warnings, cyclone alerts, tsunami advisories, and marine safety bulletins issued by INCOIS and IMD."
       />
       <h1 className="text-xl font-semibold">{t("alerts.title")}</h1>

@@ -1,5 +1,5 @@
 """
-Intent classification and Entity Extraction agent for ORCA Marine AI.
+Intent classification and Entity Extraction agent for Matsya (powered by ORCA).
 Classifies user operational marine queries and extracts locations, temporal hints,
 and simulation parameters.
 """
@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-SYSTEM_PROMPT = """You are an intent classification assistant for ORCA Marine AI.
+SYSTEM_PROMPT = """You are an intent classification assistant for Matsya (powered by ORCA).
 You must understand operational maritime queries in English, Indian native scripts (Gujarati, Hindi, Tamil, Telugu, Malayalam, Marathi, Bengali, Kannada, Odia, Punjabi), and Romanized/transliterated Indian languages (e.g. 'Kale bahar nikali shakay?' means 'Can we go out to sea tomorrow? / Is it safe to sail tomorrow?').
 
 Classify the user's question into one of the following intent types:

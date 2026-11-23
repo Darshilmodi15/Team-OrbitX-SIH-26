@@ -148,7 +148,7 @@ export default function LocationPage() {
   return (
     <AppShell>
       <SEO
-        title="Select Coastal Harbour & Port Base | ORCA Marine AI"
+        title="Select Coastal Harbour & Port Base | Matsya"
         description="Choose your departure harbour, fishing radius, and coastal coordinates across India's exclusive economic zone."
       />
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">

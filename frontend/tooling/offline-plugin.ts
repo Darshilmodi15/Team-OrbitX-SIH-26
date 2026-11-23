@@ -47,7 +47,7 @@ self.addEventListener('fetch', event => {
   })());
 });
 self.addEventListener('push', event => {
-  let payload = { title: 'ORCA Marine Safety Alert', body: 'New coastal safety update available.', url: '/alerts' };
+  let payload = { title: 'Matsya Safety Alert', body: 'New coastal safety update available.', url: '/alerts' };
   try {
     if (event.data) payload = { ...payload, ...event.data.json() };
   } catch { /* fallback to default payload */ }

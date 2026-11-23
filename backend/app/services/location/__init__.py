@@ -1,4 +1,4 @@
-"""Location and coastal boundary services for ORCA Marine AI."""
+"""Location and coastal boundary services for Matsya (powered by ORCA)."""
 from app.services.location.coastal_distance import CoastalDistanceService, coastal_distance_service
 from app.services.location.india_boundary import (
     INDIA_BOUNDS,

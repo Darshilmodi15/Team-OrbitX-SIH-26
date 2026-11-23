@@ -197,7 +197,7 @@ function parseBlocks(rawText: string): BlockType[] {
 }
 
 /**
- * Safe, zero-dependency Markdown Renderer component for ORCA Marine AI messages.
+ * Safe, zero-dependency Markdown Renderer component for Matsya messages.
  */
 export function MarkdownRenderer({ content, className }: MarkdownRendererProps) {
   if (!content) return null;

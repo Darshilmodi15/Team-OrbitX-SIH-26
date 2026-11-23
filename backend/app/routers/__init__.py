@@ -1,1 +1,1 @@
-"""Routers package for ORCA Marine AI Backend."""
+"""Routers package for Matsya (powered by ORCA) Backend."""

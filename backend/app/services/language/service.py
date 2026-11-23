@@ -1,5 +1,5 @@
 """
-Unified Language & Speech Service for ORCA Marine AI.
+Unified Language & Speech Service for Matsya (powered by ORCA).
 
 Supports interchangeable language providers (Sarvam AI, Bhashini, Mock/Gemini)
 with multi-turn session persistence, instant script classification, and caching.

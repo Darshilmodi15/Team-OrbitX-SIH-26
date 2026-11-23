@@ -1,5 +1,5 @@
 """
-Notifications and Safety Alerts REST Router for ORCA Marine AI.
+Notifications and Safety Alerts REST Router for Matsya (powered by ORCA).
 """
 from typing import Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
@@ -18,7 +18,7 @@ from app.services.notifications.push_service import (
     get_push_config_status,
     save_push_subscription,
 )
-from app.services.rate_limit import rate_limiter
+from app.services.rate_limit import get_client_ip, rate_limiter
 
 router = APIRouter(prefix="/api/notifications", tags=["Safety Notifications & Alerts"])
 
@@ -137,7 +137,7 @@ def check_location_alerts(
     """
     user = get_optional_current_user(authorization)
     resolved_uid = user.id if user else None
-    rate_key = f"user:{resolved_uid}" if resolved_uid else f"ip:{req.client.host if req.client else 'unknown'}"
+    rate_key = f"user:{resolved_uid}" if resolved_uid else f"ip:{get_client_ip(req)}"
     rate_limiter.check("notifications_check", rate_key, limit=60, window_seconds=60)
 
     if resolved_uid:

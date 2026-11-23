@@ -1,4 +1,4 @@
-# ⚓ ORCA Marine AI — Official Frontend-Backend API Integration Contract
+# ⚓ Matsya (powered by ORCA) — Official Frontend-Backend API Integration Contract
 
 This document serves as the binding integration contract between the **Frontend (React 19)** and **Backend (FastAPI)** teams. The backend is frozen; frontend components must format requests and parse responses according to this specification.
 

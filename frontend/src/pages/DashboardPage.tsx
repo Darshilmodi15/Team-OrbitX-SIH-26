@@ -34,7 +34,7 @@ export default function DashboardPage() {
     return (
       <AppShell>
         <SEO
-          title="Command Dashboard | ORCA Marine AI"
+          title="Command Dashboard | Matsya"
           description="Real-time ocean telemetry, wave heights, wind speed, potential fishing zones, and maritime safety alerts."
         />
         <div className="space-y-4">
@@ -60,7 +60,7 @@ export default function DashboardPage() {
   return (
     <AppShell>
       <SEO
-        title="Live Marine Command Dashboard | ORCA Marine AI"
+        title="Live Marine Command Dashboard | Matsya"
         description="Real-time ocean telemetry, wave heights, wind speed, potential fishing zones, and maritime safety alerts."
       />
       <div className="space-y-5">

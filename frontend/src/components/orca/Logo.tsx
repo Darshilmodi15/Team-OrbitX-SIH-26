@@ -1,42 +1,83 @@
-export function OrcaLogo({ className = "size-8" }: { className?: string }) {
+import { useId } from "react";
+import { APP_NAME, POWERED_BY } from "@/lib/brand";
+
+export function MatsyaLogo({
+  className = "size-8",
+  animated = false,
+}: {
+  className?: string;
+  animated?: boolean;
+}) {
+  const clipId = useId();
   return (
     <svg
-      viewBox="0 0 48 48"
+      viewBox="0 0 120 120"
       className={className}
       role="img"
-      aria-label="ORCA Marine AI"
+      aria-label={APP_NAME}
       fill="none"
     >
-      <circle cx="24" cy="24" r="22" className="fill-teal-500/20 stroke-teal-500" strokeWidth="2" />
-      <circle cx="24" cy="24" r="18" className="fill-teal-500/30" />
-      <path
-        d="M24 9c5.6 3.4 8.8 8.6 8.8 14.3 0 5.3-3.4 9.7-8.8 13.4-5.4-3.7-8.8-8.1-8.8-13.4C15.2 17.6 18.4 12.4 24 9Z"
-        className="fill-teal-400"
-        opacity="0.9"
+      <defs>
+        <clipPath id={clipId}>
+          <circle cx="60" cy="60" r="47" />
+        </clipPath>
+      </defs>
+      <circle
+        cx="60"
+        cy="60"
+        r="52"
+        style={{ fill: "var(--matsya-mark-ring-fill, #BDEFE6)" }}
+        stroke="var(--matsya-teal, #2FB5A3)"
+        strokeWidth="4"
       />
-      <path
-        d="M12 28c3.2 0 3.2 2.6 6.5 2.6S21.7 28 25 28s3.2 2.6 6.5 2.6S34.7 28 38 28"
-        className="stroke-slate-900 dark:stroke-slate-950"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-      />
-      <circle cx="24" cy="20" r="3" className="fill-slate-900 dark:fill-slate-950" />
+      <g className={animated ? "matsya-fish-motion" : undefined}>
+        <path
+          d="M26 52C38 32 66 32 78 52C66 72 38 72 26 52Z"
+          fill="var(--matsya-teal, #2FB5A3)"
+        />
+        <path
+          d="M76 52L96 38Q91 52 96 66Z"
+          fill="var(--matsya-teal, #2FB5A3)"
+        />
+        <circle
+          cx="40"
+          cy="49"
+          r="3.4"
+          style={{ fill: "var(--matsya-mark-ink, #12232B)" }}
+        />
+      </g>
+      <g clipPath={`url(#${clipId})`}>
+        <path
+          className={animated ? "matsya-wave-motion" : undefined}
+          d="M-48 86q10-8 20 0t20 0t20 0t20 0t20 0t20 0t20 0t20 0t20 0t20 0t20 0t20 0"
+          fill="none"
+          style={{ stroke: "var(--matsya-mark-ink, #12232B)" }}
+          strokeWidth="4.5"
+          strokeLinecap="round"
+        />
+      </g>
     </svg>
   );
 }
 
-export function OrcaWordmark({ compact = false }: { compact?: boolean }) {
+export function MatsyaWordmark({ compact = false }: { compact?: boolean }) {
   return (
     <span className="flex min-w-0 items-center gap-2.5">
-      <OrcaLogo className="size-8 shrink-0" />
+      <MatsyaLogo className="size-8 shrink-0" />
       <span className="flex min-w-0 flex-col leading-tight">
-        <span className="truncate text-sm font-bold tracking-tight text-foreground">ORCA Marine AI</span>
+        <span className="truncate text-sm font-bold tracking-tight text-foreground">
+          {APP_NAME}
+        </span>
         {!compact && (
           <span className="truncate text-[11px] text-muted-foreground">
-            National Coastal Safety Platform
+            {POWERED_BY}
           </span>
         )}
       </span>
     </span>
   );
 }
+
+// Backward-compatible aliases while internal paths stay stable.
+export const OrcaLogo = MatsyaLogo;
+export const OrcaWordmark = MatsyaWordmark;

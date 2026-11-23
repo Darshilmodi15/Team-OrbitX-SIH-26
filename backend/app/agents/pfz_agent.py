@@ -1,6 +1,6 @@
 """Potential Fishing Zone (PFZ) agent responsible for retrieving and structuring PFZ evidence."""
 import math
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from app.data.pfz.base import PFZProvider
 from app.models.agent_models import PFZEvidence
 
@@ -20,7 +20,7 @@ def get_pfz_zones_evidence(
     provider: PFZProvider,
     lat: float,
     lon: float,
-    wave_height_m: float = None,
+    wave_height_m: Optional[float] = None,
 ) -> List[PFZEvidence]:
     """
     Fetches Potential Fishing Zones from the underlying provider and formats them into PFZEvidence contracts.

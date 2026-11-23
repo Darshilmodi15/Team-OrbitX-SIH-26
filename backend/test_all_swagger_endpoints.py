@@ -17,13 +17,13 @@ def test_all_endpoints():
     auth_headers = {}
     try:
         login_res = client.post("/api/auth/login", json={
-            "email_or_phone": "admin@orca.marine",
+            "email_or_phone": "admin@matsya.app",
             "password": "adminpassword123"
         })
         if login_res.status_code == 200:
             token = login_res.json().get("access_token")
             auth_headers = {"Authorization": f"Bearer {token}"}
-            print("Successfully authenticated SUPER_ADMIN user (admin@orca.marine).")
+            print("Successfully authenticated SUPER_ADMIN user (admin@matsya.app).")
         else:
             print("Login failed:", login_res.status_code, login_res.text)
     except Exception as e:
@@ -116,14 +116,14 @@ def test_all_endpoints():
                 elif path == "/api/auth/register":
                     json_body = {
                         "name": "Unique Fisherman",
-                        "email": "unique_fisherman_999@orca.marine",
+                        "email": "unique_fisherman_999@matsya.app",
                         "mobile_number": "+919999911199",
                         "password": "TestPassword123!",
                         "preferred_language": "gu",
                         "role": "USER"
                     }
                 elif path == "/api/auth/login":
-                    json_body = {"email_or_phone": "admin@orca.marine", "password": "adminpassword123"}
+                    json_body = {"email_or_phone": "admin@matsya.app", "password": "adminpassword123"}
                 elif path == "/api/auth/google":
                     json_body = {"google_token": "mock_valid_google_token_1234567890"}
                 elif path == "/api/voice/transcribe":

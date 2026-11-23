@@ -1,5 +1,5 @@
 """
-Location and Coastal Area Verification Router for ORCA Marine AI.
+Location and Coastal Area Verification Router for Matsya (powered by ORCA).
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Automated pre-acceptance checks for ORCA.
+"""Automated pre-acceptance checks for Matsya (powered by ORCA).
 
 Runs verifiable checks against the local codebase and build artifacts.
 Does not deploy, does not read .env, does not make external requests.
@@ -31,7 +31,7 @@ def check(check_id: str, description: str, passed: bool, detail: str = ""):
 
 
 def main():
-    print("ORCA Pre-Acceptance Checks")
+    print("Matsya (ORCA) Pre-Acceptance Checks")
     print("=" * 60)
     errors = 0
 

@@ -1,5 +1,5 @@
 """
-Emergency Services, SOS Distress, and Maritime SAR Models for ORCA Marine AI.
+Emergency Services, SOS Distress, and Maritime SAR Models for Matsya (powered by ORCA).
 """
 from datetime import datetime, timezone
 from enum import Enum

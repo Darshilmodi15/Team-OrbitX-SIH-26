@@ -1,17 +1,17 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none'">
-<title>ORCA offline trip pack</title><style>
-body{font:18px/1.6 system-ui,sans-serif;max-width:760px;margin:24px auto;padding:0 18px;background:#f4f8fa;color:#142c3b}h1{line-height:1.2}button,input{font:inherit;padding:12px;border:1px solid #527384;border-radius:8px}button{cursor:pointer;background:#064c68;color:white}label{display:block}article,section{background:white;padding:18px;border-radius:12px;margin:16px 0;border:1px solid #bed1da}p,li{overflow-wrap:anywhere}.notice{border-left:5px solid #ba6510;padding:12px;background:#fff0da}li{margin-bottom:14px}[hidden]{display:none!important}input{max-width:100%;box-sizing:border-box}small{display:block}
-</style></head><body><h1>ORCA offline trip pack</h1>
+<title>Matsya offline trip pack</title><style>
+body{font:18px/1.6 system-ui,sans-serif;max-width:760px;margin:24px auto;padding:0 18px;background:#F2FAF8;color:#12232B}h1{line-height:1.2}button,input{font:inherit;padding:12px;border:1px solid #527384;border-radius:8px}button{cursor:pointer;background:#0F5E56;color:white}label{display:block}article,section{background:white;padding:18px;border-radius:12px;margin:16px 0;border:1px solid #bed1da}p,li{overflow-wrap:anywhere}.notice{border-left:5px solid #ba6510;padding:12px;background:#fff0da}li{margin-bottom:14px}[hidden]{display:none!important}input{max-width:100%;box-sizing:border-box}small{display:block}
+</style></head><body><h1>Matsya offline trip pack</h1>
 <p class="notice">Saved information only. This file cannot receive updates, contact emergency services or send SOS. Saved forecasts are not clearance to sail.</p>
-<section aria-label="Direct cellular emergency contacts"><strong>Direct cellular emergency (no internet required):</strong> <a href="tel:112">Call 112</a> · <a href="tel:1554">Coast Guard 1554</a> · <a href="tel:1093">Coastal Police 1093</a> · <a href="sms:112?body=ORCA%20SOS%20distress%20request">SMS 112</a></section>
-<section id="choose" hidden><label for="file">Open a downloaded ORCA trip pack (.txt or .html)</label><input id="file" type="file" accept=".txt,.html,text/plain,text/html"><p>The file is read on this device and is never uploaded.</p></section>
+<section aria-label="Direct cellular emergency contacts"><strong>Direct cellular emergency (no internet required):</strong> <a href="tel:112">Call 112</a> · <a href="tel:1554">Coast Guard 1554</a> · <a href="tel:1093">Coastal Police 1093</a> · <a href="sms:112?body=Matsya%20SOS%20distress%20request">SMS 112</a></section>
+<section id="choose" hidden><label for="file">Open a downloaded Matsya trip pack (.txt or .html)</label><input id="file" type="file" accept=".txt,.html,text/plain,text/html"><p>The file is read on this device and is never uploaded.</p></section>
 <section id="unlock"><form id="form"><label for="password">Trip pack password</label><input id="password" type="password" autocomplete="off" required><button type="submit">Unlock pack</button></form>
 <p>Your password stays on this device. There is no password recovery.</p></section>
 <p id="status" role="status" aria-live="polite">Open this downloaded file in a browser, even without internet.</p>
 <button id="lock" hidden>Lock pack</button><main id="content" hidden></main>
-<p>To delete this pack, remove this HTML file and its copies from Downloads / Files and empty the trash. Signing out of ORCA does not delete a downloaded file. Keep your device clock correct; expiry is checked against it.</p>
+<p>To delete this pack, remove this HTML file and its copies from Downloads / Files and empty the trash. Signing out of Matsya does not delete a downloaded file. Keep your device clock correct; expiry is checked against it.</p>
 <script id="payload" type="application/json">__ORCA_ENCRYPTED_PAYLOAD__</script>
 <script>
 'use strict';
@@ -48,7 +48,7 @@ document.getElementById('file').onchange=async event=>{
    return;
   }
   throw Error('format');
- }catch{statusNode.textContent='Cannot read this pack. Select an intact ORCA trip .txt or .html file under 2 MB.';}
+ }catch{statusNode.textContent='Cannot read this pack. Select an intact Matsya trip .txt or .html file under 2 MB.';}
 };
 const stamp=value=>new Date(value).toLocaleString(undefined,{timeZoneName:'short'});
 function add(parent,tag,text){const element=document.createElement(tag);element.textContent=text;parent.append(element);return element;}
@@ -77,7 +77,7 @@ function render(){
  if(!pack.pfz.points.length)add(pfz,'p',pack.pfz.coverageStatus==='no_advisory_issued'?'Provider explicitly reported no advisory issued.':'No PFZ points saved.');
  }else add(pfz,'p','No current PFZ advisory saved, or the saved advisory has expired. Points are hidden.');
  add(content,'p','Map tiles, satellite imagery, navigation routes, tide predictions, chat history and account credentials are not included.');
- add(content,'p','Weather attribution: Open-Meteo, DWD, Copernicus Marine; INCOIS where identified above. ORCA selects fields, rounds values and applies display expiry limits. Official data links: open-meteo.com/en/docs/marine-weather-api and incois.gov.in.');
+ add(content,'p','Weather attribution: Open-Meteo, DWD, Copernicus Marine; INCOIS where identified above. Matsya (powered by ORCA) selects fields, rounds values and applies display expiry limits. Official data links: open-meteo.com/en/docs/marine-weather-api and incois.gov.in.');
 }
 function lock(){generation++;pack=null;content.replaceChildren();content.hidden=true;document.getElementById('unlock').hidden=false;document.getElementById('lock').hidden=true;statusNode.textContent='Pack locked.';}
 document.getElementById('lock').onclick=lock;

@@ -134,7 +134,7 @@ class RiskEvidence(BaseModel):
     wind_status: Optional[str] = Field(default=None, description="Evaluated wind condition status")
     profile: Optional[MarineRiskProfile] = Field(default=None, description="Decomposed multi-factor risk profile")
     disclaimer: str = Field(
-        default="ORCA Risk Assessment is decision support intelligence. Always consult official Coast Guard and IMD broadcasts.",
+        default="Matsya (powered by ORCA) risk assessment is decision-support intelligence. Always consult official Coast Guard and IMD broadcasts.",
         description="Mandatory advisory disclaimer",
     )
     source: str = Field(default="risk_assessment_agent", description="Agent responsible for the risk evaluation")

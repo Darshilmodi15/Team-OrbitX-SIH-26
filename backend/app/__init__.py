@@ -1,1 +1,1 @@
-"""ORCA Marine AI backend package."""
+"""Matsya (powered by ORCA) backend package."""

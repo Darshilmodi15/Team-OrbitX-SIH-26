@@ -1,8 +1,8 @@
-# Render Blueprint Specification for ORCA Marine AI
+# Render Blueprint Specification for Matsya (powered by ORCA)
 # Auto-provisions: FastAPI Backend + PostgreSQL Database + Redis Cache + Static Frontend
 
 services:
-  # 1. ORCA FastAPI Backend Web Service
+  # 1. Matsya FastAPI Backend Web Service (Render service name kept stable; rename manually if desired)
   - type: web
     name: orca-backend
     runtime: python
@@ -10,7 +10,7 @@ services:
     plan: free
     healthCheckPath: /health
     buildCommand: "cd backend && pip install -r requirements.txt && python -m alembic upgrade head"
-    startCommand: "cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    startCommand: 'cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips="*"'
     envVars:
       - key: DATABASE_URL
         sync: false
@@ -20,8 +20,18 @@ services:
         value: sarvam
       - key: JWT_SECRET_KEY
         generateValue: true
+      - key: PUBLIC_BASE_URL
+        value: https://matsya.app
       - key: FRONTEND_ORIGIN
-        value: https://team-orbit-x-sih-26.vercel.app
+        value: https://matsya.app,https://www.matsya.app,https://team-orbit-x-sih-26.vercel.app
+      - key: EMAIL_PROVIDER
+        value: resend
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: Matsya <noreply@matsya.app>
+      - key: EMAIL_REPLY_TO
+        value: support@matsya.app
       - key: INCOIS_BASE_URL
         value: https://incois.gov.in
       - key: INCOIS_TIMEOUT_SEC
@@ -33,7 +43,7 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.9
 
-  # 2. ORCA React 19 Frontend (Static Site)
+  # 2. Matsya React 19 Frontend (Static Site)
   - type: web
     name: orca-frontend
     runtime: static

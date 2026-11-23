@@ -1,5 +1,5 @@
 """
-Temporal resolution and forecast verification service for ORCA Marine AI.
+Temporal resolution and forecast verification service for Matsya (powered by ORCA).
 
 Translates human time references (e.g. 'tomorrow morning', 'kale savare', 'kal subah')
 and query parameters into authoritative IST/UTC time windows, selects valid forecast

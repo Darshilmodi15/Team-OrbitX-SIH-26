@@ -27,7 +27,7 @@ def get_push_config_status() -> Dict[str, Any]:
     return {
         "configured": is_push_configured(),
         "vapid_public_key": pub,
-        "subject": os.getenv("VAPID_SUBJECT", "mailto:support@orca.marine"),
+        "subject": os.getenv("VAPID_SUBJECT", "mailto:support@matsya.app"),
     }
 
 

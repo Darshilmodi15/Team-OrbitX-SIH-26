@@ -1,15 +1,44 @@
 """Rate limiter with optional shared Redis backing and thread-safe in-memory fallback."""
 from collections import OrderedDict, deque
+import ipaddress
 import logging
 import os
 import threading
 import time
 from typing import Any, Optional
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, status
 
 from app.services.redis_utils import normalize_redis_url
 
 logger = logging.getLogger(__name__)
+
+
+def _valid_ip(candidate: str) -> Optional[str]:
+    text = candidate.strip()
+    if not text:
+        return None
+    try:
+        return str(ipaddress.ip_address(text))
+    except ValueError:
+        return None
+
+
+def get_client_ip(request: Request) -> str:
+    """Resolve the real client IP from proxy headers (with uvicorn --proxy-headers) or socket peer."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        for part in forwarded.split(","):
+            valid = _valid_ip(part)
+            if valid:
+                return valid
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip:
+        valid = _valid_ip(real_ip)
+        if valid:
+            return valid
+    if request.client and request.client.host:
+        return request.client.host
+    return "unknown"
 
 try:
     import redis

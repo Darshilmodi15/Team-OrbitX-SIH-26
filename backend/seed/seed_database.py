@@ -1,5 +1,5 @@
 """
-Database Seed Script for ORCA Marine AI.
+Database Seed Script for Matsya (powered by ORCA).
 Populates standard initial datasets:
 - Supported languages & system settings
 - National and state-by-state maritime emergency helplines & MRCC directories
@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 
+from app.core.brand import DEMO_ADMIN_EMAIL, DEMO_FISHERMAN_EMAIL, DEMO_OFFICER_EMAIL
 from app.db.base import Base
 from app.db.session import engine, get_db_context, init_db
 from app.db.models import (
@@ -54,7 +55,7 @@ def seed_database(skip_init: bool = False):
         {
             "id": "USR-DEMO-01",
             "name": "Captain Ramesh Koli",
-            "email": "fisherman@orca.marine",
+            "email": DEMO_FISHERMAN_EMAIL,
             "phone": "9876543210",
             "password": "password123",
             "role": "USER",
@@ -63,19 +64,19 @@ def seed_database(skip_init: bool = False):
         {
             "id": "USR-DEMO-02",
             "name": "Officer Priya Sharma",
-            "email": "officer@fisheries.gov.in",
+            "email": DEMO_OFFICER_EMAIL,
             "phone": "9123456780",
             "password": "govpassword123",
             "role": "GOVERNMENT",
             "preferred_language": "hi",
             "dept": "Directorate of Fisheries, Ministry of Fisheries",
             "designation": "Assistant Director (Marine Enforcement)",
-            "region": "Gujarat & Maharashtra",
+            "region": "All India Coastal Belt",
         },
         {
             "id": "USR-DEMO-03",
             "name": "Super Admin OrbitX",
-            "email": "admin@orca.marine",
+            "email": DEMO_ADMIN_EMAIL,
             "phone": "9999999999",
             "password": "adminpassword123",
             "role": "SUPER_ADMIN",

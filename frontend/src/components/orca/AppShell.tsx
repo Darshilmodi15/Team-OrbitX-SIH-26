@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
-import { OrcaWordmark } from "./Logo";
+import { MatsyaWordmark } from "./Logo";
 import { LanguageMenu } from "./LanguageMenu";
 import { AppearanceMenu } from "./AppearanceMenu";
 import { Footer } from "@/components/Footer";
@@ -45,7 +45,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur">
         <div className="orca-container flex h-14 items-center justify-between gap-3">
           <Link to="/dashboard" className="min-w-0 flex-1">
-            <OrcaWordmark compact />
+            <MatsyaWordmark compact />
           </Link>
 
           <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary">

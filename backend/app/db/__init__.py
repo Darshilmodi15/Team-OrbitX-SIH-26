@@ -1,5 +1,5 @@
 """
-Database module for ORCA Marine AI.
+Database module for Matsya (powered by ORCA).
 Exports database engine, session helpers, Base, and models.
 """
 from app.db.base import Base

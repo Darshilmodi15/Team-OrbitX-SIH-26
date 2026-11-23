@@ -1,6 +1,6 @@
-# ORCA Frontend - Tactical Marine GIS Dashboard 🌊🗺️
+# Matsya Frontend — Coastal Safety & Marine GIS Web App 🌊🗺️
 
-The **ORCA Frontend** is a modern, responsive single-page tactical GIS dashboard built with **React 19**, **TypeScript**, **Vite**, **Tailwind CSS v4**, and **Leaflet / React-Leaflet**.
+The **Matsya Frontend** (powered by **ORCA**) is a responsive single-page coastal safety and GIS web app built with **React 19**, **TypeScript**, **Vite**, **Tailwind CSS v4**, and **Leaflet / React-Leaflet**.
 
 ## 🚀 Quickstart
 

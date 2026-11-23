@@ -1,5 +1,5 @@
 /**
- * ORCA Marine AI — Localized Geographic & Maritime Entity Dictionary
+ * Matsya (powered by ORCA) — Localized Geographic & Maritime Entity Dictionary
  * Provides complete translations for Indian coastal cities, fishing ports,
  * marine boundaries (IMBL/MPA), and oceanic bodies across 10 Indian coastal languages:
  * Gujarati (gu), Hindi (hi), Marathi (mr), Tamil (ta), Telugu (te),

@@ -83,7 +83,7 @@ it("suggestion sends exactly the question the user clicked", async () => {
 it("typed enter submits the actual message once", async () => {
   mount();
   const input = screen.getByPlaceholderText(
-    "Ask anything about your coastal safety…",
+    "Ask Sagar Mitra about sea conditions, weather, or safety…",
   );
   fireEvent.change(input, { target: { value: "Explain waves" } });
   fireEvent.keyDown(input, { key: "Enter", shiftKey: false });
@@ -111,7 +111,7 @@ it("provider failure is an error, not an assistant message", async () => {
   mount();
   fireEvent.click(screen.getByRole("button", { name: "What does PFZ mean?" }));
   expect(await screen.findByRole("alert")).toHaveTextContent(
-    "ORCA’s AI provider is temporarily unavailable",
+    "Matsya’s AI provider is temporarily unavailable",
   );
   expect(screen.queryByText("Provider result")).not.toBeInTheDocument();
 });
@@ -202,11 +202,11 @@ it("reload of a failed request retries the persisted request ID without a duplic
   mount("/assistant/c/retry-thread");
   await waitFor(() =>
     expect(
-      screen.getByPlaceholderText("Ask anything about your coastal safety…"),
+      screen.getByPlaceholderText("Ask Sagar Mitra about sea conditions, weather, or safety…"),
     ).toHaveValue("Explain waves"),
   );
   fireEvent.keyDown(
-    screen.getByPlaceholderText("Ask anything about your coastal safety…"),
+    screen.getByPlaceholderText("Ask Sagar Mitra about sea conditions, weather, or safety…"),
     { key: "Enter" },
   );
   await waitFor(() =>
@@ -263,7 +263,7 @@ it("voice yields an editable transcript and submits only through the normal text
   fireEvent.click(screen.getByRole("button", { name: "Record voice" }));
   fireEvent.click(await screen.findByRole("button", { name: "Done Speaking" }));
   const input = screen.getByPlaceholderText(
-    "Ask anything about your coastal safety…",
+    "Ask Sagar Mitra about sea conditions, weather, or safety…",
   );
   await waitFor(() => expect(input).toHaveValue("Test spoken question"));
   expect(screen.getByText(/Transcript ready/)).toBeVisible();
@@ -283,7 +283,7 @@ it("map prompt remains editable and cannot send while its snapshot is unresolved
   vi.mocked(fetchSnapshotById).mockReturnValue(new Promise(() => {}));
   mount("/assistant?snapshot=pending&prompt=Explain%20these%20conditions");
   const input = screen.getByPlaceholderText(
-    "Ask anything about your coastal safety…",
+    "Ask Sagar Mitra about sea conditions, weather, or safety…",
   );
   await waitFor(() => expect(input).toHaveValue("Explain these conditions"));
   fireEvent.keyDown(input, { key: "Enter" });
@@ -301,7 +301,7 @@ it("rejects map context from a different saved location", async () => {
     expect(screen.getByRole("status")).toHaveTextContent("Unavailable"),
   );
   fireEvent.keyDown(
-    screen.getByPlaceholderText("Ask anything about your coastal safety…"),
+    screen.getByPlaceholderText("Ask Sagar Mitra about sea conditions, weather, or safety…"),
     { key: "Enter" },
   );
   expect(snapshotMock.adopt).not.toHaveBeenCalled();
@@ -323,7 +323,7 @@ it("shows loading instead of an empty conversation while saved history is pendin
 it("sends IST date rather than UTC date in chat requests", async () => {
   const expectedIstDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
   mount();
-  const input = screen.getByPlaceholderText("Ask anything about your coastal safety…");
+  const input = screen.getByPlaceholderText("Ask Sagar Mitra about sea conditions, weather, or safety…");
   fireEvent.change(input, { target: { value: "Check sea state" } });
   fireEvent.keyDown(input, { key: "Enter", shiftKey: false });
   await waitFor(() =>

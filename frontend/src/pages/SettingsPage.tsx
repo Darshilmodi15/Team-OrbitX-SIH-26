@@ -51,7 +51,7 @@ const VESSEL_PROFILES: Array<{ value: VesselClass; label: string; desc: string }
   { value: "traditional_canoe", label: "Traditional Canoe / Country Craft (<8 m)", desc: "Strictest wave (0.8 m caution) & wind (22 km/h caution) thresholds" },
   { value: "motorized_gillnetter", label: "Motorized Gillnetter / FRP (8–14 m)", desc: "Balanced small-boat offshore thresholds (1.2 m wave caution)" },
   { value: "mechanized_trawler", label: "Mechanized Trawler (>14 m)", desc: "Deep-sea mechanized hull thresholds (1.8 m wave caution)" },
-  { value: "standard", label: "ORCA Standard Profile", desc: "Default baseline marine thresholds" },
+  { value: "standard", label: "Standard Profile", desc: "Default baseline marine thresholds" },
 ];
 
 type BeforeInstallPromptEvent = Event & {
@@ -189,7 +189,7 @@ export default function SettingsPage() {
     if (!installPrompt) return;
     await installPrompt.prompt();
     const res = await installPrompt.userChoice;
-    setInstallStatus(res.outcome === "accepted" ? "ORCA installed on your device." : "Installation dismissed.");
+    setInstallStatus(res.outcome === "accepted" ? "Matsya installed on your device." : "Installation dismissed.");
     setInstallPrompt(null);
   }
 
@@ -209,7 +209,7 @@ export default function SettingsPage() {
   return (
     <AppShell>
       <SEO
-        title="Settings & Vessel Preferences | ORCA Marine AI"
+        title="Settings & Vessel Preferences | Matsya"
         description="Configure theme, language preferences, vessel telemetry, and privacy controls."
       />
       <h1 className="text-xl font-semibold text-foreground">{t("nav.settings")}</h1>
@@ -287,7 +287,7 @@ export default function SettingsPage() {
               className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-md bg-secondary px-3 text-xs font-semibold text-secondary-foreground hover:brightness-110"
             >
               <Download className="size-3.5" aria-hidden />
-              <span>Install ORCA App</span>
+              <span>Install Matsya App</span>
             </button>
           )}
         </div>
@@ -414,13 +414,16 @@ export default function SettingsPage() {
       </section>
 
       {/* Footer Links */}
-      <p className="mt-6 flex gap-4 text-xs text-muted-foreground">
+      <p className="mt-6 flex flex-wrap gap-4 text-xs text-muted-foreground">
         <Link to="/privacy" className="hover:text-foreground">
           {t("footer.privacy")}
         </Link>
         <Link to="/terms" className="hover:text-foreground">
           {t("footer.terms")}
         </Link>
+        <a href="mailto:support@matsya.app" className="hover:text-foreground underline underline-offset-2">
+          Support (support@matsya.app)
+        </a>
       </p>
     </AppShell>
   );

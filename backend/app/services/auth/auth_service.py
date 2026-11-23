@@ -18,6 +18,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
+from app.core.brand import APP_NAME, DEMO_ADMIN_EMAIL, DEMO_FISHERMAN_EMAIL, DEMO_OFFICER_EMAIL
 from app.models.user_models import RegisterRequest, UserProfile, UserRole
 
 logger = logging.getLogger(__name__)
@@ -194,7 +195,7 @@ class AuthService:
             {
                 "id": "USR-DEMO-01",
                 "name": "Captain Ramesh Koli",
-                "email": "fisherman@orca.marine",
+                "email": DEMO_FISHERMAN_EMAIL,
                 "phone": "9876543210",
                 "password": "password123",
                 "role": UserRole.USER,
@@ -203,7 +204,7 @@ class AuthService:
             {
                 "id": "USR-DEMO-02",
                 "name": "Officer Priya Sharma (Fisheries Dept)",
-                "email": "officer@fisheries.gov.in",
+                "email": DEMO_OFFICER_EMAIL,
                 "phone": "9123456780",
                 "password": "govpassword123",
                 "role": UserRole.GOVERNMENT,
@@ -212,7 +213,7 @@ class AuthService:
             {
                 "id": "USR-DEMO-03",
                 "name": "Super Admin OrbitX",
-                "email": "admin@orca.marine",
+                "email": DEMO_ADMIN_EMAIL,
                 "phone": "9999999999",
                 "password": "adminpassword123",
                 "role": UserRole.SUPER_ADMIN,
@@ -421,7 +422,7 @@ class AuthService:
                     db_user = db.query(User).filter(func.lower(User.email) == email_clean).with_for_update().first()
                     if db_user is not None:
                         if db_user.google_subject or not authoritative_email:
-                            raise HTTPException(status_code=409, detail="Sign in with your existing ORCA credentials to use this account.")
+                            raise HTTPException(status_code=409, detail=f"Sign in with your existing {APP_NAME} credentials to use this account.")
                     else:
                         pwd_hash, salt = hash_password(uuid.uuid4().hex + uuid.uuid4().hex)
                         db_user = UserRepository.create_user(
@@ -607,7 +608,7 @@ class AuthService:
 
         return profile
 
-    def request_password_reset(self, email_or_phone: str) -> None:
+    def request_password_reset(self, email_or_phone: str, background_tasks: Optional[Any] = None) -> None:
         """Generates a hashed single-use reset code and delivers it via configured email or SMS."""
         import secrets
         from datetime import timedelta
@@ -615,7 +616,7 @@ class AuthService:
         from app.db.models import PasswordResetToken
         from app.db.session import get_db_context
         from app.repositories import UserRepository
-        from app.services.email import get_email_transport, is_email_configured
+        from app.services.email import get_email_transport, is_email_configured, render_password_reset_email
         from app.services.sms import get_sms_transport, is_sms_configured
 
         ident = email_or_phone.strip()
@@ -657,16 +658,27 @@ class AuthService:
         if not raw_token:
             return
         if is_email and target_email:
-            get_email_transport().send(
-                target_email,
-                "ORCA Marine AI Password Reset Code",
-                f"Use this single-use reset code within 15 minutes to reset your ORCA password:\n\n{raw_token}\n",
-            )
+            transport = get_email_transport()
+            subject, text_body, html_body = render_password_reset_email(raw_token, expiry_minutes=15)
+
+            def _send_reset_email() -> None:
+                transport.send(target_email, subject, text_body, html_body=html_body)
+
+            if background_tasks is not None:
+                background_tasks.add_task(_send_reset_email)
+            else:
+                _send_reset_email()
         elif not is_email and target_phone:
-            get_sms_transport().send(
-                target_phone,
-                f"ORCA password reset code (valid 15 min): {raw_token}",
-            )
+            sms_transport = get_sms_transport()
+            sms_body = f"{APP_NAME} password reset code (valid 15 min): {raw_token}"
+
+            def _send_reset_sms() -> None:
+                sms_transport.send(target_phone, sms_body)
+
+            if background_tasks is not None:
+                background_tasks.add_task(_send_reset_sms)
+            else:
+                _send_reset_sms()
 
     def confirm_password_reset(self, token: str, new_password: str) -> None:
         """Verifies reset token hash, updates bcrypt password, and revokes active sessions."""

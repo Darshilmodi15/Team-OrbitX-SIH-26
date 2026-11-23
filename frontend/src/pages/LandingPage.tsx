@@ -7,7 +7,8 @@ import {
   AudioLines,
   ShieldCheck,
 } from "lucide-react";
-import { OrcaLogo } from "@/components/orca/Logo";
+import { APP_NAME, POWERED_BY } from "@/lib/brand";
+import { MatsyaLogo } from "@/components/orca/Logo";
 import { LanguageMenu } from "@/components/orca/LanguageMenu";
 import { AppearanceMenu } from "@/components/orca/AppearanceMenu";
 import { useI18n } from "@/lib/orca/i18n";
@@ -53,8 +54,8 @@ export default function LandingPage() {
   return (
     <div className="public-page">
       <SEO
-        title="ORCA — A clearer view of the sea"
-        description="Conversational marine intelligence with source-backed conditions, coastal maps and multilingual voice."
+        title={`${APP_NAME} — A clearer view of the sea`}
+        description="Matsya, powered by ORCA — conversational marine intelligence with source-backed conditions, coastal maps and multilingual voice."
       />
       <section className="public-hero">
         <img
@@ -67,8 +68,8 @@ export default function LandingPage() {
         />
         <nav className="public-nav" aria-label="Primary">
           <Link to="/" className="public-brand">
-            <OrcaLogo className="size-8" />
-            <strong>ORCA</strong>
+            <MatsyaLogo className="size-8" />
+            <strong>{APP_NAME}</strong>
           </Link>
           <a href="#platform" className="public-overview">
             {copy.explore}
@@ -81,7 +82,7 @@ export default function LandingPage() {
           </Link>
         </nav>
         <div className="public-hero-word" aria-hidden="true">
-          ORCA
+          {APP_NAME}
         </div>
         <div className="public-hero-bottom">
           <div>
@@ -104,7 +105,7 @@ export default function LandingPage() {
       </section>
       <section id="platform" className="public-platform">
         <div className="public-section-title">
-          <p className="public-eyebrow">ORCA / {t("land.capabilities")}</p>
+          <p className="public-eyebrow">{APP_NAME} · {POWERED_BY} / {t("land.capabilities")}</p>
           <h2>{copy.heading}</h2>
           <p>{copy.note}</p>
         </div>
@@ -137,7 +138,7 @@ export default function LandingPage() {
         </div>
       </section>
       <section className="public-closing">
-        <OrcaLogo className="size-12" />
+        <MatsyaLogo className="size-12" />
         <h2>{copy.closing}</h2>
         <Link to="/login" className="public-primary">
           {t("cta.getStarted")}
@@ -146,8 +147,8 @@ export default function LandingPage() {
       </section>
       <footer className="public-footer">
         <Link to="/" className="public-brand">
-          <OrcaLogo className="size-7" />
-          ORCA
+          <MatsyaLogo className="size-7" />
+          {APP_NAME}
         </Link>
         <p>{t("footer.prototype")}</p>
         <div>

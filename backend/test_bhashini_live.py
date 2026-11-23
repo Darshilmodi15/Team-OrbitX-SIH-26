@@ -1,5 +1,5 @@
 """
-Bhashini Live Integration Verification Script for ORCA Marine AI.
+Bhashini Live Integration Verification Script for Matsya (powered by ORCA).
 
 Run this script to verify that your Bhashini API keys are active and working:
     python backend/test_bhashini_live.py
@@ -17,7 +17,7 @@ load_dotenv(env_path)
 
 def test_bhashini():
     print("=" * 70)
-    print("ORCA Marine AI - Bhashini Service Integration Diagnostic")
+    print("Matsya (powered by ORCA) - Bhashini Service Integration Diagnostic")
     print("=" * 70)
 
     user_id = os.getenv("BHASHINI_USER_ID", "").strip()

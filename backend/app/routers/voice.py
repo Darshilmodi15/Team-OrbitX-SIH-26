@@ -1,5 +1,5 @@
 """
-Voice & Speech API Router for ORCA Marine AI.
+Voice & Speech API Router for Matsya (powered by ORCA).
 
 Powered by Sarvam AI:
 - Saaras v3 / v2: Speech-to-Text (STT) for 22+ Indian languages + English
@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
 from app.routers.auth import get_optional_current_user
-from app.services.rate_limit import rate_limiter
+from app.services.rate_limit import get_client_ip, rate_limiter
 from app.services.language import (
     BULBUL_V3_SPEAKERS,
     SUPPORTED_LANGUAGES,
@@ -43,12 +43,7 @@ def _resolve_caller_rate_key(request: Request, authorization: Optional[str] = No
             return f"user:{user.id}"
     except Exception:
         pass
-    client_ip = request.client.host if request.client else "127.0.0.1"
-    if os.getenv("TRUST_PROXY_HEADERS", "false").lower() == "true":
-        forwarded = request.headers.get("x-forwarded-for")
-        if forwarded:
-            client_ip = forwarded.split(",")[0].strip()
-    return f"ip:{client_ip}"
+    return f"ip:{get_client_ip(request)}"
 
 
 class TranscribeBase64Request(BaseModel):

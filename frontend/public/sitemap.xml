@@ -4,68 +4,57 @@
         xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
         http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
   <url>
-    <loc>https://orca-marine.gov.in/</loc>
-    <lastmod>2026-08-31T10:39:00+05:30</lastmod>
+    <loc>https://matsya.app/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://orca-marine.gov.in/dashboard</loc>
-    <lastmod>2026-08-31T10:39:00+05:30</lastmod>
+    <loc>https://matsya.app/dashboard</loc>
     <changefreq>hourly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://orca-marine.gov.in/map</loc>
-    <lastmod>2026-08-31T10:39:00+05:30</lastmod>
+    <loc>https://matsya.app/map</loc>
     <changefreq>hourly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://orca-marine.gov.in/assistant</loc>
-    <lastmod>2026-08-31T10:39:00+05:30</lastmod>
+    <loc>https://matsya.app/assistant</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://orca-marine.gov.in/alerts</loc>
-    <lastmod>2026-08-31T10:39:00+05:30</lastmod>
+    <loc>https://matsya.app/alerts</loc>
     <changefreq>always</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://orca-marine.gov.in/services</loc>
-    <lastmod>2026-08-31T10:39:00+05:30</lastmod>
+    <loc>https://matsya.app/services</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://orca-marine.gov.in/location</loc>
-    <lastmod>2026-08-31T10:39:00+05:30</lastmod>
+    <loc>https://matsya.app/location</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://orca-marine.gov.in/auth</loc>
-    <lastmod>2026-08-31T10:39:00+05:30</lastmod>
+    <loc>https://matsya.app/auth</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://orca-marine.gov.in/privacy</loc>
-    <lastmod>2026-08-31T10:39:00+05:30</lastmod>
+    <loc>https://matsya.app/privacy</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://orca-marine.gov.in/terms</loc>
-    <lastmod>2026-08-31T10:39:00+05:30</lastmod>
+    <loc>https://matsya.app/terms</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://orca-marine.gov.in/thank-you</loc>
-    <lastmod>2026-08-31T10:39:00+05:30</lastmod>
+    <loc>https://matsya.app/thank-you</loc>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
   </url>

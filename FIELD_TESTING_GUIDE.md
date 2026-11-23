@@ -1,6 +1,6 @@
-# 🧪 ORCA Marine AI — Field Testing & Resilience Verification Manual
+# 🧪 Matsya (powered by ORCA) — Field Testing & Resilience Verification Manual
 
-This document outlines the step-by-step test procedures for verifying ORCA's resilience against real-world marine conditions, network dropouts, GPS anomalies, and upstream API failures.
+This document outlines the step-by-step test procedures for verifying Matsya's resilience against real-world marine conditions, network dropouts, GPS anomalies, and upstream API failures.
 
 ---
 
@@ -44,7 +44,7 @@ This document outlines the step-by-step test procedures for verifying ORCA's res
    - `inside_india: true`
    - `is_coastal_supported: false`
    - `distance_to_coast_km: ~1050 km`
-   - `message`: Explains ORCA is designed for coastal zones ($\le 100\text{ km}$) and suggests coastal ports.
+   - `message`: Explains Matsya is designed for coastal zones ($\le 100\text{ km}$) and suggests coastal ports.
 
 ---
 
@@ -72,7 +72,7 @@ This document outlines the step-by-step test procedures for verifying ORCA's res
 ---
 
 ### TC-08 & TC-09: RBAC Security & Diagnostics Audit
-1. Login as standard mariner (`fisherman@orca.marine` / `password123`). Attempt `POST /api/government/announcements` with this `USER` token $\to$ Verify `403 Forbidden`.
-2. Login with `GOVERNMENT` credentials (`officer@fisheries.gov.in` / `govpassword123`) or `SUPER_ADMIN` credentials (`admin@orca.marine` / `adminpassword123`) $\to$ Verify `201 Created` for official advisories.
+1. Login as standard mariner (`fisherman@matsya.app` / `password123`). Attempt `POST /api/government/announcements` with this `USER` token $\to$ Verify `403 Forbidden`.
+2. Login with `GOVERNMENT` credentials (`officer@fisheries.gov.in` / `govpassword123`) or `SUPER_ADMIN` credentials (`admin@matsya.app` / `adminpassword123`) $\to$ Verify `201 Created` for official advisories.
 3. Using the `SUPER_ADMIN` token, query `GET /api/admin/system-health` $\to$ Verify status reports `HEALTHY`, database connected, and latencies under 50ms.
 

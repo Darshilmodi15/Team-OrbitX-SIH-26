@@ -4,7 +4,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * ORCA Marine AI design system.
+ * Matsya (powered by ORCA) design system.
  * Maritime, operational, accessible high-contrast tokens.
  */
 
@@ -106,6 +106,22 @@
   --chart-3: #0284C7;
   --chart-4: #D97706;
   --chart-5: #16A34A;
+
+  /* Matsya brand tokens */
+  --matsya-teal: #2FB5A3;
+  --matsya-soft-teal: #BDEFE6;
+  --matsya-blue: #4AB3F4;
+  --matsya-ink: #12232B;
+  --matsya-bg: #F2FAF8;
+  --matsya-dark-bg: #0A181E;
+  --matsya-dark-tile: #10252D;
+  --matsya-dark-ink: #DDF7F2;
+  --matsya-dark-ring-fill: #1C4A50;
+
+  --matsya-loader-bg: var(--matsya-bg);
+  --matsya-loader-tile: #FFFFFF;
+  --matsya-mark-ring-fill: var(--matsya-soft-teal);
+  --matsya-mark-ink: var(--matsya-ink);
 }
 
 /* Keep preference popovers inside narrow screens at larger text sizes. */
@@ -151,6 +167,11 @@
   --danger: #F87171;
   --danger-foreground: #450A0A;
   --danger-surface: rgba(239, 68, 68, 0.16);
+
+  --matsya-loader-bg: var(--matsya-dark-bg);
+  --matsya-loader-tile: var(--matsya-dark-tile);
+  --matsya-mark-ring-fill: var(--matsya-dark-ring-fill);
+  --matsya-mark-ink: var(--matsya-dark-ink);
 }
 
 @layer base {
@@ -263,6 +284,56 @@
 
 .animate-ocean-swell {
   animation: ocean-gentle-swell 16s ease-in-out infinite alternate;
+}
+
+/* Matsya loader motion: seamless 40-unit wave shift, gentle fish bob, sliding progress bar */
+@keyframes matsya-wave-scroll {
+  0% {
+    transform: translateX(0px);
+  }
+  100% {
+    transform: translateX(-40px);
+  }
+}
+
+@keyframes matsya-fish-bob {
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(-1.5deg);
+  }
+}
+
+@keyframes matsya-bar-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
+.matsya-wave-motion {
+  animation: matsya-wave-scroll 1.5s linear infinite;
+}
+
+.matsya-fish-motion {
+  transform-origin: 60px 52px;
+  animation: matsya-fish-bob 3s ease-in-out infinite;
+}
+
+.matsya-bar-motion {
+  animation: matsya-bar-slide 1.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .matsya-wave-motion,
+  .matsya-fish-motion,
+  .matsya-bar-motion {
+    animation: none !important;
+  }
 }
 
 /* Keep browser autofill consistent with the active theme, including Safari. */

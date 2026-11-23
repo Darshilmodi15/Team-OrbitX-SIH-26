@@ -1,4 +1,4 @@
-"""Sarvam AI Language Provider Service for ORCA Marine AI.
+"""Sarvam AI Language Provider Service for Matsya (powered by ORCA).
 
 Implements:
 - Sarvam Language Identification (/text-lid)

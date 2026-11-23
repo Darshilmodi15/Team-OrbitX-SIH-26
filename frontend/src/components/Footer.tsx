@@ -2,6 +2,7 @@ import React from 'react';
 import { useI18n } from '@/lib/orca/i18n';
 import { Link } from 'react-router-dom';
 import { openCookieSettings } from '@/lib/orca/cookies';
+import { APP_NAME } from '@/lib/brand';
 
 interface FooterProps {
   currentLang?: string;
@@ -13,7 +14,7 @@ export const Footer: React.FC<FooterProps> = () => {
   return (
     <footer className="w-full px-4 py-3 bg-card/90 backdrop-blur-sm border-t border-border text-[11px] text-muted-foreground flex flex-col sm:flex-row items-center justify-between gap-2 select-none">
       <div className="flex items-center gap-2">
-        <span className="font-semibold text-foreground">ORCA Marine AI</span>
+        <span className="font-semibold text-foreground">{APP_NAME}</span>
         <span>·</span>
         <span>{t("footer.rights")}</span>
       </div>
@@ -29,6 +30,13 @@ export const Footer: React.FC<FooterProps> = () => {
         >
           {t("footer.cookies")}
         </button>
+        <span>·</span>
+        <a
+          href="mailto:support@matsya.app"
+          className="hover:text-foreground transition-colors underline-offset-2 hover:underline"
+        >
+          support@matsya.app
+        </a>
 
       </div>
       <div className="flex items-center gap-3 sm:ml-auto"><Link to="/emergency" className="underline">SOS</Link><a className="font-semibold text-foreground underline" href="tel:112">{t("svc.call")} 112</a><a className="font-semibold text-foreground underline" href="tel:1554">1554</a></div>

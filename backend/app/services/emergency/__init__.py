@@ -1,4 +1,4 @@
-"""Emergency services package for ORCA Marine AI."""
+"""Emergency services package for Matsya (powered by ORCA)."""
 from app.services.emergency.emergency_service import (
     EmergencyService,
     emergency_service,

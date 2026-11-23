@@ -1,5 +1,5 @@
 /**
- * ORCA Marine AI — Geospatial & Coastline Intelligence Utility
+ * Matsya (powered by ORCA) — Geospatial & Coastline Intelligence Utility
  * Provides client-side real geodesic distance calculation to India's coastline,
  * nearest port matching, coastal region identification, and far-from-coast detection.
  */

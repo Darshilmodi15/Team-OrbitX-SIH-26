@@ -1,5 +1,5 @@
 """
-Official Bhashini (MeitY ULCA / Dhruva) Indic Language & Speech Provider for ORCA Marine AI.
+Official Bhashini (MeitY ULCA / Dhruva) Indic Language & Speech Provider for Matsya (powered by ORCA).
 
 Integrates Government of India Bhashini APIs for:
 - Machine Translation (IndicTrans2 / MeitY NMT across 22+ Indian languages)

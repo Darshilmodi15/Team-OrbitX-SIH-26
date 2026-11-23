@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
+import { APP_NAME, TAGLINE, getPublicBaseUrl } from "@/lib/brand";
 
 export interface SEOProps {
   title?: string;
@@ -10,14 +11,10 @@ export interface SEOProps {
   canonical?: string;
 }
 
-const DEFAULT_TITLE = "ORCA Marine AI — Autonomous Ocean Intelligence & Decision Support";
-const DEFAULT_DESCRIPTION =
-  "Agentic AI-powered conversational marine platform integrating satellite Earth Observation, PFZ discovery, safe route navigation, and IMBL geofencing for SIH 2026.";
-const DEFAULT_IMAGE = "/og-image.png";
-const RAW_BASE_URL =
-  import.meta.env.VITE_PUBLIC_SITE_URL ||
-  (typeof window !== "undefined" ? window.location.origin : "");
-const BASE_URL = RAW_BASE_URL.replace(/\/+$/, "");
+const DEFAULT_TITLE = `${APP_NAME} — Coastal Safety & Marine Decision Support`;
+const DEFAULT_DESCRIPTION = `${TAGLINE} — coastal safety alerts, sea conditions, Potential Fishing Zone discovery, IMBL geofencing, and multilingual voice assistance across India's coastline.`;
+const DEFAULT_IMAGE = "/og-image.png?v=5";
+const BASE_URL = getPublicBaseUrl();
 
 export function SEO({
   title,
@@ -31,9 +28,9 @@ export function SEO({
 
   useEffect(() => {
     const fullTitle = title
-      ? title.includes("ORCA")
+      ? title.includes(APP_NAME)
         ? title
-        : `${title} | ORCA Marine AI`
+        : `${title} | ${APP_NAME}`
       : DEFAULT_TITLE;
     const finalDesc = description || DEFAULT_DESCRIPTION;
     const rawImage = image || DEFAULT_IMAGE;

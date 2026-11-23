@@ -1,4 +1,4 @@
-name: ORCA live provider verification
+name: Matsya live provider verification
 
 # Paid and network-dependent checks are deliberately opt-in, never run on fork PRs.
 on:

@@ -1,4 +1,4 @@
-name: ORCA CI
+name: Matsya CI
 
 on:
   push:

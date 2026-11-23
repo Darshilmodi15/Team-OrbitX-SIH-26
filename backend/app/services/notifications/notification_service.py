@@ -226,7 +226,7 @@ class NotificationService:
                 id=str(uuid.uuid4()),
                 user_id=target_uid,
                 title="⚠️ Severe Sea Condition Alert",
-                message=f"ORCA threshold alert. Wave height (m): {wave_height_m if wave_height_m is not None else 'unavailable'}; wind gusts (km/h): {wind_gusts_kmh if wind_gusts_kmh is not None else 'unavailable'}. Consult official advisories.",
+                message=f"Matsya threshold alert. Wave height (m): {wave_height_m if wave_height_m is not None else 'unavailable'}; wind gusts (km/h): {wind_gusts_kmh if wind_gusts_kmh is not None else 'unavailable'}. Consult official advisories.",
                 severity=NotificationSeverity.CRITICAL,
                 category=NotificationCategory.WEATHER,
                 source="ORCA heuristic from supplied measurements",
@@ -244,7 +244,7 @@ class NotificationService:
                 alert = SafetyNotification(
                     id=str(uuid.uuid4()),
                     user_id=target_uid,
-                    title="⚠️ ORCA Trajectory Anomaly Warning",
+                    title="⚠️ Matsya Trajectory Anomaly Warning",
                     message=f"Vessel course vector is closing distance toward restricted boundary ({curr_dist:.1f} km remaining). Please verify navigation plan.",
                     severity=NotificationSeverity.HIGH,
                     category=NotificationCategory.ANOMALY,

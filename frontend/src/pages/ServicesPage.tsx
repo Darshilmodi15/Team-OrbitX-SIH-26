@@ -65,7 +65,7 @@ export default function ServicesPage() {
   return (
     <AppShell>
       <SEO
-        title="Maritime Emergency SOS & Coastal Services | ORCA Marine AI"
+        title="Maritime Emergency SOS & Coastal Services | Matsya"
         description="24x7 Marine distress SOS beacon logging, Coast Guard MRCC helpline directory, and state fisheries welfare services."
       />
       <h1 className="text-xl font-semibold text-foreground">{t("svc.title")}</h1>

@@ -1,28 +1,11 @@
 import type { ReactNode } from "react";
-import { AlertTriangle, Inbox, RotateCcw, Loader2, Radio } from "lucide-react";
+import { AlertTriangle, Inbox, RotateCcw, Loader2 } from "lucide-react";
 import { useI18n } from "@/lib/orca/i18n";
+import { MatsyaLoader } from "./MatsyaLoader";
 
 export function LoadingState({ label }: { label?: string }) {
   const { t } = useI18n();
-  return (
-    <div className="space-y-3" role="status" aria-live="polite">
-      <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-teal-400">
-        <Radio className="size-3.5 animate-pulse text-teal-400" />
-        <span>{label ?? t("state.loading")}</span>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {[0, 1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="h-20 animate-pulse rounded-xl border border-border/60 bg-muted/40 p-4"
-          >
-            <div className="h-3 w-1/3 rounded bg-muted-foreground/20" />
-            <div className="mt-3 h-5 w-2/3 rounded bg-muted-foreground/15" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  return <MatsyaLoader variant="section" message={label ?? t("state.loading")} />;
 }
 
 export function MetricSkeleton() {

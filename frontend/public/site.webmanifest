@@ -1,27 +1,35 @@
 {
   "id": "/",
-  "name": "ORCA Marine AI — Autonomous Ocean Intelligence",
-  "short_name": "ORCA Marine",
-  "description": "Marine forecasts, source-aware assistance, historical species evidence and experimental coastal context.",
+  "name": "Matsya",
+  "short_name": "Matsya",
+  "description": "Matsya, powered by ORCA — marine forecasts, source-aware coastal assistance, fishing advisories, and safety alerts across India.",
   "icons": [
     {
-      "src": "/android-chrome-192x192.png?v=4",
+      "src": "/android-chrome-192x192.png?v=5",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/android-chrome-512x512.png?v=4",
+      "src": "/android-chrome-512x512.png?v=5",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/apple-touch-icon.png?v=4",
+      "src": "/icon-maskable-512x512.png?v=5",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png?v=5",
       "sizes": "180x180",
       "type": "image/png"
     }
   ],
-  "theme_color": "#06182C",
-  "background_color": "#06182C",
+  "theme_color": "#2FB5A3",
+  "background_color": "#0A181E",
   "display": "standalone",
   "scope": "/",
   "start_url": "/",

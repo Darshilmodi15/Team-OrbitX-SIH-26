@@ -289,7 +289,7 @@ class EmergencyService:
             if recipients_raw and is_sms_configured():
                 transport = get_sms_transport()
                 sms_body = (
-                    f"ORCA SOS {sos_id}: {req.emergency_nature.value} at "
+                    f"Matsya SOS {sos_id}: {req.emergency_nature.value} at "
                     f"{req.lat:.4f},{req.lon:.4f} ({req.location_name or 'Unspecified'}). "
                     f"MRCC: {assigned_mrcc}"
                 )

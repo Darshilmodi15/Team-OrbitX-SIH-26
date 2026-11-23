@@ -1,5 +1,5 @@
 """
-User, Authentication, and Location validation data models for ORCA Marine AI.
+User, Authentication, and Location validation data models for Matsya (powered by ORCA).
 """
 from datetime import datetime
 from enum import Enum

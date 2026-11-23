@@ -162,7 +162,7 @@ export default function OperationsPage() {
   return (
     <AppShell>
       <SEO
-        title={`${t(admin ? "ops.system" : "ops.overview")} | ORCA Marine AI`}
+        title={`${t(admin ? "ops.system" : "ops.overview")} | Matsya`}
         description={t(admin ? "ops.health" : "ops.region")}
       />
       <section className="space-y-5">

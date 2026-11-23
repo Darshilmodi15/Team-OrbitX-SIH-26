@@ -1,5 +1,5 @@
 /**
- * Geographic services for ORCA Marine AI.
+ * Geographic services for Matsya (powered by ORCA).
  *
  * The India outline and coastline samples below are coarse cartographic
  * approximations used only for operational-area validation and distance

@@ -151,7 +151,7 @@ export default function EmergencySOSModal({
 
   const sourceCopy = (copy as Record<string, string>)[locationSource] || copy.unspecified;
   const smsBody = encodeURIComponent(
-    `ORCA SOS | Lat ${userLocation.lat.toFixed(4)}, Lon ${userLocation.lon.toFixed(4)}` +
+    `Matsya SOS | Lat ${userLocation.lat.toFixed(4)}, Lon ${userLocation.lon.toFixed(4)}` +
       (locationName ? ` (${locationName})` : "") +
       (notes.trim() ? ` | ${notes.trim()}` : ""),
   );

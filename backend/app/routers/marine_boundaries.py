@@ -13,7 +13,7 @@ from app.services.marine_boundaries import (
     MarineBoundariesService,
     marine_boundaries_service,
 )
-from app.services.rate_limit import rate_limiter
+from app.services.rate_limit import get_client_ip, rate_limiter
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ def get_eez_geojson(
     Fetches real Exclusive Economic Zone (EEZ) GeoJSON from Marine Regions WFS (or cached dataset).
     """
     if force_refresh:
-        client_ip = request.client.host if request.client else "unknown"
+        client_ip = get_client_ip(request)
         rate_limiter.check("marine_boundaries_refresh", client_ip, limit=6, window_seconds=60)
     try:
         data = marine_boundaries_service.fetch_eez_by_mrgid(mrgid=mrgid, force_refresh=force_refresh)
@@ -84,7 +84,7 @@ def get_international_boundaries_geojson(
     for India and adjacent sovereign nations from Marine Regions WFS (or cached dataset).
     """
     if force_refresh:
-        client_ip = request.client.host if request.client else "unknown"
+        client_ip = get_client_ip(request)
         rate_limiter.check("marine_boundaries_refresh", client_ip, limit=6, window_seconds=60)
     try:
         data = marine_boundaries_service.fetch_boundaries_geojson(force_refresh=force_refresh)

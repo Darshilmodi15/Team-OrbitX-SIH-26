@@ -1,4 +1,4 @@
-"""Recommendation and Reasoning Engine for ORCA Marine AI.
+"""Recommendation and Reasoning Engine for Matsya (powered by ORCA).
 
 Delivers reliable operational recommendations together with the supporting
 evidence and deductive reasoning used to derive each response.
@@ -42,7 +42,7 @@ class RecommendationReasoningEngine:
             recommendations.append(OperationalRecommendation(
                 id=f"REC-SAF-{rec_index:02d}", category="SAFETY",
                 title=f"ORCA heuristic assessment: {risk.level}",
-                directive="Consult current official marine advisories before making navigation decisions. ORCA does not issue departure clearance.",
+                directive="Consult current official marine advisories before making navigation decisions. Matsya does not issue departure clearance.",
                 priority="CRITICAL" if risk.level == "unsafe" else "HIGH" if risk.level == "caution" else "INFO",
                 confidence_score=None, reliability_tier="ORCA_HEURISTIC",
                 supporting_evidence=[f"{key}: {value}" for key, value in risk.available_evidence.items()]
@@ -120,7 +120,7 @@ class RecommendationReasoningEngine:
                 priority = "HIGH"
                 reasoning = (
                     f"Geodesic route computed: {r.distance_km:.1f} km (~{r.estimated_duration_hours:.1f}h at 8 kts); "
-                    f"geofence check: {avoided}. ORCA does not provide nautical depth charts; verify depth clearance and weather advisories locally."
+                    f"geofence check: {avoided}. Matsya does not provide nautical depth charts; verify depth clearance and weather advisories locally."
                 )
 
             recommendations.append(

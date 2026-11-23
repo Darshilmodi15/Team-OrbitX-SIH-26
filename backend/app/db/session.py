@@ -1,5 +1,5 @@
 """
-Database engine and session management for ORCA Marine AI.
+Database engine and session management for Matsya (powered by ORCA).
 Supports PostgreSQL on production (Render/Supabase) and SQLite for local development/testing.
 """
 import importlib

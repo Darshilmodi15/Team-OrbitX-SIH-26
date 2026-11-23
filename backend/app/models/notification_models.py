@@ -1,5 +1,5 @@
 """
-Notification and Coastal Safety Alert Models for ORCA Marine AI.
+Notification and Coastal Safety Alert Models for Matsya (powered by ORCA).
 """
 from datetime import datetime, timezone
 from enum import Enum

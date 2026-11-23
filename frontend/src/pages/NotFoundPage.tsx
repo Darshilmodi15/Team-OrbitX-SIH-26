@@ -11,7 +11,8 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { SEO } from "@/components/SEO";
-import { OrcaLogo } from "@/components/orca/Logo";
+import { APP_NAME, POWERED_BY } from "@/lib/brand";
+import { MatsyaLogo } from "@/components/orca/Logo";
 import { trackEvent } from "@/lib/orca/analytics";
 import { useEffect } from "react";
 
@@ -25,7 +26,7 @@ export default function NotFoundPage() {
   return (
     <div className="relative flex min-h-screen flex-col justify-between bg-[#06182C] text-slate-100 selection:bg-teal-500/30 overflow-hidden">
       <SEO
-        title="404 — Coordinates Not Found | ORCA Marine AI"
+        title={`404 — Coordinates Not Found | ${APP_NAME}`}
         description="The requested marine waypoint or operational page is off-grid or does not exist. Return to safe navigational coordinates."
       />
 
@@ -40,13 +41,13 @@ export default function NotFoundPage() {
       <header className="border-b border-slate-800/80 bg-slate-950/40 backdrop-blur-md px-6 py-4">
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5 group">
-            <OrcaLogo className="size-8 transition-transform group-hover:scale-105" />
+            <MatsyaLogo className="size-8 transition-transform group-hover:scale-105" />
             <div className="flex flex-col">
               <span className="text-base font-bold tracking-tight text-white font-sans">
-                ORCA <span className="text-teal-400">MARINE AI</span>
+                {APP_NAME}
               </span>
-              <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400">
-                Ocean Intelligence
+              <span className="text-[10px] font-mono tracking-wider text-slate-400">
+                {POWERED_BY}
               </span>
             </div>
           </Link>
@@ -148,7 +149,7 @@ export default function NotFoundPage() {
       {/* Footer */}
       <footer className="border-t border-slate-800/80 bg-slate-950/60 py-4 text-center text-xs text-slate-500">
         <div className="mx-auto max-w-6xl px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>ORCA Marine AI · Hackathon prototype</span>
+          <span>{APP_NAME} · {POWERED_BY}</span>
           <div className="flex gap-4">
             <Link to="/privacy" className="hover:text-slate-300">Privacy Policy</Link>
             <Link to="/terms" className="hover:text-slate-300">Terms of Service</Link>

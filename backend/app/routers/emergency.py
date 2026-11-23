@@ -1,5 +1,5 @@
 """
-Emergency Services and Maritime SOS Distress REST Router for ORCA Marine AI.
+Emergency Services and Maritime SOS Distress REST Router for Matsya (powered by ORCA).
 """
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status

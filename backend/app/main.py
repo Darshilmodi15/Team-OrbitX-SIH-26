@@ -1,10 +1,10 @@
-"""FastAPI Application for ORCA Marine AI with Bhashini Multilingual Service."""
+"""FastAPI Application for Matsya (powered by ORCA) with Multilingual Service."""
 from datetime import date as dt_date, datetime, timezone, timedelta
 import os
 from pathlib import Path
 import re
 import threading
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 from dotenv import load_dotenv
 
 # Load backend/.env explicitly
@@ -75,10 +75,11 @@ from app.routers.auth import get_current_user_from_header, require_roles
 from app.db.session import get_db
 from app.db.models import Conversation, ChatRequestRecord
 from app.models.user_models import UserProfile, UserRole, VALID_VESSEL_CLASSES
+from app.core.brand import APP_NAME, ENGINE_FULL_NAME, ENGINE_NAME, TAGLINE
 from app.services.chat_service import chat_storage_service
 from app.services.marine_snapshot_service import marine_snapshot_service
 from app.models.marine_snapshot import MarineSnapshot
-from app.services.rate_limit import rate_limiter
+from app.services.rate_limit import get_client_ip, rate_limiter
 from app.services.tide_service import compute_lunar_tide_estimate, get_authoritative_tide
 from app.services.trip_economics import calculate_trip_economics
 from app.services.bhashini import BHASHINI_MODELS, SUPPORTED_LANGUAGES, bhashini_service
@@ -149,8 +150,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="ORCA Marine AI Backend",
-    description="Autonomous Maritime Intelligence, Multi-Agent Decision Support & Bhashini Multilingual Layer.",
+    title=f"{APP_NAME} API",
+    description=f"{TAGLINE} ({ENGINE_FULL_NAME}). Coastal safety and marine decision-support API for Indian fishers.",
     version="1.4.1",
     lifespan=lifespan,
 )
@@ -183,11 +184,13 @@ frontend_origins = {
     origin.strip()
     for origin in os.getenv(
         "FRONTEND_ORIGIN",
-        "https://team-orbit-x-sih-26.vercel.app",
+        "https://matsya.app,https://www.matsya.app,https://team-orbit-x-sih-26.vercel.app",
     ).split(",")
     if origin.strip()
 }
 frontend_origins.update([
+    "https://matsya.app",
+    "https://www.matsya.app",
     "https://team-orbit-x-sih-26.vercel.app",
     "https://team-orbitx-sih-26.vercel.app",
 ])
@@ -202,9 +205,9 @@ if _runtime_env not in {"production", "prod"}:
         "http://127.0.0.1:5175",
         "http://127.0.0.1:3000",
     ])
-    _cors_origin_regex = r"^https://team-orbit-?x-sih-26(-[a-z0-9-]+)?\.vercel\.app$|^http://(localhost|127\.0\.0\.1)(:\d+)?$"
+    _cors_origin_regex = r"^https://(www\.)?matsya\.app$|^https://team-orbit-?x-sih-26(-[a-z0-9-]+)?\.vercel\.app$|^http://(localhost|127\.0\.0\.1)(:\d+)?$"
 else:
-    _cors_origin_regex = r"^https://team-orbit-?x-sih-26(-[a-z0-9-]+)?\.vercel\.app$"
+    _cors_origin_regex = r"^https://(www\.)?matsya\.app$|^https://team-orbit-?x-sih-26(-[a-z0-9-]+)?\.vercel\.app$"
 
 app.add_middleware(
     CORSMiddleware,
@@ -525,7 +528,9 @@ class DetectLanguageRequest(BaseModel):
 def root_status():
     return {
         "status": "healthy",
-        "service": "ORCA Marine AI Backend",
+        "service": f"{APP_NAME} API",
+        "product": APP_NAME,
+        "engine": ENGINE_NAME,
         "version": app.version,
         "bhashini_configured": bhashini_service.is_configured,
         "sarvam_configured": bhashini_service.is_sarvam_configured,
@@ -582,7 +587,7 @@ def get_supported_languages():
 @app.post("/api/detect-language")
 def detect_language_endpoint(request: DetectLanguageRequest, req: Request):
     """Detects the Indian regional language and script of input text via Sarvam LID with deterministic fallback."""
-    rate_limiter.check("detect_language", f"ip:{req.client.host if req.client else 'unknown'}", limit=60, window_seconds=60)
+    rate_limiter.check("detect_language", f"ip:{get_client_ip(req)}", limit=60, window_seconds=60)
     lid_res = bhashini_service.identify_language(request.text)
     return {
         "language": lid_res.short_code,
@@ -598,7 +603,7 @@ def detect_language_endpoint(request: DetectLanguageRequest, req: Request):
 @app.post("/api/translate")
 def translate_endpoint(request: TranslateRequest, req: Request):
     """Translates text between Indian languages and English using Bhashini NMT."""
-    rate_limiter.check("translate", f"ip:{req.client.host if req.client else 'unknown'}", limit=60, window_seconds=60)
+    rate_limiter.check("translate", f"ip:{get_client_ip(req)}", limit=60, window_seconds=60)
     translated = bhashini_service.translate(
         text=request.text,
         source_lang=request.source_language,
@@ -745,7 +750,7 @@ def run_dahanu_killer_demo(req: Request, language: str = "en"):
     'Fisherman near Dahanu wants to find the nearest PFZ, determine whether tomorrow morning
     is safe for fishing, and receive a safe navigational route.'
     """
-    rate_limiter.check("demo_dahanu", f"ip:{req.client.host if req.client else 'unknown'}", limit=30, window_seconds=60)
+    rate_limiter.check("demo_dahanu", f"ip:{get_client_ip(req)}", limit=30, window_seconds=60)
     question = "I am near Dahanu. Find the nearest PFZ, tell me whether it is safe to go tomorrow morning, and suggest the safest route."
     res = _process_orca_query(
         question_raw=question,
@@ -1142,8 +1147,13 @@ def _process_orca_query(
         )
 
     # Data freshness is separate from whether an AI/network request succeeded.
+    _cache_status = (
+        weather_evidence.cache_status
+        if weather_evidence and not weather_evidence.is_mock and weather_evidence.cache_status
+        else ""
+    )
     connectivity_mode = {"fresh": "FRESH", "live": "FRESH", "cached": "CACHED", "stale": "STALE"}.get(
-        weather_evidence.cache_status if weather_evidence and not weather_evidence.is_mock else None, "UNAVAILABLE"
+        _cache_status, "UNAVAILABLE"
     )
 
     # Construct EvidenceBundle
@@ -1238,8 +1248,8 @@ def _process_orca_query(
 
 @app.post("/query", response_model=QueryResponse)
 def handle_query(request: QueryRequest, req: Request) -> QueryResponse:
-    """Multilingual query endpoint for ORCA Marine AI."""
-    rate_limiter.check("query", f"ip:{req.client.host if req.client else 'unknown'}", limit=30, window_seconds=60)
+    """Multilingual query endpoint for Matsya (powered by ORCA)."""
+    rate_limiter.check("query", f"ip:{get_client_ip(req)}", limit=30, window_seconds=60)
     result = _process_orca_query(
         question_raw=request.question,
         lat=request.location.lat,
@@ -1298,18 +1308,21 @@ def handle_chat(request: ChatRequest, user: UserProfile = Depends(get_current_us
     )
     payload_hash = digest([request.message, request.language, request.requested_time, request.snapshot_id, effective_date])
     request_record = db.get(ChatRequestRecord, record_id) if record_id else None
-    if request_record and not request.session_id:
-        request.session_id = request_record.conversation_id
+    session_id: Optional[str] = request.session_id
+    if request_record and not session_id:
+        session_id = str(request_record.conversation_id)
 
-    if not request.session_id:
+    if not session_id:
         conversation = chat_storage_service.create(db, user.id, request.message[:80])
         db.commit()
-        request.session_id = conversation.id
+        session_id = str(conversation.id)
+
+    request.session_id = session_id
 
     history_dicts = chat_storage_service.context(
         db,
         user.id,
-        request.session_id,
+        session_id,
         exclude_request_id=request.request_id if request_record is not None else None,
     )
     if history_dicts is None:
@@ -1320,9 +1333,9 @@ def handle_chat(request: ChatRequest, user: UserProfile = Depends(get_current_us
     if request_record:
         if request_record.payload_hash != payload_hash:
             raise HTTPException(status_code=409, detail="CHAT_REQUEST_ID_REUSED")
-        if request_record.status == "completed":
-            return ChatResponse.model_validate_json(request_record.response_json)
-        previous_claim = request_record.updated_at
+        if request_record.status == "completed" and request_record.response_json is not None:
+            return ChatResponse.model_validate_json(str(request_record.response_json))
+        previous_claim = cast(datetime, request_record.updated_at)
         if request_record.status == "processing" and _as_utc(previous_claim) > claim_time - timedelta(minutes=10):
             raise HTTPException(status_code=409, detail="CHAT_REQUEST_IN_PROGRESS")
         # Expired worker leases and failed attempts reuse the persisted user turn.
@@ -1331,11 +1344,11 @@ def handle_chat(request: ChatRequest, user: UserProfile = Depends(get_current_us
             db.rollback()
             raise HTTPException(status_code=409, detail="CHAT_REQUEST_IN_PROGRESS")
     elif record_id:
-        request_record = ChatRequestRecord(id=record_id, user_id=user.id, conversation_id=request.session_id,
+        request_record = ChatRequestRecord(id=record_id, user_id=user.id, conversation_id=session_id,
             payload_hash=payload_hash, status="processing", updated_at=claim_time)
         db.add(request_record)
     if append_user:
-        chat_storage_service.append(db, user.id, request.session_id, "user", request.message, request.language or "auto", {"request_id":request.request_id,"requested_time":request.requested_time,"request_language":request.language})
+        chat_storage_service.append(db, user.id, session_id, "user", request.message, request.language or "auto", {"request_id":request.request_id,"requested_time":request.requested_time,"request_language":request.language})
     try:
         db.commit()
     except IntegrityError:
@@ -1400,7 +1413,7 @@ def handle_chat(request: ChatRequest, user: UserProfile = Depends(get_current_us
         if claimed != 1:
             db.rollback()
             raise HTTPException(status_code=409, detail="CHAT_REQUEST_LEASE_EXPIRED")
-    chat_storage_service.append(db, user.id, request.session_id, "assistant", response.answer, response.language, {
+    chat_storage_service.append(db, user.id, session_id, "assistant", response.answer, response.language, {
         "request_id": response.request_id,
         "ai_model": response.ai_model,
         "ai_fallback_used": response.ai_fallback_used,
@@ -1415,9 +1428,9 @@ def handle_chat(request: ChatRequest, user: UserProfile = Depends(get_current_us
         "nearest_pfz": response.nearest_pfz,
         "boundary": response.boundary,
     })
-    conversation = chat_storage_service._owned(db, user.id, request.session_id)
-    if conversation and conversation.title == "New conversation":
-        conversation.title = request.message[:80]
+    conversation = chat_storage_service._owned(db, user.id, session_id)
+    if conversation and str(conversation.title) == "New conversation":
+        setattr(conversation, "title", request.message[:80])
     db.commit()
     return response
 
@@ -1431,7 +1444,7 @@ def get_recommendations_endpoint(
     question: Optional[str] = Query(None, max_length=8000),
 ):
     """Delivers reliable operational recommendations together with the supporting evidence and reasoning used to derive each response."""
-    rate_limiter.check("recommendations", f"ip:{req.client.host if req.client else 'unknown'}", limit=30, window_seconds=60)
+    rate_limiter.check("recommendations", f"ip:{get_client_ip(req)}", limit=30, window_seconds=60)
     q_date = date or _today_ist_iso()
     q_text = question or "Provide comprehensive marine safety, fishing, and navigational recommendations."
     res = _process_orca_query(

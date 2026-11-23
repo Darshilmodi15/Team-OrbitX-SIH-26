@@ -24,7 +24,7 @@ describe('authenticated API contracts', () => {
 
   it('never fabricates a login or forwards credentials to another backend after an outage', async () => {
     vi.mocked(fetch).mockRejectedValue(new TypeError('Failed to fetch'));
-    await expect(loginUser('fisherman@orca.marine', 'password123')).rejects.toThrow('Failed to fetch');
+    await expect(loginUser('fisherman@matsya.app', 'password123')).rejects.toThrow('Failed to fetch');
     expect(fetch).toHaveBeenCalledOnce();
     expect(vi.mocked(fetch).mock.calls[0][0]).toBe(`${API_BASE_URL}/api/auth/login`);
   });

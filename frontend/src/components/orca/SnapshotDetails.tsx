@@ -22,7 +22,7 @@ export function SnapshotDetails({
     );
     const a = document.createElement("a");
     a.href = url;
-    a.download = `orca-snapshot-${snapshot.snapshot_id}.json`;
+    a.download = `matsya-snapshot-${snapshot.snapshot_id}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
@@ -72,7 +72,7 @@ export function SnapshotDetails({
           {t("state.updated")}: {snapshot.provenance.retrieved_at}
         </p>
         <p>Expires: {snapshot.expires_at}</p>
-        <p>ORCA assessment: {snapshot.risk.level}</p>
+        <p>ORCA engine assessment: {snapshot.risk.level}</p>
         <ul>
           {snapshot.risk.reasons.map((reason, index) => (
             <li key={index}>{reason}</li>

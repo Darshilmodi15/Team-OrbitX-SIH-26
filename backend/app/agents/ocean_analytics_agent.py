@@ -140,7 +140,7 @@ def analyze_productivity_decline(
             "Hypoxic Water Upwelling: Periodic intrusion of Oxygen Minimum Zone (OMZ) waters onto the inner continental shelf during late monsoon.",
         ]
         recommendations = [
-            "Target offshore thermal front convergences mapped by ORCA PFZ advisories.",
+            "Target offshore thermal front convergences mapped by Matsya PFZ advisories.",
             "Protect coastal mangrove estuaries and observe artificial reef zones.",
             "Promote square-mesh nets and diversified hook-and-line tuna fishing.",
         ]

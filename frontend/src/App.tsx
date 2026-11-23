@@ -8,10 +8,9 @@ import { MarineSnapshotProvider } from "@/lib/orca/snapshot";
 import { ThemeProvider } from "@/lib/orca/theme";
 import { CookieBanner } from "./components/CookieBanner";
 import { RouteAnalyticsListener } from "./lib/orca/analytics";
-import { OrcaLogo } from "./components/orca/Logo";
+import { MatsyaLoader } from "./components/orca/MatsyaLoader";
 import { LocationGate } from "./components/orca/LocationGate";
 import { ServiceState } from "./components/orca/ServiceState";
-import { Radio } from "lucide-react";
 import { RouteScrollReset } from "./components/orca/RouteScrollReset";
 
 const LandingPage = lazy(() => import("./pages/LandingPage"));
@@ -31,23 +30,7 @@ const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 const OperationsPage = lazy(() => import("./pages/OperationsPage"));
 
 function RouteFallback() {
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 text-foreground selection:bg-teal-500/30">
-      <div className="relative flex size-20 items-center justify-center rounded-3xl bg-card border border-teal-500/30 shadow-2xl shadow-teal-500/20 backdrop-blur-xl">
-        <OrcaLogo className="size-10 drop-shadow-[0_0_15px_rgba(45,212,191,0.5)] motion-safe:animate-pulse" />
-        <div className="absolute -inset-1 rounded-3xl border border-teal-500/20 motion-safe:animate-ping opacity-40 pointer-events-none" />
-      </div>
-
-      <div className="mt-6 flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-teal-300">
-        <Radio className="size-3.5 text-teal-400 motion-safe:animate-pulse" />
-        <span>ORCA</span>
-      </div>
-
-      <div className="mt-3 h-1 w-36 overflow-hidden rounded-full bg-muted">
-        <div className="h-full w-full bg-gradient-to-r from-teal-500 via-sky-400 to-teal-500 motion-safe:animate-[shimmer_1.5s_infinite_linear] [background-size:200%_100%]" />
-      </div>
-    </div>
-  );
+  return <MatsyaLoader variant="fullscreen" />;
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {

@@ -45,7 +45,9 @@ import { ChatSnapshot } from "@/components/orca/ChatSnapshot";
 import { LanguageMenu } from "@/components/orca/LanguageMenu";
 import { AppearanceMenu } from "@/components/orca/AppearanceMenu";
 import "@/components/orca/workspace.css";
-import { OrcaLogo } from "@/components/orca/Logo";
+import { APP_NAME, getAssistantPersona } from "@/lib/brand";
+import { MatsyaLogo } from "@/components/orca/Logo";
+import { MatsyaLoader } from "@/components/orca/MatsyaLoader";
 import { SEO } from "@/components/SEO";
 import { useI18n } from "@/lib/orca/i18n";
 import { useSession } from "@/lib/orca/session";
@@ -267,6 +269,7 @@ function EvidenceTraceCard({ evidence }: { evidence: ChatEvidence }) {
 
 export default function AssistantPage() {
   const { t, lang } = useI18n();
+  const persona = getAssistantPersona(lang);
   const navigate = useNavigate();
   const route = useLocation();
   const mapHref = `/map?return=${encodeURIComponent(route.pathname + route.search)}`;
@@ -874,11 +877,11 @@ export default function AssistantPage() {
   return (
     <div className="orca-workspace chat-workspace">
       <SEO
-        title="Ocean Copilot | ORCA"
-        description="Ask ORCA about coastal conditions with source-backed marine snapshots."
+        title={`${persona.display} | ${APP_NAME}`}
+        description={`Ask ${persona.display} on ${APP_NAME} about coastal conditions with source-backed marine snapshots.`}
       />
       <a className="sr-only focus:not-sr-only" href="#chat-composer">
-        {t("chat.placeholder")}
+        {persona.placeholder}
       </a>
       {mobileDrawerOpen && (
         <button
@@ -898,8 +901,8 @@ export default function AssistantPage() {
       >
         <div className="chat-brand">
           <Link to="/assistant">
-            <OrcaLogo className="size-8" />
-            <strong>ORCA</strong>
+            <MatsyaLogo className="size-8" />
+            <strong>{APP_NAME}</strong>
           </Link>
           <button
             className="workspace-icon mobile-only"
@@ -1020,7 +1023,7 @@ export default function AssistantPage() {
             <PanelLeftOpen size={20} />
           </button>
           <h1>
-            {currentThread.messages.length ? currentThread.title : "ORCA"}
+            {currentThread.messages.length ? currentThread.title : persona.display}
           </h1>
           <LanguageMenu />
           <AppearanceMenu />
@@ -1059,12 +1062,14 @@ export default function AssistantPage() {
         )}
         <div className="chat-stream">
           {historyLoading && conversationId && !currentThread.messages.length ? (
-            <p role="status" className="chat-welcome">{t("state.loading")}</p>
+            <div className="chat-welcome">
+              <MatsyaLoader variant="section" message={t("state.loading")} />
+            </div>
           ) : !currentThread.messages.length ? (
             <div className="chat-welcome">
-              <OrcaLogo className="size-12" />
-              <h2>{copy.welcome}</h2>
-              <p>{t("chat.placeholder")}</p>
+              <MatsyaLogo className="size-12" />
+              <h2>{persona.display} · {copy.welcome}</h2>
+              <p>{persona.placeholder}</p>
               <div className="chat-suggestions">
                 {suggestions.map(({ label, icon: Icon }) => (
                   <button
@@ -1093,8 +1098,8 @@ export default function AssistantPage() {
                   ) : (
                     <>
                       <div className="assistant-label">
-                        <OrcaLogo className="size-6" />
-                        <span>ORCA</span>
+                        <MatsyaLogo className="size-6" />
+                        <span>{persona.display}</span>
                       </div>
                       <div className="assistant-content">
                         <MarkdownRenderer content={m.text} />
@@ -1169,9 +1174,9 @@ export default function AssistantPage() {
           )}
           {isThinking && (
             <div role="status" className="chat-thinking">
-              <OrcaLogo className="size-6" />
+              <MatsyaLogo className="size-6" animated />
               <Loader2 size={17} className="animate-spin" />
-              {t("chat.thinking")}
+              <span>{persona.display} · {t("chat.thinking")}</span>
             </div>
           )}
           <div ref={endRef} />
@@ -1201,8 +1206,8 @@ export default function AssistantPage() {
                 }
               }}
               rows={1}
-              placeholder={t("chat.placeholder")}
-              aria-label={t("chat.placeholder")}
+              placeholder={persona.placeholder}
+              aria-label={persona.placeholder}
             />
             <div className="composer-tools">
               <div className="attachment-control">

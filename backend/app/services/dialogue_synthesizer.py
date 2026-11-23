@@ -1,7 +1,7 @@
 from app.services.provider_health import record, ProviderUnavailable, failure_reason, log_attempt
 from app.services.planner import is_emergency_contact_lookup
 """
-ORCA Marine AI - Conversational Dialogue & Dynamic Reasoning Synthesizer.
+Matsya (powered by ORCA) - Conversational Dialogue & Dynamic Reasoning Synthesizer.
 Generates context-aware, explainable, and multi-turn marine safety responses
 grounded in live INCOIS oceanographic telemetry, safety risks, and Bhashini multilingual services.
 """
@@ -12,6 +12,7 @@ import logging
 import time
 import threading
 from typing import Any, Dict, List, Optional
+from app.core.brand import APP_NAME, ENGINE_NAME, get_assistant_persona
 from app.models.agent_models import EvidenceBundle, OperationalRecommendation
 
 logger = logging.getLogger(__name__)
@@ -52,7 +53,7 @@ def get_compass_cardinal(deg: Optional[float], lang: str = "en") -> str:
 
 class DialogueSynthesizer:
     """
-    Intelligent conversational synthesis engine for ORCA Marine AI.
+    Intelligent conversational synthesis engine for Matsya (powered by ORCA).
     Combines live multi-agent evidence with Google Gemini / Bhashini / Rule-Based Maritime reasoning.
     """
 
@@ -133,7 +134,9 @@ class DialogueSynthesizer:
                 turns.append(f"{role}: {h.get('text', '')}")
             history_text = "\n".join(turns)
 
-        system_instruction = f"""You are ORCA Marine AI, a prototype marine decision-support assistant for coastal fishermen, vessel operators, and maritime agencies.
+        persona = get_assistant_persona(target_lang)
+        system_instruction = f"""You are {persona['prompt_name']}, the marine decision-support assistant for {APP_NAME} (powered by {ENGINE_NAME}), serving coastal fishermen, vessel operators, and maritime agencies across all of India's coastal states and union territories.
+When introducing yourself or referring to yourself, use the name {persona['prompt_name']} and refer to the product as {APP_NAME}. Never refer to the product as 'ORCA Marine AI' or 'Matsya Marine AI'.
 Your goal is to provide intelligent, genuine, natural, and helpful advice grounded in the supplied evidence and its actual source.
 
 CURRENT LOCATION: {location_title}

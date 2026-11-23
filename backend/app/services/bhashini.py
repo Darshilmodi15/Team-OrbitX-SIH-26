@@ -1,4 +1,4 @@
-"""Bhashini Multilingual Service for ORCA Marine AI."""
+"""Bhashini Multilingual Service for Matsya (powered by ORCA)."""
 from collections import OrderedDict
 import json
 import logging

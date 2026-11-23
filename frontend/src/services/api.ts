@@ -1,5 +1,5 @@
 /**
- * ORCA Marine AI - Backend API Service Layer
+ * Matsya (powered by ORCA) - Backend API Service Layer
  * Interfaces directly with FastAPI endpoints:
  * - /query & /api/chat
  * - /api/auth/* & /api/user/*
@@ -214,26 +214,26 @@ export async function sendChatMessage(payload: ChatMessagePayload) {
         }
       }
 
-      console.error(`[ORCA API Error] POST ${endpoint} failed (${response.status}) in ${elapsedMs}ms:`, errorDetail);
+      console.error(`[Matsya API Error] POST ${endpoint} failed (${response.status}) in ${elapsedMs}ms:`, errorDetail);
       if ([502, 503, 504].includes(response.status) && errorDetail === 'AI_PROVIDER_UNAVAILABLE') {
-        throw Object.assign(new Error('ORCA’s AI provider is temporarily unavailable. Please try again later.'), { code: 'AI_PROVIDER_UNAVAILABLE' });
+        throw Object.assign(new Error('Matsya’s AI provider is temporarily unavailable. Please try again later.'), { code: 'AI_PROVIDER_UNAVAILABLE' });
       }
       throw new Error(`API route failed: ${errorDetail} (Endpoint: ${endpoint})`);
     }
 
     const data = await response.json();
-    console.debug(`[ORCA API Success] POST ${endpoint} completed in ${elapsedMs}ms.`);
+    console.debug(`[Matsya API Success] POST ${endpoint} completed in ${elapsedMs}ms.`);
     return data;
   } catch (error: any) {
     const elapsedMs = Math.round(performance.now() - startTime);
     if (error.name === 'TypeError' && error.message?.includes('fetch')) {
-      console.error(`[ORCA Network Failure] Unable to reach backend at ${endpoint} (${elapsedMs}ms). Possible causes: backend offline, CORS blocked, or mixed-content (HTTPS/HTTP).`);
-      throw new Error(`Unable to reach ORCA backend at ${API_BASE_URL}. Ensure the backend is active and CORS is allowed.`);
+      console.error(`[Matsya Network Failure] Unable to reach backend at ${endpoint} (${elapsedMs}ms). Possible causes: backend offline, CORS blocked, or mixed-content (HTTPS/HTTP).`);
+      throw new Error(`Unable to reach Matsya backend at ${API_BASE_URL}. Ensure the backend is active and CORS is allowed.`);
     } else if (error.name === 'AbortError' || error.name === 'TimeoutError' || /time(?:d\s*)?out/i.test(error.message || '')) {
-      console.error(`[ORCA Timeout] Request to ${endpoint} timed out after ${elapsedMs}ms.`);
-      throw new Error(`Request to ORCA conversation API timed out after ${elapsedMs}ms.`);
+      console.error(`[Matsya Timeout] Request to ${endpoint} timed out after ${elapsedMs}ms.`);
+      throw new Error(`Request to Matsya conversation API timed out after ${elapsedMs}ms.`);
     }
-    console.error(`[ORCA API Exception] Request to ${endpoint} failed:`, error);
+    console.error(`[Matsya API Exception] Request to ${endpoint} failed:`, error);
     throw error;
   }
 }

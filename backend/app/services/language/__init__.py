@@ -1,4 +1,4 @@
-"""Language & Speech service exports for ORCA Marine AI."""
+"""Language & Speech service exports for Matsya (powered by ORCA)."""
 from app.services.language.base import LanguageProvider
 from app.services.language.bhashini_provider import BhashiniLanguageProvider
 from app.services.language.sarvam import (

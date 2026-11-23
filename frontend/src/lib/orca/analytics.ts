@@ -1,5 +1,5 @@
 /**
- * ORCA Marine AI — Privacy-Preserving Maritime Analytics & Telemetry Tracker
+ * Matsya (powered by ORCA) — Privacy-Preserving Maritime Analytics & Telemetry Tracker
  */
 
 import { useEffect } from "react";

@@ -23,7 +23,7 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ORCA Uncaught UI Rendering Exception:', error, errorInfo);
+    console.error('Matsya Uncaught UI Rendering Exception:', error, errorInfo);
     this.setState({ errorInfo });
   }
 
@@ -45,7 +45,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             </div>
 
             <h1 className="text-xl font-bold text-foreground tracking-tight mb-2">
-              ORCA is temporarily unavailable
+              Matsya is temporarily unavailable
             </h1>
 
             <p className="text-xs text-muted-foreground mb-4 leading-relaxed">

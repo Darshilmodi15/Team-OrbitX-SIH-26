@@ -1,5 +1,5 @@
 """
-Official Sarvam AI Indic Language & Speech Provider for ORCA Marine AI.
+Official Sarvam AI Indic Language & Speech Provider for Matsya (powered by ORCA).
 
 Integrates Sarvam AI REST API for:
 - Machine Translation (Mayura v1) across 22+ Indian languages

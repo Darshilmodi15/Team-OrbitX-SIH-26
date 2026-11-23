@@ -1,5 +1,5 @@
 """
-Data Repositories for ORCA Marine AI PostgreSQL/SQLite persistence.
+Data Repositories for Matsya (powered by ORCA) PostgreSQL/SQLite persistence.
 """
 from datetime import datetime, timezone, timedelta
 import json

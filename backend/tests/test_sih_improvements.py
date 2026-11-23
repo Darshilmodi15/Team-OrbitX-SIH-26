@@ -233,8 +233,8 @@ def test_password_reset_unconfigured_and_full_lifecycle():
     sent_messages = []
 
     class CaptureEmail:
-        def send(self, to_address, subject, body):
-            sent_messages.append((to_address, subject, body))
+        def send(self, to_address, subject, body, html_body=None, reply_to=None):
+            sent_messages.append((to_address, subject, body, html_body, reply_to))
 
     with (
         patch("app.services.email.is_email_configured", return_value=True),
@@ -367,4 +367,4 @@ def test_seed_database_is_idempotent():
 
     with get_db_context() as db:
         assert db.query(User).filter(User.id == "USR-DEMO-01").count() == 1
-        assert db.query(User).filter(User.email == "fisherman@orca.marine").count() == 1
+        assert db.query(User).filter(User.email == "fisherman@matsya.app").count() == 1

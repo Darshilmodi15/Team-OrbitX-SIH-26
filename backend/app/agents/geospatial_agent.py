@@ -1,5 +1,5 @@
 import math
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from app.data.geofence import evaluate_vessel_geofences, haversine_km
 from app.models.agent_models import GeofenceZoneModel
 
@@ -29,8 +29,8 @@ def calculate_bearing(lat1: float, lon1: float, lat2: float, lon2: float) -> Tup
 def analyze_geospatial_context(
     vessel_lat: float,
     vessel_lon: float,
-    target_lat: float = None,
-    target_lon: float = None,
+    target_lat: Optional[float] = None,
+    target_lon: Optional[float] = None,
 ) -> Dict[str, Any]:
     geofences: List[GeofenceZoneModel] = evaluate_vessel_geofences(vessel_lat, vessel_lon)
 

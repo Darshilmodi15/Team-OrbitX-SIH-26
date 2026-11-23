@@ -26,13 +26,13 @@ class TestAuthService(unittest.TestCase):
     def test_jwt_token_encode_decode(self):
         user_id = "user_12345"
         role = "USER"
-        token = create_token(user_id, role, "fisherman@orca.marine")
+        token = create_token(user_id, role, "fisherman@matsya.app")
         payload = decode_token(token)
         self.assertIsNotNone(payload)
         self.assertEqual(payload["sub"], user_id)
         self.assertEqual(payload["role"], role)
         self.assertEqual(len(token.split(".")), 3)
-        self.assertNotIn("fisherman@orca.marine", token)
+        self.assertNotIn("fisherman@matsya.app", token)
 
     def test_invalid_jwt_token_rejection(self):
         self.assertIsNone(decode_token("invalid.tampered.token"))
@@ -46,7 +46,7 @@ class TestAuthEndpoints(unittest.TestCase):
 
     def test_login_demo_fisherman(self):
         payload = {
-            "email_or_phone": "fisherman@orca.marine",
+            "email_or_phone": "fisherman@matsya.app",
             "password": "password123",
         }
         res = self.client.post("/api/auth/login", json=payload)
@@ -96,7 +96,7 @@ class TestAuthEndpoints(unittest.TestCase):
     def test_duplicate_registration_rejection(self):
         payload = {
             "name": "Duplicate User",
-            "email": "fisherman@orca.marine",  # already exists
+            "email": "fisherman@matsya.app",  # already exists
             "password": "password123",
         }
         res = self.client.post("/api/auth/register", json=payload)
@@ -142,7 +142,7 @@ class TestAuthEndpoints(unittest.TestCase):
         os.environ["APP_ENV"] = "development"
         try:
             isolated = AuthService()
-            self.assertIn("fisherman@orca.marine", isolated._lookup)
+            self.assertIn("fisherman@matsya.app", isolated._lookup)
             self.assertIn("officer@fisheries.gov.in", isolated._lookup)
         finally:
             if previous is None:

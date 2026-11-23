@@ -1,4 +1,4 @@
-# 🌊 ORCA Marine AI — Smart India Hackathon (SIH) 5-Minute Live Demonstration Script
+# 🌊 Matsya (powered by ORCA) — Smart India Hackathon (SIH) 5-Minute Live Demonstration Script
 
 This document provides the turnkey 5-minute live pitch and technical demonstration script for the SIH Jury and Technical Evaluators.
 
@@ -29,11 +29,11 @@ gantt
 ## 🎙️ Minute-by-Minute Demonstration Walkthrough
 
 ### 🕒 Minute 0:00 – 0:45: The Problem & Opening Hook
-- **Presenter Action**: Open the ORCA Landing Page on a mobile device or responsive viewport.
+- **Presenter Action**: Open the Matsya Landing Page on a mobile device or responsive viewport.
 - **Spoken Script**:
   > *"Respected Jury Members, India has over 7,500 kilometers of coastline and 4 million artisanal fishermen who venture into the open ocean every day with basic smartphones and high-risk sea conditions. 
   > Current weather apps give generic land forecasts, ignoring wave crest periods, international boundary geofences, and thermal fishing fronts.
-  > Today, we present **ORCA Marine AI** — India's first autonomous multi-agent oceanic intelligence and coastal safety platform powered by authoritative INCOIS telemetry, VLIZ EEZ geofencing, and Sarvam AI Indic voice synthesis."*
+  > Today, we present **Matsya**, powered by **ORCA (Marine EcOsystem Reasoning with Collaborative Agents)** — a pan-India coastal safety and marine decision-support platform powered by authoritative INCOIS telemetry, VLIZ EEZ geofencing, and Sarvam AI Indic voice synthesis."*
 
 ---
 
@@ -48,14 +48,14 @@ gantt
 ---
 
 ### 🕒 Minute 01:15 – 02:15: Journey 1 — "Can I go fishing tomorrow?"
-- **Presenter Action**: Ask ORCA via text or voice: *"Is it safe to go fishing tomorrow near Mumbai?"*
+- **Presenter Action**: Ask Matsya's assistant (e.g., *Sagar Mitra* / *Nakhuda* / *Kadal Thunai*) via text or voice: *"Is it safe to go fishing tomorrow near Mumbai?"*
 - **What Happens on Screen**:
   1. Multi-Agent Orchestrator executes deterministic plan.
   2. Live **Significant Wave Height ($HS = 1.05\text{m}$)** and **Wind ($20.1\text{ km/h}$)** retrieved from INCOIS THREDDS catalog.
   3. **4-Vector Marine Risk Engine** renders operational verdict badge (**🟢 SAFE TO VENTURE**).
   4. Expand the **"Why this status?"** accordion to show the physical reasoning trace (Wave crest limits, swell period, squall index).
 - **Spoken Script**:
-  > *"Notice that ORCA does not give a black-box answer. It decomposes sea state physics across 4 independent vectors—wave height, wind gusts, swell period, and storm fronts—so fishermen know exactly why conditions are safe or hazardous."*
+  > *"Notice that Matsya's ORCA engine does not give a black-box answer. It decomposes sea state physics across 4 independent vectors—wave height, wind gusts, swell period, and storm fronts—so fishermen know exactly why conditions are safe or hazardous."*
 
 ---
 
@@ -89,7 +89,7 @@ gantt
   - Audio plays aloud with authentic Indian regional voice synthesis (*Sarvam Bulbul v3 neural voice persona*).
   - Demonstrate speech-to-text in native coastal language.
 - **Spoken Script**:
-  > *"For mariners with low literacy levels or working with wet hands on deck, ORCA provides end-to-end voice in, voice out in 10+ coastal languages powered by Sarvam AI."*
+  > *"For mariners with low literacy levels or working with wet hands on deck, Matsya provides end-to-end voice in, voice out in 11 Indian languages powered by Sarvam AI."*
 
 ---
 
@@ -99,7 +99,7 @@ gantt
   - Show 100% operational system health, 16 PostgreSQL normalized tables, and live upstream latencies.
 - **Closing Script**:
   > *"Underneath this simple interface runs a production-grade architecture: 16 relational PostgreSQL tables, Alembic migrations, Redis regional caching with resilient stale-data fallback, and 165 automated tests passing with zero regressions. 
-  > ORCA bridges space science to the last-mile artisanal mariner. Thank you!"*
+  > Matsya bridges space science to the last-mile artisanal mariner across India. Thank you!"*
 
 ---
 
@@ -107,7 +107,7 @@ gantt
 
 | Likely Jury Question | Authoritative Technical Answer |
 | :--- | :--- |
-| **"What happens if INCOIS servers go down?"** | *"ORCA features a dual-resilience layer: it first checks the regional 5.5 km Redis cache for the latest valid forecast with an explicit timestamp freshness warning. If expired, it automatically fails over to the Open-Meteo Marine API without downtime."* |
-| **"How is this different from existing weather apps?"** | *"Standard apps show land temperature and rain. ORCA evaluates oceanic physics—significant wave height, swell period, shelf break upwelling, VLIZ EEZ international boundaries, and automated IMO MAYDAY distress protocols."* |
+| **"What happens if INCOIS servers go down?"** | *"Matsya's ORCA engine features a dual-resilience layer: it first checks the regional 5.5 km Redis cache for the latest valid forecast with an explicit timestamp freshness warning. If expired, it automatically fails over to the Open-Meteo Marine API without downtime."* |
+| **"How is this different from existing weather apps?"** | *"Standard apps show land temperature and rain. Matsya evaluates oceanic physics—significant wave height, swell period, shelf break upwelling, VLIZ EEZ international boundaries, and automated IMO MAYDAY distress protocols."* |
 | **"How do you prevent hallucinations in LLM advice?"** | *"Our multi-agent architecture uses a deterministic 6-rule task planner. Numerical values (wave height, wind speed, risk tier) are strictly computed by Python deterministic engines and passed as rigid Pydantic evidence bundles to the synthesizer."* |
 | **"Is user and vessel data secure?"** | *"Yes. Identity management uses adaptive 12-round Bcrypt password hashing, HMAC-signed JWT bearer tokens, and role-based access control (USER, GOVERNMENT, SUPER_ADMIN) across 16 normalized relational tables."* |

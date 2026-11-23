@@ -1,5 +1,5 @@
 """
-Pytest configuration and fixtures for ORCA Marine AI tests.
+Pytest configuration and fixtures for Matsya (powered by ORCA) tests.
 Provides isolated in-memory test database and resets AuthService/services state between test runs.
 """
 import os
