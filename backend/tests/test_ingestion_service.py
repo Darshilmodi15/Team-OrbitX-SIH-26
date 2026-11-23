@@ -1,5 +1,6 @@
 """Unit tests for continuous INCOIS background ingestion service."""
 import asyncio
+import threading
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -51,6 +52,24 @@ class TestIngestionService(unittest.IsolatedAsyncioTestCase):
         except asyncio.CancelledError:
             pass
 
+        self.assertTrue(task.cancelled() or task.done())
+
+    async def test_continuous_ingestion_waits_for_ready_event(self):
+        """Verifies ingestion loop pauses while db ready_event is unset and cancels cleanly."""
+        mock_provider = MagicMock()
+        ready = threading.Event()
+        task = asyncio.create_task(
+            continuous_incois_ingestion_loop(mock_provider, interval_seconds=1, ready_event=ready)
+        )
+        await asyncio.sleep(0.35)
+        self.assertEqual(mock_provider.get_weather.call_count, 0)
+        ready.set()
+        await asyncio.sleep(0.05)
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
         self.assertTrue(task.cancelled() or task.done())
 
 

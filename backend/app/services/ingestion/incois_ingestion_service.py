@@ -9,6 +9,7 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 import logging
 import os
+import threading
 from typing import Any, Dict, List, Optional
 
 from app.data.weather.base import WeatherProvider
@@ -83,6 +84,7 @@ async def run_single_ingestion_cycle(provider: WeatherProvider) -> Dict[str, Any
 async def continuous_incois_ingestion_loop(
     provider: WeatherProvider,
     interval_seconds: Optional[int] = None,
+    ready_event: Optional[threading.Event] = None,
 ):
     """
     Long-running background task that polls INCOIS at configured intervals.
@@ -91,7 +93,12 @@ async def continuous_incois_ingestion_loop(
     poll_interval = interval_seconds or int(os.getenv("INCOIS_INGESTION_INTERVAL_SEC", "3600"))
     logger.info(f"INCOIS Continuous Ingestion Service started (Interval: {poll_interval}s).")
 
-    # Initial delay of 3 seconds to let FastAPI finish binding and schema seeding
+    # Wait until database migrations and initial seeding finish so writers never collide on boot
+    if ready_event is not None:
+        while not ready_event.is_set():
+            await asyncio.sleep(0.25)
+
+    # Initial delay of 3 seconds to let FastAPI finish binding and accept HTTP traffic
     await asyncio.sleep(3.0)
 
     while True:

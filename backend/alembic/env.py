@@ -1,8 +1,9 @@
 import os
 import sys
 from logging.config import fileConfig
+from typing import Any
 
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, event, pool
 
 from alembic import context
 
@@ -11,7 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from app.db.base import Base
 import app.db.models  # Ensures all 16 models are registered in metadata
-from app.db.session import get_database_url
+from app.db.session import configure_sqlite_connection, get_database_url
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -63,11 +64,14 @@ def run_migrations_online() -> None:
 
     """
     configuration = config.get_section(config.config_ini_section) or {}
-    configuration["sqlalchemy.url"] = get_url()
+    db_url = get_url()
+    configuration["sqlalchemy.url"] = db_url
 
-    connect_args = {}
-    if get_url().startswith("sqlite"):
+    connect_args: dict[str, Any] = {}
+    is_sqlite = db_url.startswith("sqlite")
+    if is_sqlite:
         connect_args["check_same_thread"] = False
+        connect_args["timeout"] = 30
 
     connectable = engine_from_config(
         configuration,
@@ -76,13 +80,25 @@ def run_migrations_online() -> None:
         connect_args=connect_args,
     )
 
-    with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+    if is_sqlite:
+        @event.listens_for(connectable, "connect")
+        def _set_sqlite_pragmas(dbapi_conn, connection_record):
+            configure_sqlite_connection(
+                dbapi_conn,
+                connection_record,
+                enable_wal=not db_url.endswith(":memory:"),
+            )
 
-        with context.begin_transaction():
-            context.run_migrations()
+    try:
+        with connectable.connect() as connection:
+            context.configure(
+                connection=connection, target_metadata=target_metadata
+            )
+
+            with context.begin_transaction():
+                context.run_migrations()
+    finally:
+        connectable.dispose()
 
 
 if context.is_offline_mode():

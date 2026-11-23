@@ -105,7 +105,8 @@ async def lifespan(app: FastAPI):
     import threading
     from app.services.ingestion.incois_ingestion_service import continuous_incois_ingestion_loop
     logger = logging.getLogger("orca_lifespan")
-    
+    db_ready_event = threading.Event()
+
     def _background_init_and_seed():
         try:
             # Run alembic migrations first to ensure all schema changes are applied
@@ -121,18 +122,20 @@ async def lifespan(app: FastAPI):
             from app.db.session import init_db
             init_db()
             from seed.seed_database import seed_database
-            seed_database()
+            seed_database(skip_init=True)
             logger.info("Database schema verification and seeding completed successfully.")
         except Exception as e:
             logger.warning(f"Database background init/seed note: {e}")
+        finally:
+            db_ready_event.set()
 
     # Launch background thread so uvicorn can bind to the port immediately without timing out
     init_thread = threading.Thread(target=_background_init_and_seed, daemon=True)
     init_thread.start()
 
-    # Launch continuous background INCOIS ingestion task
+    # Launch continuous background INCOIS ingestion task after DB init/seed finishes
     ingestion_task = asyncio.create_task(
-        continuous_incois_ingestion_loop(provider=incois_provider)
+        continuous_incois_ingestion_loop(provider=incois_provider, ready_event=db_ready_event)
     )
     
     yield

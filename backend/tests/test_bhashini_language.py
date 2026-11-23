@@ -78,7 +78,8 @@ class TestBhashiniVoiceEndpoints(unittest.TestCase):
 
     def test_voice_speakers_catalog(self):
         """Validates GET /api/voice/speakers returns Bhashini provider."""
-        res = self.client.get("/api/voice/speakers")
+        with patch.object(language_service, "provider", BhashiniLanguageProvider()):
+            res = self.client.get("/api/voice/speakers")
         self.assertEqual(res.status_code, 200)
         data = res.json()
         self.assertIn("Bhashini", data["provider"])

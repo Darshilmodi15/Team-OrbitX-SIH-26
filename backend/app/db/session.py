@@ -2,12 +2,14 @@
 Database engine and session management for ORCA Marine AI.
 Supports PostgreSQL on production (Render/Supabase) and SQLite for local development/testing.
 """
+import importlib
 import os
 import logging
+import re
 from contextlib import contextmanager
-from typing import Generator
+from typing import Any, Generator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
 
@@ -29,6 +31,11 @@ def get_database_url() -> str:
         db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "orca_dev.db")
         return f"sqlite:///{db_path}"
 
+    if not url.startswith(("sqlite://", "postgres://", "postgresql://", "postgresql+")):
+        embedded_pg = re.search(r'(postgres(?:ql)?(?:\+[a-z0-9_]+)?://[^\s"\']+)', url)
+        if embedded_pg:
+            url = embedded_pg.group(1)
+
     # Fix Render/Heroku postgres:// schema prefix
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
@@ -36,11 +43,11 @@ def get_database_url() -> str:
     # Ensure compatibility with whichever postgres driver is installed (psycopg v3 or psycopg2)
     if url.startswith("postgresql://") and not url.startswith("postgresql+"):
         try:
-            import psycopg  # noqa: F401 - psycopg 3
+            importlib.import_module("psycopg")
             url = url.replace("postgresql://", "postgresql+psycopg://", 1)
         except ImportError:
             try:
-                import psycopg2  # noqa: F401 - fallback to psycopg2
+                importlib.import_module("psycopg2")
                 url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
             except ImportError:
                 pass
@@ -63,8 +70,8 @@ def get_database_url() -> str:
 DATABASE_URL = get_database_url()
 
 # Configure engine arguments based on dialect
-connect_args = {}
-engine_kwargs = {"echo": False}
+connect_args: dict[str, Any] = {}
+engine_kwargs: dict[str, Any] = {"echo": False}
 
 if DATABASE_URL.startswith("sqlite"):
     connect_args["check_same_thread"] = False
@@ -80,11 +87,35 @@ else:
         "pool_recycle": 1800,  # recycle connections after 30 minutes
     })
 
+def configure_sqlite_connection(
+    dbapi_conn,
+    _connection_record=None,
+    *,
+    enable_wal: bool = True,
+) -> None:
+    """Configure SQLite WAL journal mode and busy timeout to prevent write-lock errors."""
+    cursor = dbapi_conn.cursor()
+    try:
+        if enable_wal:
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.execute("PRAGMA busy_timeout=30000")
+    finally:
+        cursor.close()
+
+
 engine = create_engine(
     DATABASE_URL,
     connect_args=connect_args,
     **engine_kwargs,
 )
+
+if DATABASE_URL.startswith("sqlite"):
+    _sqlite_enable_wal = not DATABASE_URL.endswith(":memory:")
+
+    @event.listens_for(engine, "connect")
+    def _set_sqlite_pragmas(dbapi_conn, connection_record):
+        configure_sqlite_connection(dbapi_conn, connection_record, enable_wal=_sqlite_enable_wal)
 
 SessionLocal = sessionmaker(
     autocommit=False,

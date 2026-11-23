@@ -18,6 +18,8 @@ import os
 import time
 from typing import Any, Dict, Optional, Tuple
 
+from app.services.redis_utils import normalize_redis_url
+
 logger = logging.getLogger(__name__)
 
 # Optional Redis import
@@ -70,7 +72,8 @@ class MarineWeatherCache:
 
         # Initialize Redis if configured
         self._redis_client: Optional[Any] = None
-        target_redis_url = redis_url or os.getenv("REDIS_URL") or os.getenv("KEY_VALUE_URL")
+        raw_url = redis_url if redis_url is not None else (os.getenv("REDIS_URL") or os.getenv("KEY_VALUE_URL") or "")
+        target_redis_url = normalize_redis_url(raw_url)
         if REDIS_AVAILABLE and target_redis_url:
             try:
                 self._redis_client = redis.Redis.from_url(

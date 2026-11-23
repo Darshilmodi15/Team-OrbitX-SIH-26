@@ -285,3 +285,86 @@ def test_enhanced_demo_scenario_species_and_veraval_hazards():
     assert demo.pfz["zones"][0]["depth_m"] > 0
     assert len(demo.hazards) >= 1
     assert all(h["source"] == SOURCE for h in demo.hazards)
+
+
+def test_sqlite_wal_and_busy_timeout_configured(tmp_path):
+    from sqlalchemy import create_engine, event, text
+    from app.db.session import configure_sqlite_connection
+
+    db_file = tmp_path / "wal_check.db"
+    test_engine = create_engine(
+        f"sqlite:///{db_file}",
+        connect_args={"check_same_thread": False, "timeout": 30},
+    )
+
+    @event.listens_for(test_engine, "connect")
+    def _on_connect(dbapi_conn, connection_record):
+        configure_sqlite_connection(dbapi_conn, connection_record, enable_wal=True)
+
+    try:
+        with test_engine.connect() as conn:
+            journal_mode = conn.execute(text("PRAGMA journal_mode")).scalar()
+            busy_timeout = conn.execute(text("PRAGMA busy_timeout")).scalar()
+        assert str(journal_mode).lower() == "wal"
+        assert int(busy_timeout) == 30000
+    finally:
+        test_engine.dispose()
+
+
+def test_database_url_normalizes_pasted_psql_and_quotes(monkeypatch):
+    from app.db.session import get_database_url
+
+    monkeypatch.setenv("DATABASE_URL", ' "postgresql://u:p@db.example:5432/orca" ')
+    res1 = get_database_url()
+    assert res1.startswith(("postgresql+psycopg://", "postgresql+psycopg2://", "postgresql://"))
+    assert res1.endswith("://u:p@db.example:5432/orca")
+
+    monkeypatch.setenv("DATABASE_URL", "psql 'postgresql://u:p@db.example:5432/orca?sslmode=require'")
+    res2 = get_database_url()
+    assert res2.endswith("://u:p@db.example:5432/orca?sslmode=require")
+
+    monkeypatch.setenv("DATABASE_URL", "DATABASE_URL=postgres://u:p@db.example:5432/orca")
+    res3 = get_database_url()
+    assert res3.endswith("://u:p@db.example:5432/orca")
+
+
+def test_redis_url_normalization_and_clients():
+    from app.data.weather.cache import MarineWeatherCache
+    from app.services.redis_utils import normalize_redis_url
+
+    expected = "rediss://default:tok@host.upstash.io:6379"
+    assert normalize_redis_url(None) == ""
+    assert normalize_redis_url("  'none'  ") == ""
+    assert normalize_redis_url(f' "{expected}" ') == expected
+    assert normalize_redis_url(f"redis-cli --tls -u {expected}") == expected
+    assert normalize_redis_url(f"REDIS_URL={expected}") == expected
+
+    fake_client = MagicMock()
+    fake_client.ping.return_value = True
+    with patch("redis.Redis.from_url", return_value=fake_client) as rl_from_url:
+        limiter = FixedWindowRateLimiter(redis_url=f"redis-cli --tls -u {expected}")
+        assert limiter._redis_client is fake_client
+        assert rl_from_url.call_args.args[0] == expected
+
+    with patch("redis.Redis.from_url", return_value=fake_client) as cache_from_url:
+        cache = MarineWeatherCache(redis_url=f'"{expected}"')
+        assert cache._redis_client is fake_client
+        assert cache_from_url.call_args.args[0] == expected
+
+    with patch("redis.Redis.from_url") as redis_none:
+        FixedWindowRateLimiter(redis_url="none")
+        MarineWeatherCache(redis_url="none")
+        redis_none.assert_not_called()
+
+
+def test_seed_database_is_idempotent():
+    from app.db.models import User
+    from app.db.session import get_db_context
+    from seed.seed_database import seed_database
+
+    seed_database(skip_init=True)
+    seed_database(skip_init=True)
+
+    with get_db_context() as db:
+        assert db.query(User).filter(User.id == "USR-DEMO-01").count() == 1
+        assert db.query(User).filter(User.email == "fisherman@orca.marine").count() == 1

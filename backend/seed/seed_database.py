@@ -18,6 +18,7 @@ import uuid
 # Ensure backend root is on sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 
 from app.db.base import Base
@@ -42,10 +43,61 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger("orca_seed")
 
 
-def seed_database():
+def seed_database(skip_init: bool = False):
     """Executes database schema creation and data seeding."""
-    logger.info("Ensuring database tables exist...")
-    init_db()
+    if not skip_init:
+        logger.info("Ensuring database tables exist...")
+        init_db()
+
+    app_env = (os.getenv("APP_ENV") or os.getenv("ENVIRONMENT", "development")).lower()
+    demo_accounts = [
+        {
+            "id": "USR-DEMO-01",
+            "name": "Captain Ramesh Koli",
+            "email": "fisherman@orca.marine",
+            "phone": "9876543210",
+            "password": "password123",
+            "role": "USER",
+            "preferred_language": "gu",
+        },
+        {
+            "id": "USR-DEMO-02",
+            "name": "Officer Priya Sharma",
+            "email": "officer@fisheries.gov.in",
+            "phone": "9123456780",
+            "password": "govpassword123",
+            "role": "GOVERNMENT",
+            "preferred_language": "hi",
+            "dept": "Directorate of Fisheries, Ministry of Fisheries",
+            "designation": "Assistant Director (Marine Enforcement)",
+            "region": "Gujarat & Maharashtra",
+        },
+        {
+            "id": "USR-DEMO-03",
+            "name": "Super Admin OrbitX",
+            "email": "admin@orca.marine",
+            "phone": "9999999999",
+            "password": "adminpassword123",
+            "role": "SUPER_ADMIN",
+            "preferred_language": "en",
+        },
+    ]
+
+    # Pre-hash slow bcrypt credentials outside the write transaction so SQLite write locks stay brief
+    prehashed_credentials = {}
+    if app_env not in {"production", "prod"}:
+        with get_db_context() as read_db:
+            existing_rows = read_db.query(User.id, User.email).filter(
+                or_(
+                    User.id.in_([acc["id"] for acc in demo_accounts]),
+                    User.email.in_([acc["email"] for acc in demo_accounts]),
+                )
+            ).all()
+        existing_ids = {row[0] for row in existing_rows}
+        existing_emails = {row[1] for row in existing_rows}
+        for acc in demo_accounts:
+            if acc["id"] not in existing_ids and acc["email"] not in existing_emails:
+                prehashed_credentials[acc["id"]] = hash_password(acc["password"])
 
     with get_db_context() as db:
         # -------------------------------------------------------------
@@ -80,50 +132,20 @@ def seed_database():
         # -------------------------------------------------------------
         # 2. Demo User Accounts (non-production only)
         # -------------------------------------------------------------
-        app_env = (os.getenv("APP_ENV") or os.getenv("ENVIRONMENT", "development")).lower()
         if app_env in {"production", "prod"}:
             logger.info("Skipping demo user account seeding in %s environment.", app_env)
         else:
             logger.info("Seeding demo user accounts for %s environment...", app_env)
-            demo_accounts = [
-                {
-                    "id": "USR-DEMO-01",
-                    "name": "Captain Ramesh Koli",
-                    "email": "fisherman@orca.marine",
-                    "phone": "9876543210",
-                    "password": "password123",
-                    "role": "USER",
-                    "preferred_language": "gu",
-                },
-                {
-                    "id": "USR-DEMO-02",
-                    "name": "Officer Priya Sharma",
-                    "email": "officer@fisheries.gov.in",
-                    "phone": "9123456780",
-                    "password": "govpassword123",
-                    "role": "GOVERNMENT",
-                    "preferred_language": "hi",
-                    "dept": "Directorate of Fisheries, Ministry of Fisheries",
-                    "designation": "Assistant Director (Marine Enforcement)",
-                    "region": "Gujarat & Maharashtra",
-                },
-                {
-                    "id": "USR-DEMO-03",
-                    "name": "Super Admin OrbitX",
-                    "email": "admin@orca.marine",
-                    "phone": "9999999999",
-                    "password": "adminpassword123",
-                    "role": "SUPER_ADMIN",
-                    "preferred_language": "en",
-                },
-            ]
-
             for acc in demo_accounts:
                 try:
                     with db.begin_nested():
-                        existing = db.query(User).filter(User.email == acc["email"]).first()
+                        existing = db.query(User).filter(
+                            or_(User.email == acc["email"], User.id == acc["id"])
+                        ).first()
                         if not existing:
-                            pwd_hash, salt = hash_password(acc["password"])
+                            pwd_hash, salt = prehashed_credentials.get(
+                                acc["id"]
+                            ) or hash_password(acc["password"])
                             now = datetime.now(timezone.utc)
                             user = User(
                                 id=acc["id"],
