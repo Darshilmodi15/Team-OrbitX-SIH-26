@@ -22,7 +22,7 @@ beforeEach(()=>{
 afterEach(()=>vi.unstubAllGlobals());
 it('sends a voice turn through the supplied chat pipeline, plays the answer and listens again',async()=>{
  let audio:any;
- vi.stubGlobal('Audio',class{onended:any;onerror:any;pause=vi.fn();play=vi.fn().mockResolvedValue(undefined);constructor(){audio=this;}});
+ vi.stubGlobal('Audio',function MockAudio(){const instance={onended:undefined as any,onerror:undefined as any,pause:vi.fn(),play:vi.fn().mockResolvedValue(undefined)};audio=instance;return instance;});
  const ask=vi.fn().mockResolvedValue({text:'The available evidence is incomplete.',language:'en'});
  render(<I18nProvider><VoiceControls disabled={false} onBusy={()=>{}} onTranscript={vi.fn()} onAsk={ask}/></I18nProvider>);
  fireEvent.click(screen.getByRole('button',{name:'Voice conversation'}));

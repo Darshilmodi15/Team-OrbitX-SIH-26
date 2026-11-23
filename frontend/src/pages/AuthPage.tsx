@@ -21,12 +21,14 @@ import { AppearanceMenu } from "@/components/orca/AppearanceMenu";
 import "@/components/orca/public-pages.css";
 import { SEO } from "@/components/SEO";
 import { trackEvent } from "@/lib/orca/analytics";
+import { confirmPasswordReset, requestPasswordReset } from "@/services/api";
 
 interface FieldErrors {
   name?: string;
   contact?: string;
   password?: string;
   confirm?: string;
+  resetToken?: string;
 }
 
 export default function AuthPage() {
@@ -34,16 +36,19 @@ export default function AuthPage() {
   const { signIn, signInGoogle, register } = useSession();
   const navigate = useNavigate();
   const { state } = useLocation();
-  const [mode, setMode] = useState<"signin" | "register">("signin");
+  const [mode, setMode] = useState<"signin" | "register" | "reset">("signin");
   const [form, setForm] = useState({
     name: "",
     contact: "",
     password: "",
     confirm: "",
+    resetToken: "",
   });
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [resetStatus, setResetStatus] = useState<string | null>(null);
+  const [resetStep, setResetStep] = useState<"request" | "confirm">("request");
   const submittingRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [remember, setRemember] = useState(true);
@@ -52,6 +57,7 @@ export default function AuthPage() {
   const clearErrors = () => {
     setGoogleError(null);
     setLoginError(null);
+    setResetStatus(null);
   };
 
   const set =
@@ -174,6 +180,62 @@ export default function AuthPage() {
     }
   }
 
+  async function submitReset(e: React.FormEvent) {
+    e.preventDefault();
+    if (submittingRef.current) return;
+    clearErrors();
+    const rawContact = form.contact.trim();
+    const contact = rawContact.includes("@") ? rawContact : rawContact.replace(/[\s()-]/g, "");
+    if (resetStep === "request") {
+      if (!contact) {
+        setFieldErrors({ contact: "Enter your registered email or mobile number." });
+        return;
+      }
+      submittingRef.current = true;
+      setIsSubmitting(true);
+      try {
+        const res = await requestPasswordReset(contact);
+        setResetStatus(res?.message || "Reset instructions sent if account exists.");
+        setResetStep("confirm");
+      } catch (err: unknown) {
+        const msg =
+          err instanceof Error && (err as { code?: string }).code === "PASSWORD_RESET_DELIVERY_UNCONFIGURED"
+            ? "Password reset delivery (SMTP / SMS) is not configured on this server yet."
+            : err instanceof Error
+              ? err.message
+              : "Could not start password reset.";
+        setLoginError(msg);
+      } finally {
+        submittingRef.current = false;
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
+    if (!form.resetToken.trim()) {
+      setLoginError("Enter the reset code sent to your email or phone.");
+      return;
+    }
+    if (!form.password || form.password.length < 6) {
+      setFieldErrors({ password: "Password must be at least 6 characters in length." });
+      return;
+    }
+    submittingRef.current = true;
+    setIsSubmitting(true);
+    try {
+      await confirmPasswordReset(form.resetToken.trim(), form.password);
+      setMode("signin");
+      setResetStep("request");
+      setForm((f) => ({ ...f, resetToken: "", password: "" }));
+      setResetStatus("Password updated. Please sign in with your new password.");
+    } catch (err: unknown) {
+      setLoginError(err instanceof Error ? err.message : "Password reset failed.");
+    } finally {
+      submittingRef.current = false;
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <div className="auth-page">
       <section className="auth-form-panel">
@@ -218,11 +280,96 @@ export default function AuthPage() {
           </div>
 
           <h1 className="mt-6 text-2xl font-bold tracking-tight text-foreground">
-            {mode === "signin" ? t("auth.title") : t("auth.registerTitle")}
+            {mode === "signin" ? t("auth.title") : mode === "register" ? t("auth.registerTitle") : "Reset your ORCA password"}
           </h1>
           <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
             {t("auth.subtitle")}
           </p>
+
+          {resetStatus && (
+            <p role="status" className="mt-4 rounded-lg border border-teal-500/40 bg-teal-500/10 p-3 text-xs text-teal-600 dark:text-teal-300">
+              {resetStatus}
+            </p>
+          )}
+
+          {mode === "reset" ? (
+            <form onSubmit={submitReset} className="mt-6 space-y-4" noValidate>
+              {resetStep === "request" ? (
+                <div className="space-y-1.5">
+                  <label htmlFor="reset-contact" className="text-xs font-semibold text-foreground">
+                    {t("auth.mobile")} / {t("auth.email")}
+                  </label>
+                  <input
+                    id="reset-contact"
+                    value={form.contact}
+                    onChange={set("contact")}
+                    placeholder="e.g. 9876543210 or fisher@example.com"
+                    className="flex h-11 w-full rounded-lg border border-input bg-background px-3.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                  />
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <label htmlFor="reset-token" className="text-xs font-semibold text-foreground">
+                      Reset code
+                    </label>
+                    <input
+                      id="reset-token"
+                      value={form.resetToken}
+                      onChange={set("resetToken")}
+                      placeholder="Paste single-use reset code"
+                      className="flex h-11 w-full rounded-lg border border-input bg-background px-3.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor="reset-password" className="text-xs font-semibold text-foreground">
+                      New password
+                    </label>
+                    <input
+                      id="reset-password"
+                      type="password"
+                      value={form.password}
+                      onChange={set("password")}
+                      placeholder="At least 6 characters"
+                      className="flex h-11 w-full rounded-lg border border-input bg-background px-3.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                    />
+                  </div>
+                </>
+              )}
+              {loginError && (
+                <div role="alert" className="flex items-start gap-2.5 rounded-lg border border-rose-500/40 bg-rose-500/10 p-3 text-xs text-rose-400">
+                  <AlertCircle className="size-4 shrink-0 mt-0.5" />
+                  <span>{loginError}</span>
+                </div>
+              )}
+              <button type="submit" disabled={isSubmitting} className="auth-submit">
+                {isSubmitting ? "Processing..." : resetStep === "request" ? "Send Reset Code" : "Update Password"}
+              </button>
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResetStep(resetStep === "request" ? "confirm" : "request");
+                    setLoginError(null);
+                  }}
+                  className="underline hover:text-foreground"
+                >
+                  {resetStep === "request" ? "Already have a reset code?" : "Request a new code"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("signin");
+                    clearErrors();
+                  }}
+                  className="underline hover:text-foreground"
+                >
+                  Back to sign in
+                </button>
+              </div>
+            </form>
+          ) : (
+          <>
 
           <div
             className="auth-mode-switch"
@@ -447,12 +594,18 @@ export default function AuthPage() {
                 />
                 Remember me
               </label>
-              <span
-                className="text-muted-foreground"
-                title="Password recovery is not configured yet"
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("reset");
+                  setResetStep("request");
+                  setFieldErrors({});
+                  clearErrors();
+                }}
+                className="text-teal-600 dark:text-teal-400 underline-offset-2 hover:underline"
               >
-                Password recovery unavailable
-              </span>
+                Forgot password?
+              </button>
             </div>
 
             <button
@@ -490,6 +643,8 @@ export default function AuthPage() {
               {mode === "signin" ? t("cta.register") : t("cta.signIn")}
             </button>
           </p>
+          </>
+          )}
 
           <div className="mt-8 border-t border-border pt-4 text-center text-[11px] text-muted-foreground">
             <p className="flex items-center justify-center gap-1.5">

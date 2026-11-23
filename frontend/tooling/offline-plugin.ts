@@ -46,6 +46,25 @@ self.addEventListener('fetch', event => {
     } finally { clearTimeout(timer); }
   })());
 });
+self.addEventListener('push', event => {
+  let payload = { title: 'ORCA Marine Safety Alert', body: 'New coastal safety update available.', url: '/alerts' };
+  try {
+    if (event.data) payload = { ...payload, ...event.data.json() };
+  } catch { /* fallback to default payload */ }
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      icon: '/android-chrome-192x192.png?v=4',
+      badge: '/favicon-32x32.png?v=4',
+      data: { url: payload.url || '/alerts' },
+    })
+  );
+});
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || '/alerts';
+  event.waitUntil(self.clients.openWindow(target));
+});
 ` });
     },
   };

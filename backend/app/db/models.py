@@ -96,6 +96,7 @@ class UserPreference(Base):
     voice_enabled = Column(Boolean, default=True, nullable=False)
     notifications_enabled = Column(Boolean, default=True, nullable=False)
     location_tracking_enabled = Column(Boolean, default=True, nullable=False)
+    vessel_class = Column(String(40), nullable=True)
     created_at = Column(DateTime(timezone=True), default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now(), nullable=False)
 
@@ -429,3 +430,28 @@ class ChatRequestRecord(Base):
     status = Column(String(16), nullable=False)
     response_json = Column(Text, nullable=True)
     updated_at = Column(DateTime(timezone=True), nullable=False)
+
+
+class PushSubscriptionRecord(Base):
+    """Browser Web Push subscription bound to an authenticated user."""
+    __tablename__ = "push_subscriptions"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    endpoint = Column(String(1024), unique=True, nullable=False)
+    p256dh = Column(String(255), nullable=False)
+    auth = Column(String(255), nullable=False)
+    user_agent = Column(String(512), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=func.now(), nullable=False)
+
+
+class PasswordResetToken(Base):
+    """Hashed single-use short-lived password reset token."""
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    token_hash = Column(String(64), unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=func.now(), nullable=False)

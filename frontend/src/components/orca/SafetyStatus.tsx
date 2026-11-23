@@ -11,18 +11,20 @@ const MAP = {
   emergency: { Icon: AlertOctagon, label: "status.emergency" as const, desc: "status.emergencyDesc" as const, cls: "border-danger/60 bg-danger-surface text-danger" },
 };
 
-export function useSafetyLabel() {
-  const { t } = useI18n();
-  return (level: SafetyLevel) => t(MAP[level].label);
-}
-
-export function SafetyStatusCard({ level, note, reasons }: { level: SafetyLevel; note?: string; reasons?: string[] }) {
+export function SafetyStatusCard({ level, note, reasons, vesselClass }: { level: SafetyLevel; note?: string; reasons?: string[]; vesselClass?: string | null }) {
   const { t, lang } = useI18n();
   const { Icon, label, desc, cls } = MAP[level];
 
   return (
     <section className={cn("rounded-md border p-4", cls)} aria-live="polite">
-      <p className="text-xs font-semibold uppercase tracking-wide text-foreground/90">{t("status.title")}</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-foreground/90">{t("status.title")}</p>
+        {vesselClass && vesselClass !== "standard" && (
+          <span className="rounded-full border border-current/30 px-2 py-0.5 text-[11px] font-medium">
+            {vesselClass.replaceAll("_", " ")}
+          </span>
+        )}
+      </div>
       <div className="mt-2 flex items-start gap-3">
         <Icon className="mt-0.5 size-7 shrink-0" aria-hidden />
         <div className="min-w-0">

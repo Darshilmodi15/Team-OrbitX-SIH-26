@@ -360,6 +360,7 @@ class AuthService:
                         "operational_region": db_user.government_profile.jurisdiction_region if db_user.government_profile else None,
                         "location_permission_status": db_user.location_permission_status,
                         "location_sharing_enabled": db_user.location_sharing_enabled,
+                        "vessel_class": db_user.preferences.vessel_class if db_user.preferences else None,
                         "created_at": db_user.created_at.isoformat() if db_user.created_at else now_utc.isoformat(),
                         "last_login": now_utc.isoformat(),
                     }
@@ -472,6 +473,7 @@ class AuthService:
                             "operational_region": db_user.government_profile.jurisdiction_region if db_user.government_profile else None,
                             "location_permission_status": db_user.location_permission_status,
                             "location_sharing_enabled": db_user.location_sharing_enabled,
+                            "vessel_class": db_user.preferences.vessel_class if db_user.preferences else None,
                             "created_at": db_user.created_at.isoformat() if db_user.created_at else datetime.now(timezone.utc).isoformat(),
                             "last_login": db_user.last_login.isoformat() if db_user.last_login else None,
                     }
@@ -499,7 +501,7 @@ class AuthService:
             with get_db_context() as db:
                 rows = (
                     db.query(User)
-                    .options(joinedload(User.government_profile))
+                    .options(joinedload(User.government_profile), joinedload(User.preferences))
                     .filter(User.is_active.is_(True))
                     .all()
                 )
@@ -514,6 +516,7 @@ class AuthService:
                         operational_region=u.government_profile.jurisdiction_region if u.government_profile else None,
                         location_permission_status=u.location_permission_status,
                         location_sharing_enabled=u.location_sharing_enabled,
+                        vessel_class=u.preferences.vessel_class if u.preferences else None,
                         created_at=u.created_at.isoformat() if u.created_at else datetime.now(timezone.utc).isoformat(),
                         last_login=u.last_login.isoformat() if u.last_login else None,
                     )
@@ -531,6 +534,7 @@ class AuthService:
         preferred_language: Optional[str] = None,
         location_permission_status: Optional[str] = None,
         location_sharing_enabled: Optional[bool] = None,
+        vessel_class: Optional[str] = None,
         role: Optional[UserRole] = None,
     ) -> Optional[UserProfile]:
         """Updates user profile properties."""
@@ -541,7 +545,7 @@ class AuthService:
             with get_db_context() as db:
                 db_user = (
                     db.query(User)
-                    .options(joinedload(User.government_profile))
+                    .options(joinedload(User.government_profile), joinedload(User.preferences))
                     .filter(User.id == user_id)
                     .first()
                 )
@@ -551,9 +555,20 @@ class AuthService:
                     db_user.name = name
                 if preferred_language is not None:
                     db_user.preferred_language = preferred_language
-                    pref = db.query(UserPreference).filter(UserPreference.user_id == user_id).first()
-                    if pref:
+                pref = db_user.preferences or db.query(UserPreference).filter(UserPreference.user_id == user_id).first()
+                if pref is None and (preferred_language is not None or vessel_class is not None):
+                    pref = UserPreference(
+                        id=str(uuid.uuid4()),
+                        user_id=user_id,
+                        preferred_language=preferred_language or db_user.preferred_language or "en",
+                        vessel_class=vessel_class,
+                    )
+                    db.add(pref)
+                else:
+                    if pref and preferred_language is not None:
                         pref.preferred_language = preferred_language
+                    if pref and vessel_class is not None:
+                        pref.vessel_class = vessel_class
                 if location_permission_status is not None:
                     db_user.location_permission_status = location_permission_status
                 if location_sharing_enabled is not None:
@@ -561,6 +576,7 @@ class AuthService:
                 if role is not None:
                     db_user.role = role.value
                 db.flush()
+                resolved_vessel = pref.vessel_class if pref else None
                 profile = UserProfile(
                     id=db_user.id,
                     name=db_user.name,
@@ -571,6 +587,7 @@ class AuthService:
                     operational_region=db_user.government_profile.jurisdiction_region if db_user.government_profile else None,
                     location_permission_status=db_user.location_permission_status,
                     location_sharing_enabled=db_user.location_sharing_enabled,
+                    vessel_class=resolved_vessel,
                     created_at=db_user.created_at.isoformat() if db_user.created_at else datetime.now(timezone.utc).isoformat(),
                     last_login=db_user.last_login.isoformat() if db_user.last_login else None,
                 )
@@ -585,9 +602,110 @@ class AuthService:
             cached["preferred_language"] = profile.preferred_language
             cached["location_permission_status"] = profile.location_permission_status
             cached["location_sharing_enabled"] = profile.location_sharing_enabled
+            cached["vessel_class"] = profile.vessel_class
             cached["role"] = profile.role
 
         return profile
+
+    def request_password_reset(self, email_or_phone: str) -> None:
+        """Generates a hashed single-use reset code and delivers it via configured email or SMS."""
+        import secrets
+        from datetime import timedelta
+        from fastapi import HTTPException
+        from app.db.models import PasswordResetToken
+        from app.db.session import get_db_context
+        from app.repositories import UserRepository
+        from app.services.email import get_email_transport, is_email_configured
+        from app.services.sms import get_sms_transport, is_sms_configured
+
+        ident = email_or_phone.strip()
+        is_email = "@" in ident
+        if is_email and not is_email_configured():
+            raise HTTPException(status_code=503, detail="PASSWORD_RESET_DELIVERY_UNCONFIGURED")
+        if not is_email and not is_sms_configured():
+            raise HTTPException(status_code=503, detail="PASSWORD_RESET_DELIVERY_UNCONFIGURED")
+
+        raw_token: Optional[str] = None
+        target_email: Optional[str] = None
+        target_phone: Optional[str] = None
+
+        try:
+            with get_db_context() as db:
+                db_user = UserRepository.get_by_identifier(db, ident)
+                if not db_user or not db_user.is_active:
+                    return
+                now_utc = datetime.now(timezone.utc)
+                db.query(PasswordResetToken).filter(
+                    PasswordResetToken.user_id == db_user.id,
+                    PasswordResetToken.used_at.is_(None),
+                ).update({PasswordResetToken.used_at: now_utc}, synchronize_session=False)
+                raw_token = secrets.token_urlsafe(24)
+                token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+                db.add(PasswordResetToken(
+                    user_id=db_user.id,
+                    token_hash=token_hash,
+                    expires_at=now_utc + timedelta(minutes=15),
+                ))
+                target_email = db_user.email
+                target_phone = db_user.mobile_number
+        except HTTPException:
+            raise
+        except Exception as exc:
+            logger.warning("Password reset token persistence failed: %s", type(exc).__name__)
+            raise HTTPException(status_code=503, detail="AUTH_STORAGE_UNAVAILABLE") from exc
+
+        if not raw_token:
+            return
+        if is_email and target_email:
+            get_email_transport().send(
+                target_email,
+                "ORCA Marine AI Password Reset Code",
+                f"Use this single-use reset code within 15 minutes to reset your ORCA password:\n\n{raw_token}\n",
+            )
+        elif not is_email and target_phone:
+            get_sms_transport().send(
+                target_phone,
+                f"ORCA password reset code (valid 15 min): {raw_token}",
+            )
+
+    def confirm_password_reset(self, token: str, new_password: str) -> None:
+        """Verifies reset token hash, updates bcrypt password, and revokes active sessions."""
+        from app.db.models import DeviceSession, PasswordResetToken, User
+        from app.db.session import get_db_context
+
+        cleaned = token.strip()
+        if not cleaned:
+            raise ValueError("Invalid or expired password reset code.")
+        token_hash = hashlib.sha256(cleaned.encode("utf-8")).hexdigest()
+        now_utc = datetime.now(timezone.utc)
+
+        with get_db_context() as db:
+            row = (
+                db.query(PasswordResetToken)
+                .filter(PasswordResetToken.token_hash == token_hash, PasswordResetToken.used_at.is_(None))
+                .first()
+            )
+            if not row:
+                raise ValueError("Invalid or expired password reset code.")
+            exp = row.expires_at
+            if exp.tzinfo is None:
+                exp = exp.replace(tzinfo=timezone.utc)
+            if exp <= now_utc:
+                raise ValueError("Invalid or expired password reset code.")
+
+            user = db.query(User).filter(User.id == row.user_id).first()
+            if not user or not user.is_active:
+                raise ValueError("Account not found or inactive.")
+
+            pwd_hash, salt = hash_password(new_password)
+            user.password_hash = pwd_hash
+            user.password_salt = salt
+            row.used_at = now_utc
+            db.query(DeviceSession).filter(
+                DeviceSession.user_id == user.id,
+                DeviceSession.revoked_at.is_(None),
+            ).update({DeviceSession.revoked_at: now_utc}, synchronize_session=False)
+            self._users.pop(user.id, None)
 
     def update_role_safely(self, user_id: str, role: UserRole) -> Optional[UserProfile]:
         """Atomically changes a role while preserving at least one administrator."""
@@ -631,6 +749,7 @@ class AuthService:
             role=data.get("role", UserRole.USER),
             location_permission_status=data.get("location_permission_status", "prompt"),
             location_sharing_enabled=data.get("location_sharing_enabled", True),
+            vessel_class=data.get("vessel_class"),
             created_at=data["created_at"],
             last_login=data.get("last_login"),
             operational_region=data.get("operational_region"),

@@ -16,20 +16,23 @@ export default function MapPage() {
   const [params] = useSearchParams();
   const id = params.get("snapshot");
   const returnTo = params.get("return") || "/assistant";
-  const [historical, setHistorical] = useState<MarineSnapshot>();
-  const [failed, setFailed] = useState(false);
+  const [snapshotState, setSnapshotState] = useState<{
+    forId: string | null;
+    data?: MarineSnapshot;
+    failed: boolean;
+  }>({ forId: null, failed: false });
+  const historical = id && snapshotState.forId === id ? snapshotState.data : undefined;
+  const failed = !!id && snapshotState.forId === id && snapshotState.failed;
   useEffect(() => {
+    if (!id) return;
     let cancelled = false;
-    setHistorical(undefined);
-    setFailed(false);
-    if (id)
-      void fetchSnapshotById(id)
-        .then((value) => {
-          if (!cancelled) setHistorical(value);
-        })
-        .catch(() => {
-          if (!cancelled) setFailed(true);
-        });
+    void fetchSnapshotById(id)
+      .then((value) => {
+        if (!cancelled) setSnapshotState({ forId: id, data: value, failed: false });
+      })
+      .catch(() => {
+        if (!cancelled) setSnapshotState({ forId: id, failed: true });
+      });
     return () => {
       cancelled = true;
     };

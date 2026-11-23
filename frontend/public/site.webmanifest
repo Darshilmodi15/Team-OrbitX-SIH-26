@@ -1,4 +1,5 @@
 {
+  "id": "/",
   "name": "ORCA Marine AI — Autonomous Ocean Intelligence",
   "short_name": "ORCA Marine",
   "description": "Marine forecasts, source-aware assistance, historical species evidence and experimental coastal context.",
@@ -22,8 +23,26 @@
   "theme_color": "#06182C",
   "background_color": "#06182C",
   "display": "standalone",
+  "scope": "/",
   "start_url": "/",
   "orientation": "portrait-primary",
   "lang": "en-IN",
-  "categories": ["navigation", "weather", "utilities", "productivity"]
+  "categories": ["navigation", "weather", "utilities", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Marine Command Dashboard",
+      "short_name": "Dashboard",
+      "url": "/dashboard"
+    },
+    {
+      "name": "Tactical Marine Map",
+      "short_name": "Map",
+      "url": "/map"
+    },
+    {
+      "name": "Maritime Emergency SOS",
+      "short_name": "SOS 1554",
+      "url": "/services"
+    }
+  ]
 }

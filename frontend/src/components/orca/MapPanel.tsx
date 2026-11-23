@@ -1,15 +1,23 @@
 import { Link, useInRouterContext } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/services/api";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AlertTriangle,
   ArrowUpRight,
   Crosshair,
   Layers,
   MapPin,
+  Volume2,
+  VolumeX,
   Waves,
   X,
 } from "lucide-react";
+import {
+  announceProximityWarning,
+  evaluateProximityAlert,
+  playMaritimeAlarmTone,
+} from "@/lib/orca/proximity-alarm";
 import { useI18n } from "@/lib/orca/i18n";
 import type { Coords } from "@/lib/orca/geo";
 import { mapCopy } from "@/lib/orca/map-copy";
@@ -50,10 +58,29 @@ export function MapPanel({
   const inRouter = useInRouterContext();
   const network = useConnectivity();
   const state = useMarineSnapshot();
+  const { activate } = state;
   useEffect(() => {
-    if (!onSelect && !provided) state.activate();
-  }, [onSelect, provided, state.activate]);
+    if (!onSelect && !provided) activate();
+  }, [onSelect, provided, activate]);
   const s = provided ?? (onSelect ? undefined : state.snapshot);
+  const [alarmArmed, setAlarmArmed] = useState(() => {
+    try {
+      return localStorage.getItem("orca.alarm.armed") === "true";
+    } catch {
+      return false;
+    }
+  });
+  const [alarmNotice, setAlarmNotice] = useState("");
+  const lastAlarmKeyRef = useRef("");
+  const proximity = useMemo(() => evaluateProximityAlert(s), [s]);
+  useEffect(() => {
+    if (!alarmArmed || !proximity.triggered) return;
+    const key = `${s?.snapshot_id ?? "none"}:${proximity.reason}`;
+    if (lastAlarmKeyRef.current === key) return;
+    lastAlarmKeyRef.current = key;
+    playMaritimeAlarmTone();
+    announceProximityWarning(proximity.reason, lang);
+  }, [alarmArmed, proximity, s?.snapshot_id, lang]);
   const [preferredMode, setMode] = useState<"text" | "map" | "satellite">(() => {
     try {
       return !onSelect && localStorage.getItem("orca.map.mode") === "text"
@@ -239,6 +266,38 @@ export function MapPanel({
             ))}
         </div>
         <div className="map-toolbar-actions">
+          {!onSelect && !compact && (
+            <button
+              type="button"
+              className="map-tool"
+              aria-pressed={alarmArmed}
+              onClick={() => {
+                const next = !alarmArmed;
+                setAlarmArmed(next);
+                try {
+                  localStorage.setItem("orca.alarm.armed", String(next));
+                } catch {
+                  /* optional preference */
+                }
+                if (next) {
+                  playMaritimeAlarmTone();
+                  if (proximity.triggered) {
+                    announceProximityWarning(proximity.reason, lang);
+                    setAlarmNotice("");
+                  } else {
+                    setAlarmNotice("Proximity audio guard armed (monitoring EEZ & critical hazards).");
+                    window.setTimeout(() => setAlarmNotice(""), 3000);
+                  }
+                } else {
+                  setAlarmNotice("");
+                }
+              }}
+              title="Audio boundary and hazard proximity guard"
+            >
+              {alarmArmed ? <Volume2 size={16} /> : <VolumeX size={16} />}
+              {alarmArmed ? "Guard On" : "Guard Off"}
+            </button>
+          )}
           {!onSelect && mode !== "text" && (
             <button
               className="map-tool"
@@ -261,6 +320,20 @@ export function MapPanel({
           )}
         </div>
       </div>
+      {alarmArmed && proximity.triggered && !onSelect && !compact && (
+        <div
+          role="alert"
+          className="flex items-center gap-2 border-b border-rose-500/40 bg-rose-500/15 px-3 py-2 text-xs font-semibold text-rose-700 dark:text-rose-300"
+        >
+          <AlertTriangle size={15} className="shrink-0" aria-hidden />
+          <span>{proximity.reason}</span>
+        </div>
+      )}
+      {alarmNotice && !onSelect && !compact && (
+        <p role="status" className="border-b border-teal-500/30 bg-teal-500/10 px-3 py-1.5 text-xs">
+          {alarmNotice}
+        </p>
+      )}
       {mode !== "text" ? (
         <div
           className="map-canvas"

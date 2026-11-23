@@ -118,8 +118,15 @@ export type ChatMessage = {
 
 export type UserRole = "user" | "government" | "admin";
 
+export type VesselClass =
+  | "traditional_canoe"
+  | "motorized_gillnetter"
+  | "mechanized_trawler"
+  | "standard";
+
 export type OrcaUser = {
   operationalRegion?: string;
+  vesselClass?: VesselClass | null;
   id: string;
   name: string;
   contact: string;

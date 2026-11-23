@@ -964,3 +964,151 @@ export async function revokeAllSessions(): Promise<void> {
   const response = await apiFetch('/api/auth/sessions', { method: 'DELETE' });
   if (!response.ok) throw new Error(`Failed to revoke all sessions (${response.status})`);
 }
+
+export async function updateSOSStatus(sosId: string, nextStatus: 'RECEIVED' | 'RESPONDING' | 'RESOLVED') {
+  const response = await apiFetch(`/api/emergency/sos/${encodeURIComponent(sosId)}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: nextStatus }),
+  });
+  if (!response.ok) throw new Error(`Failed to update SOS status (${response.status})`);
+  return response.json();
+}
+
+export interface LunarTideEstimate {
+  status: string;
+  is_authoritative: boolean;
+  reliability_tier: string;
+  source: string;
+  date_ist: string;
+  lunar_age_days: number;
+  illumination_pct: number;
+  moon_phase: string;
+  tidal_regime: string;
+  regime_note: string;
+  estimated_high_tide_windows_ist: string[];
+  estimated_low_tide_windows_ist: string[];
+  disclaimer: string;
+}
+
+export async function fetchLunarTideEstimate(lat: number, lon: number, date?: string): Promise<LunarTideEstimate> {
+  const params = new URLSearchParams({ lat: String(lat), lon: String(lon) });
+  if (date) params.set('date', date);
+  const response = await fetch(`${API_BASE_URL}/api/marine/tide/lunar-estimate?${params.toString()}`, {
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!response.ok) throw new Error(`Lunar tide estimate unavailable (${response.status})`);
+  return response.json();
+}
+
+export interface TripEconomicsResult {
+  reliability_tier: string;
+  is_navigation_clearance: boolean;
+  vessel_class: string;
+  vessel_label: string;
+  fuel_price_inr: number;
+  one_way_distance_km: number;
+  round_trip_distance_km: number;
+  effective_speed_kmh: number;
+  sea_state_drag_factor: number;
+  estimated_transit_hours: number;
+  estimated_fuel_liters: number;
+  estimated_fuel_cost_inr: number;
+  estimated_co2_kg: number;
+  pfz_guided_savings_vs_blind_search: {
+    assumed_search_overhead_pct: number;
+    estimated_saved_liters: number;
+    estimated_saved_inr: number;
+  };
+  ranked_pfz_options: Array<{
+    id?: string | null;
+    name: string;
+    one_way_km: number;
+    round_trip_km: number;
+    estimated_hours: number;
+    estimated_fuel_liters: number;
+    estimated_cost_inr: number;
+  }>;
+  disclaimer: string;
+}
+
+export async function calculateTripEconomics(payload: {
+  origin_lat: number;
+  origin_lon: number;
+  vessel_class?: string;
+  fuel_price_inr?: number;
+  target_lat?: number;
+  target_lon?: number;
+  one_way_distance_km?: number;
+  wave_height_m?: number;
+  wind_speed_kmh?: number;
+  pfz_zones?: Array<Record<string, unknown>>;
+}): Promise<TripEconomicsResult> {
+  const response = await fetch(`${API_BASE_URL}/api/marine/trip-economics`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal: AbortSignal.timeout(10000),
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error(`Trip economics unavailable (${response.status})`);
+  return response.json();
+}
+
+export async function fetchPushConfig(): Promise<{ configured: boolean; vapid_public_key: string | null; subject?: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/notifications/push/config`, {
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!response.ok) throw new Error(`Push config unavailable (${response.status})`);
+  return response.json();
+}
+
+export async function subscribeWebPush(subscription: { endpoint: string; keys: { p256dh: string; auth: string } }) {
+  const response = await apiFetch('/api/notifications/push/subscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(subscription),
+  });
+  if (!response.ok) throw new Error(`Web Push subscription failed (${response.status})`);
+  return response.json();
+}
+
+export async function unsubscribeWebPush(endpoint: string) {
+  const response = await apiFetch('/api/notifications/push/subscribe', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint }),
+  });
+  if (!response.ok) throw new Error(`Web Push removal failed (${response.status})`);
+  return response.json();
+}
+
+export async function requestPasswordReset(emailOrPhone: string) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal: AbortSignal.timeout(15000),
+    body: JSON.stringify({ email_or_phone: emailOrPhone }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw Object.assign(
+      new Error(formatApiDetail(err.detail, 'Password reset request failed')),
+      { status: response.status, code: err.detail },
+    );
+  }
+  return response.json();
+}
+
+export async function confirmPasswordReset(token: string, newPassword: string) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal: AbortSignal.timeout(15000),
+    body: JSON.stringify({ token, new_password: newPassword }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(formatApiDetail(err.detail, 'Password reset failed'));
+  }
+  return response.json();
+}

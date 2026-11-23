@@ -21,9 +21,8 @@ def get_database_url() -> str:
     """
     url = os.getenv("DATABASE_URL", "").strip()
 
-    # Strip wrapping quotes if pasted with quotes ("..." or '...')
-    if (url.startswith('"') and url.endswith('"')) or (url.startswith("'") and url.endswith("'")):
-        url = url[1:-1].strip()
+    # Strip unmatched/wrapping quotes and stray whitespace/newlines if pasted from dashboard UI
+    url = url.strip().strip('"').strip("'").strip()
 
     if not url or url.lower() in ("none", "null", "undefined", "false", '""', "''"):
         # Fallback to local SQLite database in workspace
@@ -69,6 +68,7 @@ engine_kwargs = {"echo": False}
 
 if DATABASE_URL.startswith("sqlite"):
     connect_args["check_same_thread"] = False
+    connect_args["timeout"] = 30
     if DATABASE_URL.endswith(":memory:"):
         engine_kwargs["poolclass"] = StaticPool
 else:
@@ -119,7 +119,15 @@ def get_db_context() -> Generator[Session, None, None]:
 
 def init_db() -> None:
     """Creates all registered SQLAlchemy tables if they do not already exist."""
+    from sqlalchemy import inspect, text
     from app.db.base import Base
     import app.db.models  # Ensure all models are imported into metadata
     Base.metadata.create_all(bind=engine)
+    try:
+        cols = {col["name"] for col in inspect(engine).get_columns("user_preferences")}
+        if "vessel_class" not in cols:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE user_preferences ADD COLUMN vessel_class VARCHAR(40)"))
+    except Exception as exc:
+        logger.warning("Column verification note on user_preferences: %s", type(exc).__name__)
     logger.info("Initialized database schema and tables.")

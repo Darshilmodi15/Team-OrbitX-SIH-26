@@ -56,8 +56,9 @@ export function MarineConditions({ data, tide = null, snapshot }: { data: Marine
   const { lang, t } = useI18n();
   const copy = marineCopy[lang] ?? marineCopy.en;
   const stamp = (value?: string | null) => value && Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleString(lang, { timeZoneName: "short" }) : "—";
+  const [renderTimeMs] = useState(() => Date.now());
   const parsedDataTime = Date.parse(data.time);
-  const mode = data.dataMode === "unavailable" ? "unavailable" : Number.isFinite(parsedDataTime) && Date.now() - parsedDataTime > 3 * 3600000 ? "stale" : data.dataMode;
+  const mode = data.dataMode === "unavailable" ? "unavailable" : Number.isFinite(parsedDataTime) && renderTimeMs - parsedDataTime > 3 * 3600000 ? "stale" : data.dataMode;
   const updatedAt = useMemo(
     () => data.fetchedAt != null && Number.isFinite(data.fetchedAt) ? new Date(data.fetchedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "—",
     [data.fetchedAt],

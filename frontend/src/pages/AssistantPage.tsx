@@ -420,13 +420,17 @@ export default function AssistantPage() {
         })
         .finally(() => { if (!cancelled) setHistoryLoading(false); });
     };
-    setActiveThreadId(conversationId || "");
-    setChatError(null);
-    retryRequest.current = null;
-    if (newlyCreatedConversation.current === conversationId) {
-      newlyCreatedConversation.current = null;
-      setHistoryLoading(false);
-    } else sync();
+    const timer = Promise.resolve().then(() => {
+      if (cancelled) return;
+      setActiveThreadId(conversationId || "");
+      setChatError(null);
+      retryRequest.current = null;
+      if (newlyCreatedConversation.current === conversationId) {
+        newlyCreatedConversation.current = null;
+        setHistoryLoading(false);
+      } else sync();
+    });
+    void timer;
     window.addEventListener("focus", sync);
     return () => {
       cancelled = true;
@@ -441,12 +445,15 @@ export default function AssistantPage() {
   }, [currentThread.messages.length, isThinking]);
 
   useEffect(() => {
+    const audioSeq = audioSeqRef;
+    const copyTimer = copyTimerRef;
+    const currentAudio = currentAudioRef;
     return () => {
-      audioSeqRef.current++;
-      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
-      if (currentAudioRef.current) {
-        currentAudioRef.current.pause();
-        currentAudioRef.current = null;
+      audioSeq.current++;
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+      if (currentAudio.current) {
+        currentAudio.current.pause();
+        currentAudio.current = null;
       }
     };
   }, []);
@@ -460,10 +467,16 @@ export default function AssistantPage() {
   }, [input]);
   useEffect(() => {
     const prompt = new URLSearchParams(route.search).get("prompt");
-    if (prompt && !conversationId) {
+    if (!prompt || conversationId) return;
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (cancelled) return;
       setInput(prompt.slice(0, 4000));
       inputRef.current?.focus();
-    }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [route.search, conversationId]);
   useEffect(() => {
     if (!mobileDrawerOpen) return;
@@ -498,16 +511,14 @@ export default function AssistantPage() {
     };
   }, [mobileDrawerOpen]);
 
+  const { adopt } = marine;
   useEffect(() => {
-    if (!mapSnapshotId) {
-      setMapContextError(false);
-      return;
-    }
+    if (!mapSnapshotId) return;
     let cancelled = false;
-    setMapContextError(false);
     void fetchSnapshotById(mapSnapshotId)
       .then((snapshot) => {
         if (cancelled) return;
+        setMapContextError(false);
         if (
           snapshot.location.lat !== location?.coords.lat ||
           snapshot.location.lon !== location?.coords.lon
@@ -515,7 +526,7 @@ export default function AssistantPage() {
           setMapContextError(true);
           return;
         }
-        marine.adopt(snapshot);
+        adopt(snapshot);
         setResolvedMapSnapshot(mapContextKey);
       })
       .catch(() => {
@@ -524,7 +535,7 @@ export default function AssistantPage() {
     return () => {
       cancelled = true;
     };
-  }, [mapSnapshotId, location?.coords.lat, location?.coords.lon, marine.adopt]);
+  }, [mapSnapshotId, mapContextKey, location?.coords.lat, location?.coords.lon, adopt]);
 
   async function createNewThread() {
     stopAudio();

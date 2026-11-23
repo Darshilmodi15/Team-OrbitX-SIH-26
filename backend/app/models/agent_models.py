@@ -122,6 +122,7 @@ class RiskEvidence(BaseModel):
     missing_evidence: List[str] = Field(default_factory=list)
     evidence_completeness: str = Field(default="unavailable")
     assessment_type: str = Field(default="ORCA_HEURISTIC")
+    vessel_class: Optional[str] = Field(default=None, description="Applied vessel operating profile if specified")
     level: str = Field(..., description="Assessed risk level ('safe', 'caution', 'unsafe')")
     reason: str = Field(..., description="Actionable rationale explaining the risk classification")
     factors: List[str] = Field(default_factory=list, description="Specific triggers or parameter thresholds evaluated")

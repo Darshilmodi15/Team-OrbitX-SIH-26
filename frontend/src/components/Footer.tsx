@@ -1,7 +1,7 @@
 import React from 'react';
 import { useI18n } from '@/lib/orca/i18n';
 import { Link } from 'react-router-dom';
-import { openCookieSettings } from './CookieBanner';
+import { openCookieSettings } from '@/lib/orca/cookies';
 
 interface FooterProps {
   currentLang?: string;

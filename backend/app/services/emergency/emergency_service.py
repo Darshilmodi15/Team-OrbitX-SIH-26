@@ -280,6 +280,25 @@ class EmergencyService:
             raise HTTPException(status_code=503, detail="SOS_STORAGE_UNAVAILABLE")
 
         logger.info("SOS request stored: %s", sos_id)
+
+        # Optional env-configured SMS dispatch to emergency duty officers
+        try:
+            import os
+            from app.services.sms import get_sms_transport, is_sms_configured
+            recipients_raw = os.getenv("SOS_ALERT_RECIPIENTS", "").strip()
+            if recipients_raw and is_sms_configured():
+                transport = get_sms_transport()
+                sms_body = (
+                    f"ORCA SOS {sos_id}: {req.emergency_nature.value} at "
+                    f"{req.lat:.4f},{req.lon:.4f} ({req.location_name or 'Unspecified'}). "
+                    f"MRCC: {assigned_mrcc}"
+                )
+                for dest in recipients_raw.split(","):
+                    if dest.strip():
+                        transport.send(dest.strip(), sms_body)
+        except Exception as sms_err:
+            logger.warning("Optional SOS SMS alert skipped: %s", type(sms_err).__name__)
+
         return response
 
     def update_details(self, sos_id, user_id, request):

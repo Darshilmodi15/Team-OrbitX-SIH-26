@@ -11,8 +11,10 @@ logger = logging.getLogger(__name__)
 
 from app.models.user_models import (
     AuthResponse,
+    ForgotPasswordRequest,
     LoginRequest,
     RegisterRequest,
+    ResetPasswordRequest,
     UpdateProfileRequest,
     UserProfile,
     UserRole,
@@ -175,7 +177,7 @@ def update_user_profile(
     authorization: Optional[str] = Header(None),
 ):
     """
-    Updates language preference, notification permissions, or display name.
+    Updates language preference, notification permissions, vessel profile, or display name.
     """
     user = get_current_user_from_header(authorization)
     updated = auth_service.update_profile(
@@ -184,10 +186,35 @@ def update_user_profile(
         preferred_language=request.preferred_language,
         location_permission_status=request.location_permission_status,
         location_sharing_enabled=request.location_sharing_enabled,
+        vessel_class=request.vessel_class,
     )
     if not updated:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Profile update failed")
     return updated
+
+
+@router.post("/forgot-password")
+def forgot_password(request: ForgotPasswordRequest, req: Request):
+    """Initiates password reset using configured email (SMTP) or SMS transport."""
+    client_ip = req.client.host if req.client else "unknown"
+    rate_limiter.check("auth_forgot_password", client_ip, limit=5, window_seconds=300)
+    auth_service.request_password_reset(request.email_or_phone)
+    return {
+        "status": "ok",
+        "message": "If a matching account exists, password reset instructions have been sent.",
+    }
+
+
+@router.post("/reset-password")
+def reset_password(request: ResetPasswordRequest, req: Request):
+    """Completes password reset with a valid single-use reset code and revokes prior sessions."""
+    client_ip = req.client.host if req.client else "unknown"
+    rate_limiter.check("auth_reset_password", client_ip, limit=10, window_seconds=300)
+    try:
+        auth_service.confirm_password_reset(request.token, request.new_password)
+        return {"status": "ok", "message": "Password updated successfully. Please sign in again."}
+    except ValueError as err:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(err))
 
 
 @router.get("/sessions")

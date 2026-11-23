@@ -31,7 +31,7 @@ export function VoiceControls(props: Props) {
   const [error, setError] = useState("");
   const [transcript, setTranscript] = useState("");
   const current = useRef({ ...props, lang });
-  current.current = { ...props, lang };
+  const phaseState = useRef({ mode, phase });
   const generation = useRef(0);
   const busy = useRef(false);
   const recorder = useRef<MediaRecorder | null>(null);
@@ -42,6 +42,10 @@ export function VoiceControls(props: Props) {
   const cancelPlayback = useRef<(() => void) | null>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const previousThread = useRef(props.threadId);
+  useEffect(() => {
+    current.current = { ...props, lang };
+    phaseState.current = { mode, phase };
+  });
   const labels =
     lang === "gu"
       ? {
@@ -107,31 +111,37 @@ export function VoiceControls(props: Props) {
     setPhase("idle");
     setLevel(0);
   }
+  const cancelRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    cancelRef.current = cancel;
+  });
   useEffect(() => {
     const hide = () => {
-      if (document.hidden) cancel();
+      if (document.hidden) cancelRef.current();
     };
     document.addEventListener("visibilitychange", hide);
     return () => {
       document.removeEventListener("visibilitychange", hide);
-      cancel();
+      cancelRef.current();
     };
   }, []);
   useEffect(() => {
     const previous = previousThread.current;
     previousThread.current = props.threadId;
+    const { mode: currentMode, phase: currentPhase } = phaseState.current;
     if (
       previous !== props.threadId &&
-      !(mode === "conversation" && phase === "thinking" && !previous)
+      !(currentMode === "conversation" && currentPhase === "thinking" && !previous)
     )
-      cancel();
+      cancelRef.current();
   }, [props.threadId]);
+  const isIdle = phase === "idle";
   useEffect(() => {
-    if (mode !== "conversation" || phase === "idle") return;
+    if (mode !== "conversation" || isIdle) return;
     const previous = document.activeElement as HTMLElement | null;
     dialog.current?.focus();
     const key = (event: KeyboardEvent) => {
-      if (event.key === "Escape") cancel();
+      if (event.key === "Escape") cancelRef.current();
       if (event.key === "Tab") {
         const nodes = dialog.current?.querySelectorAll<HTMLElement>(
           "button:not(:disabled)",
@@ -157,7 +167,7 @@ export function VoiceControls(props: Props) {
       document.removeEventListener("keydown", key);
       previous?.focus();
     };
-  }, [mode, phase === "idle"]);
+  }, [mode, isIdle]);
   async function speak(text: string, language: string, version: number) {
     const chunks = (
       text

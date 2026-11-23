@@ -27,7 +27,7 @@ function parseInline(text: string): React.ReactNode[] {
   // 3. Inline code (`...`)
   // 4. Links ([text](url))
   // 5. Italic (*...* or _..._)
-  const pattern = /(\*\*\*[\s\S]+?\*\*\*|___[\s\S]+?___|\*\*[\s\S]+?\*\*|__[\s\S]+?__|`[^`\n]+`|\[[^\]\n]+\]\([^)\n]+\)|\*[^\*\n]+?\*|_[^_\n]+?_)/g;
+  const pattern = /(\*\*\*[\s\S]+?\*\*\*|___[\s\S]+?___|\*\*[\s\S]+?\*\*|__[\s\S]+?__|`[^`\n]+`|\[[^\]\n]+\]\([^)\n]+\)|\*[^*\n]+?\*|_[^_\n]+?_)/g;
 
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -169,7 +169,7 @@ function parseBlocks(rawText: string): BlockType[] {
     }
 
     // Bullet list item (e.g. • text, - text, * text)
-    const bulletMatch = trimmed.match(/^([•\-\*])\s+(.+)$/);
+    const bulletMatch = trimmed.match(/^([•\-*])\s+(.+)$/);
     if (bulletMatch) {
       flushParagraph();
       flushNumberedList();
@@ -178,7 +178,7 @@ function parseBlocks(rawText: string): BlockType[] {
     }
 
     // Numbered list item (e.g. 1. text, 2) text)
-    const numberedMatch = trimmed.match(/^(\d+)[\.\)]\s+(.+)$/);
+    const numberedMatch = trimmed.match(/^(\d+)[.)]\s+(.+)$/);
     if (numberedMatch) {
       flushParagraph();
       flushBulletList();

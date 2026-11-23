@@ -39,7 +39,9 @@ function loadGoogle(): Promise<void> {
 export function GoogleSignInButton({ onSuccess, onError, disabled }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const callbacks = useRef({ onSuccess, onError, disabled });
-  callbacks.current = { onSuccess, onError, disabled };
+  useEffect(() => {
+    callbacks.current = { onSuccess, onError, disabled };
+  });
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
   useEffect(() => {

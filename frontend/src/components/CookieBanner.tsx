@@ -13,31 +13,35 @@ export interface CookieConsentPreferences {
 
 const STORAGE_KEY = "orca_cookie_consent";
 
+function readStoredPrefs(): Partial<CookieConsentPreferences> | null {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as unknown;
+    return parsed && typeof parsed === "object" ? (parsed as Partial<CookieConsentPreferences>) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function CookieBanner() {
   const { lang, t } = useI18n();
   const copy = reviewCopy(lang);
   const [isOpen, setIsOpen] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
-  const [telemetryAllowed, setTelemetryAllowed] = useState(false);
-  const [analyticsAllowed, setAnalyticsAllowed] = useState(false);
+  const [telemetryAllowed, setTelemetryAllowed] = useState(() => Boolean(readStoredPrefs()?.telemetry));
+  const [analyticsAllowed, setAnalyticsAllowed] = useState(() => Boolean(readStoredPrefs()?.analytics));
 
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (!stored) {
-        // Delay showing banner slightly for smooth page entry
         const timer = setTimeout(() => setIsOpen(true), 800);
         return () => clearTimeout(timer);
-      } else {
-        const parsed = JSON.parse(stored) as unknown;
-        if (parsed && typeof parsed === "object") {
-          const prefs = parsed as Partial<CookieConsentPreferences>;
-          setTelemetryAllowed(Boolean(prefs.telemetry));
-          setAnalyticsAllowed(Boolean(prefs.analytics));
-        }
       }
     } catch {
-      setIsOpen(true);
+      const timer = setTimeout(() => setIsOpen(true), 0);
+      return () => clearTimeout(timer);
     }
   }, []);
 
@@ -100,10 +104,4 @@ export function CookieBanner() {
     </div>
   </aside>;
 
-}
-
-export function openCookieSettings() {
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent("orca:open-cookie-settings"));
-  }
 }

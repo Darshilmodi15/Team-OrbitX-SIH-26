@@ -5,6 +5,7 @@ from datetime import timedelta
 from fastapi import HTTPException
 from app.data.pfz.mock import haversine_km
 from app.agents.risk_agent import assess_risk
+from app.models.agent_models import HazardAlertEvidence
 from app.models.marine_snapshot import MarineSnapshot, SnapshotWeather
 
 # Names and coordinates already defined by the location service / ingestion hubs.
@@ -12,6 +13,11 @@ SCENARIOS = {
     "mumbai": {"name": "Mumbai Port & Sassoon Dock", "lat": 18.9220, "lon": 72.8347},
     "surat": {"name": "Surat / Hazira", "lat": 21.10, "lon": 72.70},
     "veraval": {"name": "Veraval Port", "lat": 20.90, "lon": 70.37},
+}
+SCENARIO_SPECIES = {
+    "mumbai": ["Indian Mackerel", "Oil Sardine", "Pomfret"],
+    "surat": ["Bombay Duck", "Silver Pomfret", "Hilsa"],
+    "veraval": ["Yellowfin Tuna", "Indian Squid", "Ribbonfish"],
 }
 SOURCE = "ORCA Illustrative Dataset [SIMULATION]"
 
@@ -29,8 +35,9 @@ class LiveProvider:
 
 
 class DemoScenarioProvider:
-    def __init__(self, live, scenario, now):
+    def __init__(self, live, scenario, now, vessel_class=None):
         self.live, self.scenario, self.now = live, scenario, now
+        self.vessel_class = vessel_class
 
     def snapshot(self):
         result = self.live.snapshot()
@@ -63,21 +70,58 @@ class DemoScenarioProvider:
         lat, lon = scenario["lat"]-0.12, scenario["lon"]-0.22
         sector = {"type": "Polygon", "coordinates": [[[lon-.12,lat-.12],[lon+.12,lat-.12],
             [lon+.12,lat+.12],[lon-.12,lat+.12],[lon-.12,lat-.12]]]}
+        species_list = SCENARIO_SPECIES.get(self.scenario, [])
         zones = [{"id": self.scenario+"-demo-"+str(i), "landing_centre": scenario["name"],
             "latitude": lat+dy, "longitude": lon+dx,
             "distance_km": round(haversine_km(result.location.lat,result.location.lon,lat+dy,lon+dx),2),
+            "depth_m": 28 + i * 12,
+            "species": species_list,
             "geometry": sector if i == 0 else None,
             "geometry_meaning": "illustrative_search_region" if i == 0 else None}
             for i,(dy,dx) in enumerate([(0,0),(.06,-.05),(-.05,.07)])]
         risk = assess_risk({**weather.model_dump(), "swell_wave_height_m": weather.swell_height_m,
             "ocean_current_speed_kmh": weather.current_speed, "source": SOURCE,
-            "cache_status": "cached", "is_mock": True})
+            "cache_status": "cached", "is_mock": True}, vessel_class=self.vessel_class)
+        demo_hazards = []
+        if self.scenario == "veraval":
+            demo_hazards = [
+                HazardAlertEvidence(
+                    id=f"demo-wave-{self.scenario}",
+                    severity="warning",
+                    title="DEMO ADVISORY: Rough Sea & Strong Wind Scenario",
+                    message=(
+                        f"Illustrative scenario for {scenario['name']}: wave height {weather.wave_height_m:.1f} m "
+                        f"and wind {weather.wind_speed_kmh:.0f} km/h. Demo data only — not live telemetry."
+                    ),
+                    location_desc=f"{scenario['name']} ({scenario['lat']:.2f}N, {scenario['lon']:.2f}E)",
+                    timestamp=result.request.requested_time,
+                    source=SOURCE,
+                    freshness="SIMULATED",
+                ).model_dump()
+            ]
+        elif self.scenario == "surat":
+            demo_hazards = [
+                HazardAlertEvidence(
+                    id=f"demo-wave-{self.scenario}",
+                    severity="advisory",
+                    title="DEMO ADVISORY: Moderate Chop Scenario",
+                    message=(
+                        f"Illustrative scenario for {scenario['name']}: wave height {weather.wave_height_m:.1f} m "
+                        f"and wind {weather.wind_speed_kmh:.0f} km/h. Demo data only — not live telemetry."
+                    ),
+                    location_desc=f"{scenario['name']} ({scenario['lat']:.2f}N, {scenario['lon']:.2f}E)",
+                    timestamp=result.request.requested_time,
+                    source=SOURCE,
+                    freshness="SIMULATED",
+                ).model_dump()
+            ]
         return result.model_copy(update={
             "location": result.location.model_copy(update={"name": scenario["name"]}),
             "weather": weather, "ocean": {"sst_c":28.2,"chlorophyll":None},
             "pfz": {"availability":"available","advisory_id":self.scenario+"-illustrative-v1",
                 "issued_at":issued.isoformat(),"valid_until":valid.isoformat(),"source":SOURCE,"zones":zones},
-            "hazards": [], "risk": {**risk.model_dump(), "reasons":["Demo Scenario — not live conditions.",risk.reason,*[f"{key}: {value}" for key, value in risk.available_evidence.items()],*risk.factors]},
+            "hazards": demo_hazards,
+            "risk": {**risk.model_dump(), "reasons":["Demo Scenario — not live conditions.",risk.reason,*[f"{key}: {value}" for key, value in risk.available_evidence.items()],*risk.factors]},
             "provenance": {**result.provenance,"provider":[SOURCE],"source":[SOURCE],"cache_status":"simulated",
                 "demo_scenario":self.scenario,"measurement_kind":"illustrative","fields":fields,
                 "forecast_valid_at":result.request.requested_time,"issued_at":issued.isoformat(),

@@ -1,12 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import {
   CheckCircle2,
   ArrowRight,
-  LayoutDashboard,
   MessageSquare,
-  Map as MapIcon,
   ShieldCheck,
   Clock,
   Printer,
@@ -17,15 +15,13 @@ import { trackEvent } from "@/lib/orca/analytics";
 
 export default function ThankYouPage() {
   const [searchParams] = useSearchParams();
-  const [txId, setTxId] = useState("");
-  const [formattedDate, setFormattedDate] = useState("");
+  const txId = "Unavailable";
+  const formattedDate = "Unavailable";
 
   const reason = searchParams.get("reason") || "submission";
   const email = searchParams.get("email") || "";
 
   useEffect(() => {
-    setTxId("Unavailable");
-    setFormattedDate("Unavailable");
     trackEvent("thank_you_page_viewed", { reason });
   }, [reason]);
 

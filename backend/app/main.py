@@ -74,11 +74,13 @@ from app.routers.chat import router as chat_router
 from app.routers.auth import get_current_user_from_header, require_roles
 from app.db.session import get_db
 from app.db.models import Conversation, ChatRequestRecord
-from app.models.user_models import UserProfile, UserRole
+from app.models.user_models import UserProfile, UserRole, VALID_VESSEL_CLASSES
 from app.services.chat_service import chat_storage_service
 from app.services.marine_snapshot_service import marine_snapshot_service
 from app.models.marine_snapshot import MarineSnapshot
 from app.services.rate_limit import rate_limiter
+from app.services.tide_service import compute_lunar_tide_estimate, get_authoritative_tide
+from app.services.trip_economics import calculate_trip_economics
 from app.services.bhashini import BHASHINI_MODELS, SUPPORTED_LANGUAGES, bhashini_service
 from app.services.dialogue_synthesizer import DialogueSynthesizer
 from app.services.provider_health import ProviderUnavailable, snapshot
@@ -255,16 +257,39 @@ def get_providers_health():
     }
 
 
+def _validate_vessel_class(vessel_class: Optional[str]) -> Optional[str]:
+    if vessel_class is None:
+        return None
+    cleaned = vessel_class.strip().lower()
+    if not cleaned:
+        return None
+    if cleaned not in VALID_VESSEL_CLASSES:
+        raise HTTPException(status_code=422, detail="UNSUPPORTED_VESSEL_CLASS")
+    return cleaned
+
+
 @app.get("/api/marine/snapshot", response_model=MarineSnapshot)
 def get_snapshot(
     demo_scenario: Optional[str] = None,
     requested_time: Optional[str] = None,
     lat: Optional[float] = Query(None, ge=-90, le=90, allow_inf_nan=False),
     lon: Optional[float] = Query(None, ge=-180, le=180, allow_inf_nan=False),
+    vessel_class: Optional[str] = Query(None),
     user: UserProfile = Depends(get_current_user_from_header),
     db: Session = Depends(get_db),
 ):
-    return marine_snapshot_service.resolve(db, user.id, weather_provider, requested_time, lat, lon, demo_scenario)
+    validated_vessel = _validate_vessel_class(vessel_class)
+    effective_vessel = validated_vessel or (None if user.vessel_class in (None, "standard") else user.vessel_class)
+    return marine_snapshot_service.resolve(
+        db,
+        user.id,
+        weather_provider,
+        requested_time,
+        lat,
+        lon,
+        demo_scenario,
+        vessel_class=effective_vessel,
+    )
 
 
 @app.get("/api/marine/demo-scenarios")
@@ -303,7 +328,9 @@ def get_marine_risk_endpoint(
     lon: float = Query(72.8347, ge=-180, le=180, allow_inf_nan=False),
     date: Optional[str] = Query(None),
     time_hint: Optional[str] = Query(None),
+    vessel_class: Optional[str] = Query(None),
 ):
+    validated_vessel = _validate_vessel_class(vessel_class)
     temporal_res = resolve_query_time(text=time_hint or "", request_date=date)
     weather = get_marine_weather(
         provider=weather_provider,
@@ -313,7 +340,7 @@ def get_marine_risk_endpoint(
         time_hint=temporal_res.time_hint,
         temporal_res=temporal_res,
     )
-    risk = assess_risk(weather)
+    risk = assess_risk(weather, vessel_class=validated_vessel)
     res = risk.model_dump()
     if risk.profile:
         prof = risk.profile.model_dump()
@@ -491,7 +518,7 @@ class DetectLanguageRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=8000, description="Text to identify language for")
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def root_status():
     return {
         "status": "healthy",
@@ -1480,10 +1507,76 @@ def get_zone_avoidance_endpoint(
     return evidence.model_dump()
 
 
+class TripEconomicsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    origin_lat: float = Field(..., ge=-90, le=90, allow_inf_nan=False)
+    origin_lon: float = Field(..., ge=-180, le=180, allow_inf_nan=False)
+    vessel_class: Optional[str] = Field(default="motorized_gillnetter", max_length=40)
+    fuel_price_inr: float = Field(default=95.0, ge=1.0, le=1000.0, allow_inf_nan=False)
+    target_lat: Optional[float] = Field(default=None, ge=-90, le=90, allow_inf_nan=False)
+    target_lon: Optional[float] = Field(default=None, ge=-180, le=180, allow_inf_nan=False)
+    one_way_distance_km: Optional[float] = Field(default=None, ge=0.1, le=2000.0, allow_inf_nan=False)
+    wave_height_m: Optional[float] = Field(default=None, ge=0.0, le=30.0, allow_inf_nan=False)
+    wind_speed_kmh: Optional[float] = Field(default=None, ge=0.0, le=300.0, allow_inf_nan=False)
+    pfz_zones: Optional[List[Dict[str, Any]]] = None
+
+
+@app.post("/api/marine/trip-economics")
+def compute_trip_economics_post(request: TripEconomicsRequest):
+    """Calculates heuristic transit time, fuel burn, INR cost, and PFZ savings."""
+    return calculate_trip_economics(
+        origin_lat=request.origin_lat,
+        origin_lon=request.origin_lon,
+        vessel_class=request.vessel_class,
+        fuel_price_inr=request.fuel_price_inr,
+        target_lat=request.target_lat,
+        target_lon=request.target_lon,
+        one_way_distance_km=request.one_way_distance_km,
+        wave_height_m=request.wave_height_m,
+        wind_speed_kmh=request.wind_speed_kmh,
+        pfz_zones=request.pfz_zones,
+    )
+
+
+@app.get("/api/marine/trip-economics")
+def compute_trip_economics_get(
+    origin_lat: float = Query(18.9220, ge=-90, le=90, allow_inf_nan=False),
+    origin_lon: float = Query(72.8347, ge=-180, le=180, allow_inf_nan=False),
+    vessel_class: Optional[str] = Query("motorized_gillnetter"),
+    fuel_price_inr: float = Query(95.0, ge=1.0, le=1000.0, allow_inf_nan=False),
+    target_lat: Optional[float] = Query(None, ge=-90, le=90, allow_inf_nan=False),
+    target_lon: Optional[float] = Query(None, ge=-180, le=180, allow_inf_nan=False),
+    one_way_distance_km: Optional[float] = Query(None, ge=0.1, le=2000.0, allow_inf_nan=False),
+):
+    """GET helper for quick vessel trip & fuel economics estimation."""
+    return calculate_trip_economics(
+        origin_lat=origin_lat,
+        origin_lon=origin_lon,
+        vessel_class=vessel_class,
+        fuel_price_inr=fuel_price_inr,
+        target_lat=target_lat,
+        target_lon=target_lon,
+        one_way_distance_km=one_way_distance_km,
+    )
+
+
+@app.get("/api/marine/tide/lunar-estimate")
+def get_lunar_tide_estimate_endpoint(
+    lat: float = Query(18.9220, ge=-90, le=90, allow_inf_nan=False),
+    lon: float = Query(72.8347, ge=-180, le=180, allow_inf_nan=False),
+    date: Optional[str] = Query(None),
+):
+    """Returns clearly labeled non-authoritative astronomical lunar-phase & tidal window estimate."""
+    return compute_lunar_tide_estimate(lat=lat, lon=lon, target_date=date)
+
+
 @app.get("/api/marine/tide")
 def get_marine_tide_endpoint(
     lat: float = Query(18.9220, ge=-90, le=90, allow_inf_nan=False),
     lon: float = Query(72.8347, ge=-180, le=180, allow_inf_nan=False),
 ):
-    """Returns tidal predictions, high/low tide timings, and tidal ranges."""
+    """Returns authoritative harmonic tidal predictions when WorldTides or Stormglass is configured."""
+    tide = get_authoritative_tide(lat=lat, lon=lon)
+    if tide is not None:
+        return tide
     raise HTTPException(status_code=503, detail="TIDE_FEED_UNAVAILABLE")

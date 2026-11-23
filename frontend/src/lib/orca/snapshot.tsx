@@ -26,10 +26,11 @@ export type MarineSnapshot = {
 };
 const PREFIX = "orca.marine.cache.snapshot.v1.";
 export function snapshotExpired(s: MarineSnapshot, now = Date.now()) { return !Number.isFinite(Date.parse(s.expires_at)) || Date.parse(s.expires_at) <= now; }
-export async function fetchSnapshot(requestedTime?: string, signal?: AbortSignal, demoScenario?: string): Promise<MarineSnapshot> {
+export async function fetchSnapshot(requestedTime?: string, signal?: AbortSignal, demoScenario?: string, vesselClass?: string | null): Promise<MarineSnapshot> {
   const params = new URLSearchParams();
   if(requestedTime) params.set("requested_time",requestedTime);
   if(demoScenario) params.set("demo_scenario",demoScenario);
+  if(vesselClass && vesselClass !== "standard") params.set("vessel_class", vesselClass);
   const response = await apiFetch(`/api/marine/snapshot?${params}`, { signal });
   if (!response.ok) throw Object.assign(new Error("SNAPSHOT_UNAVAILABLE"), { status: response.status, detail: (await response.json().catch(() => ({}))).detail });
   return response.json();
@@ -73,16 +74,30 @@ export function MarineSnapshotProvider({children}: {children:ReactNode}) {
   const {user,location,token,locationReady,setLocation}=useSession();
   const client=useQueryClient();
   const [active,setActive]=useState("");
-  const [demoScenario,setDemoScenario]=useState("");
-  const [requestedTime,setRequestedTime]=useState<string>();
+  const [demoState, setDemoState] = useState<{ owner: string; value: string }>({ owner: "none", value: "" });
+  const [reqTimeState, setReqTimeState] = useState<{ scope: string; value?: string }>({ scope: "" });
   const [offline,setOffline]=useState(()=>typeof navigator !== "undefined" ? !navigator.onLine : false);
   const [, setExpiryTick] = useState(0);
-  const owner=user?.id || "none", lat=location?.coords.lat, lon=location?.coords.lon;
-  const key=useMemo(()=>["canonical-snapshot",owner,lat,lon,requestedTime || "current",demoScenario],[owner,lat,lon,requestedTime,demoScenario]);
+  const owner=user?.id || "none", lat=location?.coords.lat, lon=location?.coords.lon, vesselClass=user?.vesselClass || "";
+  const scope = `${owner}:${lat}:${lon}`;
+  const demoScenario = demoState.owner === owner ? demoState.value : "";
+  const requestedTime = reqTimeState.scope === scope ? reqTimeState.value : undefined;
+  const setDemoScenario = useCallback((value: string) => setDemoState({ owner, value }), [owner]);
+  const setRequestedTime = useCallback(
+    (updater?: string | ((prev?: string) => string | undefined)) => {
+      setReqTimeState((prev) => {
+        const currentVal = prev.scope === scope ? prev.value : undefined;
+        const nextVal = typeof updater === "function" ? updater(currentVal) : updater;
+        return { scope, value: nextVal };
+      });
+    },
+    [scope],
+  );
+  const key=useMemo(()=>["canonical-snapshot",owner,lat,lon,requestedTime || "current",demoScenario,vesselClass],[owner,lat,lon,requestedTime,demoScenario,vesselClass]);
   const saved=useMemo(()=>readSaved(owner,lat,lon),[owner,lat,lon]);
   const query=useQuery({queryKey:key, enabled:active === `${owner}:${lat}:${lon}` && !!user && !!location && locationReady,
     queryFn:async ({signal})=>{
-      const result=await fetchSnapshot(requestedTime,signal,demoScenario);
+      const result=await fetchSnapshot(requestedTime,signal,demoScenario,vesselClass || undefined);
       if(result.location.lat !== lat || result.location.lon !== lon) {
         const saved = await fetchSavedLocation();
         if(!signal.aborted && saved?.is_coastal_supported) setLocation({coords:{lat:saved.lat,lon:saved.lon},label:`${saved.lat}, ${saved.lon}`,area:"coastal",source:"manual",distanceToCoastKm:saved.distance_to_coast_km});
@@ -92,8 +107,6 @@ export function MarineSnapshotProvider({children}: {children:ReactNode}) {
       return result;
     }, staleTime:300000, refetchInterval: connectivity === "OFFLINE" ? false : connectivity === "DEGRADED" ? 900000 : 300000, retry:1,
     placeholderData:saved && (saved.provenance.demo_scenario || "") === demoScenario && (!requestedTime || saved.request.requested_time === requestedTime) ? saved : undefined});
-  useEffect(()=>{setRequestedTime(undefined);},[owner,lat,lon]);
-  useEffect(()=>{setDemoScenario("");},[owner]);
   const snapshot=query.data;
   const expired = !!snapshot && snapshotExpired(snapshot);
   useEffect(()=>{
@@ -119,13 +132,13 @@ export function MarineSnapshotProvider({children}: {children:ReactNode}) {
       return Number.isFinite(ms) && ms < Date.now() - 22 * 3600000 ? undefined : prev;
     });
     setActive(`${owner}:${lat}:${lon}`);
-  },[owner,lat,lon]);
+  },[owner,lat,lon,setRequestedTime]);
   const adopt=useCallback((s:MarineSnapshot)=>{
     if(s.location.lat !== lat || s.location.lon !== lon) return;
     const reqMs = Date.parse(s.request.requested_time);
     const isNearCurrent = Number.isFinite(reqMs) && Math.abs(reqMs - Date.now()) < 3600000;
     const scenario = s.provenance.demo_scenario || "";
-    const nextKey=["canonical-snapshot",owner,lat,lon,isNearCurrent ? "current" : s.request.requested_time,scenario];
+    const nextKey=["canonical-snapshot",owner,lat,lon,isNearCurrent ? "current" : s.request.requested_time,scenario,vesselClass];
     setDemoScenario(scenario);
     client.setQueryData(nextKey,s);
     setRequestedTime(isNearCurrent ? undefined : s.request.requested_time);
@@ -134,9 +147,9 @@ export function MarineSnapshotProvider({children}: {children:ReactNode}) {
         sessionStorage.setItem(PREFIX+owner,JSON.stringify(s));
       }
     } catch { /* Optional storage. */ }
-  },[client,owner,lat,lon,token]);
+  },[client,owner,lat,lon,token,vesselClass,setDemoScenario,setRequestedTime]);
   const value=useMemo(()=>({demoScenario,setDemoScenario,snapshot,isPending:query.isPending,isError:query.isError,isFetching:query.isFetching,
-    offline:offline || query.isError || expired,activate,refetch:query.refetch,adopt,requestedTime,setRequestedTime}),[demoScenario,snapshot,query.isPending,query.isError,query.isFetching,query.refetch,offline,expired,activate,adopt,requestedTime]);
+    offline:offline || query.isError || expired,activate,refetch:query.refetch,adopt,requestedTime,setRequestedTime}),[demoScenario,setDemoScenario,snapshot,query.isPending,query.isError,query.isFetching,query.refetch,offline,expired,activate,adopt,requestedTime,setRequestedTime]);
   return <SnapshotContext.Provider value={value}>{children}</SnapshotContext.Provider>;
 }
 export function useMarineSnapshot(){const value=useContext(SnapshotContext);if(!value)throw new Error("MarineSnapshotProvider required");return value;}

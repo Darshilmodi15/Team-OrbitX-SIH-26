@@ -49,27 +49,30 @@ export default function CoastMap({
     layers = useRef<LayerGroup | null>(null);
   const leaflet = useRef<typeof import("leaflet") | null>(null),
     selectRef = useRef(onSelect);
-  selectRef.current = onSelect;
   const inspectRef = useRef(onInspect);
   const previousZoom = useRef(zoom);
-  inspectRef.current = onInspect;
+  const initialCoords = useRef({ lat: center.lat, lon: center.lon, zoom: zoom ?? 8 });
+  useEffect(() => {
+    selectRef.current = onSelect;
+    inspectRef.current = onInspect;
+    initialCoords.current = { lat: center.lat, lon: center.lon, zoom: zoom ?? 8 };
+  });
   const [ready, setReady] = useState(false),
     [tileError, setTileError] = useState(false);
   const { t } = useI18n();
   useEffect(() => {
     let cancelled = false;
     let resize: ResizeObserver | undefined;
-    setReady(false);
-    setTileError(false);
     void (async () => {
       const L = (await import("leaflet")).default;
       await import("leaflet/dist/leaflet.css");
       if (cancelled || !el.current) return;
-      if (!Number.isFinite(center.lat) || !Number.isFinite(center.lon)) return;
+      const init = initialCoords.current;
+      if (!Number.isFinite(init.lat) || !Number.isFinite(init.lon)) return;
       leaflet.current = L;
       const map = L.map(el.current, {
-        center: [center.lat, center.lon],
-        zoom: zoom ?? 8,
+        center: [init.lat, init.lon],
+        zoom: init.zoom,
         fadeAnimation: false,
         zoomControl: false,
         dragging: interactive,
@@ -92,6 +95,7 @@ export default function CoastMap({
           if (!cancelled) setTileError(true);
         })
         .addTo(map);
+      setTileError(false);
       layers.current = L.layerGroup().addTo(map);
       if (interactive)
         map.on("click", (e) =>

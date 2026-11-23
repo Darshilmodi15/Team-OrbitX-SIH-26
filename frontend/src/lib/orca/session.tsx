@@ -1,15 +1,17 @@
 import { clearMarineCaches } from "./marine-cache";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useRef, type ReactNode } from "react";
-import { logoutSession, getUserProfile, fetchSavedLocation, loginGoogle, loginUser, registerUser, setAuthFailureHandler } from "@/services/api";
-import type { LocationInfo, OrcaUser } from "./types";
+import { logoutSession, getUserProfile, fetchSavedLocation, loginGoogle, loginUser, registerUser, updateUserProfile, setAuthFailureHandler } from "@/services/api";
+import type { LocationInfo, OrcaUser, VesselClass } from "./types";
 
 const SESSION_TOKEN_KEY = "orca.auth.session";
+const VESSEL_CLASS_KEY = "orca.vessel_class";
 type Credentials = { contact: string; password: string; remember: boolean };
 type Registration = Credentials & { name: string; preferredLanguage?: string };
 type SessionValue = { sessionExpired: boolean; user: OrcaUser | null; location: LocationInfo | null; ready: boolean; sessionError: boolean; retrySession: () => void; locationReady: boolean; token: string | null;
   signInGoogle: (credential: string, remember: boolean, language?: string) => Promise<OrcaUser>;
   signIn: (input: Credentials) => Promise<OrcaUser>; register: (input: Registration) => Promise<OrcaUser>;
-  signOut: (redirectUrl?: string) => Promise<void>; setLocation: (loc: LocationInfo | null) => void };
+  signOut: (redirectUrl?: string) => Promise<void>; setLocation: (loc: LocationInfo | null) => void;
+  setVesselClass: (vesselClass: VesselClass) => Promise<void> };
 const SessionContext = createContext<SessionValue | null>(null);
 function readToken() {
   try {
@@ -25,22 +27,36 @@ function readToken() {
   }
   return null;
 }
-function mapUser(raw: any): OrcaUser { const role = raw.role === "GOVERNMENT" ? "government" : raw.role === "SUPER_ADMIN" ? "admin" : "user"; return { id: raw.id, name: raw.name, operationalRegion: raw.operational_region, contact: raw.email || raw.mobile_number || "", role }; }
+function mapUser(raw: any): OrcaUser {
+  const role = raw.role === "GOVERNMENT" ? "government" : raw.role === "SUPER_ADMIN" ? "admin" : "user";
+  let storedVessel: VesselClass | null = raw.vessel_class || null;
+  if (!storedVessel) {
+    try {
+      const local = localStorage.getItem(VESSEL_CLASS_KEY) as VesselClass | null;
+      if (local) storedVessel = local;
+    } catch { /* ignore */ }
+  }
+  return { id: raw.id, name: raw.name, operationalRegion: raw.operational_region, vesselClass: storedVessel, contact: raw.email || raw.mobile_number || "", role };
+}
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [sessionExpired, setSessionExpired] = useState(false);
   const [sessionError, setSessionError] = useState(false);
   const [retryVersion, setRetryVersion] = useState(0);
+  const [user, setUser] = useState<OrcaUser | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const locationVersion = useRef(0);
+  const authVersion = useRef(0);
+  const [locationReady, setLocationReady] = useState(false);
+  const [location, setLocationState] = useState<LocationInfo | null>(null);
+  const [ready, setReady] = useState(() => !readToken());
+  const userId = user?.id;
+
   const retrySession = useCallback(() => {
     setSessionError(false);
     if (readToken()) setReady(false);
     setLocationReady(false);
     setRetryVersion((v) => v + 1);
   }, []);
-  const [user, setUser] = useState<OrcaUser | null>(null); const [token, setToken] = useState<string | null>(null);
-  const locationVersion = useRef(0);
-  const authVersion = useRef(0);
-  const [locationReady, setLocationReady] = useState(false);
-  const [location, setLocationState] = useState<LocationInfo | null>(null); const [ready, setReady] = useState(false);
   const clearSession = useCallback((failedToken?: string) => {
     clearMarineCaches();
     authVersion.current++;
@@ -72,7 +88,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const savedToken = readToken();
     let cancelled = false;
     const version = authVersion.current;
-    if (!savedToken) { setReady(true); return () => { cancelled = true; setAuthFailureHandler(null); }; }
+    if (!savedToken) { return () => { cancelled = true; setAuthFailureHandler(null); }; }
     let didError = false;
     getUserProfile(savedToken).then(raw => {
       if (cancelled || version !== authVersion.current) return;
@@ -90,11 +106,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; setAuthFailureHandler(null); };
   }, [clearSession, retryVersion]);
   useEffect(() => {
-    if (!user || !token) return;
+    if (!userId || !token) return;
     const version = ++locationVersion.current;
     let cancelled = false;
     let didError = false;
-    setLocationReady(false);
+    Promise.resolve().then(() => {
+      if (!cancelled && version === locationVersion.current) setLocationReady(false);
+    });
     fetchSavedLocation().then(raw => {
       if (cancelled || version !== locationVersion.current) return;
       setLocationState(raw?.is_coastal_supported ? { coords: { lat: raw.lat, lon: raw.lon }, label: `${raw.lat}, ${raw.lon}`, admin: raw.coastal_region, distanceToCoastKm: raw.distance_to_coast_km, area: "coastal", source: "manual" } : null);
@@ -105,7 +123,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (!cancelled && !didError && version === locationVersion.current) setLocationReady(true);
     });
     return () => { cancelled = true; };
-  }, [user?.id, token, retryVersion]);
+  }, [userId, token, retryVersion]);
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
       if (event.key !== SESSION_TOKEN_KEY) return;
@@ -170,7 +188,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const signInGoogle = useCallback(async (credential: string, remember: boolean, language = "en") => establish(await loginGoogle(credential, language), remember), [establish]);
   const register = useCallback(async ({ contact, password, remember, name, preferredLanguage }: Registration) => { const isEmail = contact.includes("@"); return establish(await registerUser({ name, password, preferred_language: preferredLanguage || "en", ...(isEmail ? { email: contact } : { mobile_number: contact }) }), remember); }, [establish]);
   const setLocation = useCallback((loc: LocationInfo | null) => { locationVersion.current++; setLocationState(loc); setLocationReady(true); }, []);
-  const value = useMemo(() => ({ sessionExpired, user, token, location, ready, sessionError, retrySession, locationReady, signIn, signInGoogle, register, signOut, setLocation }), [sessionExpired, user, token, location, ready, sessionError, retrySession, locationReady, signIn, signInGoogle, register, signOut, setLocation]);
+  const setVesselClass = useCallback(async (vesselClass: VesselClass) => {
+    try { localStorage.setItem(VESSEL_CLASS_KEY, vesselClass); } catch { /* ignore */ }
+    setUser((prev) => (prev ? { ...prev, vesselClass } : prev));
+    if (token) {
+      try {
+        const updated = await updateUserProfile({ vessel_class: vesselClass }, token);
+        if (updated) setUser((prev) => (prev ? { ...prev, vesselClass: updated.vessel_class || vesselClass } : prev));
+      } catch {
+        /* local preference saved even if network unavailable */
+      }
+    }
+  }, [token]);
+  const value = useMemo(() => ({ sessionExpired, user, token, location, ready, sessionError, retrySession, locationReady, signIn, signInGoogle, register, signOut, setLocation, setVesselClass }), [sessionExpired, user, token, location, ready, sessionError, retrySession, locationReady, signIn, signInGoogle, register, signOut, setLocation, setVesselClass]);
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
 export function useSession() { const ctx = useContext(SessionContext); if (!ctx) throw new Error("useSession must be used inside SessionProvider"); return ctx; }

@@ -4,6 +4,8 @@ import { DemoControls } from "@/components/orca/DemoControls";
 import { AppShell } from "@/components/orca/AppShell";
 import { SafetyStatusCard } from "@/components/orca/SafetyStatus";
 import { MarineConditions, ForecastTimeline } from "@/components/orca/Conditions";
+import { LunarTideCard } from "@/components/orca/LunarTideCard";
+import { TripEconomicsCard } from "@/components/orca/TripEconomicsCard";
 import { TripPack } from "@/components/orca/TripPack";
 import { MapPanel } from "@/components/orca/MapPanel";
 import { LoadingState, EmptyState } from "@/components/orca/States";
@@ -25,7 +27,7 @@ const QUICK = [
 
 export default function DashboardPage() {
   const { t } = useI18n();
-  const { location } = useSession();
+  const { user, location } = useSession();
   const marine = useMarine(location?.coords ?? null);
 
   if (!location) {
@@ -72,7 +74,11 @@ export default function DashboardPage() {
         ) : marine.isPending ? (
           <LoadingState label={t("state.loadingMarine")} />
         ) : level ? (
-          <SafetyStatusCard level={level} reasons={marine.data?.snapshot?.risk.reasons} />
+          <SafetyStatusCard
+            level={level}
+            reasons={marine.data?.snapshot?.risk.reasons}
+            vesselClass={user?.vesselClass}
+          />
         ) : (
           <ServiceState kind="marine" retry={()=>void marine.refetch()} />
         )}
@@ -97,6 +103,16 @@ export default function DashboardPage() {
         {marine.data?.snapshot && <SnapshotDetails snapshot={marine.data.snapshot} offline={marine.offline} />}
         {/* Marine conditions */}
         {displayCurrent && <MarineConditions data={displayCurrent} tide={marine.data?.tide ?? null} snapshot={marine.data?.snapshot} />}
+
+        <LunarTideCard lat={location.coords.lat} lon={location.coords.lon} />
+        <TripEconomicsCard
+          lat={location.coords.lat}
+          lon={location.coords.lon}
+          defaultVesselClass={user?.vesselClass}
+          pfzZones={marine.data?.snapshot?.pfz.zones}
+          waveHeightM={displayCurrent?.waveHeightM}
+          windSpeedKmh={displayCurrent?.windSpeedKmh}
+        />
 
         {marine.data && <TripPack key={`${location.coords.lat},${location.coords.lon}`} location={location} bundle={marine.data} />}
 

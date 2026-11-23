@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { it, expect, vi } from "vitest";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { I18nProvider } from "@/lib/orca/i18n";

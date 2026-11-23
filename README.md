@@ -31,13 +31,15 @@ deterministic demo scenarios, and explicit provenance indicators.
 
 | Area | Status |
 | --- | --- |
-| Frontend production build | Passing |
-| Frontend automated tests | 161 passing |
+| Frontend production build | Passing (`tsc -b && vite build`; entry ~73 kB, largest chunk ~221 kB) |
+| Frontend automated tests | 170 passing across 32 test files (Vitest) |
+| Frontend lint | Passing (`oxlint --deny-warnings`, 0 errors, 0 warnings) |
+| Backend automated tests | 547 passing, 5 skipped (`@pytest.mark.external`), 0 failures (`pytest`) |
+| Tooling release checks | 4 passing (`tools/test_release_check.py`) |
 | Chat transient-failure retry | Implemented and tested |
 | Assistant-to-map return navigation | Implemented and tested |
-| SAFE / CAUTION / UNSAFE display mapping | Implemented |
-| Backend full-suite validation | Environment-dependent failures remain; see [Validation notes](#validation-notes) |
-| Emergency dispatch to authorities | Not integrated |
+| SAFE / CAUTION / UNSAFE display mapping | Implemented (with vessel-class profiles) |
+| Officer SOS workflow & triage | Implemented (`RECEIVED` → `RESPONDING` → `RESOLVED` + optional SMS gateway) |
 
 The prototype must not be represented as having direct Navy, Coast Guard, MRCC,
 or rescue-dispatch integration unless an authorized external integration is
@@ -47,25 +49,50 @@ configured and independently verified.
 
 - **Marine conditions:** normalized wave, wind, forecast, and ocean-state data
   through provider adapters.
-- **Risk assessment:** deterministic safety tiers based on decomposed marine
-  evidence. Missing or stale required evidence is not treated as safe.
+- **Risk assessment & vessel profiles:** deterministic safety tiers based on
+  decomposed marine evidence, with configurable vessel operating profiles
+  (`traditional_canoe`, `motorized_gillnetter`, `mechanized_trawler`,
+  `standard`). Missing or stale required evidence is never treated as safe.
+- **Tidal & lunar intelligence:** strict authoritative feed adapter
+  (`/api/marine/tide`, returning HTTP `503` when `WORLDTIDES_API_KEY` /
+  `STORMGLASS_API_KEY` are unset) paired with a clearly labeled astronomical
+  lunar-phase estimator (`/api/marine/tide/lunar-estimate`) for spring/neap
+  planning context.
+- **Trip & Fuel ROI planner:** heuristic round-trip steaming duration, fuel
+  consumption (L & INR), CO₂ estimate, and PFZ savings comparison calibrated by
+  vessel class (`/api/marine/trip-economics`).
 - **PFZ intelligence:** potential fishing zones with distance, bearing, depth,
   and species metadata where data is available.
-- **Tactical map:** Leaflet-based map with marine overlays, boundaries, PFZ
-  markers, and validated return navigation.
-- **Multilingual assistance:** English plus Indian regional language support,
-  including localized safety labels and Romanized Indic input handling.
+- **Tactical map & audio proximity guard:** Leaflet-based map with marine
+  overlays, boundaries, PFZ markers, validated return navigation, and opt-in Web
+  Audio + voice alarm alerts when approaching EEZ edges or critical hazards.
+- **Multilingual assistance:** 11 supported languages (English plus Hindi,
+  Gujarati, Marathi, Tamil, Telugu, Malayalam, Bengali, Kannada, Odia, and
+  Punjabi), localized safety labels, Romanized Indic input handling, and
+  IST-aligned temporal query resolution.
 - **Chat reliability:** bounded retry for transient gateway/provider failures
   while preserving request identity for backend deduplication.
-- **Voice adapters:** Sarvam and Bhashini integrations when valid credentials
-  and provider quota are available.
-- **Emergency guidance:** explicit emergency coordinates, MAYDAY script
-  generation, and displayed contact information. The prototype does not place
-  emergency calls or dispatch rescue services.
+- **Voice adapters:** Sarvam AI as the default speech/translation provider
+  (`LANGUAGE_PROVIDER=sarvam`) with Bhashini fallback and live provider health
+  telemetry when valid credentials and provider quota are available.
+- **Offline trip packs & installable PWA:** downloadable plaintext (`.txt`) and
+  encrypted (`.html`) trip packs readable offline via the standalone reader
+  bundle (`dist/offline-trip-reader.html`), installable Web App manifest, and
+  service-worker Web Push notification listeners (`/api/notifications/push/*`).
+- **Emergency guidance & officer triage:** explicit emergency coordinates,
+  GMDSS MAYDAY script generation with copy-to-clipboard, offline `sms:112`
+  cellular fallback links, optional server SMS gateway adapters
+  (Twilio / MSG91 / Webhook), and coastal officer triage controls
+  (`RECEIVED` → `RESPONDING` → `RESOLVED`). Automated SOS telemetry does not
+  replace official MRCC radio/helicopter dispatch.
+- **Production scalability & account recovery:** optional Redis-backed fixed-window
+  rate limiting (with thread-safe in-memory fallback) and single-use hashed
+  password reset via SMTP email or SMS when configured.
 - **Role-aware access:** user, government, and super-admin capabilities are
   enforced by the backend.
-- **Demo scenarios:** deterministic Mumbai, Surat/Hazira, and Veraval flows for
-  repeatable presentations. Demo data is visibly identified in the UI.
+- **Demo scenarios:** deterministic Mumbai, Surat/Hazira, and Veraval flows
+  with illustrative PFZ species, depths, and sea-state hazards. Demo data is
+  visibly identified as illustrative in the UI.
 
 ## Architecture
 
@@ -119,14 +146,17 @@ flowchart LR
 │   └── .env.example
 ├── frontend/
 │   ├── src/
-│   │   ├── components/      # Shared and feature UI
-│   │   ├── context/         # Application state
-│   │   ├── lib/             # Domain helpers and hooks
+│   │   ├── components/      # Shared UI, emergency modal, and feature cards
+│   │   ├── lib/             # Domain helpers, contexts, offline pack, and hooks
 │   │   ├── pages/           # Application routes
 │   │   └── services/        # API client
+│   ├── tooling/             # Vite offline reader & service worker plugin
 │   ├── package.json
 │   └── .env.example
+├── tools/                   # Pre-acceptance & release-check scripts and unit tests
 ├── docs/                    # Readiness, QA, and acceptance records
+├── render.yaml              # Render backend deployment blueprint
+├── vercel.json              # Root Vercel frontend build & SPA rewrite config
 ├── SIH_DEMO_SCRIPT.md       # Guided presentation run sheet
 ├── FIELD_TESTING_GUIDE.md   # Field validation guidance
 └── API_INTEGRATION_CONTRACT.md
@@ -145,11 +175,12 @@ flowchart LR
 
 ```bash
 cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+python3.11 -m venv .venv
+.venv/bin/pip install -r requirements.txt
 cp .env.example .env
 ```
+
+> **Note for macOS:** Apple's built-in `/usr/bin/python3` (3.9.x) is not supported because the backend requires Python 3.11+. Install Python 3.11+ (for example via Homebrew `brew install python@3.11`) before creating `.venv`.
 
 For a local prototype, the default SQLite configuration and in-memory cache
 are sufficient. Add only the provider credentials required for the feature
@@ -214,15 +245,27 @@ Common routes include:
 | --- | --- | --- |
 | `POST` | `/api/auth/register` | Create a user account |
 | `POST` | `/api/auth/login` | Authenticate and issue a session token |
-| `GET` | `/api/user/profile` | Read the authenticated profile |
+| `POST` | `/api/auth/forgot-password` | Initiate single-use password reset via configured SMTP/SMS |
+| `POST` | `/api/auth/reset-password` | Complete password reset and revoke prior sessions |
+| `GET` / `PATCH` | `/api/user/profile` | Read or update authenticated profile & `vessel_class` |
 | `POST` | `/query` | Run a structured marine advisory |
 | `POST` | `/api/chat` | Send a conversational assistant message |
+| `GET` | `/api/marine/snapshot` | Canonical marine conditions, risk, PFZ, and boundary snapshot |
 | `GET` | `/api/marine/conditions` | Read normalized marine conditions |
-| `GET` | `/api/marine/risk` | Read the marine risk assessment |
+| `GET` | `/api/marine/risk` | Read vessel-profile-aware marine risk assessment |
 | `GET` | `/api/marine/forecast` | Read the forecast horizon |
+| `GET` | `/api/marine/tide` | Harmonic tide feed (`WORLDTIDES_API_KEY` / `STORMGLASS_API_KEY`) or `503` |
+| `GET` | `/api/marine/tide/lunar-estimate` | Non-authoritative astronomical lunar-phase & M2 window estimate |
+| `GET` / `POST` | `/api/marine/trip-economics` | Heuristic trip steaming, fuel cost, and PFZ savings estimator |
+| `GET` | `/api/pfz/publication` | Read INCOIS PFZ publication metadata |
+| `GET` | `/api/marine-boundaries/eez/display` | Fetch simplified EEZ display geometry |
 | `POST` | `/api/voice/transcribe` | Transcribe uploaded audio |
 | `POST` | `/api/voice/speak` | Generate voice audio |
-| `POST` | `/api/emergency/sos` | Create an emergency guidance record |
+| `POST` | `/api/emergency/sos` | Create an emergency guidance record (plus optional SMS alert) |
+| `PATCH` | `/api/emergency/sos/{id}/status` | Update SOS status (`RECEIVED` / `RESPONDING` / `RESOLVED`, officers/admins) |
+| `GET` / `POST` / `DELETE` | `/api/notifications/push/*` | Read VAPID push config and manage Web Push subscriptions |
+| `GET` | `/api/health/providers` | Public upstream provider health and provenance |
+| `GET` | `/api/admin/system-health` | Role-protected operational health diagnostics |
 | `GET` | `/health` | Health probe |
 
 Route availability and required authentication can vary by deployment
@@ -233,22 +276,28 @@ configuration. Use `/docs` as the authoritative contract for the running API.
 Run the frontend checks from the `frontend` directory:
 
 ```bash
+npm run lint
 npm test
 npm run build
-npm run lint
 ```
 
-Run backend tests from the repository root:
+Run the backend test suite from the `backend` directory:
 
 ```bash
-pytest -q
+cd backend
+.venv/bin/pytest -q
 ```
 
-The full backend suite includes live-provider and environment-sensitive tests.
-Missing credentials, unavailable external services, or database configuration
-can cause those checks to fail without indicating a regression in the
-frontend prototype. For a focused local check, run the relevant module or
-marker from `backend/tests`.
+Run the release tooling unit tests from the repository root:
+
+```bash
+python3 -m unittest discover -s tools -p 'test_*.py' -v
+```
+
+By default, `.venv/bin/pytest -q` runs the offline-safe verification suite
+(547 tests passing, 5 external tests skipped cleanly via `@pytest.mark.external`).
+To explicitly opt into live-provider checks with configured credentials, run
+`pytest -m external` from `backend/`.
 
 Before a public demo, also verify:
 
@@ -273,11 +322,17 @@ settings. At minimum, production deployments should review:
 - `DATABASE_URL`
 - `JWT_SECRET_KEY`
 - `FRONTEND_ORIGIN`
+- `LANGUAGE_PROVIDER` (`sarvam` default)
+- `REDIS_URL`
+- `TRUST_PROXY_HEADERS`
 - provider API keys and timeout values
 - demo-mode and live-provider settings
 
-Do not claim live-data or emergency capabilities until the corresponding
-provider integration has been tested in the target environment.
+In production mode (`APP_ENV=production`), the backend enforces strict CORS
+origin validation, requires a valid `DATABASE_URL` (no local SQLite fallback),
+and disables demo account seeding. Do not claim live-data or emergency
+capabilities until the corresponding provider integration has been tested in the
+target environment.
 
 ## Documentation
 

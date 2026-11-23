@@ -1894,15 +1894,6 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY) as LangCode | null;
-      if (stored && Object.prototype.hasOwnProperty.call(DICTS, stored)) setLangState(stored);
-    } catch {
-      /* storage unavailable */
-    }
-  }, []);
-
-  useEffect(() => {
     if (typeof document !== "undefined") document.documentElement.lang = lang;
   }, [lang]);
 

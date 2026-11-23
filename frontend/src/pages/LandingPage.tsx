@@ -12,7 +12,7 @@ import { LanguageMenu } from "@/components/orca/LanguageMenu";
 import { AppearanceMenu } from "@/components/orca/AppearanceMenu";
 import { useI18n } from "@/lib/orca/i18n";
 import { SEO } from "@/components/SEO";
-import { openCookieSettings } from "@/components/CookieBanner";
+import { openCookieSettings } from "@/lib/orca/cookies";
 import "@/components/orca/public-pages.css";
 export default function LandingPage() {
   const { lang, t } = useI18n();

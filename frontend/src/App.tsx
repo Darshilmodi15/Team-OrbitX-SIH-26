@@ -5,7 +5,6 @@ import { I18nProvider } from "@/lib/orca/i18n";
 import { SessionProvider, useSession } from "@/lib/orca/session";
 import { MarineSnapshotProvider } from "@/lib/orca/snapshot";
 import { ThemeProvider } from "@/lib/orca/theme";
-import { AppProvider } from "./context/AppContext";
 import { CookieBanner } from "./components/CookieBanner";
 import { RouteAnalyticsListener } from "./lib/orca/analytics";
 import { OrcaLogo } from "./components/orca/Logo";
@@ -89,7 +88,6 @@ function ConsentedAnalytics() {
 export default function App() {
   return (
     <ThemeProvider>
-      <AppProvider>
         <I18nProvider>
           <SessionProvider>
           <MarineSnapshotProvider>
@@ -127,7 +125,6 @@ export default function App() {
           </MarineSnapshotProvider>
           </SessionProvider>
         </I18nProvider>
-      </AppProvider>
     </ThemeProvider>
   );
 }

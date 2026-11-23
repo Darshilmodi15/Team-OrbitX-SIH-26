@@ -114,7 +114,7 @@ class MarineSnapshotService:
         self.log(user_id, result)
         return result
 
-    def resolve(self, db, user_id, provider, requested_time=None, lat=None, lon=None, demo_scenario=None):
+    def resolve(self, db, user_id, provider, requested_time=None, lat=None, lon=None, demo_scenario=None, vessel_class=None):
         from app.services.demo_scenarios import validate_demo, LiveProvider, DemoScenarioProvider
         validate_demo(demo_scenario)
         location = saved_location(db, user_id)
@@ -123,7 +123,11 @@ class MarineSnapshotService:
         target = request_time(requested_time)
         now = datetime.now(UTC)
         sha = os.getenv("RENDER_GIT_COMMIT") or os.getenv("BACKEND_SHA") or "local-unversioned"
-        key = digest(["snapshot-v5", user_id, location, target.isoformat(), sha, demo_scenario])
+        eff_vessel = None if vessel_class in (None, "", "standard") else vessel_class
+        key_parts = ["snapshot-v5", user_id, location, target.isoformat(), sha, demo_scenario]
+        if eff_vessel:
+            key_parts.append(eff_vessel)
+        key = digest(key_parts)
         row = db.query(MarineSnapshotRecord).filter_by(request_key=key, user_id=user_id).first()
         previous_id = row.id if row else None
         if row:
@@ -133,9 +137,9 @@ class MarineSnapshotService:
                 return result
         # Release the read transaction before slow upstream calls.
         db.commit()
-        selected = LiveProvider(lambda: self.build(location, target, now, sha, provider))
+        selected = LiveProvider(lambda: self.build(location, target, now, sha, provider, vessel_class=eff_vessel))
         if demo_scenario:
-            selected = DemoScenarioProvider(selected, demo_scenario, now)
+            selected = DemoScenarioProvider(selected, demo_scenario, now, vessel_class=eff_vessel)
         result = selected.snapshot()
         payload = result.model_dump(mode="json")
         payload["snapshot_id"] = digest([user_id, key, payload])
@@ -167,7 +171,7 @@ class MarineSnapshotService:
             result.snapshot_id, user_id, result.location.lat, result.location.lon,
             result.request.requested_time, result.provenance["provider"], result.backend_sha)
 
-    def build(self, location, target, now, sha, provider):
+    def build(self, location, target, now, sha, provider, vessel_class=None):
         lat, lon = location["lat"], location["lon"]
         empty_weather = WeatherEvidence(forecast="unavailable", source="unavailable", is_mock=False, cache_status="unavailable")
         empty_boundary = {"availability": "unavailable", "eez": None, "nearest_boundary_distance": None, "distance_unit": "km", "warnings": [], "geometry": None, "provenance": {}}
@@ -208,7 +212,7 @@ class MarineSnapshotService:
         mode = "stale" if upstream_stale else "cached" if valid_sources else "unavailable"
         weather = SnapshotWeather(**{k:v for k,v in values.items() if k != "sst_c"})
         evidence_raw = {original: values[field] for field, original in mapping.items()}
-        risk = assess_risk({**evidence_raw, "cache_status": mode, "is_mock": False})
+        risk = assess_risk({**evidence_raw, "cache_status": mode, "is_mock": False}, vessel_class=vessel_class)
         evidence_weather = WeatherEvidence(
             **evidence_raw,
             forecast=raw.get("forecast") or "unavailable",

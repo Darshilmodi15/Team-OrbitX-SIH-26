@@ -13,6 +13,9 @@ class UserRole(str, Enum):
     SUPER_ADMIN = "SUPER_ADMIN"
 
 
+VALID_VESSEL_CLASSES = ("traditional_canoe", "motorized_gillnetter", "mechanized_trawler", "standard")
+
+
 class UserProfile(BaseModel):
     """Public user profile data."""
     id: str = Field(..., description="Unique user identifier")
@@ -23,6 +26,7 @@ class UserProfile(BaseModel):
     role: UserRole = Field(default=UserRole.USER, description="Assigned authorization role")
     location_permission_status: str = Field(default="prompt", description="'granted', 'denied', or 'prompt'")
     location_sharing_enabled: bool = Field(default=True, description="Opt-in to emergency location sharing")
+    vessel_class: Optional[str] = Field(default=None, description="Vessel operating profile for risk assessment")
     created_at: str = Field(..., description="Profile creation ISO timestamp")
     operational_region: Optional[str] = None
     last_login: Optional[str] = Field(default=None, description="Last login timestamp")
@@ -81,11 +85,44 @@ class UpdateProfileRequest(BaseModel):
     preferred_language: Optional[str] = Field(default=None, min_length=2, max_length=10)
     location_permission_status: Optional[str] = Field(default=None, max_length=30)
     location_sharing_enabled: Optional[bool] = None
+    vessel_class: Optional[str] = Field(default=None, max_length=40)
 
     @field_validator("name", mode="before")
     @classmethod
     def _strip_profile_name(cls, v: Any) -> Any:
         return v.strip() if isinstance(v, str) else v
+
+    @field_validator("vessel_class", mode="before")
+    @classmethod
+    def _validate_vessel_class(cls, v: Any) -> Optional[str]:
+        if v is None:
+            return None
+        if isinstance(v, str):
+            cleaned = v.strip().lower()
+            if not cleaned:
+                return None
+            if cleaned not in VALID_VESSEL_CLASSES:
+                raise ValueError(f"vessel_class must be one of: {', '.join(VALID_VESSEL_CLASSES)}")
+            return cleaned
+        raise ValueError("Invalid vessel_class value")
+
+
+class ForgotPasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    email_or_phone: str = Field(..., min_length=3, max_length=255)
+
+
+class ResetPasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(..., min_length=6, max_length=255)
+    new_password: str = Field(..., min_length=6, max_length=72)
+
+    @field_validator("new_password")
+    @classmethod
+    def _check_reset_password_bytes(cls, v: str) -> str:
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("Password must be at most 72 bytes.")
+        return v
 
 
 class LocationValidationRequest(BaseModel):
