@@ -138,3 +138,36 @@ it("avoids Invalid Date when retrieved_at is malformed and renders localized Ask
   expect(screen.queryByText(/Invalid Date/)).not.toBeInTheDocument();
   expect(screen.getByRole("link", { name: /Ask Sagar Mitra/i })).toHaveAttribute("href", expect.stringContaining("/assistant"));
 });
+
+it("enables nautical range rings by default on full map, toggles seamarks cleanly, and pauses seamarks in low-data mode", async () => {
+  const richSnapshot = {
+    ...snapshot,
+    risk: { level: "low", reasons: [] },
+    weather: { wave_height_m: 1.2, wind_speed_kmh: 18, wind_direction_deg: 270 },
+    ocean: { sst_c: 28.4, chlorophyll: null },
+  };
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const ui = () => (
+    <QueryClientProvider client={client}>
+      <I18nProvider>
+        <MapPanel center={richSnapshot.location} snapshot={richSnapshot} full />
+      </I18nProvider>
+    </QueryClientProvider>
+  );
+  const view = testingRender(ui());
+  await screen.findByText("Map tiles mounted");
+  // Range rings active on full map, seamarks off by default
+  expect(map.mock.lastCall?.[0]).toMatchObject({ showRangeRings: true, showSeamarks: false });
+  // Live telemetry cards visible in full map strip
+  expect(screen.getByText("1.2 m")).toBeVisible();
+  expect(screen.getByText("18 km/h · W")).toBeVisible();
+  expect(screen.getByText("28.4 °C")).toBeVisible();
+  // Toggle seamarks on, then degrade network to ensure seamarks auto-pause
+  fireEvent.click(screen.getByRole("button", { name: "Map layers" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: /Nautical seamarks/i }));
+  expect(map.mock.lastCall?.[0].showSeamarks).toBe(true);
+  network.mode = "DEGRADED";
+  view.rerender(ui());
+  expect(map.mock.lastCall?.[0].showSeamarks).toBe(false);
+  expect(screen.getByRole("checkbox", { name: /Nautical seamarks/i })).toBeDisabled();
+});
