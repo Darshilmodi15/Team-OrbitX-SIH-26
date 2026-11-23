@@ -1,4 +1,4 @@
-import { APP_NAME, POWERED_BY } from "@/lib/brand";
+import { POWERED_BY, getLocalizedAppName } from "@/lib/brand";
 import { useI18n } from "@/lib/orca/i18n";
 import { MatsyaLogo } from "./Logo";
 import { cn } from "@/lib/utils";
@@ -14,7 +14,8 @@ export function MatsyaLoader({
   variant = "section",
   className,
 }: MatsyaLoaderProps) {
-  const { t } = useI18n();
+  const { lang, t } = useI18n();
+  const appName = getLocalizedAppName(lang);
   const statusText = message ?? t("state.loading");
 
   if (variant === "compact") {
@@ -32,7 +33,7 @@ export function MatsyaLoader({
         </div>
         <div className="flex flex-col items-center leading-tight">
           <span className="text-sm font-bold tracking-tight text-[#2FB5A3]">
-            {APP_NAME}
+            {appName}
           </span>
           <span className="text-[10px] text-muted-foreground">
             {POWERED_BY}
@@ -66,7 +67,7 @@ export function MatsyaLoader({
 
       <div className="mt-5 flex flex-col items-center gap-0.5">
         <span className="text-xl font-bold tracking-tight text-[#2FB5A3]">
-          {APP_NAME}
+          {appName}
         </span>
         <span className="text-xs font-medium text-muted-foreground">
           {POWERED_BY}

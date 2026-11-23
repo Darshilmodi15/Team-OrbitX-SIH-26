@@ -2,25 +2,426 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none'">
 <title>Matsya offline trip pack</title><style>
-body{font:18px/1.6 system-ui,sans-serif;max-width:760px;margin:24px auto;padding:0 18px;background:#F2FAF8;color:#12232B}h1{line-height:1.2}button,input{font:inherit;padding:12px;border:1px solid #527384;border-radius:8px}button{cursor:pointer;background:#0F5E56;color:white}label{display:block}article,section{background:white;padding:18px;border-radius:12px;margin:16px 0;border:1px solid #bed1da}p,li{overflow-wrap:anywhere}.notice{border-left:5px solid #ba6510;padding:12px;background:#fff0da}li{margin-bottom:14px}[hidden]{display:none!important}input{max-width:100%;box-sizing:border-box}small{display:block}
-</style></head><body><h1>Matsya offline trip pack</h1>
-<p class="notice">Saved information only. This file cannot receive updates, contact emergency services or send SOS. Saved forecasts are not clearance to sail.</p>
-<section aria-label="Direct cellular emergency contacts"><strong>Direct cellular emergency (no internet required):</strong> <a href="tel:112">Call 112</a> · <a href="tel:1554">Coast Guard 1554</a> · <a href="tel:1093">Coastal Police 1093</a> · <a href="sms:112?body=Matsya%20SOS%20distress%20request">SMS 112</a></section>
-<section id="choose" hidden><label for="file">Open a downloaded Matsya trip pack (.txt or .html)</label><input id="file" type="file" accept=".txt,.html,text/plain,text/html"><p>The file is read on this device and is never uploaded.</p></section>
-<section id="unlock"><form id="form"><label for="password">Trip pack password</label><input id="password" type="password" autocomplete="off" required><button type="submit">Unlock pack</button></form>
-<p>Your password stays on this device. There is no password recovery.</p></section>
+:root{--bg:#F2FAF8;--card:#FFFFFF;--text:#12232B;--muted:#4A6470;--border:#C7E2DC;--accent:#2FB5A3;--accent-deep:#0F5E56;--notice-bg:#FFF4E0;--notice-border:#BA6510;--input-bg:#FFFFFF}
+html.dark{--bg:#0A181E;--card:#10252D;--text:#DDF7F2;--muted:#98BEB7;--border:#1F444E;--accent:#2FB5A3;--accent-deep:#2FB5A3;--notice-bg:#291D0D;--notice-border:#E09132;--input-bg:#0D1E25}
+body{font:17px/1.6 system-ui,-apple-system,sans-serif;max-width:760px;margin:20px auto;padding:0 18px 32px;background:var(--bg);color:var(--text)}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand h1{font-size:1.35rem;line-height:1.2;margin:0}
+.lang-wrap{display:flex;align-items:center;gap:8px;font-size:.9rem;color:var(--muted)}
+select,button,input{font:inherit;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg);color:var(--text)}
+button{cursor:pointer;background:var(--accent-deep);color:#FFFFFF;border-color:transparent;font-weight:600}
+html.dark button{color:#0A181E}
+a{color:var(--accent-deep);font-weight:600}
+html.dark a{color:#6BE2D2}
+label{display:block;font-weight:600;margin-bottom:6px}
+article,section{background:var(--card);padding:18px;border-radius:12px;margin:16px 0;border:1px solid var(--border)}
+p,li{overflow-wrap:anywhere}
+.notice{border-left:5px solid var(--notice-border);padding:12px 14px;background:var(--notice-bg);border-radius:8px}
+li{margin-bottom:12px}
+[hidden]{display:none!important}
+input{max-width:100%;box-sizing:border-box;margin:6px 8px 6px 0}
+.muted{color:var(--muted);font-size:.92rem}
+</style></head><body>
+<header>
+ <div class="brand">
+  <svg width="36" height="36" viewBox="0 0 120 120" aria-hidden="true">
+   <circle cx="60" cy="60" r="54" fill="#BDEFE6" stroke="#2FB5A3" stroke-width="5"/>
+   <path d="M22 72 Q32 62 42 72 T62 72 T82 72 T102 72" fill="none" stroke="#12232B" stroke-width="6" stroke-linecap="round"/>
+   <path d="M40 52 C48 36 74 36 86 52 C74 64 48 64 40 52 Z" fill="#2FB5A3"/>
+   <path d="M40 52 L28 43 L28 61 Z" fill="#2FB5A3"/>
+   <circle cx="72" cy="49" r="3.5" fill="#12232B"/>
+  </svg>
+  <h1 id="heading">Matsya offline trip pack</h1>
+ </div>
+ <div class="lang-wrap">
+  <label for="lang" id="langLabel" style="margin:0;font-weight:500">Language</label>
+  <select id="lang" aria-label="Language">
+   <option value="en">English</option>
+   <option value="hi">हिन्दी</option>
+   <option value="gu">ગુજરાતી</option>
+   <option value="mr">मराठी</option>
+   <option value="ta">தமிழ்</option>
+   <option value="te">తెలుగు</option>
+   <option value="ml">മലയാളം</option>
+   <option value="bn">বাংলা</option>
+   <option value="kn">ಕನ್ನಡ</option>
+   <option value="or">ଓଡ଼ିଆ</option>
+   <option value="pa">ਪੰਜਾਬੀ</option>
+  </select>
+ </div>
+</header>
+<p class="notice" id="notice">Saved information only. This file cannot receive updates, contact emergency services or send SOS. Saved forecasts are not clearance to sail.</p>
+<section id="emergencySec" aria-label="Direct cellular emergency contacts"><strong id="emergencyTitle">Direct cellular emergency (no internet required):</strong> <a id="call112" href="tel:112">Call 112</a> · <a id="call1554" href="tel:1554">Coast Guard 1554</a> · <a id="call1093" href="tel:1093">Coastal Police 1093</a> · <a id="sms112" href="sms:112?body=Matsya%20SOS%20distress%20request">SMS 112</a></section>
+<section id="choose" hidden><label id="fileLabel" for="file">Open a downloaded Matsya trip pack (.txt or .html)</label><input id="file" type="file" accept=".txt,.html,text/plain,text/html"><p class="muted" id="fileHint">The file is read on this device and is never uploaded.</p></section>
+<section id="unlock"><form id="form"><label id="pwLabel" for="password">Trip pack password</label><input id="password" type="password" autocomplete="off" required><button id="unlockBtn" type="submit">Unlock pack</button></form>
+<p class="muted" id="pwHint">Your password stays on this device. There is no password recovery.</p></section>
 <p id="status" role="status" aria-live="polite">Open this downloaded file in a browser, even without internet.</p>
 <button id="lock" hidden>Lock pack</button><main id="content" hidden></main>
-<p>To delete this pack, remove this HTML file and its copies from Downloads / Files and empty the trash. Signing out of Matsya does not delete a downloaded file. Keep your device clock correct; expiry is checked against it.</p>
+<p class="muted" id="deleteHint">To delete this pack, remove this file and its copies from Downloads / Files and empty the trash. Signing out of Matsya does not delete a downloaded file. Keep your device clock correct; expiry is checked against it.</p>
 <script id="payload" type="application/json">__ORCA_ENCRYPTED_PAYLOAD__</script>
 <script>
 'use strict';
+try{
+ const th=localStorage.getItem('orca_theme')||'system';
+ const dark=th==='dark'||(th!=='light'&&typeof matchMedia==='function'&&matchMedia('(prefers-color-scheme: dark)').matches);
+ document.documentElement.classList.toggle('dark',dark);
+}catch{}
+const I18N={
+ en:{
+  title:'Matsya offline trip pack',lang:'Language',
+  notice:'Saved information only. This file cannot receive updates, contact emergency services or send SOS. Saved forecasts are not clearance to sail.',
+  emergencyTitle:'Direct cellular emergency (no internet required):',call112:'Call 112',call1554:'Coast Guard 1554',call1093:'Coastal Police 1093',sms112:'SMS 112',
+  fileLabel:'Open a downloaded Matsya trip pack (.txt or .html)',fileHint:'The file is read on this device and is never uploaded.',
+  pwLabel:'Trip pack password',unlockBtn:'Unlock pack',pwHint:'Your password stays on this device. There is no password recovery.',
+  lockBtn:'Lock pack',deleteHint:'To delete this pack, remove this file and its copies from Downloads / Files and empty the trash. Signing out of Matsya does not delete a downloaded file. Keep your device clock correct; expiry is checked against it.',
+  statusInitial:'Open this downloaded file in a browser, even without internet.',
+  statusSelected:'File selected. Enter its password to unlock.',
+  statusTxtLoaded:'Plain-text offline trip pack loaded (saved copy — no live updates).',
+  statusReadErr:'Cannot read this pack. Select an intact Matsya trip .txt or .html file under 2 MB.',
+  statusExpired:'Expired pack or incorrect device clock. Time-sensitive data is hidden. Reconnect and prepare a new pack.',
+  statusOfflineCopy:'Offline copy — no new updates. Pack limit:',
+  statusLocked:'Pack locked.',statusUnlocking:'Unlocking…',
+  statusUnlockErr:'Cannot unlock: incorrect password, damaged file, or browser encryption unavailable. Try this file in a current browser.',
+  txtHeading:'Saved offline trip notes',locFallback:'Selected trip location',
+  savedPrefix:'Saved',savedSuffix:'Each reading and advisory may expire before the pack limit.',
+  readingsHeading:'Saved marine readings',readingsNote:'Model forecasts, not sensor observations. Readings older than three hours are hidden. Wave direction is FROM; current direction is TO.',
+  noReadings:'No unexpired marine readings saved.',forecastValid:'forecast valid',retrieved:'retrieved',issued:'issued',sampleGrid:'sample grid',unknown:'unknown',
+  forecastHeading:'Saved forecast times',forecastNote:'Only returned forecast slots are stored. Missing hours have no forecast. No safe-route verdict is provided.',
+  waves:'waves',wind:'wind',unavailable:'unavailable',noForecast:'No upcoming forecast slots saved.',source:'Source',
+  pfzHeading:'PFZ advisory',sector:'Sector',expires:'expires',noAdvisory:'Provider explicitly reported no advisory issued.',noPfzPoints:'No PFZ points saved.',
+  pfzHidden:'No current PFZ advisory saved, or the saved advisory has expired. Points are hidden.',
+  notIncluded:'Map tiles, satellite imagery, navigation routes, tide predictions, chat history and account credentials are not included.',
+  attribution:'Weather attribution: Open-Meteo, DWD, Copernicus Marine; INCOIS where identified above. Matsya selects fields, rounds values and applies display expiry limits. Official data links: open-meteo.com/en/docs/marine-weather-api and incois.gov.in.',
+  labels:{}
+ },
+ hi:{
+  title:'मत्स्य ऑफ़लाइन यात्रा पैक',lang:'भाषा',
+  notice:'केवल सहेजी गई जानकारी। यह फ़ाइल अपडेट प्राप्त नहीं कर सकती, आपातकालीन सेवाओं से संपर्क नहीं कर सकती और SOS नहीं भेज सकती। सहेजे गए पूर्वानुमान समुद्र में जाने की अनुमति नहीं हैं।',
+  emergencyTitle:'सीधा मोबाइल आपातकाल (इंटरनेट की आवश्यकता नहीं):',call112:'कॉल 112',call1554:'तटरक्षक 1554',call1093:'तटीय पुलिस 1093',sms112:'SMS 112',
+  fileLabel:'डाउनलोड किया गया मत्स्य यात्रा पैक (.txt या .html) खोलें',fileHint:'फ़ाइल केवल इसी डिवाइस पर पढ़ी जाती है और कहीं अपलोड नहीं होती।',
+  pwLabel:'यात्रा पैक पासवर्ड',unlockBtn:'पैक खोलें',pwHint:'आपका पासवर्ड इसी डिवाइस पर रहता है। पासवर्ड रिकवरी उपलब्ध नहीं है।',
+  lockBtn:'पैक लॉक करें',deleteHint:'इस पैक को हटाने के लिए Downloads / Files से यह फ़ाइल और इसकी प्रतियाँ हटाएँ। मत्स्य से साइन आउट करने पर डाउनलोड फ़ाइल नहीं हटती। डिवाइस की घड़ी सही रखें।',
+  statusInitial:'बिना इंटरनेट के भी इस डाउनलोड की गई फ़ाइल को ब्राउज़र में खोलें।',
+  statusSelected:'फ़ाइल चुनी गई। खोलने के लिए पासवर्ड दर्ज करें।',
+  statusTxtLoaded:'टेक्स्ट ऑफ़लाइन यात्रा पैक लोड हो गया (सहेजी गई प्रति — कोई लाइव अपडेट नहीं)।',
+  statusReadErr:'यह पैक नहीं पढ़ा जा सका। 2 MB से छोटी सही मत्स्य .txt या .html फ़ाइल चुनें।',
+  statusExpired:'पैक की समय-सीमा समाप्त हो गई है या डिवाइस की घड़ी गलत है। समय-संवेदनशील डेटा छिपा दिया गया है।',
+  statusOfflineCopy:'ऑफ़लाइन प्रति — कोई नया अपडेट नहीं। पैक सीमा:',
+  statusLocked:'पैक लॉक है।',statusUnlocking:'खुल रहा है…',
+  statusUnlockErr:'खोला नहीं जा सका: गलत पासवर्ड, खराब फ़ाइल, या ब्राउज़र एन्क्रिप्शन उपलब्ध नहीं है।',
+  txtHeading:'सहेजे गए ऑफ़लाइन यात्रा नोट',locFallback:'चुना गया यात्रा स्थान',
+  savedPrefix:'सहेजा गया',savedSuffix:'प्रत्येक रीडिंग और सलाह पैक सीमा से पहले समाप्त हो सकती है।',
+  readingsHeading:'सहेजी गई समुद्री रीडिंग',readingsNote:'मॉडल पूर्वानुमान, सेंसर माप नहीं। 3 घंटे से पुरानी रीडिंग छिपाई जाती हैं।',
+  noReadings:'कोई वैध समुद्री रीडिंग सहेजी नहीं गई।',forecastValid:'पूर्वानुमान वैध',retrieved:'प्राप्त',issued:'जारी',sampleGrid:'ग्रिड',unknown:'अज्ञात',
+  forecastHeading:'सहेजे गए पूर्वानुमान समय',forecastNote:'केवल प्राप्त स्लॉट सहेजे गए हैं। सुरक्षित मार्ग की गारंटी नहीं दी जाती।',
+  waves:'लहरें',wind:'हवा',unavailable:'उपलब्ध नहीं',noForecast:'कोई आगामी पूर्वानुमान स्लॉट सहेजा नहीं गया।',source:'स्रोत',
+  pfzHeading:'PFZ सलाह',sector:'क्षेत्र',expires:'समाप्ति',noAdvisory:'प्रदाता ने बताया कि कोई सलाह जारी नहीं हुई।',noPfzPoints:'कोई PFZ बिंदु सहेजा नहीं गया।',
+  pfzHidden:'कोई वर्तमान PFZ सलाह सहेजी नहीं गई या समाप्त हो चुकी है। बिंदु छिपाए गए हैं।',
+  notIncluded:'मानचित्र टाइल्स, सैटेलाइट चित्र, नेविगेशन मार्ग, ज्वार और चैट इतिहास शामिल नहीं हैं।',
+  attribution:'मौसम स्रोत: Open-Meteo, DWD, Copernicus Marine और INCOIS। मत्स्य केवल चयनित मान और समय-सीमा दिखाता है।',
+  labels:{'Wave height':'लहर की ऊँचाई','Wave period':'लहर अवधि','Wave direction (from)':'लहर की दिशा','Wind speed':'हवा की गति','Wind direction (from)':'हवा की दिशा','Sea surface temperature':'समुद्र सतह तापमान','Current speed':'धारा की गति','Current direction (towards)':'धारा की दिशा'}
+ },
+ gu:{
+  title:'મત્સ્ય ઓફલાઇન પ્રવાસ પેક',lang:'ભાષા',
+  notice:'ફક્ત સાચવેલી માહિતી. આ ફાઇલ અપડેટ મેળવી શકતી નથી, કટોકટી સેવાઓનો સંપર્ક કરી શકતી નથી કે SOS મોકલી શકતી નથી. સાચવેલી આગાહી દરિયામાં જવાની મંજૂરી નથી.',
+  emergencyTitle:'સીધો મોબાઇલ કટોકટી સંપર્ક (ઇન્ટરનેટ જરૂરી નથી):',call112:'કૉલ 112',call1554:'કોસ્ટ ગાર્ડ 1554',call1093:'કોસ્ટલ પોલીસ 1093',sms112:'SMS 112',
+  fileLabel:'ડાઉનલોડ કરેલું મત્સ્ય પ્રવાસ પેક (.txt અથવા .html) ખોલો',fileHint:'આ ફાઇલ ફક્ત તમારા ઉપકરણ પર વંચાય છે અને ક્યાંય અપલોડ થતી નથી.',
+  pwLabel:'પ્રવાસ પેક પાસવર્ડ',unlockBtn:'પેક ખોલો',pwHint:'તમારો પાસવર્ડ તમારા ઉપકરણ પર જ રહે છે. પાસવર્ડ રિકવરી ઉપલબ્ધ નથી.',
+  lockBtn:'પેક લૉક કરો',deleteHint:'આ પેક કાઢવા માટે Downloads / Filesમાંથી આ ફાઇલ અને તેની નકલો કાઢી નાખો. મત્સ્યમાંથી સાઇન આઉટ કરવાથી ફાઇલ કાઢતી નથી. ઉપકરણની ઘડિયાળ સાચી રાખો.',
+  statusInitial:'ઇન્ટરનેટ વિના પણ આ ડાઉનલોડ કરેલી ફાઇલ બ્રાઉઝરમાં ખોલો.',
+  statusSelected:'ફાઇલ પસંદ થઈ. ખોલવા માટે પાસવર્ડ દાખલ કરો.',
+  statusTxtLoaded:'ટેક્સ્ટ ઓફલાઇન પ્રવાસ પેક લોડ થયું (સાચવેલી નકલ — કોઈ લાઇવ અપડેટ નથી).',
+  statusReadErr:'આ પેક વાંચી શકાતું નથી. 2 MBથી નાની સાચી મત્સ્ય .txt અથવા .html ફાઇલ પસંદ કરો.',
+  statusExpired:'પેકની સમયમર્યાદા પૂરી થઈ છે અથવા ઉપકરણની ઘડિયાળ ખોટી છે. સમય-સંવેદનશીલ ડેટા છુપાવ્યો છે.',
+  statusOfflineCopy:'ઓફલાઇન નકલ — કોઈ નવા અપડેટ નથી. પેક મર્યાદા:',
+  statusLocked:'પેક લૉક થયું.',statusUnlocking:'ખોલી રહ્યા છીએ…',
+  statusUnlockErr:'ખોલી શકાયું નહીં: ખોટો પાસવર્ડ, ક્ષતિગ્રસ્ત ફાઇલ અથવા બ્રાઉઝર એન્ક્રિપ્શન ઉપલબ્ધ નથી.',
+  txtHeading:'સાચવેલી ઓફલાઇન પ્રવાસ નોંધ',locFallback:'પસંદ કરેલું પ્રવાસ સ્થળ',
+  savedPrefix:'સાચવ્યું',savedSuffix:'દરેક માપ અને સલાહ પેક મર્યાદા પહેલાં પૂરી થઈ શકે છે.',
+  readingsHeading:'સાચવેલા દરિયાઈ માપ',readingsNote:'મોડેલ આગાહી છે, સેન્સર માપ નથી. 3 કલાકથી જૂના માપ છુપાવેલા છે.',
+  noReadings:'કોઈ માન્ય દરિયાઈ માપ સાચવેલા નથી.',forecastValid:'આગાહી માન્ય',retrieved:'મેળવ્યું',issued:'જારી',sampleGrid:'ગ્રિડ',unknown:'અજ્ઞાત',
+  forecastHeading:'સાચવેલા આગાહી સમય',forecastNote:'ફક્ત મળેલા સ્લોટ સાચવેલા છે. સુરક્ષિત માર્ગની ખાતરી આપવામાં આવતી નથી.',
+  waves:'મોજા',wind:'પવન',unavailable:'ઉપલબ્ધ નથી',noForecast:'કોઈ આગામી આગાહી સ્લોટ સાચવેલા નથી.',source:'સ્રોત',
+  pfzHeading:'PFZ સલાહ',sector:'વિસ્તાર',expires:'સમાપ્તિ',noAdvisory:'પ્રદાતાએ જણાવ્યું છે કે કોઈ સલાહ જારી નથી.',noPfzPoints:'કોઈ PFZ બિંદુ સાચવેલા નથી.',
+  pfzHidden:'કોઈ વર્તમાન PFZ સલાહ સાચવેલી નથી અથવા સમાપ્ત થઈ છે. બિંદુઓ છુપાવ્યા છે.',
+  notIncluded:'નકશા, સેટેલાઇટ ચિત્રો, નેવિગેશન માર્ગો, ભરતી અને ચેટ ઇતિહાસ સામેલ નથી.',
+  attribution:'હવામાન સ્રોત: Open-Meteo, DWD, Copernicus Marine અને INCOIS. મત્સ્ય માત્ર પસંદ કરેલા મૂલ્યો અને સમયમર્યાદા બતાવે છે.',
+  labels:{'Wave height':'મોજાની ઊંચાઈ','Wave period':'મોજાનો સમયગાળો','Wave direction (from)':'મોજાની દિશા','Wind speed':'પવનની ઝડપ','Wind direction (from)':'પવનની દિશા','Sea surface temperature':'દરિયાની સપાટીનું તાપમાન','Current speed':'પ્રવાહની ઝડપ','Current direction (towards)':'પ્રવાહની દિશા'}
+ },
+ mr:{
+  title:'मत्स्य ऑफलाइन प्रवास पॅक',lang:'भाषा',
+  notice:'फक्त जतन केलेली माहिती. ही फाइल अपडेट मिळवू शकत नाही, आपत्कालीन सेवेशी संपर्क साधू शकत नाही किंवा SOS पाठवू शकत नाही. जतन अंदाज समुद्रात जाण्याची परवानगी नाहीत.',
+  emergencyTitle:'थेट मोबाइल आपत्काल (इंटरनेटची गरज नाही):',call112:'कॉल 112',call1554:'तटरक्षक 1554',call1093:'तटीय पोलीस 1093',sms112:'SMS 112',
+  fileLabel:'डाउनलोड केलेला मत्स्य प्रवास पॅक (.txt किंवा .html) उघडा',fileHint:'ही फाइल फक्त या डिव्हाइसवर वाचली जाते आणि अपलोड होत नाही.',
+  pwLabel:'प्रवास पॅक पासवर्ड',unlockBtn:'पॅक उघडा',pwHint:'तुमचा पासवर्ड याच डिव्हाइसवर राहतो. पासवर्ड रिकव्हरी उपलब्ध नाही.',
+  lockBtn:'पॅक लॉक करा',deleteHint:'हा पॅक हटवण्यासाठी Downloads / Files मधून फाइल व तिच्या प्रती काढून टाका. मत्स्य मधून साइन आउट केल्याने फाइल हटत नाही.',
+  statusInitial:'इंटरनेटशिवायही ही डाउनलोड केलेली फाइल ब्राउझरमध्ये उघडा.',
+  statusSelected:'फाइल निवडली. उघडण्यासाठी पासवर्ड टाका.',
+  statusTxtLoaded:'मजकूर ऑफलाइन प्रवास पॅक लोड झाला (जतन केलेली प्रत — थेट अपडेट नाही).',
+  statusReadErr:'हा पॅक वाचता येत नाही. 2 MB पेक्षा लहान योग्य मत्स्य .txt किंवा .html फाइल निवडा.',
+  statusExpired:'पॅकची मुदत संपली आहे किंवा डिव्हाइसचे घड्याळ चुकीचे आहे. वेळ-संवेदनशील माहिती लपवली आहे.',
+  statusOfflineCopy:'ऑफलाइन प्रत — नवीन अपडेट नाही. पॅक मर्यादा:',
+  statusLocked:'पॅक लॉक झाला.',statusUnlocking:'उघडत आहे…',
+  statusUnlockErr:'उघडता आले नाही: चुकीचा पासवर्ड, खराब फाइल किंवा ब्राउझर एन्क्रिप्शन उपलब्ध नाही.',
+  txtHeading:'जतन केलेल्या ऑफलाइन प्रवास नोंदी',locFallback:'निवडलेले प्रवास ठिकाण',
+  savedPrefix:'जतन केले',savedSuffix:'प्रत्येक वाचन व सूचना पॅक मर्यादेपूर्वी कालबाह्य होऊ शकते.',
+  readingsHeading:'जतन सागरी मोजमाप',readingsNote:'मॉडेल अंदाज, सेन्सर मोजमाप नाही. 3 तासांपेक्षा जुने वाचन लपवले जाते.',
+  noReadings:'कोणतेही वैध सागरी वाचन जतन नाही.',forecastValid:'अंदाज वैध',retrieved:'मिळाले',issued:'जारी',sampleGrid:'ग्रिड',unknown:'अज्ञात',
+  forecastHeading:'जतन अंदाज वेळा',forecastNote:'फक्त मिळालेले स्लॉट जतन आहेत. सुरक्षित मार्गाची हमी दिली जात नाही.',
+  waves:'लाटा',wind:'वारा',unavailable:'उपलब्ध नाही',noForecast:'कोणतेही आगामी अंदाज स्लॉट नाहीत.',source:'स्रोत',
+  pfzHeading:'PFZ सूचना',sector:'क्षेत्र',expires:'मुदत',noAdvisory:'प्रदात्याने कोणतीही सूचना जारी केलेली नाही.',noPfzPoints:'कोणतेही PFZ बिंदू जतन नाहीत.',
+  pfzHidden:'सध्याची PFZ सूचना जतन नाही किंवा मुदत संपली आहे. बिंदू लपवले आहेत.',
+  notIncluded:'नकाशे, उपग्रह छायाचित्रे, नेव्हिगेशन मार्ग, भरती व चॅट इतिहास समाविष्ट नाहीत.',
+  attribution:'हवामान स्रोत: Open-Meteo, DWD, Copernicus Marine आणि INCOIS. मत्स्य निवडलेले मूल्य आणि कालमर्यादा दाखवते.',
+  labels:{'Wave height':'लाटांची उंची','Wave period':'लाटांचा कालावधी','Wave direction (from)':'लाटांची दिशा','Wind speed':'वाऱ्याचा वेग','Wind direction (from)':'वाऱ्याची दिशा','Sea surface temperature':'समुद्र पृष्ठभाग तापमान','Current speed':'प्रवाहाचा वेग','Current direction (towards)':'प्रवाहाची दिशा'}
+ },
+ ta:{
+  title:'மத்ஸ்யா ஆஃப்லைன் பயணப் தொகுப்பு',lang:'மொழி',
+  notice:'சேமிக்கப்பட்ட தகவல் மட்டும். இந்த கோப்பு புதுப்பிப்புகளைப் பெறாது, அவசர சேவைகளைத் தொடர்புகொள்ளாது, SOS அனுப்பாது. சேமித்த முன்னறிவிப்பு கடலுக்குச் செல்ல அனுமதி அல்ல.',
+  emergencyTitle:'நேரடி மொபைல் அவசர உதவி (இணையம் தேவையில்லை):',call112:'அழை 112',call1554:'கடலோரக் காவல்படை 1554',call1093:'கடலோரக் காவல் 1093',sms112:'SMS 112',
+  fileLabel:'பதிவிறக்கிய மத்ஸ்யா பயணக் கோப்பை (.txt அல்லது .html) திறக்கவும்',fileHint:'இந்த கோப்பு உங்கள் சாதனத்தில் மட்டுமே படிக்கப்படும்; பதிவேற்றப்படாது.',
+  pwLabel:'பயணத் தொகுப்பு கடவுச்சொல்',unlockBtn:'திறக்கவும்',pwHint:'கடவுச்சொல் இந்த சாதனத்திலேயே இருக்கும். மீட்பு வசதி இல்லை.',
+  lockBtn:'பூட்டு',deleteHint:'இந்த தொகுப்பை நீக்க Downloads / Files இல் உள்ள கோப்பை நீக்கவும். மத்ஸ்யா விலிருந்து வெளியேறுவது கோப்பை நீக்காது.',
+  statusInitial:'இணையம் இல்லாதபோதும் இந்த கோப்பை உலாவியில் திறக்கலாம்.',
+  statusSelected:'கோப்பு தேர்ந்தெடுக்கப்பட்டது. திறக்க கடவுச்சொல்லை உள்ளிடவும்.',
+  statusTxtLoaded:'உரை ஆஃப்லைன் பயணக் குறிப்பு ஏற்றப்பட்டது (சேமித்த நகல்).',
+  statusReadErr:'இந்த தொகுப்பைப் படிக்க முடியவில்லை. 2 MB க்கு கீழ் உள்ள சரியான மத்ஸ்யா .txt அல்லது .html கோப்பைத் தேர்ந்தெடுக்கவும்.',
+  statusExpired:'தொகுப்பு காலாவதியாகிவிட்டது அல்லது சாதன கடிகாரம் தவறாக உள்ளது.',
+  statusOfflineCopy:'ஆஃப்லைன் நகல் — புதிய புதுப்பிப்புகள் இல்லை. வரம்பு:',
+  statusLocked:'தொகுப்பு பூட்டப்பட்டது.',statusUnlocking:'திறக்கிறது…',
+  statusUnlockErr:'திறக்க முடியவில்லை: தவறான கடவுச்சொல் அல்லது சிதைந்த கோப்பு.',
+  txtHeading:'சேமித்த ஆஃப்லைன் பயணக் குறிப்புகள்',locFallback:'தேர்ந்தெடுத்த இடம்',
+  savedPrefix:'சேமித்தது',savedSuffix:'ஒவ்வொரு அளவீடும் தொகுப்பு வரம்புக்கு முன் காலாவதியாகலாம்.',
+  readingsHeading:'சேமித்த கடல் அளவீடுகள்',readingsNote:'மாதிரி முன்னறிவிப்பு மட்டுமே. 3 மணி நேரத்திற்கு மேற்பட்டவை மறைக்கப்படும்.',
+  noReadings:'காலாவதியாகாத கடல் அளவீடுகள் இல்லை.',forecastValid:'முன்னறிவிப்பு நேரம்',retrieved:'பெற்ற நேரம்',issued:'வெளியீடு',sampleGrid:'கட்டம்',unknown:'தெரியவில்லை',
+  forecastHeading:'சேமித்த முன்னறிவிப்பு நேரங்கள்',forecastNote:'கிடைத்த நேரங்கள் மட்டுமே சேமிக்கப்பட்டுள்ளன.',
+  waves:'அலைகள்',wind:'காற்று',unavailable:'கிடைக்கவில்லை',noForecast:'வரவிருக்கும் முன்னறிவிப்பு நேரங்கள் இல்லை.',source:'ஆதாரம்',
+  pfzHeading:'PFZ ஆலோசனை',sector:'பகுதி',expires:'காலாவதி',noAdvisory:'வழங்குநர் எந்த ஆலோசனையும் வெளியிடவில்லை.',noPfzPoints:'PFZ புள்ளிகள் இல்லை.',
+  pfzHidden:'தற்போதைய PFZ ஆலோசனை இல்லை அல்லது காலாவதியாகிவிட்டது. புள்ளிகள் மறைக்கப்பட்டுள்ளன.',
+  notIncluded:'வரைபடங்கள், செயற்கைக்கோள் படங்கள், வழிசெலுத்தல் பாதைகள், அலைக்கடல் மற்றும் அரட்டை வரலாறு சேர்க்கப்படவில்லை.',
+  attribution:'வானிலை ஆதாரம்: Open-Meteo, DWD, Copernicus Marine மற்றும் INCOIS. மத்ஸ்யா தேர்ந்தெடுத்த மதிப்புகளைக் காட்டுகிறது.',
+  labels:{'Wave height':'அலை உயரம்','Wave period':'அலை காலம்','Wave direction (from)':'அலை திசை','Wind speed':'காற்று வேகம்','Wind direction (from)':'காற்று திசை','Sea surface temperature':'கடல் மேற்பரப்பு வெப்பநிலை','Current speed':'நீரோட்ட வேகம்','Current direction (towards)':'நீரோட்ட திசை'}
+ },
+ te:{
+  title:'మత్స్య ఆఫ్‌లైన్ ప్రయాణ ప్యాక్',lang:'భాష',
+  notice:'భద్రపరచిన సమాచారం మాత్రమే. ఈ ఫైల్ అప్‌డేట్‌లు పొందదు, అత్యవసర సేవలను సంప్రదించదు, SOS పంపదు. ఇది సముద్రానికి వెళ్లే అనుమతి కాదు.',
+  emergencyTitle:'నేరుగా మొబైల్ అత్యవసర సహాయం (ఇంటర్నెట్ అవసరం లేదు):',call112:'కాల్ 112',call1554:'కోస్ట్ గార్డ్ 1554',call1093:'కోస్టల్ పోలీస్ 1093',sms112:'SMS 112',
+  fileLabel:'డౌన్‌లోడ్ చేసిన మత్స్య ప్రయాణ ప్యాక్ (.txt లేదా .html) తెరవండి',fileHint:'ఈ ఫైల్ ఈ పరికరంలో మాత్రమే చదవబడుతుంది; అప్‌లోడ్ చేయబడదు.',
+  pwLabel:'ప్రయాణ ప్యాక్ పాస్‌వర్డ్',unlockBtn:'ప్యాక్ తెరవండి',pwHint:'మీ పాస్‌వర్డ్ ఈ పరికరంలోనే ఉంటుంది. పాస్‌వర్డ్ రికవరీ లేదు.',
+  lockBtn:'ప్యాక్ లాక్ చేయండి',deleteHint:'ఈ ప్యాక్ తొలగించడానికి Downloads / Files నుండి ఫైల్ తొలగించండి. మత్స్య నుండి సైన్ అవుట్ చేస్తే ఫైల్ తొలగదు.',
+  statusInitial:'ఇంటర్నెట్ లేకపోయినా ఈ డౌన్‌లోడ్ ఫైల్‌ను బ్రౌజర్‌లో తెరవండి.',
+  statusSelected:'ఫైల్ ఎంచుకోబడింది. తెరవడానికి పాస్‌వర్డ్ నమోదు చేయండి.',
+  statusTxtLoaded:'టెక్స్ట్ ఆఫ్‌లైన్ ప్రయాణ ప్యాక్ లోడ్ అయింది (సేవ్ చేసిన కాపీ).',
+  statusReadErr:'ఈ ప్యాక్ చదవలేకపోయింది. 2 MB లోపు సరైన మత్స్య .txt లేదా .html ఫైల్ ఎంచుకోండి.',
+  statusExpired:'ప్యాక్ గడువు ముగిసింది లేదా పరికర గడియారం తప్పుగా ఉంది.',
+  statusOfflineCopy:'ఆఫ్‌లైన్ కాపీ — కొత్త అప్‌డేట్‌లు లేవు. గడువు:',
+  statusLocked:'ప్యాక్ లాక్ చేయబడింది.',statusUnlocking:'తెరుస్తోంది…',
+  statusUnlockErr:'తెరవలేకపోయింది: తప్పు పాస్‌వర్డ్ లేదా దెబ్బతిన్న ఫైల్.',
+  txtHeading:'సేవ్ చేసిన ఆఫ్‌లైన్ ప్రయాణ గమనికలు',locFallback:'ఎంచుకున్న ప్రయాణ స్థానం',
+  savedPrefix:'సేవ్ చేసింది',savedSuffix:'ప్రతి రీడింగ్ ప్యాక్ గడువుకు ముందే ముగియవచ్చు.',
+  readingsHeading:'సేవ్ చేసిన సముద్ర రీడింగ్స్',readingsNote:'మోడల్ అంచనాలు మాత్రమే. 3 గంటల కంటే పాతవి దాచబడతాయి.',
+  noReadings:'చెల్లుబాటు అయ్యే సముద్ర రీడింగ్స్ లేవు.',forecastValid:'అంచనా సమయం',retrieved:'పొందిన సమయం',issued:'జారీ',sampleGrid:'గ్రిడ్',unknown:'తెలియదు',
+  forecastHeading:'సేవ్ చేసిన అంచనా సమయాలు',forecastNote:'అందిన స్లాట్లు మాత్రమే భద్రపరచబడ్డాయి.',
+  waves:'అలలు',wind:'గాలి',unavailable:'అందుబాటులో లేదు',noForecast:'రాబోయే అంచనా స్లాట్లు లేవు.',source:'మూలం',
+  pfzHeading:'PFZ సూచన',sector:'ప్రాంతం',expires:'గడువు',noAdvisory:'ప్రదాత ఎటువంటి సూచన జారీ చేయలేదు.',noPfzPoints:'PFZ పాయింట్లు లేవు.',
+  pfzHidden:'ప్రస్తుత PFZ సూచన లేదు లేదా గడువు ముగిసింది. పాయింట్లు దాచబడ్డాయి.',
+  notIncluded:'మ్యాప్ టైల్స్, శాటిలైట్ చిత్రాలు, నావిగేషన్ మార్గాలు, అలల అంచనాలు మరియు చాట్ చరిత్ర ఇందులో లేవు.',
+  attribution:'వాతావరణ మూలాలు: Open-Meteo, DWD, Copernicus Marine మరియు INCOIS. మత్స్య ఎంపిక చేసిన విలువలను చూపుతుంది.',
+  labels:{'Wave height':'అలల ఎత్తు','Wave period':'అలల వ్యవధి','Wave direction (from)':'అలల దిశ','Wind speed':'గాలి వేగం','Wind direction (from)':'గాలి దిశ','Sea surface temperature':'సముద్ర ఉపరితల ఉష్ణోగ్రత','Current speed':'ప్రవాహ వేగం','Current direction (towards)':'ప్రవాహ దిశ'}
+ },
+ ml:{
+  title:'മത്സ്യ ഓഫ്‌ലൈൻ യാത്രാ പാക്ക്',lang:'ഭാഷ',
+  notice:'സൂക്ഷിച്ച വിവരങ്ങൾ മാത്രം. ഈ ഫയലിന് അപ്‌ഡേറ്റുകൾ ലഭിക്കില്ല, അടിയന്തര സേവനങ്ങളെ ബന്ധപ്പെടാനോ SOS അയക്കാനോ കഴിയില്ല. കടലിൽ പോകാനുള്ള അനുമതിയല്ല.',
+  emergencyTitle:'നേരിട്ടുള്ള മൊബൈൽ അടിയന്തര സഹായം (ഇന്റർനെറ്റ് വേണ്ട):',call112:'വിളിക്കുക 112',call1554:'കോസ്റ്റ് ഗാർഡ് 1554',call1093:'തീരദേശ പോലീസ് 1093',sms112:'SMS 112',
+  fileLabel:'ഡൗൺലോഡ് ചെയ്ത മത്സ്യ യാത്രാ പാക്ക് (.txt അല്ലെങ്കിൽ .html) തുറക്കുക',fileHint:'ഈ ഫയൽ ഈ ഉപകരണത്തിൽ മാത്രമേ വായിക്കൂ; അപ്‌ലോഡ് ചെയ്യില്ല.',
+  pwLabel:'യാത്രാ പാക്ക് പാസ്‌വേഡ്',unlockBtn:'പാക്ക് തുറക്കുക',pwHint:'പാസ്‌വേഡ് ഈ ഉപകരണത്തിൽ മാത്രം സൂക്ഷിക്കുന്നു. റിക്കവറി ഇല്ല.',
+  lockBtn:'പാക്ക് ലോക്ക് ചെയ്യുക',deleteHint:'ഈ പാക്ക് നീക്കാൻ Downloads / Files ൽ നിന്ന് ഫയൽ നീക്കുക. മത്സ്യ സൈൻ ഔട്ട് ചെയ്താലും ഫയൽ നീങ്ങില്ല.',
+  statusInitial:'ഇന്റർനെറ്റ് ഇല്ലെങ്കിലും ഈ ഫയൽ ബ്രൗസറിൽ തുറക്കാം.',
+  statusSelected:'ഫയൽ തിരഞ്ഞെടുത്തു. തുറക്കാൻ പാസ്‌വേഡ് നൽകുക.',
+  statusTxtLoaded:'ടെക്സ്റ്റ് ഓഫ്‌ലൈൻ യാത്രാ പാക്ക് ലോഡ് ചെയ്തു (സൂക്ഷിച്ച പകർപ്പ്).',
+  statusReadErr:'ഈ പാക്ക് വായിക്കാനായില്ല. 2 MB-ൽ താഴെയുള്ള ശരിയായ മത്സ്യ .txt അല്ലെങ്കിൽ .html ഫയൽ തിരഞ്ഞെടുക്കുക.',
+  statusExpired:'പാക്കിന്റെ കാലാവധി കഴിഞ്ഞു അല്ലെങ്കിൽ ഉപകരണത്തിന്റെ സമയം തെറ്റാണ്.',
+  statusOfflineCopy:'ഓഫ്‌ലൈൻ പകർപ്പ് — പുതിയ അപ്‌ഡേറ്റുകളില്ല. പരിധി:',
+  statusLocked:'പാക്ക് ലോക്ക് ചെയ്തു.',statusUnlocking:'തുറക്കുന്നു…',
+  statusUnlockErr:'തുറക്കാനായില്ല: തെറ്റായ പാസ്‌വേഡ് അല്ലെങ്കിൽ കേടായ ഫയൽ.',
+  txtHeading:'സൂക്ഷിച്ച ഓഫ്‌ലൈൻ യാത്രാ കുറിപ്പുകൾ',locFallback:'തിരഞ്ഞെടുത്ത സ്ഥലം',
+  savedPrefix:'സൂക്ഷിച്ചത്',savedSuffix:'ഓരോ വിവരവും പാക്ക് കാലാവധിക്ക് മുമ്പ് അവസാനിക്കാം.',
+  readingsHeading:'സൂക്ഷിച്ച കടൽ വിവരങ്ങൾ',readingsNote:'മോഡൽ പ്രവചനങ്ങൾ മാത്രം. 3 മണിക്കൂറിലധികം പഴയവ മറയ്ക്കും.',
+  noReadings:'കാലാവധി കഴിയാത്ത കടൽ വിവരങ്ങൾ ഒന്നുമില്ല.',forecastValid:'പ്രവചന സമയം',retrieved:'ലഭിച്ചത്',issued:'പുറത്തിറക്കിയത്',sampleGrid:'ഗ്രിഡ്',unknown:'അജ്ഞാതം',
+  forecastHeading:'സൂക്ഷിച്ച പ്രവചന സമയങ്ങൾ',forecastNote:'ലഭിച്ച സമയങ്ങൾ മാത്രമാണ് സൂക്ഷിച്ചിരിക്കുന്നത്.',
+  waves:'തിരമാല',wind:'കാറ്റ്',unavailable:'ലഭ്യമല്ല',noForecast:'വരാനിരിക്കുന്ന പ്രവചന സമയങ്ങളില്ല.',source:'ഉറവിടം',
+  pfzHeading:'PFZ ഉപദേശം',sector:'മേഖല',expires:'കാലാവധി',noAdvisory:'ദാതാവ് ഉപദേശം പുറത്തിറക്കിയിട്ടില്ല.',noPfzPoints:'PFZ പോയിന്റുകൾ ഇല്ല.',
+  pfzHidden:'നിലവിലെ PFZ ഉപദേശം ഇല്ല അല്ലെങ്കിൽ കാലാവധി കഴിഞ്ഞു. പോയിന്റുകൾ മറച്ചിരിക്കുന്നു.',
+  notIncluded:'മാപ്പ്, സാറ്റലൈറ്റ് ചിത്രങ്ങൾ, നാവിഗേഷൻ റൂട്ടുകൾ, വേലിയേറ്റം, ചാറ്റ് ചരിത്രം എന്നിവ ഉൾപ്പെടുത്തിയിട്ടില്ല.',
+  attribution:'കാലാവസ്ഥാ ഉറവിടങ്ങൾ: Open-Meteo, DWD, Copernicus Marine, INCOIS. മത്സ്യ തിരഞ്ഞെടുത്ത വിവരങ്ങൾ കാണിക്കുന്നു.',
+  labels:{'Wave height':'തിരമാലയുടെ ഉയരം','Wave period':'തിരമാല കാലയളവ്','Wave direction (from)':'തിരമാല ദിശ','Wind speed':'കാറ്റിന്റെ വേഗത','Wind direction (from)':'കാറ്റിന്റെ ദിശ','Sea surface temperature':'കടൽ ഉപരിതല താപനില','Current speed':'ഒഴുക്കിന്റെ വേഗത','Current direction (towards)':'ഒഴുക്കിന്റെ ദിശ'}
+ },
+ bn:{
+  title:'মৎস্য অফলাইন ভ্রমণ প্যাক',lang:'ভাষা',
+  notice:'শুধুমাত্র সংরক্ষিত তথ্য। এই ফাইল আপডেট পেতে, জরুরি পরিষেবায় যোগাযোগ করতে বা SOS পাঠাতে পারে না। এটি সমুদ্রে যাওয়ার অনুমতি নয়।',
+  emergencyTitle:'সরাসরি মোবাইল জরুরি সাহায্য (ইন্টারনেট ছাড়াই):',call112:'কল 112',call1554:'কোস্ট গার্ড 1554',call1093:'উপকূল পুলিশ 1093',sms112:'SMS 112',
+  fileLabel:'ডাউনলোড করা মৎস্য ভ্রমণ প্যাক (.txt বা .html) খুলুন',fileHint:'এই ফাইল কেবল এই ডিভাইসেই পড়া হয় এবং আপলোড হয় না।',
+  pwLabel:'ভ্রমণ প্যাক পাসওয়ার্ড',unlockBtn:'প্যাক খুলুন',pwHint:'পাসওয়ার্ড এই ডিভাইসেই থাকে। পাসওয়ার্ড রিকভারি নেই।',
+  lockBtn:'প্যাক লক করুন',deleteHint:'এই প্যাক মুছতে Downloads / Files থেকে ফাইলটি মুছুন। মৎস্য থেকে সাইন আউট করলে ফাইল মুছে যায় না।',
+  statusInitial:'ইন্টারনেট না থাকলেও এই ফাইলটি ব্রাউজারে খুলুন।',
+  statusSelected:'ফাইল নির্বাচিত হয়েছে। খুলতে পাসওয়ার্ড দিন।',
+  statusTxtLoaded:'টেক্সট অফলাইন ভ্রমণ প্যাক লোড হয়েছে (সংরক্ষিত কপি)।',
+  statusReadErr:'এই প্যাক পড়া যাচ্ছে না। 2 MB-এর কম সঠিক মৎস্য .txt বা .html ফাইল নির্বাচন করুন।',
+  statusExpired:'প্যাকের মেয়াদ শেষ হয়েছে বা ডিভাইসের ঘড়ি ভুল আছে।',
+  statusOfflineCopy:'অফলাইন কপি — নতুন আপডেট নেই। সীমা:',
+  statusLocked:'প্যাক লক করা হয়েছে।',statusUnlocking:'খুলছে…',
+  statusUnlockErr:'খোলা যায়নি: ভুল পাসওয়ার্ড বা ক্ষতিগ্রস্ত ফাইল।',
+  txtHeading:'সংরক্ষিত অফলাইন ভ্রমণ নোট',locFallback:'নির্বাচিত ভ্রমণ স্থান',
+  savedPrefix:'সংরক্ষিত',savedSuffix:'প্রতিটি পাঠ প্যাক সীমার আগেই মেয়াদোত্তীর্ণ হতে পারে।',
+  readingsHeading:'সংরক্ষিত সামুদ্রিক তথ্য',readingsNote:'মডেল পূর্বাভাস মাত্র। ৩ ঘণ্টার পুরোনো তথ্য লুকানো হয়।',
+  noReadings:'কোনো বৈধ সামুদ্রিক তথ্য সংরক্ষিত নেই।',forecastValid:'পূর্বাভাস বৈধ',retrieved:'সংগৃহীত',issued:'প্রকাশিত',sampleGrid:'গ্রিড',unknown:'অজানা',
+  forecastHeading:'সংরক্ষিত পূর্বাভাসের সময়',forecastNote:'শুধু প্রাপ্ত স্লট সংরক্ষিত আছে।',
+  waves:'ঢেউ',wind:'বাতাস',unavailable:'উপলব্ধ নয়',noForecast:'আসন্ন পূর্বাভাস স্লট নেই।',source:'উৎস',
+  pfzHeading:'PFZ পরামর্শ',sector:'অঞ্চল',expires:'মেয়াদ',noAdvisory:'কোনো পরামর্শ জারি করা হয়নি।',noPfzPoints:'কোনো PFZ বিন্দু নেই।',
+  pfzHidden:'বর্তমান PFZ পরামর্শ নেই বা মেয়াদ শেষ হয়েছে। বিন্দুগুলি লুকানো আছে।',
+  notIncluded:'মানচিত্র, স্যাটেলাইট ছবি, নেভিগেশন রুট, জোয়ার ও চ্যাট ইতিহাস এতে নেই।',
+  attribution:'আবহাওয়া উৎস: Open-Meteo, DWD, Copernicus Marine ও INCOIS। মৎস্য নির্বাচিত মান ও মেয়াদ দেখায়।',
+  labels:{'Wave height':'ঢেউয়ের উচ্চতা','Wave period':'ঢেউয়ের সময়কাল','Wave direction (from)':'ঢেউয়ের দিক','Wind speed':'বাতাসের গতি','Wind direction (from)':'বাতাসের দিক','Sea surface temperature':'সমুদ্রপৃষ্ঠের তাপমাত্রা','Current speed':'স্রোতের গতি','Current direction (towards)':'স্রোতের দিক'}
+ },
+ kn:{
+  title:'ಮತ್ಸ್ಯ ಆಫ್‌ಲೈನ್ ಪ್ರಯಾಣ ಪ್ಯಾಕ್',lang:'ಭಾಷೆ',
+  notice:'ಉಳಿಸಿದ ಮಾಹಿತಿ ಮಾತ್ರ. ಈ ಫೈಲ್ ನವೀಕರಣಗಳನ್ನು ಪಡೆಯುವುದಿಲ್ಲ, ತುರ್ತು ಸೇವೆಗಳನ್ನು ಸಂಪರ್ಕಿಸುವುದಿಲ್ಲ ಮತ್ತು SOS ಕಳುಹಿಸುವುದಿಲ್ಲ. ಇದು ಸಮುದ್ರಕ್ಕೆ ಹೋಗಲು ಅನುಮತಿಯಲ್ಲ.',
+  emergencyTitle:'ನೇರ ಮೊಬೈಲ್ ತುರ್ತು ಸಹಾಯ (ಇಂಟರ್ನೆಟ್ ಅಗತ್ಯವಿಲ್ಲ):',call112:'ಕರೆ 112',call1554:'ಕೋಸ್ಟ್ ಗಾರ್ಡ್ 1554',call1093:'ಕರಾವಳಿ ಪೊಲೀಸ್ 1093',sms112:'SMS 112',
+  fileLabel:'ಡೌನ್‌ಲೋಡ್ ಮಾಡಿದ ಮತ್ಸ್ಯ ಪ್ರಯಾಣ ಪ್ಯಾಕ್ (.txt ಅಥವಾ .html) ತೆರೆಯಿರಿ',fileHint:'ಈ ಫೈಲ್ ಈ ಸಾಧನದಲ್ಲಿ ಮಾತ್ರ ಓದಲಾಗುತ್ತದೆ; ಅಪ್‌ಲೋಡ್ ಆಗುವುದಿಲ್ಲ.',
+  pwLabel:'ಪ್ರಯಾಣ ಪ್ಯಾಕ್ ಪಾಸ್‌ವರ್ಡ್',unlockBtn:'ಪ್ಯಾಕ್ ತೆರೆಯಿರಿ',pwHint:'ಪಾಸ್‌ವರ್ಡ್ ಈ ಸಾಧನದಲ್ಲೇ ಇರುತ್ತದೆ. ಪಾಸ್‌ವರ್ಡ್ ಮರುಪಡೆಯುವಿಕೆ ಇಲ್ಲ.',
+  lockBtn:'ಪ್ಯಾಕ್ ಲಾಕ್ ಮಾಡಿ',deleteHint:'ಈ ಪ್ಯಾಕ್ ಅಳಿಸಲು Downloads / Files ನಿಂದ ಫೈಲ್ ತೆಗೆದುಹಾಕಿ. ಮತ್ಸ್ಯ ನಿಂದ ಸೈನ್ ಔಟ್ ಮಾಡಿದರೆ ಫೈಲ್ ಅಳಿಸುವುದಿಲ್ಲ.',
+  statusInitial:'ಇಂಟರ್ನೆಟ್ ಇಲ್ಲದಿದ್ದರೂ ಈ ಫೈಲ್ ಅನ್ನು ಬ್ರೌಸರ್‌ನಲ್ಲಿ ತೆರೆಯಿರಿ.',
+  statusSelected:'ಫೈಲ್ ಆಯ್ಕೆಯಾಗಿದೆ. ತೆರೆಯಲು ಪಾಸ್‌ವರ್ಡ್ ನಮೂದಿಸಿ.',
+  statusTxtLoaded:'ಪಠ್ಯ ಆಫ್‌ಲೈನ್ ಪ್ರಯಾಣ ಪ್ಯಾಕ್ ಲೋಡ್ ಆಗಿದೆ (ಉಳಿಸಿದ ಪ್ರತಿ).',
+  statusReadErr:'ಈ ಪ್ಯಾಕ್ ಓದಲಾಗಲಿಲ್ಲ. 2 MB ಒಳಗಿನ ಸರಿಯಾದ ಮತ್ಸ್ಯ .txt ಅಥವಾ .html ಫೈಲ್ ಆಯ್ಕೆಮಾಡಿ.',
+  statusExpired:'ಪ್ಯಾಕ್ ಅವಧಿ ಮುಗಿದಿದೆ ಅಥವಾ ಸಾಧನದ ಗಡಿಯಾರ ತಪ್ಪಾಗಿದೆ.',
+  statusOfflineCopy:'ಆಫ್‌ಲೈನ್ ಪ್ರತಿ — ಹೊಸ ನವೀಕರಣಗಳಿಲ್ಲ. ಮಿತಿ:',
+  statusLocked:'ಪ್ಯಾಕ್ ಲಾಕ್ ಆಗಿದೆ.',statusUnlocking:'ತೆರೆಯುತ್ತಿದೆ…',
+  statusUnlockErr:'ತೆರೆಯಲಾಗಲಿಲ್ಲ: ತಪ್ಪು ಪಾಸ್‌ವರ್ಡ್ ಅಥವಾ ಹಾನಿಗೊಳಗಾದ ಫೈಲ್.',
+  txtHeading:'ಉಳಿಸಿದ ಆಫ್‌ಲೈನ್ ಪ್ರಯಾಣ ಟಿಪ್ಪಣಿಗಳು',locFallback:'ಆಯ್ದ ಪ್ರಯಾಣ ಸ್ಥಳ',
+  savedPrefix:'ಉಳಿಸಿದ್ದು',savedSuffix:'ಪ್ರತಿ ಮಾಹಿತಿಯೂ ಪ್ಯಾಕ್ ಮಿತಿಗಿಂತ ಮುಂಚೆ ಮುಗಿಯಬಹುದು.',
+  readingsHeading:'ಉಳಿಸಿದ ಸಮುದ್ರ ಮಾಪನಗಳು',readingsNote:'ಮಾದರಿ ಮುನ್ಸೂಚನೆ ಮಾತ್ರ. 3 ಗಂಟೆಗಿಂತ ಹಳೆಯವು ಮರೆಯಾಗುತ್ತವೆ.',
+  noReadings:'ಮಾನ್ಯವಾದ ಸಮುದ್ರ ಮಾಪನಗಳಿಲ್ಲ.',forecastValid:'ಮುನ್ಸೂಚನೆ ಸಮಯ',retrieved:'ಪಡೆದ ಸಮಯ',issued:'ಪ್ರಕಟಿತ',sampleGrid:'ಗ್ರಿಡ್',unknown:'ತಿಳಿದಿಲ್ಲ',
+  forecastHeading:'ಉಳಿಸಿದ ಮುನ್ಸೂಚನೆ ಸಮಯಗಳು',forecastNote:'ಲಭ್ಯವಾದ ಸ್ಲಾಟ್‌ಗಳು ಮಾತ್ರ ಉಳಿಸಲ್ಪಟ್ಟಿವೆ.',
+  waves:'ಅಲೆಗಳು',wind:'ಗಾಳಿ',unavailable:'ಲಭ್ಯವಿಲ್ಲ',noForecast:'ಮುಂದಿನ ಮುನ್ಸೂಚನೆ ಸ್ಲಾಟ್‌ಗಳಿಲ್ಲ.',source:'ಮೂಲ',
+  pfzHeading:'PFZ ಸಲಹೆ',sector:'ಪ್ರದೇಶ',expires:'ಅವಧಿ',noAdvisory:'ಯಾವುದೇ ಸಲಹೆ ಪ್ರಕಟವಾಗಿಲ್ಲ.',noPfzPoints:'PFZ ಬಿಂದುಗಳಿಲ್ಲ.',
+  pfzHidden:'ಪ್ರಸ್ತುತ PFZ ಸಲಹೆ ಇಲ್ಲ ಅಥವಾ ಅವಧಿ ಮುಗಿದಿದೆ. ಬಿಂದುಗಳನ್ನು ಮರೆಮಾಡಲಾಗಿದೆ.',
+  notIncluded:'ನಕ್ಷೆಗಳು, ಉಪಗ್ರಹ ಚಿತ್ರಗಳು, ಮಾರ್ಗಗಳು, ಉಬ್ಬರವಿಳಿತ ಮತ್ತು ಚಾಟ್ ಇತಿಹಾಸ ಸೇರಿಲ್ಲ.',
+  attribution:'ಹವಾಮಾನ ಮೂಲಗಳು: Open-Meteo, DWD, Copernicus Marine ಮತ್ತು INCOIS. ಮತ್ಸ್ಯ ಆಯ್ದ ಮೌಲ್ಯಗಳನ್ನು ತೋರಿಸುತ್ತದೆ.',
+  labels:{'Wave height':'ಅಲೆಗಳ ಎತ್ತರ','Wave period':'ಅಲೆಗಳ ಅವಧಿ','Wave direction (from)':'ಅಲೆಗಳ ದಿಕ್ಕು','Wind speed':'ಗಾಳಿಯ ವೇಗ','Wind direction (from)':'ಗಾಳಿಯ ದಿಕ್ಕು','Sea surface temperature':'ಸಮುದ್ರ ಮೇಲ್ಮೈ ತಾಪಮಾನ','Current speed':'ಪ್ರವಾಹದ ವೇಗ','Current direction (towards)':'ಪ್ರವಾಹದ ದಿಕ್ಕು'}
+ },
+ or:{
+  title:'ମତ୍ସ୍ୟ ଅଫଲାଇନ୍ ଯାତ୍ରା ପ୍ୟାକ୍',lang:'ଭାଷା',
+  notice:'କେବଳ ସଞ୍ଚିତ ସୂଚନା। ଏହି ଫାଇଲ୍ ଅପଡେଟ୍ ପାଇପାରିବ ନାହିଁ, ଜରୁରୀ ସେବାକୁ ଯୋଗାଯୋଗ କରିପାରିବ ନାହିଁ କିମ୍ବା SOS ପଠାଇପାରିବ ନାହିଁ।',
+  emergencyTitle:'ସିଧା ମୋବାଇଲ୍ ଜରୁରୀ ସହାୟତା (ଇଣ୍ଟରନେଟ୍ ବିନା):',call112:'କଲ୍ 112',call1554:'କୋଷ୍ଟ ଗାର୍ଡ 1554',call1093:'ଉପକୂଳ ପୋଲିସ୍ 1093',sms112:'SMS 112',
+  fileLabel:'ଡାଉନଲୋଡ୍ ହୋଇଥିବା ମତ୍ସ୍ୟ ଯାତ୍ରା ପ୍ୟାକ୍ (.txt କିମ୍ବା .html) ଖୋଲନ୍ତୁ',fileHint:'ଏହି ଫାଇଲ୍ କେବଳ ଏହି ଡିଭାଇସ୍‌ରେ ପଢ଼ାଯାଏ; ଅପଲୋଡ୍ ହୁଏନାହିଁ।',
+  pwLabel:'ଯାତ୍ରା ପ୍ୟାକ୍ ପାସୱାର୍ଡ',unlockBtn:'ପ୍ୟାକ୍ ଖୋଲନ୍ତୁ',pwHint:'ପାସୱାର୍ଡ ଏହି ଡିଭାଇସ୍‌ରେ ରହେ। ପୁନରୁଦ୍ଧାର ସୁବିଧା ନାହିଁ।',
+  lockBtn:'ପ୍ୟାକ୍ ଲକ୍ କରନ୍ତୁ',deleteHint:'ଏହି ପ୍ୟାକ୍ ହଟାଇବାକୁ Downloads / Files ରୁ ଫାଇଲ୍ ହଟାନ୍ତୁ। ମତ୍ସ୍ୟ ରୁ ସାଇନ୍ ଆଉଟ୍ କଲେ ଫାଇଲ୍ ହଟେନାହିଁ।',
+  statusInitial:'ଇଣ୍ଟରନେଟ୍ ନଥିଲେ ବି ଏହି ଫାଇଲ୍ ବ୍ରାଉଜର୍‌ରେ ଖୋଲନ୍ତୁ।',
+  statusSelected:'ଫାଇଲ୍ ବଛାଗଲା। ଖୋଲିବାକୁ ପାସୱାର୍ଡ ଦିଅନ୍ତୁ।',
+  statusTxtLoaded:'ଟେକ୍ସଟ୍ ଅଫଲାଇନ୍ ଯାତ୍ରା ପ୍ୟାକ୍ ଲୋଡ୍ ହେଲା (ସଞ୍ଚିତ ନକଲ)।',
+  statusReadErr:'ଏହି ପ୍ୟାକ୍ ପଢ଼ିହେଲା ନାହିଁ। 2 MB ରୁ କମ୍ ସଠିକ୍ ମତ୍ସ୍ୟ .txt କିମ୍ବା .html ଫାଇଲ୍ ବାଛନ୍ତୁ।',
+  statusExpired:'ପ୍ୟାକ୍ ଅବଧି ଶେଷ ହୋଇଛି କିମ୍ବା ଡିଭାଇସ୍ ଘଣ୍ଟା ଭୁଲ୍ ଅଛି।',
+  statusOfflineCopy:'ଅଫଲାଇନ୍ ନକଲ — ନୂଆ ଅପଡେଟ୍ ନାହିଁ। ସୀମା:',
+  statusLocked:'ପ୍ୟାକ୍ ଲକ୍ ହେଲା।',statusUnlocking:'ଖୋଲୁଛି…',
+  statusUnlockErr:'ଖୋଲିହେଲା ନାହିଁ: ଭୁଲ୍ ପାସୱାର୍ଡ କିମ୍ବା କ୍ଷତିଗ୍ରସ୍ତ ଫାଇଲ୍।',
+  txtHeading:'ସଞ୍ଚିତ ଅଫଲାଇନ୍ ଯାତ୍ରା ନୋଟ୍',locFallback:'ବଛା ଯାତ୍ରା ସ୍ଥାନ',
+  savedPrefix:'ସଞ୍ଚିତ',savedSuffix:'ପ୍ରତ୍ୟେକ ତଥ୍ୟ ପ୍ୟାକ୍ ସୀମା ପୂର୍ବରୁ ସମାପ୍ତ ହୋଇପାରେ।',
+  readingsHeading:'ସଞ୍ଚିତ ସମୁଦ୍ର ତଥ୍ୟ',readingsNote:'ମଡେଲ୍ ପୂର୍ବାନୁମାନ ମାତ୍ର। ୩ ଘଣ୍ଟାରୁ ପୁରୁଣା ତଥ୍ୟ ଲୁଚାଯାଏ।',
+  noReadings:'କୌଣସି ବୈଧ ସମୁଦ୍ର ତଥ୍ୟ ନାହିଁ।',forecastValid:'ପୂର୍ବାନୁମାନ ବୈଧ',retrieved:'ସଂଗୃହୀତ',issued:'ପ୍ରକାଶିତ',sampleGrid:'ଗ୍ରିଡ୍',unknown:'ଅଜଣା',
+  forecastHeading:'ସଞ୍ଚିତ ପୂର୍ବାନୁମାନ ସମୟ',forecastNote:'କେବଳ ମିଳିଥିବା ସ୍ଲଟ୍ ସଞ୍ଚିତ ଅଛି।',
+  waves:'ଢେଉ',wind:'ପବନ',unavailable:'ଉପଲବ୍ଧ ନାହିଁ',noForecast:'ଆଗାମୀ ପୂର୍ବାନୁମାନ ସ୍ଲଟ୍ ନାହିଁ।',source:'ଉତ୍ସ',
+  pfzHeading:'PFZ ପରାମର୍ଶ',sector:'ଅଞ୍ଚଳ',expires:'ଅବଧି',noAdvisory:'କୌଣସି ପରାମର୍ଶ ପ୍ରକାଶିତ ହୋଇନାହିଁ।',noPfzPoints:'କୌଣସି PFZ ବିନ୍ଦୁ ନାହିଁ।',
+  pfzHidden:'ବର୍ତ୍ତମାନର PFZ ପରାମର୍ଶ ନାହିଁ କିମ୍ବା ଅବଧି ଶେଷ ହୋଇଛି। ବିନ୍ଦୁଗୁଡ଼ିକ ଲୁଚାଯାଇଛି।',
+  notIncluded:'ମାନଚିତ୍ର, ଉପଗ୍ରହ ଚିତ୍ର, ନାଭିଗେସନ୍ ପଥ, ଜୁଆର ଓ ଚାଟ୍ ଇତିହାସ ସାମିଲ ନାହିଁ।',
+  attribution:'ପାଣିପାଗ ଉତ୍ସ: Open-Meteo, DWD, Copernicus Marine ଓ INCOIS। ମତ୍ସ୍ୟ ଚୟନିତ ମାନ ଦେଖାଏ।',
+  labels:{'Wave height':'ଢେଉ ଉଚ୍ଚତା','Wave period':'ଢେଉ ଅବଧି','Wave direction (from)':'ଢେଉ ଦିଗ','Wind speed':'ପବନ ବେଗ','Wind direction (from)':'ପବନ ଦିଗ','Sea surface temperature':'ସମୁଦ୍ର ପୃଷ୍ଠ ତାପମାତ୍ରା','Current speed':'ସ୍ରୋତ ବେଗ','Current direction (towards)':'ସ୍ରୋତ ଦିଗ'}
+ },
+ pa:{
+  title:'ਮਤਸਿਆ ਆਫ਼ਲਾਈਨ ਯਾਤਰਾ ਪੈਕ',lang:'ਭਾਸ਼ਾ',
+  notice:'ਸਿਰਫ਼ ਸੰਭਾਲੀ ਜਾਣਕਾਰੀ। ਇਹ ਫ਼ਾਈਲ ਅਪਡੇਟ ਨਹੀਂ ਲੈ ਸਕਦੀ, ਐਮਰਜੈਂਸੀ ਸੇਵਾਵਾਂ ਨਾਲ ਸੰਪਰਕ ਨਹੀਂ ਕਰ ਸਕਦੀ ਅਤੇ SOS ਨਹੀਂ ਭੇਜ ਸਕਦੀ।',
+  emergencyTitle:'ਸਿੱਧੀ ਮੋਬਾਈਲ ਐਮਰਜੈਂਸੀ ਮਦਦ (ਇੰਟਰਨੈੱਟ ਤੋਂ ਬਿਨਾਂ):',call112:'ਕਾਲ 112',call1554:'ਕੋਸਟ ਗਾਰਡ 1554',call1093:'ਤੱਟੀ ਪੁਲਿਸ 1093',sms112:'SMS 112',
+  fileLabel:'ਡਾਊਨਲੋਡ ਕੀਤਾ ਮਤਸਿਆ ਯਾਤਰਾ ਪੈਕ (.txt ਜਾਂ .html) ਖੋਲ੍ਹੋ',fileHint:'ਇਹ ਫ਼ਾਈਲ ਸਿਰਫ਼ ਇਸ ਡਿਵਾਈਸ ਤੇ ਪੜ੍ਹੀ ਜਾਂਦੀ ਹੈ; ਅਪਲੋਡ ਨਹੀਂ ਹੁੰਦੀ।',
+  pwLabel:'ਯਾਤਰਾ ਪੈਕ ਪਾਸਵਰਡ',unlockBtn:'ਪੈਕ ਖੋਲ੍ਹੋ',pwHint:'ਪਾਸਵਰਡ ਇਸੇ ਡਿਵਾਈਸ ਤੇ ਰਹਿੰਦਾ ਹੈ। ਰਿਕਵਰੀ ਉਪਲਬਧ ਨਹੀਂ।',
+  lockBtn:'ਪੈਕ ਲੌਕ ਕਰੋ',deleteHint:'ਇਸ ਪੈਕ ਨੂੰ ਹਟਾਉਣ ਲਈ Downloads / Files ਵਿੱਚੋਂ ਫ਼ਾਈਲ ਹਟਾਓ। ਮਤਸਿਆ ਤੋਂ ਸਾਈਨ ਆਊਟ ਕਰਨ ਨਾਲ ਫ਼ਾਈਲ ਨਹੀਂ ਹਟਦੀ।',
+  statusInitial:'ਇੰਟਰਨੈੱਟ ਤੋਂ ਬਿਨਾਂ ਵੀ ਇਸ ਫ਼ਾਈਲ ਨੂੰ ਬ੍ਰਾਊਜ਼ਰ ਵਿੱਚ ਖੋਲ੍ਹੋ।',
+  statusSelected:'ਫ਼ਾਈਲ ਚੁਣੀ ਗਈ। ਖੋਲ੍ਹਣ ਲਈ ਪਾਸਵਰਡ ਦਰਜ ਕਰੋ।',
+  statusTxtLoaded:'ਟੈਕਸਟ ਆਫ਼ਲਾਈਨ ਯਾਤਰਾ ਪੈਕ ਲੋਡ ਹੋ ਗਿਆ (ਸੰਭਾਲੀ ਕਾਪੀ)।',
+  statusReadErr:'ਇਹ ਪੈਕ ਪੜ੍ਹਿਆ ਨਹੀਂ ਜਾ ਸਕਿਆ। 2 MB ਤੋਂ ਛੋਟੀ ਸਹੀ ਮਤਸਿਆ .txt ਜਾਂ .html ਫ਼ਾਈਲ ਚੁਣੋ।',
+  statusExpired:'ਪੈਕ ਦੀ ਮਿਆਦ ਖ਼ਤਮ ਹੋ ਗਈ ਹੈ ਜਾਂ ਡਿਵਾਈਸ ਦੀ ਘੜੀ ਗ਼ਲਤ ਹੈ।',
+  statusOfflineCopy:'ਆਫ਼ਲਾਈਨ ਕਾਪੀ — ਕੋਈ ਨਵੇਂ ਅਪਡੇਟ ਨਹੀਂ। ਸੀਮਾ:',
+  statusLocked:'ਪੈਕ ਲੌਕ ਹੈ।',statusUnlocking:'ਖੁੱਲ੍ਹ ਰਿਹਾ ਹੈ…',
+  statusUnlockErr:'ਖੋਲ੍ਹਿਆ ਨਹੀਂ ਜਾ ਸਕਿਆ: ਗ਼ਲਤ ਪਾਸਵਰਡ ਜਾਂ ਖ਼ਰਾਬ ਫ਼ਾਈਲ।',
+  txtHeading:'ਸੰਭਾਲੇ ਆਫ਼ਲਾਈਨ ਯਾਤਰਾ ਨੋਟ',locFallback:'ਚੁਣਿਆ ਯਾਤਰਾ ਸਥਾਨ',
+  savedPrefix:'ਸੰਭਾਲਿਆ',savedSuffix:'ਹਰ ਰੀਡਿੰਗ ਪੈਕ ਸੀਮਾ ਤੋਂ ਪਹਿਲਾਂ ਖ਼ਤਮ ਹੋ ਸਕਦੀ ਹੈ।',
+  readingsHeading:'ਸੰਭਾਲੀਆਂ ਸਮੁੰਦਰੀ ਰੀਡਿੰਗਾਂ',readingsNote:'ਮਾਡਲ ਪੂਰਵ ਅਨੁਮਾਨ ਸਿਰਫ਼। 3 ਘੰਟੇ ਤੋਂ ਪੁਰਾਣੀਆਂ ਰੀਡਿੰਗਾਂ ਲੁਕਾਈਆਂ ਜਾਂਦੀਆਂ ਹਨ।',
+  noReadings:'ਕੋਈ ਵੈਧ ਸਮੁੰਦਰੀ ਰੀਡਿੰਗ ਨਹੀਂ।',forecastValid:'ਪੂਰਵ ਅਨੁਮਾਨ ਵੈਧ',retrieved:'ਪ੍ਰਾਪਤ',issued:'ਜਾਰੀ',sampleGrid:'ਗਰਿੱਡ',unknown:'ਅਣਜਾਣ',
+  forecastHeading:'ਸੰਭਾਲੇ ਪੂਰਵ ਅਨੁਮਾਨ ਸਮੇਂ',forecastNote:'ਸਿਰਫ਼ ਪ੍ਰਾਪਤ ਸਲਾਟ ਸੰਭਾਲੇ ਗਏ ਹਨ।',
+  waves:'ਲਹਿਰਾਂ',wind:'ਹਵਾ',unavailable:'ਉਪਲਬਧ ਨਹੀਂ',noForecast:'ਕੋਈ ਆਉਣ ਵਾਲੇ ਪੂਰਵ ਅਨੁਮਾਨ ਸਲਾਟ ਨਹੀਂ।',source:'ਸਰੋਤ',
+  pfzHeading:'PFZ ਸਲਾਹ',sector:'ਖੇਤਰ',expires:'ਮਿਆਦ',noAdvisory:'ਕੋਈ ਸਲਾਹ ਜਾਰੀ ਨਹੀਂ ਕੀਤੀ ਗਈ।',noPfzPoints:'ਕੋਈ PFZ ਬਿੰਦੂ ਨਹੀਂ।',
+  pfzHidden:'ਮੌਜੂਦਾ PFZ ਸਲਾਹ ਨਹੀਂ ਜਾਂ ਮਿਆਦ ਖ਼ਤਮ ਹੋ ਗਈ ਹੈ। ਬਿੰਦੂ ਲੁਕਾਏ ਗਏ ਹਨ।',
+  notIncluded:'ਨਕਸ਼ੇ, ਸੈਟੇਲਾਈਟ ਤਸਵੀਰਾਂ, ਨੇਵੀਗੇਸ਼ਨ ਰੂਟ, ਜਵਾਰ ਅਤੇ ਚੈਟ ਇਤਿਹਾਸ ਸ਼ਾਮਲ ਨਹੀਂ।',
+  attribution:'ਮੌਸਮ ਸਰੋਤ: Open-Meteo, DWD, Copernicus Marine ਅਤੇ INCOIS। ਮਤਸਿਆ ਚੁਣੇ ਮੁੱਲ ਦਿਖਾਉਂਦਾ ਹੈ।',
+  labels:{'Wave height':'ਲਹਿਰਾਂ ਦੀ ਉਚਾਈ','Wave period':'ਲਹਿਰਾਂ ਦੀ ਮਿਆਦ','Wave direction (from)':'ਲਹਿਰਾਂ ਦੀ ਦਿਸ਼ਾ','Wind speed':'ਹਵਾ ਦੀ ਗਤੀ','Wind direction (from)':'ਹਵਾ ਦੀ ਦਿਸ਼ਾ','Sea surface temperature':'ਸਮੁੰਦਰ ਸਤ੍ਹਾ ਦਾ ਤਾਪਮਾਨ','Current speed':'ਧਾਰਾ ਦੀ ਗਤੀ','Current direction (towards)':'ਧਾਰਾ ਦੀ ਦਿਸ਼ਾ'}
+ }
+};
+const langSelect=document.getElementById('lang');
+let currentLang='en';
+try{
+ const saved=localStorage.getItem('orca.lang')||localStorage.getItem('orca-lang');
+ if(saved&&Object.prototype.hasOwnProperty.call(I18N,saved))currentLang=saved;
+}catch{}
+const t=key=>(I18N[currentLang]&&I18N[currentLang][key])||I18N.en[key]||key;
 const statusNode=document.getElementById('status'), content=document.getElementById('content');
 let pack=null;
+let plainTxt=null;
+let statusState={key:'statusInitial',extra:''};
 let generation=0;
 let envelope=null;
+function setStatus(key,extra){statusState={key,extra:extra||''};statusNode.textContent=extra?t(key)+' '+extra:t(key);}
+function applyLanguage(code){
+ currentLang=Object.prototype.hasOwnProperty.call(I18N,code)?code:'en';
+ document.documentElement.lang=currentLang;
+ document.title=t('title');
+ if(langSelect)langSelect.value=currentLang;
+ document.getElementById('heading').textContent=t('title');
+ document.getElementById('langLabel').textContent=t('lang');
+ document.getElementById('notice').textContent=t('notice');
+ document.getElementById('emergencyTitle').textContent=t('emergencyTitle');
+ document.getElementById('call112').textContent=t('call112');
+ document.getElementById('call1554').textContent=t('call1554');
+ document.getElementById('call1093').textContent=t('call1093');
+ document.getElementById('sms112').textContent=t('sms112');
+ document.getElementById('fileLabel').textContent=t('fileLabel');
+ document.getElementById('fileHint').textContent=t('fileHint');
+ document.getElementById('pwLabel').textContent=t('pwLabel');
+ document.getElementById('unlockBtn').textContent=t('unlockBtn');
+ document.getElementById('pwHint').textContent=t('pwHint');
+ document.getElementById('lock').textContent=t('lockBtn');
+ document.getElementById('deleteHint').textContent=t('deleteHint');
+ setStatus(statusState.key,statusState.extra);
+ if(pack)render();
+ else if(plainTxt)renderPlainText(plainTxt.name,plainTxt.text);
+}
+if(langSelect){
+ langSelect.onchange=()=>{
+  const next=langSelect.value;
+  try{localStorage.setItem('orca.lang',next);localStorage.setItem('orca-lang',next);}catch{}
+  applyLanguage(next);
+ };
+}
 try{envelope=JSON.parse(document.getElementById('payload').textContent);}catch{}
 if(!envelope||envelope.version!==1){document.getElementById('choose').hidden=false;document.getElementById('unlock').hidden=true;}
+function renderPlainText(name,text){
+ content.replaceChildren();
+ const sec=add(content,'section','');
+ add(sec,'h2',name||t('txtHeading'));
+ const pre=document.createElement('pre');
+ pre.style.whiteSpace='pre-wrap';pre.style.overflowWrap='anywhere';
+ pre.textContent=text;sec.append(pre);
+ content.hidden=false;document.getElementById('lock').hidden=false;
+}
 document.getElementById('file').onchange=async event=>{
  lock();document.getElementById('unlock').hidden=true;envelope=null;
  const attempt=generation;
@@ -32,70 +433,68 @@ document.getElementById('file').onchange=async event=>{
   if(match){
    const parsed=JSON.parse(match[1]);if(parsed.version!==1)throw Error('version');
    if(attempt!==generation)return;
-   envelope=parsed;document.getElementById('unlock').hidden=false;statusNode.textContent='File selected. Enter its password to unlock.';
+   envelope=parsed;document.getElementById('unlock').hidden=false;setStatus('statusSelected');
    return;
   }
   if(file.name.toLowerCase().endsWith('.txt')||file.type==='text/plain'||!/^\s*</.test(text)){
    if(attempt!==generation)return;
-   content.replaceChildren();
-   const sec=add(content,'section','');
-   add(sec,'h2',file.name||'Saved offline trip notes');
-   const pre=document.createElement('pre');
-   pre.style.whiteSpace='pre-wrap';pre.style.overflowWrap='anywhere';
-   pre.textContent=text;sec.append(pre);
-   content.hidden=false;document.getElementById('lock').hidden=false;
-   statusNode.textContent='Plain-text offline trip pack loaded (saved copy — no live updates).';
+   plainTxt={name:file.name,text};
+   renderPlainText(file.name,text);
+   setStatus('statusTxtLoaded');
    return;
   }
   throw Error('format');
- }catch{statusNode.textContent='Cannot read this pack. Select an intact Matsya trip .txt or .html file under 2 MB.';}
+ }catch{setStatus('statusReadErr');}
 };
-const stamp=value=>new Date(value).toLocaleString(undefined,{timeZoneName:'short'});
+const stamp=value=>new Date(value).toLocaleString(currentLang==='en'?undefined:currentLang,{timeZoneName:'short'});
 function add(parent,tag,text){const element=document.createElement(tag);element.textContent=text;parent.append(element);return element;}
 function render(){
  if(!pack)return;
  content.replaceChildren();const now=Date.now();
- if(now<pack.savedAt-60000||now>=pack.expiresAt){statusNode.textContent='Expired pack or incorrect device clock. Time-sensitive data is hidden. Reconnect and prepare a new pack.';return;}
- statusNode.textContent='Offline copy — no new updates. Pack limit: '+stamp(pack.expiresAt);
- add(content,'h2',pack.location.label||'Selected trip location');add(content,'p',pack.location.lat+', '+pack.location.lon);
- add(content,'p','Saved '+stamp(pack.savedAt)+'. Each reading and advisory may expire before the pack limit.');
- const section=add(content,'section','');add(section,'h2','Saved marine readings');
- add(section,'p','Model forecasts, not sensor observations. Readings older than three hours are hidden. Wave direction is FROM; current direction is TO.');
+ if(now<pack.savedAt-60000||now>=pack.expiresAt){setStatus('statusExpired');return;}
+ setStatus('statusOfflineCopy',stamp(pack.expiresAt));
+ add(content,'h2',pack.location.label||t('locFallback'));add(content,'p',pack.location.lat+', '+pack.location.lon);
+ add(content,'p',t('savedPrefix')+' '+stamp(pack.savedAt)+'. '+t('savedSuffix'));
+ const section=add(content,'section','');add(section,'h2',t('readingsHeading'));
+ add(section,'p',t('readingsNote'));
+ const labelMap=t('labels')||{};
  const list=add(section,'ul','');let count=0;
  for(const reading of pack.readings){if(now>=reading.expiresAt)continue;count++;
- add(list,'li',reading.label+': '+reading.value+' '+reading.unit+' — '+reading.source+'; forecast valid '+stamp(reading.validAt)+'; retrieved '+(reading.retrievedAt?stamp(reading.retrievedAt):'unknown')+'; issued '+(reading.issuedAt?stamp(reading.issuedAt):'unknown')+'; sample grid '+(reading.grid?reading.grid.lat+', '+reading.grid.lon:'unknown')+'; '+reading.mode);
- }if(!count)add(section,'p','No unexpired marine readings saved.');
- const forecasts=add(content,'section','');add(forecasts,'h2','Saved forecast times');add(forecasts,'p','Only returned forecast slots are stored. Missing hours have no forecast. No safe-route verdict is provided.');
+  const lbl=labelMap[reading.label]||reading.label;
+  add(list,'li',lbl+': '+reading.value+' '+reading.unit+' — '+reading.source+'; '+t('forecastValid')+' '+stamp(reading.validAt)+'; '+t('retrieved')+' '+(reading.retrievedAt?stamp(reading.retrievedAt):t('unknown'))+'; '+t('issued')+' '+(reading.issuedAt?stamp(reading.issuedAt):t('unknown'))+'; '+t('sampleGrid')+' '+(reading.grid?reading.grid.lat+', '+reading.grid.lon:t('unknown'))+'; '+reading.mode);
+ }if(!count)add(section,'p',t('noReadings'));
+ const forecasts=add(content,'section','');add(forecasts,'h2',t('forecastHeading'));add(forecasts,'p',t('forecastNote'));
  const slots=pack.forecast.filter(row=>row.time>=now&&row.time<pack.expiresAt);const fl=add(forecasts,'ul','');
- for(const row of slots)add(fl,'li',stamp(row.time)+' — waves '+(row.waveHeightM===null?'unavailable':row.waveHeightM+' m')+'; wind '+(row.windSpeedKmh===null?'unavailable':row.windSpeedKmh+' km/h'));
- if(!slots.length)add(forecasts,'p','No upcoming forecast slots saved.');
- add(forecasts,'p','Source: '+pack.forecastSources.join(', '));
- const pfz=add(content,'section','');add(pfz,'h2','PFZ advisory');
+ for(const row of slots)add(fl,'li',stamp(row.time)+' — '+t('waves')+' '+(row.waveHeightM===null?t('unavailable'):row.waveHeightM+' m')+'; '+t('wind')+' '+(row.windSpeedKmh===null?t('unavailable'):row.windSpeedKmh+' km/h'));
+ if(!slots.length)add(forecasts,'p',t('noForecast'));
+ add(forecasts,'p',t('source')+': '+pack.forecastSources.join(', '));
+ const pfz=add(content,'section','');add(pfz,'h2',t('pfzHeading'));
  if(pack.pfz.status==='current'&&pack.pfz.validUntil&&now<Date.parse(pack.pfz.validUntil)){
- add(pfz,'p',(pack.pfz.sectorName||pack.pfz.sector||'Sector')+' · '+pack.pfz.source+' · issued '+stamp(pack.pfz.issuedAt)+' · expires '+stamp(pack.pfz.validUntil));
- const points=add(pfz,'ul','');for(const point of pack.pfz.points)add(points,'li',point.name+': '+point.lat+', '+point.lon);
- if(!pack.pfz.points.length)add(pfz,'p',pack.pfz.coverageStatus==='no_advisory_issued'?'Provider explicitly reported no advisory issued.':'No PFZ points saved.');
- }else add(pfz,'p','No current PFZ advisory saved, or the saved advisory has expired. Points are hidden.');
- add(content,'p','Map tiles, satellite imagery, navigation routes, tide predictions, chat history and account credentials are not included.');
- add(content,'p','Weather attribution: Open-Meteo, DWD, Copernicus Marine; INCOIS where identified above. Matsya (powered by ORCA) selects fields, rounds values and applies display expiry limits. Official data links: open-meteo.com/en/docs/marine-weather-api and incois.gov.in.');
+  add(pfz,'p',(pack.pfz.sectorName||pack.pfz.sector||t('sector'))+' · '+pack.pfz.source+' · '+t('issued')+' '+stamp(pack.pfz.issuedAt)+' · '+t('expires')+' '+stamp(pack.pfz.validUntil));
+  const points=add(pfz,'ul','');for(const point of pack.pfz.points)add(points,'li',point.name+': '+point.lat+', '+point.lon);
+  if(!pack.pfz.points.length)add(pfz,'p',pack.pfz.coverageStatus==='no_advisory_issued'?t('noAdvisory'):t('noPfzPoints'));
+ }else add(pfz,'p',t('pfzHidden'));
+ add(content,'p',t('notIncluded'));
+ add(content,'p',t('attribution'));
 }
-function lock(){generation++;pack=null;content.replaceChildren();content.hidden=true;document.getElementById('unlock').hidden=false;document.getElementById('lock').hidden=true;statusNode.textContent='Pack locked.';}
+function lock(){generation++;pack=null;plainTxt=null;content.replaceChildren();content.hidden=true;document.getElementById('unlock').hidden=false;document.getElementById('lock').hidden=true;setStatus('statusLocked');}
 document.getElementById('lock').onclick=lock;
 document.getElementById('form').onsubmit=async event=>{
- event.preventDefault();const attempt=++generation;const input=document.getElementById('password');const password=input.value;input.value='';statusNode.textContent='Unlocking…';
+ event.preventDefault();const attempt=++generation;const input=document.getElementById('password');const password=input.value;input.value='';setStatus('statusUnlocking');
  try{
- if(!envelope)throw Error('missing');
- if(envelope.version!==1||envelope.cipher.length>2000000)throw Error('invalid');
- const bytes=value=>Uint8Array.from(atob(value),char=>char.charCodeAt(0));
- const salt=bytes(envelope.salt),iv=bytes(envelope.iv);if(salt.length!==16||iv.length!==12)throw Error('invalid');
- const material=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveKey']);
- const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:600000,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,['decrypt']);
- const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv,additionalData:new TextEncoder().encode('ORCA-TRIP-1')},key,bytes(envelope.cipher));
- const data=JSON.parse(new TextDecoder().decode(plain));
- if(data.version!==1||!Number.isFinite(data.savedAt)||!Number.isFinite(data.expiresAt)||data.expiresAt<=data.savedAt||data.expiresAt-data.savedAt>48*3600000||!Array.isArray(data.readings)||!Array.isArray(data.forecast)||!data.pfz)throw Error('invalid');
- if(attempt!==generation)return;
- pack=data;document.getElementById('unlock').hidden=true;document.getElementById('lock').hidden=false;content.hidden=false;render();
- }catch{if(attempt!==generation)return;lock();statusNode.textContent='Cannot unlock: incorrect password, damaged file, or browser encryption unavailable. Try this file in a current browser.';}
+  if(!envelope)throw Error('missing');
+  if(envelope.version!==1||envelope.cipher.length>2000000)throw Error('invalid');
+  const bytes=value=>Uint8Array.from(atob(value),char=>char.charCodeAt(0));
+  const salt=bytes(envelope.salt),iv=bytes(envelope.iv);if(salt.length!==16||iv.length!==12)throw Error('invalid');
+  const material=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveKey']);
+  const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:600000,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,['decrypt']);
+  const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv,additionalData:new TextEncoder().encode('ORCA-TRIP-1')},key,bytes(envelope.cipher));
+  const data=JSON.parse(new TextDecoder().decode(plain));
+  if(data.version!==1||!Number.isFinite(data.savedAt)||!Number.isFinite(data.expiresAt)||data.expiresAt<=data.savedAt||data.expiresAt-data.savedAt>48*3600000||!Array.isArray(data.readings)||!Array.isArray(data.forecast)||!data.pfz)throw Error('invalid');
+  if(attempt!==generation)return;
+  pack=data;plainTxt=null;document.getElementById('unlock').hidden=true;document.getElementById('lock').hidden=false;content.hidden=false;render();
+ }catch{if(attempt!==generation)return;lock();setStatus('statusUnlockErr');}
 };
+applyLanguage(currentLang);
 setInterval(render,15000);window.addEventListener('pageshow',render);document.addEventListener('visibilitychange',()=>{if(!document.hidden)render();});
 </script></body></html>

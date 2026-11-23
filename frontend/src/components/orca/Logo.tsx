@@ -1,5 +1,6 @@
 import { useId } from "react";
-import { APP_NAME, POWERED_BY } from "@/lib/brand";
+import { POWERED_BY, getLocalizedAppName } from "@/lib/brand";
+import { useOptionalLang } from "@/lib/orca/i18n";
 
 export function MatsyaLogo({
   className = "size-8",
@@ -9,12 +10,14 @@ export function MatsyaLogo({
   animated?: boolean;
 }) {
   const clipId = useId();
+  const lang = useOptionalLang();
+  const appName = getLocalizedAppName(lang);
   return (
     <svg
       viewBox="0 0 120 120"
       className={className}
       role="img"
-      aria-label={APP_NAME}
+      aria-label={appName}
       fill="none"
     >
       <defs>
@@ -61,12 +64,14 @@ export function MatsyaLogo({
 }
 
 export function MatsyaWordmark({ compact = false }: { compact?: boolean }) {
+  const lang = useOptionalLang();
+  const appName = getLocalizedAppName(lang);
   return (
     <span className="flex min-w-0 items-center gap-2.5">
       <MatsyaLogo className="size-8 shrink-0" />
       <span className="flex min-w-0 flex-col leading-tight">
         <span className="truncate text-sm font-bold tracking-tight text-foreground">
-          {APP_NAME}
+          {appName}
         </span>
         {!compact && (
           <span className="truncate text-[11px] text-muted-foreground">

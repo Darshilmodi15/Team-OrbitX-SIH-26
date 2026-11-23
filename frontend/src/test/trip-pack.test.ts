@@ -112,4 +112,33 @@ describe("offline trip pack", () => {
   it("rejects short passwords", async () => {
     await expect(encryptTripPack(prepareTripPack(location, bundle, pfz, now), "short")).rejects.toThrow("12");
   });
+  it("shows Matsya branding (never ORCA) and supports switching across all 11 languages", async () => {
+    const { dom } = await viewer("test-password-long");
+    try {
+      const bodyClone = dom.window.document.body.cloneNode(true) as HTMLElement;
+      bodyClone.querySelectorAll("script").forEach(el => el.remove());
+      const visibleText = bodyClone.textContent || "";
+      const heading = dom.window.document.querySelector("#heading")!;
+      const contentText = dom.window.document.querySelector("#content")!.textContent || "";
+      expect(heading.textContent).toBe("Matsya offline trip pack");
+      expect(heading.textContent).not.toMatch(/ORCA/i);
+      expect(contentText).not.toMatch(/ORCA/i);
+      expect(visibleText).not.toMatch(/\bORCA\b/i);
+
+      const select = dom.window.document.querySelector<HTMLSelectElement>("#lang")!;
+      expect(select.options).toHaveLength(11);
+
+      select.value = "gu";
+      select.onchange!(new dom.window.Event("change"));
+      expect(dom.window.document.documentElement.lang).toBe("gu");
+      expect(heading.textContent).toBe("મત્સ્ય ઓફલાઇન પ્રવાસ પેક");
+      expect(dom.window.document.querySelector("#content")!.textContent).toContain("મોજાની ઊંચાઈ: 1 m");
+
+      select.value = "hi";
+      select.onchange!(new dom.window.Event("change"));
+      expect(dom.window.document.documentElement.lang).toBe("hi");
+      expect(heading.textContent).toBe("मत्स्य ऑफ़लाइन यात्रा पैक");
+      expect(dom.window.document.querySelector("#content")!.textContent).toContain("लहर की ऊँचाई: 1 m");
+    } finally { dom.window.close(); }
+  });
 });

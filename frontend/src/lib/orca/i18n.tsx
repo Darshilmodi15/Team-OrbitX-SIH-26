@@ -1921,3 +1921,8 @@ export function useI18n() {
   if (!ctx) throw new Error("useI18n must be used inside I18nProvider");
   return ctx;
 }
+
+export function useOptionalLang(): LangCode {
+  const ctx = useContext(I18nContext);
+  return ctx?.lang ?? "en";
+}

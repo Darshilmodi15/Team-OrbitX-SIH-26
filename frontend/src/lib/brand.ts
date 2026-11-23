@@ -4,6 +4,26 @@
  */
 
 export const APP_NAME = "Matsya";
+export const LOCALIZED_APP_NAMES: Record<string, string> = {
+  en: "Matsya",
+  hi: "मत्स्य",
+  gu: "મત્સ્ય",
+  mr: "मत्स्य",
+  ta: "மத்ஸ்யா",
+  te: "మత్స్య",
+  ml: "മത്സ്യ",
+  bn: "মৎস্য",
+  kn: "ಮತ್ಸ್ಯ",
+  or: "ମତ୍ସ୍ୟ",
+  pa: "ਮਤਸਿਆ",
+};
+
+export function getLocalizedAppName(lang?: string | null): string {
+  if (!lang) return APP_NAME;
+  const code = lang.trim().toLowerCase().split("-")[0].split("_")[0];
+  return LOCALIZED_APP_NAMES[code] ?? APP_NAME;
+}
+
 export const ENGINE_NAME = "ORCA";
 export const ENGINE_FULL_NAME =
   "ORCA - Marine EcOsystem Reasoning with Collaborative Agents";

@@ -23,7 +23,11 @@ const CACHE = 'orca-offline-reader-${version}';
 const READER = '/offline-trip-reader.html';
 const ROUTES = new Set(['/', '/dashboard', '/map', '/location', '/assistant', '/alerts', '/services', '/settings', '/login', '/auth', READER]);
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.add(new Request(READER, {cache:'reload'}))));
+  event.waitUntil(
+    caches.open(CACHE)
+      .then(cache => cache.add(new Request(READER, {cache:'reload'})))
+      .then(() => { if (typeof self.skipWaiting === 'function') return self.skipWaiting(); })
+  );
 });
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
@@ -54,8 +58,8 @@ self.addEventListener('push', event => {
   event.waitUntil(
     self.registration.showNotification(payload.title, {
       body: payload.body,
-      icon: '/android-chrome-192x192.png?v=4',
-      badge: '/favicon-32x32.png?v=4',
+      icon: '/android-chrome-192x192.png?v=5',
+      badge: '/favicon-32x32.png?v=5',
       data: { url: payload.url || '/alerts' },
     })
   );
